@@ -1,4 +1,5 @@
 #include "paint_executor.hpp"
+#include "texture.hpp"
 #include "../platform/opengl.hpp"
 #include <algorithm>
 
@@ -12,6 +13,28 @@ PaintExecutor::PaintExecutor(Renderer* r, TextRenderer* tr)
 void PaintExecutor::set_offset(f32 x, f32 y) {
     offset_x_ = x;
     offset_y_ = y;
+}
+
+void PaintExecutor::set_image_data(const std::unordered_map<std::string, std::shared_ptr<image::Image>>& images) {
+    images_ = &images;
+}
+
+Texture2D* PaintExecutor::get_or_create_texture(const image::Image& img) {
+    ImageId id = reinterpret_cast<ImageId>(&img);
+    auto it = texture_cache_.find(id);
+    if (it != texture_cache_.end()) {
+        return it->second.get();
+    }
+
+    if (img.rgba_pixels.empty() || img.width == 0 || img.height == 0) return nullptr;
+
+    auto tex = std::make_unique<Texture2D>();
+    auto r = tex->create(img.width, img.height, img.rgba_pixels.data());
+    if (r.is_err()) return nullptr;
+
+    Texture2D* ptr = tex.get();
+    texture_cache_[id] = std::move(tex);
+    return ptr;
 }
 
 void PaintExecutor::execute(const DisplayList& list) {
@@ -55,6 +78,18 @@ void PaintExecutor::execute(const DisplayList& list) {
                                static_cast<i32>(w > 0 ? w : 0),
                                static_cast<i32>(h > 0 ? h : 0));
                 clip_stack_.push_back({x, y, w, h});
+                break;
+            }
+            case PaintCommand::Type::DRAW_IMAGE: {
+                f32 x = cmd.rect.x + offset_x_;
+                f32 y = cmd.rect.y + offset_y_;
+                f32 w = cmd.rect.width;
+                f32 h = cmd.rect.height;
+                ImageId id = cmd.image_id;
+                auto it = texture_cache_.find(id);
+                if (it != texture_cache_.end() && it->second) {
+                    renderer_->draw_textured_quad(x, y, w, h, cmd.color, it->second.get());
+                }
                 break;
             }
             case PaintCommand::Type::POP_CLIP: {

@@ -78,6 +78,7 @@ public:
     FontManager();
     Result<FontFace*> load_default_font();
     Result<FontFace*> load_from_file(const std::string& path);
+    FontFace* load_from_memory(const u8* data, u32 size);
     GlyphBitmap* get_or_rasterize(FontFace* face, u32 codepoint, u32 pixel_size);
 
 private:

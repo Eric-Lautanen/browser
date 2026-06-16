@@ -712,6 +712,15 @@ Result<FontFace*> FontManager::load_default_font() {
     return Result<FontFace*>(ptr);
 }
 
+FontFace* FontManager::load_from_memory(const u8* data, u32 size) {
+    auto face = std::make_unique<FontFace>();
+    auto r = face->load_from_memory(data, size);
+    if (r.is_err()) return nullptr;
+    FontFace* ptr = face.get();
+    fonts_.push_back(std::move(face));
+    return ptr;
+}
+
 Result<FontFace*> FontManager::load_from_file(const std::string& path) {
     FILE* f = std::fopen(path.c_str(), "rb");
     if (!f) return Result<FontFace*>(std::string("Cannot open file: " + path));

@@ -448,20 +448,40 @@ AtRule CssParser::parse_at_rule() {
 
     if (current_.type == CssTokenType::OPEN_BRACE) {
         advance();
-        while (current_.type != CssTokenType::CLOSE_BRACE &&
-               current_.type != CssTokenType::EOF_TOKEN) {
-            if (current_.type == CssTokenType::WHITESPACE) {
-                advance();
-                continue;
+
+        if (at.name == "font-face") {
+            while (current_.type != CssTokenType::CLOSE_BRACE &&
+                   current_.type != CssTokenType::EOF_TOKEN) {
+                if (current_.type == CssTokenType::WHITESPACE) {
+                    advance();
+                    continue;
+                }
+                if (current_.type == CssTokenType::SEMICOLON) {
+                    advance();
+                    continue;
+                }
+                if (current_.type == CssTokenType::IDENT) {
+                    at.declarations.push_back(parse_declaration());
+                } else {
+                    advance();
+                }
             }
-            if (current_.type == CssTokenType::SEMICOLON) {
-                advance();
-                continue;
-            }
-            if (current_.type == CssTokenType::AT_KEYWORD) {
-                at.at_rules.push_back(parse_at_rule());
-            } else {
-                at.rules.push_back(parse_rule());
+        } else {
+            while (current_.type != CssTokenType::CLOSE_BRACE &&
+                   current_.type != CssTokenType::EOF_TOKEN) {
+                if (current_.type == CssTokenType::WHITESPACE) {
+                    advance();
+                    continue;
+                }
+                if (current_.type == CssTokenType::SEMICOLON) {
+                    advance();
+                    continue;
+                }
+                if (current_.type == CssTokenType::AT_KEYWORD) {
+                    at.at_rules.push_back(parse_at_rule());
+                } else {
+                    at.rules.push_back(parse_rule());
+                }
             }
         }
         if (current_.type == CssTokenType::CLOSE_BRACE) advance();

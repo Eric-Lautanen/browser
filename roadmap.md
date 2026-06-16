@@ -8,7 +8,7 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 
 | Principle | Commitment |
 |-----------|-----------|
-| **Zero dependencies** | No Boost, Qt, WebKit, Chromium, libcurl, OpenSSL, zlib, Freetype, or any other third-party library. Only the C++ standard library, Win32 API, and OpenGL. |
+| **Zero dependencies** | No Boost, Qt, WebKit, Chromium, libcurl, OpenSSL, zlib, Freetype, or any other third-party library. Only the C++ standard library, Win32 API (kernel32, user32, gdi32, ws2_32, bcrypt, opengl32), and OpenGL. No WIC, no COM, no system imaging components — every decoder is hand-written from scratch. |
 | **Modern C++20** | RAII, move semantics, `std::unique_ptr`/`std::shared_ptr`, `std::optional`, `std::variant`, `std::string_view`, concepts, coroutines (where appropriate), `constexpr` where possible. No exceptions (`-fno-exceptions`). |
 | **Simple & clean** | Minimal settings. No bloat. Every feature must earn its place. The current 140 `.cpp` files and ~25K lines of C++ is lean by browser standards (Chromium is ~30M lines). |
 | **Performance-first** | Async I/O via IOCP. Off-main-thread parsing/layout/paint. GPU-accelerated rendering. Smooth 60fps scrolling with a compositor. No busy-wait event loops. |
@@ -369,32 +369,27 @@ async::task<Result<LoadedPage>> PageLoader::load(const std::string& url_str) {
 
 ### 3.3 — Image Loading & Decoding
 
-**Strategy**: Three-layer approach. Layer 1 (WIC bridge) gets images working immediately using the built-in Win32 Imaging Component — this is not a third-party dependency, it's a system API like `kernel32.dll`. Layer 2 replaces individual formats with hand-written decoders starting from easiest to hardest. Layer 3 keeps WIC as the fallback for WebP/AVIF.
+**Strategy**: All decoders are hand-written from scratch. No WIC, no system imaging components, no third-party libraries. Start with the simplest formats and work up to the hardest. Each format gets its own file in `image/`.
 
-| Layer | Files | Formats | Effort |
-|-------|-------|---------|--------|
-| 1 — WIC | `image/decoder_wic.cpp` | All (PNG, JPEG, GIF, WebP, BMP, TIFF, ICO) | ~150 lines, immediate |
-| 2a — BMP | `image/decoder_bmp.cpp` | BMP | ~100 lines |
-| 2b — PNG | `image/decoder_png.cpp` | PNG (uses existing `net/deflate.cpp`) | ~800 lines |
-| 2c — GIF | `image/decoder_gif.cpp` | GIF (LZW decompress) | ~500 lines |
-| 2d — JPEG | `image/decoder_jpeg.cpp` | JPEG (DCT, Huffman, chroma subsampling) | ~2000 lines, deferrable |
-| 3 — Fallback | WIC remains | WebP, AVIF, TIFF | N/A, never write from scratch |
+| Format | File | Effort | Dependencies |
+|--------|------|--------|-------------|
+| BMP | `image/decoder_bmp.cpp` | ~100 lines | None (header + pixel data) |
+| GIF | `image/decoder_gif.cpp` | ~500 lines | LZW decompress (self-contained) |
+| PNG | `image/decoder_png.cpp` | ~800 lines | Uses existing `net/deflate.cpp` for IDAT decompression |
+| JPEG | `image/decoder_jpeg.cpp` | ~2000 lines | DCT math, Huffman decode (self-contained) |
 
 | File | Change |
 |------|--------|
-| New: `image/format.hpp` | `enum class ImageFormat { PNG, JPEG, GIF, BMP, WEBP, TIFF, ICO, UNKNOWN }`. Detection from magic bytes. Helper: `detect_format(span<u8>) -> ImageFormat`. `class Image` — holds decoded RGBA pixels, width, height, format. |
-| New: `image/decoder.hpp` | Abstract `Decoder` base class. `virtual Result<Image> decode(span<u8>)`. Factory: `create_decoder(ImageFormat) -> unique_ptr<Decoder>`. |
-| New: `image/decoder_wic.cpp` | Bridges to `IWICImagingFactory` (Win32 COM). Covers all formats immediately. Falls back to hand-written decoders when they exist. |
+| New: `image/format.hpp` | `enum class ImageFormat { PNG, JPEG, GIF, BMP, UNKNOWN }`. Detection from magic bytes. Helper: `detect_format(span<u8>) -> ImageFormat`. `class Image` — holds decoded RGBA pixels, width, height. |
+| New: `image/decoder.hpp` | Abstract `Decoder` base. `virtual Result<Image> decode(span<u8>)`. Factory: `create_decoder(ImageFormat) -> unique_ptr<Decoder>`. |
 | New: `image/decoder_bmp.cpp` | BMP decoder: parse BITMAPFILEHEADER + BITMAPINFOHEADER, handle 1/4/8/16/24/32 bpp, RLE compression, pixel data extraction. |
-| New: `image/decoder_png.cpp` | PNG decoder: IHDR → PLTE → IDAT (deflate via `net/deflate.cpp`) → pixel filter reconstruction (None, Sub, Up, Average, Paeth) → interlace handling (Adam7 deferred). |
-| New: `image/decoder_gif.cpp` | GIF decoder: header → LZW coded data → palette-based pixel output → animation frame timing. |
-| New: `image/decoder_jpeg.cpp` | JPEG decoder (deferred): SOI, APP0/APP1 markers, DQT (quantization), SOF (frame), DHT (Huffman), SOS (scan start). IDCT per MCU. Chroma upsampling. |
-| `CMakeLists.txt` | Add `image/` library target. Link `windowscodecs.lib` for WIC. |
-| `browser/page_loader.cpp` | When `<img src>` is encountered, fire async fetch → detect format → decode on thread pool (via `image::Decoder`) → ship `Image` to main thread. |
+| New: `image/decoder_gif.cpp` | GIF decoder: header + logical screen descriptor → color table → LZW-encoded image data → deinterlace → palette-to-RGBA. Animation frame timing deferred. |
+| New: `image/decoder_png.cpp` | PNG decoder: IHDR → PLTE (optional) → IDAT chunks (deflate via `net/deflate.cpp`) → pixel filter reconstruction (None, Sub, Up, Average, Paeth) → CRC verification. Adam7 interlacing deferred. |
+| New: `image/decoder_jpeg.cpp` | JPEG decoder: SOI → APP0 (JFIF) → DQT (quantization tables) → SOF (frame dimensions + sampling) → DHT (Huffman tables) → SOS (scan). IDCT per MCU. Chroma upsampling (4:2:0 → 4:4:4). |
+| `CMakeLists.txt` | Add `image/` library target. No additional system libraries needed. |
+| `browser/page_loader.cpp` | When `<img src>` is encountered, fire async fetch → detect format via magic bytes → decode on thread pool (via `image::Decoder`) → ship `Image` to main thread. |
 | `render/painter.cpp` | Add `DrawImage` display command. |
-| `render/paint_executor.cpp` | Bind the `Image` as an OpenGL texture, draw a textured quad. |
-
-**Tests**: `tests/image_test.cpp` — Decode small PNG/JPEG/GIF/BMP test images, verify pixel correctness at known coordinates. Also decode via WIC and compare outputs.
+| `render/paint_executor.cpp` | Bind the `Image` RGBA pixels as an OpenGL texture, draw a textured quad. Cache textures in a `std::map<ImageId, GLuint>`. |
 
 ### 3.4 — Font Loading via `@font-face`
 
@@ -405,20 +400,18 @@ async::task<Result<LoadedPage>> PageLoader::load(const std::string& url_str) {
 | `browser/page_loader.cpp` | During CSS collection, extract `@font-face` URLs, fetch them concurrently with other resources. |
 
 ### Phase 3 Checklist
-- [x] Preload scanner runs alongside HTML tokenizer, fires async fetches for `<img>`, `<link>`, `<script>` before DOM build
-- [x] `ResourceLoader` manages priority queue: CSS > JS > images > fonts > prefetch. URL dedup works.
-- [x] WIC bridge (`image/decoder_wic.cpp`) works — loads PNG, JPEG, GIF, BMP from `<img src>` immediately. This is Layer 1.
-- [x] Hand-written BMP decoder (`image/decoder_bmp.cpp`) — Layer 2a.
-- [x] Hand-written PNG decoder (`image/decoder_png.cpp`) — uses existing `net/deflate.cpp`. Layer 2b.
-- [x] Hand-written GIF decoder (`image/decoder_gif.cpp`) — LZW. Layer 2c.
-- [x] JPEG decoder (`image/decoder_jpeg.cpp`) — Layer 2d, deferred if WIC covers it.
-- [x] WebP/AVIF handled by WIC fallback — never written from scratch.
-- [x] `image/` library target in CMakeLists.txt, linked to `windowscodecs.lib`.
-- [x] `DrawImage` display command. OpenGL textured quad rendering in paint executor.
-- [x] `<img src="">` causes async fetch → format detection → decode on thread pool → render.
-- [x] All pre-existing tests still pass
-- [x] `@font-face` parsing in `css/parser.cpp`. `FontLoader` fetches and registers fonts.
-- [x] All pre-existing tests still pass
+- [ ] Preload scanner runs alongside HTML tokenizer, fires async fetches for `<img>`, `<link>`, `<script>` before DOM build
+- [ ] `ResourceLoader` manages priority queue: CSS > JS > images > fonts > prefetch. URL dedup works.
+- [ ] Hand-written BMP decoder (`image/decoder_bmp.cpp`) — 1/4/8/16/24/32 bpp, RLE, pixel extraction.
+- [ ] Hand-written GIF decoder (`image/decoder_gif.cpp`) — LZW, palette, deinterlace.
+- [ ] Hand-written PNG decoder (`image/decoder_png.cpp`) — deflate via `net/deflate.cpp`, filter reconstruction, CRC.
+- [ ] Hand-written JPEG decoder (`image/decoder_jpeg.cpp`) — Huffman, DCT, IDCT, chroma upsampling.
+- [ ] `image/` library target in CMakeLists.txt. No external libs linked.
+- [ ] `DrawImage` display command. OpenGL textured quad rendering in paint executor.
+- [ ] `<img src="">` causes async fetch → magic byte detection → decode on thread pool → render.
+- [ ] `@font-face` parsing in `css/parser.cpp`. `FontLoader` fetches and registers fonts.
+- [ ] No WIC, no COM, no system imaging components used anywhere.
+- [ ] All pre-existing tests still pass
 
 ### Phase 3 Lessons Learned
 

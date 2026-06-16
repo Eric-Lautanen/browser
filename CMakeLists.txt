@@ -85,6 +85,23 @@ if(WIN32)
 endif()
 target_link_libraries(net platform)
 
+# Image Library
+add_library(image STATIC
+    image/format.hpp
+    image/decoder.hpp
+    image/decoder.cpp
+    image/decoder_wic.cpp
+    image/decoder_bmp.cpp
+    image/decoder_png.cpp
+    image/decoder_gif.cpp
+    image/decoder_jpeg.cpp
+)
+target_include_directories(image PUBLIC .)
+if(WIN32)
+    target_link_libraries(image windowscodecs ole32)
+endif()
+target_link_libraries(image net)
+
 # HTML Library
 add_library(html STATIC
     html/utf8.cpp
@@ -100,8 +117,13 @@ add_library(html STATIC
     html/parser.cpp
     html/traversal.hpp
     html/traversal.cpp
+    html/preload_scanner.hpp
+    html/preload_scanner.cpp
+    html/resource_loader.hpp
+    html/resource_loader.cpp
 )
 target_include_directories(html PUBLIC .)
+target_link_libraries(html net)
 
 # CSS Library (depends on html for DOM types)
 add_library(css STATIC
@@ -160,6 +182,7 @@ add_library(render STATIC
     render/paint.cpp
     render/painter.cpp
     render/paint_executor.cpp
+    render/font_loader.cpp
     render/shaders.hpp
     render/shader_program.hpp
     render/mesh.hpp
@@ -171,9 +194,10 @@ add_library(render STATIC
     render/paint.hpp
     render/painter.hpp
     render/paint_executor.hpp
+    render/font_loader.hpp
 )
 target_include_directories(render PUBLIC .)
-target_link_libraries(render platform css html)
+target_link_libraries(render platform css html image)
 
 # Browser Library
 add_library(browser_lib STATIC
@@ -192,7 +216,7 @@ add_library(browser_lib STATIC
     browser/page_loader.hpp
 )
 target_include_directories(browser_lib PUBLIC .)
-target_link_libraries(browser_lib net platform render js)
+target_link_libraries(browser_lib net platform render js html image)
 
 # --- Test Runner ---
 add_executable(test_runner
@@ -288,6 +312,10 @@ target_link_libraries(window_smoke_test test_framework platform)
 # GPU smoke test (full render pipeline with OpenGL context)
 add_executable(gpu_smoke_test tests/main.cpp tests/gpu_smoke_test.cpp)
 target_link_libraries(gpu_smoke_test test_framework platform render)
+
+# --- Image tests ---
+add_executable(image_test tests/main.cpp tests/image_test.cpp)
+target_link_libraries(image_test test_framework image)
 
 # --- Browser/chrome tests ---
 add_executable(websocket_test tests/main.cpp tests/websocket_test.cpp)

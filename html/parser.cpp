@@ -4,7 +4,10 @@
 
 namespace browser::html {
 
-Parser::Parser() {}
+Parser::Parser() : preload_scanner_(nullptr) {}
+
+Parser::Parser(PreloadScanner* scanner, const std::string& base_url)
+    : preload_scanner_(scanner), base_url_(base_url) {}
 
 std::unique_ptr<Document> Parser::parse(const std::string& html) {
     document_ = create_document();
@@ -14,6 +17,9 @@ std::unique_ptr<Document> Parser::parse(const std::string& html) {
 
     while (tokenizer_->has_next()) {
         Token t = tokenizer_->next();
+        if (preload_scanner_) {
+            preload_scanner_->scan_token(t, base_url_);
+        }
         handle_token(t);
     }
     flush_pending_text();

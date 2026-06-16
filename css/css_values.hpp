@@ -62,6 +62,7 @@ struct AtRule {
     std::string prelude;
     std::vector<Rule> rules;
     std::vector<AtRule> at_rules;
+    std::vector<Declaration> declarations; // for @font-face etc
 };
 
 struct StyleSheet {
