@@ -3,6 +3,7 @@
 #include "css_values.hpp"
 #include "specificity.hpp"
 #include "../html/dom.hpp"
+#include "../async/task.hpp"
 
 namespace browser::css {
 
@@ -33,7 +34,7 @@ struct ComputedStyle {
 
 class Cascade {
 public:
-    std::unordered_map<const html::Element*, ComputedStyle>
+    async::task<std::unordered_map<const html::Element*, ComputedStyle>>
     compute(const html::Document& doc, const StyleSheet& author);
 };
 

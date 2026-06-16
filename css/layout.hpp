@@ -7,6 +7,7 @@
 #include "css_values.hpp"
 #include "cascade.hpp"
 #include "../html/dom.hpp"
+#include "../async/task.hpp"
 
 namespace browser::css {
 
@@ -103,7 +104,7 @@ class LayoutEngine {
 public:
     LayoutEngine();
     void set_text_measure(void* ctx, TextMeasureFn fn) { text_measurer_ctx_ = ctx; text_measure_fn_ = fn; }
-    std::unique_ptr<LayoutNode> layout(
+    async::task<std::unique_ptr<LayoutNode>> layout(
         html::Document* doc,
         std::unordered_map<const html::Element*, ComputedStyle>& styles,
         f32 viewport_width,

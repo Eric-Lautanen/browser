@@ -4,6 +4,7 @@
 #include "../html/traversal.hpp"
 #include <algorithm>
 #include <cstdlib>
+#include "../async/executor.hpp"
 
 namespace browser::css {
 
@@ -37,8 +38,9 @@ bool is_inherited(const std::string& property) {
            property == "cursor";
 }
 
-std::unordered_map<const html::Element*, ComputedStyle>
+async::task<std::unordered_map<const html::Element*, ComputedStyle>>
 Cascade::compute(const html::Document& doc, const StyleSheet& author) {
+    co_await async::thread_pool_executor{};
     CssParser ua_parser(UA_STYLESHEET);
     StyleSheet ua = ua_parser.parse();
 
@@ -416,7 +418,7 @@ Cascade::compute(const html::Document& doc, const StyleSheet& author) {
         }
     });
 
-    return styles;
+    co_return styles;
 }
 
 }

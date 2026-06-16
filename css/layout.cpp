@@ -1,6 +1,7 @@
 #include "layout.hpp"
 #include "grid.hpp"
 #include "../html/traversal.hpp"
+#include "../async/executor.hpp"
 #include <algorithm>
 #include <cmath>
 #include <map>
@@ -1866,12 +1867,13 @@ void LayoutEngine::layout_absolute_pass(LayoutNode* node, LayoutNode* containing
 
 LayoutEngine::LayoutEngine() = default;
 
-std::unique_ptr<LayoutNode> LayoutEngine::layout(
+async::task<std::unique_ptr<LayoutNode>> LayoutEngine::layout(
     html::Document* doc,
     std::unordered_map<const html::Element*, ComputedStyle>& styles,
     f32 viewport_width,
     f32 viewport_height)
 {
+    co_await async::thread_pool_executor{};
     viewport_width_ = viewport_width;
     viewport_height_ = viewport_height;
 
@@ -1892,7 +1894,7 @@ std::unique_ptr<LayoutNode> LayoutEngine::layout(
     f32 body_font_size = resolve_font_size(tree->style(), root_font_size_);
     layout_absolute_pass(tree.get(), nullptr, viewport_width, viewport_height, body_font_size);
 
-    return tree;
+    co_return tree;
 }
 
 } // namespace browser::css

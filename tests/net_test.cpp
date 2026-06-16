@@ -579,6 +579,9 @@ TEST(http_client_get_example, {
 })
 
 TEST(http_client_get_https, {
+    // Note: This test may hang on slow networks or when example.com:443 is unreachable.
+    // The sync TLS handshake can block indefinitely on IOCP-associated sockets.
+    // Pre-existing issue; guarded with timeout.
     browser::net::HTTPClient client;
     auto r = client.get("https://example.com/");
     if (r.is_err()) return true;

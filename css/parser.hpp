@@ -2,6 +2,8 @@
 #include <string>
 #include "css_values.hpp"
 #include "tokenizer.hpp"
+#include "../async/task.hpp"
+#include "../async/executor.hpp"
 
 namespace browser::css {
 
@@ -24,9 +26,10 @@ private:
     bool is_simple_selector_start() const;
 };
 
-inline StyleSheet parse(const std::string& css) {
+inline async::task<StyleSheet> parse(const std::string& css) {
+    co_await async::thread_pool_executor{};
     CssParser p(css);
-    return p.parse();
+    co_return p.parse();
 }
 
 }
