@@ -14,7 +14,7 @@ public:
             GetSystemInfo(&si);
             thread_count = si.dwNumberOfProcessors + 2;
         }
-        pool_ = CreateThreadpool(nullptr, nullptr, nullptr);
+        pool_ = CreateThreadpool(nullptr);
         if (!pool_) return;
         SetThreadpoolThreadMinimum(pool_, 1);
         SetThreadpoolThreadMaximum(pool_, thread_count);

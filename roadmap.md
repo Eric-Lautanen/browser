@@ -898,10 +898,14 @@ while (!window_->should_close()) {
 
 ### 11.1 — Download Manager
 
+**Safety-first design**: Downloads are **disabled by default**. A setting controls behavior: `disabled` (default) → silently blocks all downloads; `notify` → shows an alert in the browser chrome and does nothing else; `enabled` → prompts the user with a file-save dialog. Even when enabled, dangerous file types are blocked unless the user explicitly overrides per-file. All downloads go to a sandboxed `./downloads/` directory, never the user's Desktop or Downloads folder.
+
 | File | Change |
 |------|--------|
-| New: `browser/download_manager.cpp`, `browser/download_manager.hpp` | Detect `Content-Disposition: attachment` header. Show download progress bar. File save dialog (Win32 `GetSaveFileName`). Background download on thread pool. |
-| `browser/browser_window.cpp` | Download button in toolbar when a download is active. Click shows download list. |
+| New: `browser/download_manager.cpp`, `browser/download_manager.hpp` | Detect `Content-Disposition: attachment` header. If setting is `disabled`, drop silently and log. If `notify`, show in-browser toast/alert. If `enabled`, prompt with Win32 `GetSaveFileName` dialog (defaulting to `./downloads/`). Background download on thread pool. Write `Zone.Identifier` alternate data stream to mark file as from internet. |
+| New: `browser/download_blocklist.cpp` | Extension-based blocklist: `.exe`, `.msi`, `.scr`, `.vbs`, `.ps1`, `.jar`, `.bat`, `.cmd`, `.dll`, `.ocx`, `.msu`, `.msp`, `.reg`, `.pif`, `.scr`, `.cpl`, `.app`, `.gadget`, `.hta`, `.wsf`, `.wsh`. Blocked by default unless user explicitly overrides. Also flag MIME/extension mismatches (`Content-Type: image/png` + `.exe` = blocked). 2GB file size cap. |
+| `browser/settings.cpp` | Add `download_behavior` setting: `disabled` | `notify` | `enabled`. Default: `disabled`. |
+| `browser/browser_window.cpp` | Download button in toolbar when a download is active (only visible in `enabled` mode). Click shows download list with progress. |
 
 ### 11.2 — Find in Page (Ctrl+F)
 
@@ -948,7 +952,11 @@ while (!window_->should_close()) {
 | `browser/browser_window.cpp` | When user types in address bar and presses Enter: if input looks like a URL (contains `.` or `://`), navigate to it. Otherwise, search using the configured search engine. |
 
 ### Phase 11 Checklist
-- [ ] Download manager detects `Content-Disposition: attachment`, shows progress, saves file via `GetSaveFileName` dialog.
+- [ ] Download manager implements three modes: `disabled` (silent drop), `notify` (in-browser alert), `enabled` (file-save dialog). Default is `disabled`.
+- [ ] `download_blocklist.cpp` blocks executable extensions (`.exe`, `.msi`, `.vbs`, `.ps1`, `.jar`, `.bat`, `.dll`, etc.) and MIME/extension mismatches. User can override per-file.
+- [ ] 2GB file size cap enforced.
+- [ ] `Zone.Identifier` alternate data stream written on all saved files.
+- [ ] Downloaded files go to `./downloads/` directory, never system Downloads or Desktop.
 - [ ] Find in page (Ctrl+F): text input with match count, prev/next, scroll-to-match, highlight all matches.
 - [ ] Zoom (Ctrl++ / Ctrl+- / Ctrl+0): range 0.25–5.0, percentage shown in address bar, persisted per-site.
 - [ ] Full-screen (F11): toggles exclusive full-screen mode, restores correctly.

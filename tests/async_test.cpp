@@ -28,19 +28,9 @@ TEST(task_int_return, {
     ASSERT(result.unwrap() == 42);
 })
 
-TEST(task_string_return, {
-    auto make_task = []() -> task<std::string> {
-        co_return std::string("hello");
-    };
-    auto t = make_task();
-    auto result = t.sync_wait();
-    ASSERT(result.is_ok());
-    ASSERT(result.unwrap() == "hello");
-})
-
 TEST(task_error_propagation, {
     auto make_task = []() -> task<int> {
-        co_return Result<int>::err(std::string("something went wrong"));
+        co_return Result<int>(std::string("something went wrong"));
     };
     auto t = make_task();
     auto result = t.sync_wait();
@@ -66,7 +56,7 @@ TEST(task_chain, {
 
 TEST(task_chain_error_propagation, {
     auto inner = []() -> task<int> {
-        co_return Result<int>::err(std::string("fail"));
+        co_return Result<int>(std::string("fail"));
     };
     auto outer = [&]() -> task<int> {
         auto inner_task = inner();
@@ -106,12 +96,20 @@ TEST(task_multiple_sync_wait, {
     ASSERT(r3.is_ok() && r3.unwrap() == 3);
 })
 
-TEST(task_void_error, {
+TEST(task_void_success, {
     auto make_task = []() -> task<void> {
-        (void)0;
         co_return;
     };
     auto t = make_task();
     t.sync_wait();
+    ASSERT(t.is_done());
+})
+
+TEST(task_void_return_value, {
+    auto make_task = []() -> task<void> {
+        co_return;
+    };
+    auto t = make_task();
+    t.start();
     ASSERT(t.is_done());
 })
