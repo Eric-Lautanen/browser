@@ -97,15 +97,14 @@ Grid is already partially separated (`css/grid.cpp`), but `layout_grid` lives in
 | `is_table_cell_tag`, `is_table_row_tag` | `table.cpp` |
 | `LayoutEngine::layout_table` | `table.cpp` |
 
-### R1.7 — Extract positioning + float + z-index + overflow
+### R1.7 — Extract positioning into `css/layout/positioning.cpp`
 
 | Function | File |
 |----------|------|
 | `LayoutEngine::layout_absolute_pass` | `positioning.cpp` |
 | `apply_transform_to_node` | `positioning.cpp` |
-| *float helpers* | `float.cpp` |
-| *stacking context sorting* | `z_index.cpp` |
-| *overflow scroll regions* | `overflow.cpp` |
+
+> **Note**: `float`/`clear` and `overflow: scroll` logic is currently inlined within `layout_block` and `layout_children` — not separable as standalone functions in this pass. Stacking context sorting is handled by `creates_stacking_context` and `get_z_index` (moved in R1.3) plus paint-order logic that lives in `render/painter.cpp`. These can be extracted in a future refactor once the layout engine stabilizes.
 
 ### R1.8 — Clean up `layout/engine.cpp`
 
@@ -129,9 +128,6 @@ Validate that `engine.cpp` is now under ~600 lines.
 - [ ] `css/layout/inline.cpp` — inline layout moved
 - [ ] `css/layout/table.cpp` — table layout moved
 - [ ] `css/layout/positioning.cpp` — absolute/fixed/sticky positioning moved
-- [ ] `css/layout/float.cpp` — float + clear moved
-- [ ] `css/layout/z_index.cpp` — stacking context sorting moved
-- [ ] `css/layout/overflow.cpp` — overflow scroll regions moved
 - [ ] `css/layout/engine.cpp` — under ~600 lines; `build_layout_tree` and `layout` dispatcher only
 - [ ] `CMakeLists.txt` — `css/layout/` folder added as source group; all new .cpp files listed; `css/layout.hpp` still public
 - [ ] No circular includes between any `css/layout/*.cpp` files
@@ -294,7 +290,7 @@ Validate that `engine.cpp` is now under ~600 lines.
 - [ ] Each insertion mode group has its own file
 - [ ] Foster parenting and adoption agency are self-contained
 - [ ] Template handling separated
-- [ ] All html_test tests pass (61/61)
+- [ ] All html_test tests pass
 - [ ] No circular includes
 - [ ] Committed and pushed
 
@@ -338,26 +334,99 @@ Validate that `engine.cpp` is now under ~600 lines.
 
 ---
 
+## Phase R11: `js/parser/` — Split the 1,041-line JS Parser
+
+**Goal**: Separate expression parsing, statement parsing, declaration parsing, and pattern parsing into focused files.
+
+| File | Contents |
+|------|----------|
+| `js/parser/parser.hpp` | Public API: `js::parse(Tokenizer&) -> Program`. |
+| `js/parser/parser.cpp` | Top-level `parse_program()`, token stream management, error recovery. ~150 lines. |
+| `js/parser/expression.cpp` | Expression parsing (literals, binary, unary, call, member, assignment, arrow, object/array literals, template literals, optional chaining). ~300 lines. |
+| `js/parser/statement.cpp` | Statement parsing (block, if, while, for, var/let/const, function decl, return, break, throw, try/catch, empty). ~250 lines. |
+| `js/parser/declaration.cpp` | Declaration parsing (`import`, `export`, `class`). ~150 lines. |
+| `js/parser/pattern.cpp` | Destructuring pattern parsing (identifier, object, array). ~100 lines. |
+
+### Phase R11 Checklist
+- [ ] Expression parsing separated, no regressions on any expression types
+- [ ] Statement parsing separated, all statement types work
+- [ ] Declaration parsing separated, import/export/class work
+- [ ] Pattern parsing separated, destructuring works
+- [ ] All js_test, parser_test, compiler_test tests pass
+- [ ] Committed and pushed
+
+---
+
+## Phase R12: `js/vm/` — Split the 861-line VM + 683-line Compiler
+
+**Goal**: Separate bytecode execution, builtins dispatch, GC integration, and compiler into focused files.
+
+| File | Contents |
+|------|----------|
+| `js/vm/vm.hpp/cpp` | `VM` class, `execute()` main loop, call frame management, try/catch. ~250 lines. |
+| `js/vm/ops.cpp` | Per-opcode execution helpers (arithmetic, comparison, property access, type coercion). ~250 lines. |
+| `js/vm/builtins.cpp` | Builtin function dispatch table, native function registration. ~200 lines. |
+| `js/vm/gc.cpp` | GC integration (root scanning, allocation, write barriers — code already in `js/gc.cpp`, but VM integration separated). ~100 lines. |
+| `js/vm/compiler/compiler.hpp/cpp` | `Compiler` class, `compile()` entry point, function compilation. ~200 lines. |
+| `js/vm/compiler/expr.cpp` | Expression bytecode emission. ~200 lines. |
+| `js/vm/compiler/stmt.cpp` | Statement bytecode emission. ~200 lines. |
+
+### Phase R12 Checklist
+- [ ] VM, ops, builtins all split with no circular deps
+- [ ] Compiler splits expression and statement emission
+- [ ] All VM call frame and try/catch behavior preserved
+- [ ] All builtins dispatch identically
+- [ ] All compiler_test, vm_test, js_test, gc_test tests pass
+- [ ] Committed and pushed
+
+---
+
+## Phase R13: `html/tokenizer/` — Split the 639-line HTML Tokenizer
+
+**Goal**: Separate tokenizer states into focused files. The tokenizer is a single large state machine (89 states) that can be grouped by content model.
+
+| File | Contents |
+|------|----------|
+| `html/tokenizer/tokenizer.hpp/cpp` | Public API, main `next_token()` loop, state dispatch. ~150 lines. |
+| `html/tokenizer/states_data.cpp` | Data state + character reference resolution. ~100 lines. |
+| `html/tokenizer/states_tag.cpp` | Tag open, tag name, end tag, self-closing, attribute states. ~150 lines. |
+| `html/tokenizer/states_rcdata.cpp` | RCDATA, RAWTEXT, script data states. ~100 lines. |
+| `html/tokenizer/states_foreign.cpp` | Foreign content (SVG, MathML) states. ~100 lines. |
+
+### Phase R13 Checklist
+- [ ] Tokenizer state groups separated, no regressions
+- [ ] Character reference resolution still works correctly
+- [ ] All html_test tests pass (including tokenizer-specific tests)
+- [ ] No circular includes with html/parser/
+- [ ] Committed and pushed
+
+---
+
 ## Implementation Order
 
 ```
-R1: css/layout/           ← HIGHEST IMPACT (2,448 lines → 12 files)
-R2: css/parser/           ← 953 lines → 5 files
-R3: css/cascade/          ← 783 lines → 5 files
-R4: net/http2/            ← 1,057 lines → 3 files
-R5: net/tls/              ← 987 lines → 4 files
-R6: browser/chrome/       ← 910 lines → 6 files
-R7: render/font/          ← 655+631 lines → 5 files
-R8: html/parser/          ← 1,933 lines → 11 files
-R9: net/socket/           ← 463 lines → 3 files
-R10: render/paint/        ← 397+379 lines → 5 files
+R1:  css/layout/           ← HIGHEST IMPACT (2,448 lines → 11 files)
+R2:  css/parser/           ← 953 lines → 5 files
+R3:  css/cascade/          ← 783 lines → 5 files
+R4:  net/http2/            ← 1,057 lines → 3 files
+R5:  net/tls/              ← 987 lines → 4 files
+R6:  browser/chrome/       ← 910 lines → 6 files
+R7:  render/font/          ← 655+631 lines → 5 files
+R8:  html/parser/          ← 1,933 lines → 11 files
+R9:  net/socket/           ← 463 lines → 3 files
+R10: render/paint/         ← 397+379 lines → 5 files
+R11: js/parser/            ← 1,041 lines → 5 files
+R12: js/vm/                ← 861+683 lines → 7 files
+R13: html/tokenizer/       ← 639 lines → 5 files
 ```
 
 **Do R1 first.** It's the biggest file, the most self-contained, and the highest risk of bit-rot the longer you wait.
 
 **Do R2 and R3 next** since they touch the same `css/` folder and you can validate cascade + parser integration together.
 
-**R8 (HTML parser) last** because it's the most complex state machine and highest risk of subtle breakage.
+**Do R11, R12, R13 last** since the JS engine and HTML tokenizer are the most complex state machines and any mistake can cause subtle bugs. The project is far enough along that these files are stable — no new JS syntax or HTML features are being added.
+
+**R8 (HTML parser) can be done anytime after R2/R3** since the parser and tokenizer are independent from the CSS refactors.
 
 ---
 
