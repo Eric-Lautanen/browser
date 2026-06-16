@@ -19,6 +19,8 @@ struct CallFrame {
     u32 base = 0;
     u32 local_count = 0;
     u32 try_catch_ip = 0;
+    JSValue this_value;  // 'this' binding for this frame
+    JSValue new_object;  // For 'new' calls, the newly created object
 };
 
 class VM {
@@ -42,7 +44,7 @@ public:
     JSFunction* create_native_fn(JSFunction::NativeFn fn, bool is_constructor = false, void* context = nullptr);
     JSValue add(const JSValue& a, const JSValue& b);
     void maybe_gc();
-    void push_call_frame(JSFunction* fn, u32 argc);
+    CallFrame* push_call_frame(JSFunction* fn, u32 argc);
     VMState save_state() const;
     void restore_state(VMState&& state);
 

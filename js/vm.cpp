@@ -1,5 +1,6 @@
 #include "vm.hpp"
 #include "gc.hpp"
+#include "builtins/builtins.hpp"
 #include <iostream>
 #include <cmath>
 #include <cstdlib>
@@ -62,8 +63,32 @@ JSValue JSObject::get(const std::string& name) const {
     return JSValue::undefined();
 }
 
+JSValue JSObject::get_property(const std::string& name) const {
+    auto it = properties.find(name);
+    if (it != properties.end()) return it->second;
+    if (prototype.type == JSValue::Type::OBJECT && prototype.object_val) {
+        return prototype.object_val->get_property(name);
+    }
+    return JSValue::undefined();
+}
+
+void JSObject::set_property(const std::string& name, const JSValue& val) {
+    // Always set own property (never write to prototype)
+    properties[name] = val;
+}
+
 void JSObject::set(const std::string& name, const JSValue& val) {
     properties[name] = val;
+}
+
+bool JSObject::prototype_chain_contains(JSValue obj, JSValue proto) {
+    if (obj.type != JSValue::Type::OBJECT || !obj.object_val) return false;
+    JSValue current = obj.object_val->prototype;
+    while (current.type == JSValue::Type::OBJECT && current.object_val) {
+        if (current.object_val == proto.object_val) return true;
+        current = current.object_val->prototype;
+    }
+    return false;
 }
 
 VM::VM() {
@@ -127,7 +152,7 @@ JSFunction* VM::create_native_fn(JSFunction::NativeFn fn, bool is_constructor, v
     return &f->fn;
 }
 
-void VM::push_call_frame(JSFunction* fn, u32 argc) {
+CallFrame* VM::push_call_frame(JSFunction* fn, u32 argc) {
     auto* bc = fn->bytecode;
     CallFrame frame;
     frame.base = (u32)stack_.size() - argc - 1;
@@ -139,6 +164,7 @@ void VM::push_call_frame(JSFunction* fn, u32 argc) {
     frame.ip = 0;
     frame.function = bc;
     frames_.push_back(frame);
+    return &frames_.back();
 }
 
 void VM::pop_frame() {
@@ -190,7 +216,11 @@ void VM::register_builtins() {
     auto* console_obj = heap_->alloc_object();
     console_obj->obj.set("log", JSValue::function(create_native_fn(
         [](const std::vector<JSValue>& args, void*) -> JSValue {
-            for (auto& a : args) std::cout << a.to_string() << " ";
+            // args[0] = this, args[1..n] = actual args
+            for (u32 i = 1; i < args.size(); i++) {
+                if (i > 1) std::cout << " ";
+                std::cout << args[i].to_string();
+            }
             std::cout << std::endl;
             return JSValue::undefined();
         }
@@ -199,8 +229,9 @@ void VM::register_builtins() {
 
     global_->obj.set("parseInt", JSValue::function(create_native_fn(
         [](const std::vector<JSValue>& args, void*) -> JSValue {
-            if (args.empty()) return JSValue::number(NAN);
-            return JSValue::number((f64)std::strtol(args[0].to_string().c_str(), nullptr, 10));
+            // args[0] = this, args[1] = first real arg
+            if (args.size() < 2) return JSValue::number(NAN);
+            return JSValue::number((f64)std::strtol(args[1].to_string().c_str(), nullptr, 10));
         }
     )));
 
@@ -209,7 +240,10 @@ void VM::register_builtins() {
             auto* vm = static_cast<VM*>(context);
             auto* arr = vm->heap()->alloc_object();
             arr->obj.is_array = true;
-            for (auto& a : args) arr->obj.array_elements.push_back(a);
+            // args[0] = this, args[1..n] = elements
+            for (u32 i = 1; i < args.size(); i++) {
+                arr->obj.array_elements.push_back(args[i]);
+            }
             return JSValue::object(&arr->obj);
         },
         true, this
@@ -217,6 +251,22 @@ void VM::register_builtins() {
 
     global_->obj.set("NaN", JSValue::number(NAN));
     global_->obj.set("undefined", JSValue::undefined());
+    
+    // Register builtin groups
+    builtins::register_string_prototype(this);
+    builtins::register_array_prototype(this);
+    builtins::register_object_builtins(this);
+    builtins::register_math_builtins(this);
+    builtins::register_number_builtins(this);
+    builtins::register_symbol_builtins(this);
+    builtins::register_json_builtins(this);
+    builtins::register_date_builtins(this);
+    builtins::register_regexp_builtins(this);
+    builtins::register_error_builtins(this);
+    builtins::register_console_builtins(this);
+    builtins::register_timer_builtins(this);
+    builtins::register_promise_builtins(this);
+    builtins::register_performance_builtins(this);
 }
 
 JSValue VM::execute(BytecodeFunction* func) {
@@ -233,7 +283,7 @@ JSValue VM::execute(BytecodeFunction* func) {
     stack_.clear();
     frames_.clear();
     push(JSValue::undefined());
-    frames_.push_back({func, 0, 0, func->num_locals});
+    frames_.push_back({func, 0, 0, func->num_locals, 0, JSValue::undefined(), JSValue::undefined()});
     for (u32 i = 0; i < func->num_locals; i++) {
         push(JSValue::undefined());
     }
@@ -281,9 +331,15 @@ JSValue VM::run() {
             case Opcode::PUSH_UNDEFINED:
                 push(JSValue::undefined());
                 break;
-            case Opcode::PUSH_THIS:
-                push(JSValue::object(&global_->obj));
+            case Opcode::PUSH_THIS: {
+                // If we have a current frame with a this_value, use it; otherwise global
+                JSValue this_val = JSValue::object(&global_->obj);
+                if (!frames_.empty() && frames_.back().this_value.type != JSValue::Type::UNDEFINED) {
+                    this_val = frames_.back().this_value;
+                }
+                push(this_val);
                 break;
+            }
             case Opcode::POP:
                 pop();
                 break;
@@ -434,15 +490,18 @@ JSValue VM::run() {
                 auto callee = stack_[stack_.size() - 1 - argc];
                 if (callee.type == JSValue::Type::FUNCTION) {
                     JSFunction* fn = callee.function_val;
+                    std::vector<JSValue> args;
+                    // Pass global as this for normal calls
+                    args.push_back(JSValue::object(&global_->obj));
+                    for (u32 i = 0; i < argc; i++) {
+                        args.push_back(stack_[stack_.size() - argc + i]);
+                    }
+                    stack_.resize(stack_.size() - argc - 1);
                     if (fn->native_fn) {
-                        std::vector<JSValue> args;
-                        for (u32 i = 0; i < argc; i++) {
-                            args.push_back(stack_[stack_.size() - argc + i]);
-                        }
-                        stack_.resize(stack_.size() - argc - 1);
                         push(fn->native_fn(args, fn->native_context));
                     } else if (fn->bytecode) {
-                        push_call_frame(fn, argc);
+                        auto* new_frame = push_call_frame(fn, argc);
+                        if (new_frame) new_frame->this_value = JSValue::object(&global_->obj);
                     } else {
                         push(JSValue::undefined());
                     }
@@ -459,23 +518,23 @@ JSValue VM::run() {
                 u32 needed = argc + 1 + (is_computed ? 1 : 0);
                 if (stack_.size() < needed) { push(JSValue::undefined()); break; }
                 JSValue callee;
+                JSValue receiver_val;
                 auto resolve_method = [&]() {
                     u32 obj_idx = stack_.size() - 1 - argc;
-                    if (is_computed) {
-                        obj_idx--;
-                    }
+                    if (is_computed) obj_idx--;
                     JSValue obj_val = stack_[obj_idx];
+                    receiver_val = obj_val;
                     if (is_computed) {
                         JSValue key_val = stack_[obj_idx + 1];
                         if (obj_val.type == JSValue::Type::OBJECT) {
-                            callee = obj_val.object_val->get(key_val.to_string());
+                            callee = obj_val.object_val->get_property(key_val.to_string());
                         } else {
                             callee = JSValue::undefined();
                         }
                         stack_.erase(stack_.begin() + obj_idx + 1);
                     } else {
                         if (obj_val.type == JSValue::Type::OBJECT) {
-                            callee = obj_val.object_val->get(info.method_name);
+                            callee = obj_val.object_val->get_property(info.method_name);
                         } else {
                             callee = JSValue::undefined();
                         }
@@ -487,15 +546,18 @@ JSValue VM::run() {
                 resolve_method();
                 if (callee.type == JSValue::Type::FUNCTION) {
                     JSFunction* fn = callee.function_val;
+                    std::vector<JSValue> args;
+                    // Pass receiver as this for method calls
+                    args.push_back(receiver_val);
+                    for (u32 i = 0; i < argc; i++) {
+                        args.push_back(stack_[stack_.size() - argc + i]);
+                    }
+                    stack_.resize(stack_.size() - argc - 1);
                     if (fn->native_fn) {
-                        std::vector<JSValue> args;
-                        for (u32 i = 0; i < argc; i++) {
-                            args.push_back(stack_[stack_.size() - argc + i]);
-                        }
-                        stack_.resize(stack_.size() - argc - 1);
                         push(fn->native_fn(args, fn->native_context));
                     } else if (fn->bytecode) {
-                        push_call_frame(fn, argc);
+                        auto* new_frame = push_call_frame(fn, argc);
+                        if (new_frame) new_frame->this_value = receiver_val;
                     } else {
                         push(JSValue::undefined());
                     }
@@ -505,11 +567,82 @@ JSValue VM::run() {
                 }
                 break;
             }
+            case Opcode::NEW: {
+                u32 argc = std::get<u32>(instr.operand);
+                if (stack_.size() < argc + 1) { push(JSValue::undefined()); break; }
+                auto ctor_val = stack_[stack_.size() - 1 - argc];
+                if (ctor_val.type == JSValue::Type::FUNCTION) {
+                    JSFunction* ctor = ctor_val.function_val;
+                    auto* obj_gc = heap_->alloc_object();
+                    JSObject* new_obj = &obj_gc->obj;
+                    JSValue proto = ctor->prototype_property;
+                    if (proto.type == JSValue::Type::OBJECT) {
+                        new_obj->prototype = proto;
+                    }
+                    if (ctor->native_fn) {
+                        std::vector<JSValue> args;
+                        for (u32 i = 0; i < argc; i++) {
+                            args.push_back(stack_[stack_.size() - argc + i]);
+                        }
+                        stack_.resize(stack_.size() - argc - 1);
+                        JSValue result = ctor->native_fn(args, ctor->native_context);
+                        // If constructor returned an object, use it; otherwise use new_obj
+                        if (result.type == JSValue::Type::OBJECT || result.type == JSValue::Type::FUNCTION) {
+                            push(result);
+                        } else {
+                            push(JSValue::object(new_obj));
+                        }
+                    } else if (ctor->bytecode) {
+                        auto* new_frame = push_call_frame(ctor, argc);
+                        if (new_frame) {
+                            new_frame->this_value = JSValue::object(new_obj);
+                            new_frame->new_object = JSValue::object(new_obj);
+                        }
+                    } else {
+                        stack_.resize(stack_.size() - argc - 1);
+                        push(JSValue::object(new_obj));
+                    }
+                } else {
+                    stack_.resize(stack_.size() - argc - 1);
+                    push(JSValue::undefined());
+                }
+                break;
+            }
+            case Opcode::INSTANCEOF: {
+                auto proto_val = pop();
+                auto obj_val = pop();
+                bool result = false;
+                if (proto_val.type == JSValue::Type::FUNCTION && proto_val.function_val) {
+                    JSValue proto_prop = proto_val.function_val->prototype_property;
+                    if (proto_prop.type == JSValue::Type::OBJECT && proto_prop.object_val) {
+                        result = JSObject::prototype_chain_contains(obj_val, proto_prop);
+                    }
+                } else if (proto_val.type == JSValue::Type::OBJECT && proto_val.object_val) {
+                    result = JSObject::prototype_chain_contains(obj_val, proto_val);
+                }
+                push(JSValue::boolean(result));
+                break;
+            }
             case Opcode::RETURN: {
                 auto ret = pop();
+                // Check if this was a 'new' call - if so, return new_object unless ret is an object
+                JSValue new_obj = frames_.back().new_object;
                 pop_frame();
-                if (frames_.empty()) return ret;
-                push(ret);
+                if (frames_.empty()) {
+                    // If this was the top-level frame, return the value directly
+                    // (but if new_obj was set, this was a new call at top-level)
+                    if (new_obj.type == JSValue::Type::OBJECT &&
+                        ret.type != JSValue::Type::OBJECT && ret.type != JSValue::Type::FUNCTION) {
+                        return new_obj;
+                    }
+                    return ret;
+                }
+                if (new_obj.type == JSValue::Type::OBJECT &&
+                    ret.type != JSValue::Type::OBJECT && ret.type != JSValue::Type::FUNCTION) {
+                    push(new_obj);
+                } else {
+                    push(ret);
+                }
                 break;
             }
             case Opcode::PUSH_FUNCTION: {
@@ -538,7 +671,10 @@ JSValue VM::run() {
                 auto obj_val = pop();
                 std::string prop = std::get<std::string>(instr.operand);
                 if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
-                    push(obj_val.object_val->get(prop));
+                    push(obj_val.object_val->get_property(prop));
+                } else if (obj_val.type == JSValue::Type::STRING) {
+                    // String wrapper - check if it's a string method
+                    push(JSValue::undefined());
                 } else {
                     push(JSValue::undefined());
                 }
@@ -548,7 +684,7 @@ JSValue VM::run() {
                 auto key_val = pop();
                 auto obj_val = pop();
                 if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
-                    push(obj_val.object_val->get(key_val.to_string()));
+                    push(obj_val.object_val->get_property(key_val.to_string()));
                 } else {
                     push(JSValue::undefined());
                 }
@@ -559,7 +695,7 @@ JSValue VM::run() {
                 auto obj_val = pop();
                 std::string prop = std::get<std::string>(instr.operand);
                 if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
-                    obj_val.object_val->set(prop, val);
+                    obj_val.object_val->set_property(prop, val);
                 }
                 push(val);
                 break;
@@ -569,7 +705,7 @@ JSValue VM::run() {
                 auto key_val = pop();
                 auto obj_val = pop();
                 if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
-                    obj_val.object_val->set(key_val.to_string(), val);
+                    obj_val.object_val->set_property(key_val.to_string(), val);
                 }
                 push(val);
                 break;
@@ -698,7 +834,6 @@ JSValue VM::run() {
                 break;
             case Opcode::LOAD_VAR:
             case Opcode::STORE_VAR:
-            case Opcode::NEW:
             case Opcode::OPCODE_COUNT:
                 push(JSValue::undefined());
                 break;

@@ -284,6 +284,7 @@ void Compiler::compile_binary(BinaryExpr& bin) {
         case TokenType::GT:     current_->emit(Opcode::GT); break;
         case TokenType::LT_EQ:  current_->emit(Opcode::LTE); break;
         case TokenType::GT_EQ:  current_->emit(Opcode::GTE); break;
+        case TokenType::INSTANCEOF: current_->emit(Opcode::INSTANCEOF); break;
         case TokenType::AMPERSAND: current_->emit(Opcode::BITWISE_AND); break;
         case TokenType::PIPE:      current_->emit(Opcode::BITWISE_OR); break;
         case TokenType::CARET:     current_->emit(Opcode::BITWISE_XOR); break;
@@ -387,7 +388,11 @@ void Compiler::compile_call(CallExpr& call) {
     for (auto& arg : call.args) {
         compile_expr(*arg);
     }
-    current_->emit(Opcode::CALL, (u32)call.args.size());
+    if (call.is_new) {
+        current_->emit(Opcode::NEW, (u32)call.args.size());
+    } else {
+        current_->emit(Opcode::CALL, (u32)call.args.size());
+    }
 }
 
 void Compiler::compile_member(MemberExpr& mem) {

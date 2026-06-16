@@ -38,9 +38,18 @@ struct JSObject {
     std::unordered_map<std::string, JSValue> properties;
     JSValue prototype;
     bool is_array = false;
+    bool is_frozen = false;
+    bool is_sealed = false;
+    bool is_extensible = true;
     std::vector<JSValue> array_elements;
+
     JSValue get(const std::string& name) const;
+    JSValue get_property(const std::string& name) const;
+    void set_property(const std::string& name, const JSValue& val);
     void set(const std::string& name, const JSValue& val);
+
+    // Helper: check if a value's prototype chain contains a given prototype
+    static bool prototype_chain_contains(JSValue obj, JSValue proto);
 };
 
 struct JSFunction {
@@ -50,6 +59,8 @@ struct JSFunction {
     void* native_context = nullptr;
     std::string name;
     bool is_constructor = false;
+    // For constructor functions, .prototype is stored here (since JSFunction isn't a JSObject)
+    JSValue prototype_property;
 };
 
 } // namespace browser::js

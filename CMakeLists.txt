@@ -3,7 +3,10 @@ project(browser VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines ")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -fno-exceptions")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines")
+endif()
 
 # Test Framework Library
 add_library(test_framework STATIC
@@ -164,6 +167,25 @@ add_library(js STATIC
     js/jit.cpp
     js/dom_bindings.hpp
     js/dom_bindings.cpp
+    js/builtins/builtins.hpp
+    js/builtins/string.cpp
+    js/builtins/array.cpp
+    js/builtins/object.cpp
+    js/builtins/math.cpp
+    js/builtins/number.cpp
+    js/builtins/symbol.cpp
+    js/builtins/json.cpp
+    js/builtins/date.cpp
+    js/builtins/regexp.cpp
+    js/builtins/error.cpp
+    js/builtins/console.cpp
+    js/builtins/timers.cpp
+    js/builtins/promise.cpp
+    js/builtins/performance.cpp
+    js/script_runner.hpp
+    js/script_runner.cpp
+    js/module_loader.hpp
+    js/module_loader.cpp
 )
 target_include_directories(js PUBLIC .)
 target_link_libraries(js html)

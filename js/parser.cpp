@@ -103,7 +103,8 @@ static int get_precedence(TokenType type) {
         case TokenType::GT:
         case TokenType::LT_EQ:
         case TokenType::GT_EQ:
-            return 9;
+        case TokenType::INSTANCEOF:
+            return 10;
         case TokenType::PLUS:
         case TokenType::MINUS:
             return 11;
@@ -1042,6 +1043,7 @@ std::unique_ptr<Expr> Parser::parse_new_expr() {
     call->column = col;
     call->callee = std::move(callee);
     call->args = std::move(args);
+    call->is_new = true;
     return std::make_unique<Expr>(std::move(*call));
 }
 

@@ -1136,7 +1136,7 @@ Get-ChildItem -Path "build" -Filter "*_test.exe" | ForEach-Object {
 clang-format -n --Werror html/*.cpp css/*.cpp js/*.cpp net/*.cpp render/*.cpp browser/*.cpp image/*.cpp async/*.cpp tests/*.cpp
 
 # 5. Static analysis
-clang-tidy html/*.cpp css/*.cpp js/*.cpp net/*.cpp render/*.cpp browser/*.cpp image/*.cpp async/*.cpp 2>&1 | Select-String -Pattern "warning:|error:"
+clang-tidy --extra-arg=-Wno-unused-command-line-argument -p build html/*.cpp css/*.cpp js/*.cpp net/*.cpp render/*.cpp browser/*.cpp image/*.cpp async/*.cpp 2>&1 | Select-String -Pattern "warning:|error:"
 
 # 6. Memory leak detection (Debug builds)
 # Dr. Memory or custom leak detector hooks

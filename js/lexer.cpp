@@ -84,6 +84,7 @@ static const std::unordered_map<std::string, TokenType>& keyword_map() {
         {"false", TokenType::BOOLEAN},
         {"null", TokenType::NULL_LITERAL},
         {"undefined", TokenType::UNDEFINED},
+        {"instanceof", TokenType::INSTANCEOF},
     };
     return map;
 }

@@ -61,6 +61,7 @@ struct UnaryExpr : Node {
 struct CallExpr : Node {
     std::unique_ptr<Expr> callee;
     std::vector<std::unique_ptr<Expr>> args;
+    bool is_new = false;
 };
 
 struct MemberExpr : Node {
