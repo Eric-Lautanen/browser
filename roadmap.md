@@ -1118,6 +1118,9 @@ while (!window_->should_close()) {
 ### CI Pipeline (`ci.ps1`)
 
 ```powershell
+# 0. Configure (generate compile_commands.json for clang-tidy)
+cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -S . -B build
+
 # 1. Build (Debug + Release)
 cmake --build build --config Debug
 cmake --build build --config Release

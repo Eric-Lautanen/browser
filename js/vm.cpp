@@ -490,19 +490,20 @@ JSValue VM::run() {
                 auto callee = stack_[stack_.size() - 1 - argc];
                 if (callee.type == JSValue::Type::FUNCTION) {
                     JSFunction* fn = callee.function_val;
-                    std::vector<JSValue> args;
-                    // Pass global as this for normal calls
-                    args.push_back(JSValue::object(&global_->obj));
-                    for (u32 i = 0; i < argc; i++) {
-                        args.push_back(stack_[stack_.size() - argc + i]);
-                    }
-                    stack_.resize(stack_.size() - argc - 1);
                     if (fn->native_fn) {
+                        std::vector<JSValue> args;
+                        args.push_back(JSValue::object(&global_->obj));
+                        for (u32 i = 0; i < argc; i++) {
+                            args.push_back(stack_[stack_.size() - argc + i]);
+                        }
+                        stack_.resize(stack_.size() - argc - 1);
                         push(fn->native_fn(args, fn->native_context));
                     } else if (fn->bytecode) {
+                        // Don't resize before push_call_frame - it needs the args on the stack
                         auto* new_frame = push_call_frame(fn, argc);
                         if (new_frame) new_frame->this_value = JSValue::object(&global_->obj);
                     } else {
+                        stack_.resize(stack_.size() - argc - 1);
                         push(JSValue::undefined());
                     }
                 } else {
@@ -546,19 +547,19 @@ JSValue VM::run() {
                 resolve_method();
                 if (callee.type == JSValue::Type::FUNCTION) {
                     JSFunction* fn = callee.function_val;
-                    std::vector<JSValue> args;
-                    // Pass receiver as this for method calls
-                    args.push_back(receiver_val);
-                    for (u32 i = 0; i < argc; i++) {
-                        args.push_back(stack_[stack_.size() - argc + i]);
-                    }
-                    stack_.resize(stack_.size() - argc - 1);
                     if (fn->native_fn) {
+                        std::vector<JSValue> args;
+                        args.push_back(receiver_val);
+                        for (u32 i = 0; i < argc; i++) {
+                            args.push_back(stack_[stack_.size() - argc + i]);
+                        }
+                        stack_.resize(stack_.size() - argc - 1);
                         push(fn->native_fn(args, fn->native_context));
                     } else if (fn->bytecode) {
                         auto* new_frame = push_call_frame(fn, argc);
                         if (new_frame) new_frame->this_value = receiver_val;
                     } else {
+                        stack_.resize(stack_.size() - argc - 1);
                         push(JSValue::undefined());
                     }
                 } else {

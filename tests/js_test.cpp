@@ -566,3 +566,70 @@ TEST(lex_string_escape_x_no_overconsume, {
     auto t = tokenize("\"\\x4z\"");
     ASSERT_EQ(t[0].text, "@z");
 })
+
+// ---------------------------------------------------------------------------
+// Phase 4: Prototype, new, instanceof, this binding
+// ---------------------------------------------------------------------------
+
+TEST(phase4_prototype_get_property, {
+    VM vm;
+    // Create proto object with 'x' = 42
+    auto* proto_gc = vm.heap()->alloc_object();
+    proto_gc->obj.set("x", JSValue::number(42));
+    // Create child object with proto as prototype
+    auto* child_gc = vm.heap()->alloc_object();
+    child_gc->obj.prototype = JSValue::object(&proto_gc->obj);
+    child_gc->obj.set("y", JSValue::number(7));
+    // get_property should find 'x' via prototype chain
+    JSValue x_val = child_gc->obj.get_property("x");
+    ASSERT(x_val.type == JSValue::Type::NUMBER);
+    ASSERT_EQ(x_val.number_val, 42);
+    // get_property should find own 'y'
+    JSValue y_val = child_gc->obj.get_property("y");
+    ASSERT(y_val.type == JSValue::Type::NUMBER);
+    ASSERT_EQ(y_val.number_val, 7);
+    // set_property on child should not write to prototype
+    child_gc->obj.set_property("x", JSValue::number(100));
+    JSValue proto_x = proto_gc->obj.get_property("x");
+    ASSERT_EQ(proto_x.number_val, 42);
+    JSValue child_x = child_gc->obj.get_property("x");
+    ASSERT_EQ(child_x.number_val, 100);
+})
+
+TEST(phase4_instanceof, {
+    VM vm;
+    auto* parent_proto = vm.heap()->alloc_object();
+    parent_proto->obj.set("type", JSValue::string("parent"));
+    auto* child_proto = vm.heap()->alloc_object();
+    child_proto->obj.prototype = JSValue::object(&parent_proto->obj);
+    auto* instance = vm.heap()->alloc_object();
+    instance->obj.prototype = JSValue::object(&child_proto->obj);
+    // instanceof: check if parent_proto is in instance's prototype chain
+    bool result = JSObject::prototype_chain_contains(JSValue::object(&instance->obj), JSValue::object(&parent_proto->obj));
+    ASSERT(result);
+    // Check against unrelated proto
+    auto* unrelated = vm.heap()->alloc_object();
+    bool not_result = JSObject::prototype_chain_contains(JSValue::object(&instance->obj), JSValue::object(&unrelated->obj));
+    ASSERT(!not_result);
+})
+
+TEST(phase4_new_operator, {
+    VM vm;
+    // Create a constructor function
+    auto* ctor_fn = vm.create_native_fn(
+        [](const std::vector<JSValue>& args, void*) -> JSValue {
+            // args[0] = this (global), args[1] = value
+            // For 'new', the VM handles the new object creation
+            return JSValue::undefined();
+        }, true, nullptr);
+    // Set prototype property on constructor
+    auto* proto_gc = vm.heap()->alloc_object();
+    proto_gc->obj.set("greet", JSValue::string("hello"));
+    ctor_fn->prototype_property = JSValue::object(&proto_gc->obj);
+    
+    // Test instance creation via prototype_chain_contains
+    auto* instance = vm.heap()->alloc_object();
+    instance->obj.prototype = ctor_fn->prototype_property;
+    bool in_chain = JSObject::prototype_chain_contains(JSValue::object(&instance->obj), JSValue::object(&proto_gc->obj));
+    ASSERT(in_chain);
+})
