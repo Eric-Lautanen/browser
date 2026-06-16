@@ -428,6 +428,17 @@ R13: html/tokenizer/       ← 639 lines → 5 files
 
 **R8 (HTML parser) can be done anytime after R2/R3** since the parser and tokenizer are independent from the CSS refactors.
 
+### Files not in scope (confirmed)
+
+| File | Lines | Reason |
+|------|-------|--------|
+| `html/entities.cpp` | 2,237 | Data table (entity name → code point mappings). Exempt per rules. |
+| `render/embedded_font.cpp` | 631 | Data (compressed TrueType font bytes). Exempt per rules. |
+| `render/icons.hpp` | 309 | Data (icon SVG paths). Header-only, exempt. |
+| `tests/*.cpp` | 582 max | Test files. Must remain unchanged to validate refactors have no regressions. |
+| `js/lexer.cpp` | 579 | Single state machine under the ~600 line guideline. Splitting would create artificial boundaries. Monitor for growth. |
+| `net/crypto/*.cpp` | 350 max | Already in their own `crypto/` folder, each file is a single algorithm. Modular enough. |
+
 ---
 
 ## Phase Completion Checklist (Every Phase)
