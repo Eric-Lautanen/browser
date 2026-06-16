@@ -77,7 +77,7 @@ Result<void> TLSConnection::send_raw_record(u8 type, const std::vector<u8>& data
     return tcp_->send_all(record.data(), static_cast<u32>(record.size()));
 }
 
-async::task<Result<void>> TLSConnection::send_raw_record_async(u8 type, const std::vector<u8>& data) {
+async::task<bool> TLSConnection::send_raw_record_async(u8 type, const std::vector<u8>& data) {
     if (!tcp_) co_return std::string("no connection");
     auto record = make_record(type, data);
     auto r = co_await tcp_->send_all_async(record.data(), static_cast<u32>(record.size()));
@@ -121,13 +121,13 @@ Result<std::vector<u8>> TLSConnection::read_raw_record(u8* out_type) {
     return data;
 }
 
-async::task<Result<std::vector<u8>>> TLSConnection::read_raw_record_async(u8* out_type) {
+async::task<std::vector<u8>> TLSConnection::read_raw_record_async(u8* out_type) {
     u8 header[5];
     {
         u32 hgot = 0;
         while (hgot < 5) {
             auto r = co_await tcp_->receive_async(header + hgot, 5 - hgot);
-            if (r.is_err()) co_return std::string("read header: " + r.unwrap_err());
+            if (r.is_err()) co_return std::string("read header: ") + r.unwrap_err();
             u32 n = r.unwrap();
             if (n == 0) co_return std::string("connection closed during header read");
             hgot += n;
@@ -149,7 +149,7 @@ async::task<Result<std::vector<u8>>> TLSConnection::read_raw_record_async(u8* ou
     u32 got = 0;
     while (got < length) {
         auto rr = co_await tcp_->receive_async(data.data() + got, length - got);
-        if (rr.is_err()) co_return std::string("read data: " + rr.unwrap_err());
+        if (rr.is_err()) co_return std::string("read data: ") + rr.unwrap_err();
         u32 n = rr.unwrap();
         if (n == 0) co_return std::string("connection closed during data read");
         got += n;
@@ -191,18 +191,18 @@ Result<std::vector<u8>> TLSConnection::read_encrypted_record(const u8 key[16], c
     return pt;
 }
 
-async::task<Result<void>> TLSConnection::send_encrypted_record_async(u8 inner_type, const std::vector<u8>& data,
-                                                                      const u8 key[16], const u8 iv[12], u64& seq) {
+async::task<bool> TLSConnection::send_encrypted_record_async(u8 inner_type, const std::vector<u8>& data,
+                                                             const u8 key[16], const u8 iv[12], u64& seq) {
     auto ct = aead_encrypt(key, iv, seq, data.data(), static_cast<u32>(data.size()), inner_type);
     seq++;
     auto r = co_await send_raw_record_async(APPLICATION_DATA, ct);
     co_return r;
 }
 
-async::task<Result<std::vector<u8>>> TLSConnection::read_encrypted_record_async(const u8 key[16], const u8 iv[12], u64& seq) {
+async::task<std::vector<u8>> TLSConnection::read_encrypted_record_async(const u8 key[16], const u8 iv[12], u64& seq) {
     u8 type = 0;
     auto r = co_await read_raw_record_async(&type);
-    if (r.is_err()) co_return std::string("read encrypted: " + r.unwrap_err());
+    if (r.is_err()) co_return std::string("read encrypted: ") + r.unwrap_err();
     auto ct = r.unwrap();
     if (ct.empty()) co_return std::vector<u8>();
 
@@ -914,6 +914,172 @@ Result<void> TLSConnection::connect(Connection* tcp, const std::string& hostname
     return {};
 }
 
+async::task<bool> TLSConnection::connect_async(Connection* tcp, const std::string& hostname) {
+    reset_state();
+    tcp_ = tcp;
+    u64 deadline = GetTickCount64() + 15000;
+
+    // Build and send ClientHello
+    auto ch_body = build_client_hello(hostname);
+    append_handshake_to_transcript(HS_CLIENT_HELLO, ch_body);
+
+    auto ch_msg = make_handshake_msg(HS_CLIENT_HELLO, ch_body);
+    auto r = co_await send_raw_record_async(HANDSHAKE, ch_msg);
+    if (r.is_err()) co_return std::string("send client hello: ") + r.unwrap_err();
+
+    // Read ServerHello
+    if (GetTickCount64() > deadline) co_return std::string("handshake timeout");
+    auto sh_r = co_await read_raw_record_async();
+    if (sh_r.is_err()) co_return std::string("read server hello: ") + sh_r.unwrap_err();
+    auto sh_data = sh_r.unwrap();
+
+    ParsedHS hs;
+    if (!parse_hs_header(sh_data, 0, hs)) co_return std::string("bad server hello header");
+    if (hs.type != HS_SERVER_HELLO) co_return std::string("expected server hello");
+
+    transcript_.insert(transcript_.end(), sh_data.begin(), sh_data.end());
+    transcript_hasher_.update(sh_data.data(), sh_data.size());
+
+    auto sh_body = std::vector<u8>(sh_data.begin() + 4, sh_data.end());
+    std::size_t off = 0;
+
+    if (off + 2 > sh_body.size()) co_return std::string("truncated SH");
+    off += 2;
+    if (off + 32 > sh_body.size()) co_return std::string("truncated SH random");
+    off += 32;
+    if (off + 1 > sh_body.size()) co_return std::string("truncated SH sid");
+    u8 sid_len = sh_body[off++];
+    if (off + sid_len > sh_body.size()) co_return std::string("truncated SH sid2");
+    off += sid_len;
+    if (off + 2 > sh_body.size()) co_return std::string("truncated SH cs");
+    cipher_suite_ = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
+    off += 2;
+    if (cipher_suite_ != 0x1301 && cipher_suite_ != 0x1303)
+        co_return std::string("unsupported cipher suite: ") + std::to_string(cipher_suite_);
+    if (off + 1 > sh_body.size()) co_return std::string("truncated SH comp");
+    off++;
+    if (off + 2 > sh_body.size()) co_return std::string("truncated SH ext");
+    u16 sh_exts_len = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
+    off += 2;
+    if (off + sh_exts_len > sh_body.size()) co_return std::string("truncated SH exts2");
+
+    std::vector<u8> server_pub;
+    std::size_t ext_off = off;
+    std::size_t ext_end = off + sh_exts_len;
+    while (ext_off + 4 <= ext_end) {
+        u16 ext_type = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
+        u16 ext_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
+        ext_off += 4;
+        if (ext_off + ext_len > ext_end) break;
+        if (ext_type == 0x0033 && ext_len >= 4) {
+            u16 group = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
+            u16 key_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
+            if (group == 0x001d && key_len == 32 && ext_off + 4 + key_len <= ext_end) {
+                server_pub.assign(sh_body.begin() + ext_off + 4, sh_body.begin() + ext_off + 4 + key_len);
+            }
+        }
+        ext_off += ext_len;
+    }
+    if (server_pub.size() != 32) co_return std::string("no key_share in SH");
+
+    u8 shared_secret[32];
+    crypto::X25519::shared_secret(client_priv_, server_pub.data(), shared_secret);
+    std::vector<u8> ss(shared_secret, shared_secret + 32);
+    derive_handshake_keys(ss);
+
+    int msgs_needed = 4;
+    while (msgs_needed > 0) {
+        if (GetTickCount64() > deadline) co_return std::string("handshake timeout");
+        auto rec_r = co_await read_encrypted_record_async(server_hs_key_, server_hs_iv_, server_seq_);
+        if (rec_r.is_err()) co_return std::string("read hs: ") + rec_r.unwrap_err();
+        auto rec_data = rec_r.unwrap();
+        if (rec_data.empty()) continue;
+
+        std::size_t msg_off = 0;
+        while (msg_off < rec_data.size() && msgs_needed > 0) {
+            ParsedHS phs;
+            if (!parse_hs_header(rec_data, msg_off, phs))
+                co_return std::string("bad hs header in encrypted record");
+
+            u32 total_len = 4 + phs.body_len;
+            if (msg_off + total_len > rec_data.size())
+                co_return std::string("truncated hs msg");
+
+            auto msg_bytes = std::vector<u8>(rec_data.begin() + msg_off, rec_data.begin() + msg_off + total_len);
+            auto body = std::vector<u8>(rec_data.begin() + msg_off + 4, rec_data.begin() + msg_off + total_len);
+
+            if (phs.type == HS_ENCRYPTED_EXTENSIONS) {
+                transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+                transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+                std::size_t eo = 0;
+                if (eo + 2 <= body.size()) {
+                    u16 ee_exts_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
+                    eo += 2;
+                    std::size_t ee_end = eo + ee_exts_len;
+                    while (eo + 4 <= ee_end) {
+                        u16 etype = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
+                        u16 elen = (static_cast<u16>(body[eo + 2]) << 8) | body[eo + 3];
+                        eo += 4;
+                        if (eo + elen > ee_end) break;
+                        if (etype == 0x0010) {
+                            u16 list_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
+                            if (list_len >= 2 && eo + 2 + list_len <= ee_end) {
+                                u8 proto_len = body[eo + 2];
+                                if (proto_len > 0 && proto_len <= list_len - 1) {
+                                    alpn_.assign(reinterpret_cast<const char*>(body.data() + eo + 3), proto_len);
+                                }
+                            }
+                        }
+                        eo += elen;
+                    }
+                }
+                msgs_needed--;
+            } else if (phs.type == HS_CERTIFICATE) {
+                transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+                transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+                msgs_needed--;
+            } else if (phs.type == HS_CERTIFICATE_VERIFY) {
+                transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+                transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+                msgs_needed--;
+            } else if (phs.type == HS_FINISHED) {
+                auto transcript_hash = compute_transcript_hash();
+                auto finished_key = hkdf_expand_label(server_hs_traffic_, "finished", {}, 32);
+                auto expected_verify_data = crypto::hmac_sha256(finished_key, transcript_hash);
+                if (body.size() != expected_verify_data.size() ||
+                    std::memcmp(body.data(), expected_verify_data.data(), body.size()) != 0) {
+                    co_return std::string("server finished verification failed");
+                }
+                transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+                transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+                msgs_needed--;
+            } else if (phs.type == HS_CLIENT_HELLO || phs.type == HS_SERVER_HELLO) {
+                co_return std::string("unexpected hs type");
+            }
+            msg_off += total_len;
+        }
+    }
+
+    if (msgs_needed != 0) co_return std::string("missing handshake messages");
+
+    auto transcript_hash = compute_transcript_hash();
+    auto finished_key = hkdf_expand_label(client_hs_traffic_, "finished", {}, 32);
+    auto finished_verify_data = crypto::hmac_sha256(finished_key, transcript_hash);
+    std::vector<u8> finished_body(finished_verify_data.begin(), finished_verify_data.end());
+
+    derive_application_keys();
+    append_handshake_to_transcript(HS_FINISHED, finished_body);
+
+    auto r2 = co_await send_encrypted_record_async(HANDSHAKE, finished_body,
+                                                    client_hs_key_, client_hs_iv_, client_seq_);
+    if (r2.is_err()) co_return std::string("send finished: ") + r2.unwrap_err();
+
+    client_seq_ = 0;
+    server_seq_ = 0;
+    connected_ = true;
+    co_return true;
+}
+
 Result<u32> TLSConnection::send(const u8* data, u32 len) {
     if (!is_connected()) return std::string("not connected");
     auto r = send_encrypted_record(APPLICATION_DATA,
@@ -958,4 +1124,24 @@ Result<std::vector<u8>> TLSConnection::receive_all(u32 max_size) {
     return result;
 }
 
+async::task<bool> TLSConnection::send_all_async(const u8* data, u32 len) {
+    if (!is_connected()) co_return std::string("not connected");
+    auto r = co_await send_encrypted_record_async(APPLICATION_DATA,
+                                                    std::vector<u8>(data, data + len),
+                                                    client_app_key_, client_app_iv_, client_seq_);
+    co_return r;
+}
+
+async::task<u32> TLSConnection::receive_async(u8* buf, u32 len) {
+    if (!is_connected()) co_return std::string("not connected");
+    auto r = co_await read_encrypted_record_async(server_app_key_, server_app_iv_, server_seq_);
+    if (r.is_err()) co_return std::string("receive: ") + r.unwrap_err();
+    auto data = r.unwrap();
+    u32 copy_len = static_cast<u32>(data.size());
+    if (copy_len > len) copy_len = len;
+    std::memcpy(buf, data.data(), copy_len);
+    co_return copy_len;
+}
+
 } // namespace browser::net::tls
+

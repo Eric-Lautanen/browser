@@ -24,6 +24,8 @@ add_library(async INTERFACE
     async/thread_pool.hpp
     async/memory.hpp
     async/this_thread.hpp
+    async/when_all.hpp
+    async/when_any.hpp
 )
 target_include_directories(async INTERFACE .)
 
@@ -63,6 +65,8 @@ add_library(net STATIC
     net/crypto/ecc.cpp
     net/crypto/x25519.cpp
     net/tls.cpp
+    net/websocket.cpp
+    net/http_cache.cpp
     net/socket.hpp
     net/socket_win32.hpp
     net/dns.hpp
@@ -72,10 +76,12 @@ add_library(net STATIC
     net/http2.hpp
     net/http_client.hpp
     net/deflate.hpp
+    net/websocket.hpp
+    net/http_cache.hpp
 )
 target_include_directories(net PUBLIC .)
 if(WIN32)
-    target_link_libraries(net ws2_32 bcrypt)
+    target_link_libraries(net ws2_32 bcrypt mswsock)
 endif()
 target_link_libraries(net platform)
 
@@ -284,6 +290,12 @@ add_executable(gpu_smoke_test tests/main.cpp tests/gpu_smoke_test.cpp)
 target_link_libraries(gpu_smoke_test test_framework platform render)
 
 # --- Browser/chrome tests ---
+add_executable(websocket_test tests/main.cpp tests/websocket_test.cpp)
+target_link_libraries(websocket_test test_framework net)
+
+add_executable(http_cache_test tests/main.cpp tests/http_cache_test.cpp)
+target_link_libraries(http_cache_test test_framework net)
+
 add_executable(telemetry_test tests/main.cpp tests/telemetry_test.cpp)
 target_link_libraries(telemetry_test test_framework browser_lib)
 

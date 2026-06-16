@@ -42,7 +42,9 @@ public:
     std::string negotiated_alpn() const;
 
     // Async methods
-    async::task<Result<void>> connect_async(Connection* tcp, const std::string& hostname);
+    async::task<bool> connect_async(Connection* tcp, const std::string& hostname);
+    async::task<bool> send_all_async(const u8* data, u32 len);
+    async::task<u32> receive_async(u8* buf, u32 len);
 
 private:
     Connection* tcp_ = nullptr;
@@ -85,17 +87,17 @@ private:
     Result<std::vector<u8>> read_raw_record(u8* out_type = nullptr);
 
     // Async record layer
-    async::task<Result<void>> send_raw_record_async(u8 type, const std::vector<u8>& data);
-    async::task<Result<std::vector<u8>>> read_raw_record_async(u8* out_type = nullptr);
+    async::task<bool> send_raw_record_async(u8 type, const std::vector<u8>& data);
+    async::task<std::vector<u8>> read_raw_record_async(u8* out_type = nullptr);
 
     // Encrypted record layer
     Result<void> send_encrypted_record(u8 inner_type, const std::vector<u8>& data,
                                        const u8 key[32], const u8 iv[12], u64& seq);
     Result<std::vector<u8>> read_encrypted_record(const u8 key[32], const u8 iv[12], u64& seq);
 
-    async::task<Result<void>> send_encrypted_record_async(u8 inner_type, const std::vector<u8>& data,
-                                                          const u8 key[32], const u8 iv[12], u64& seq);
-    async::task<Result<std::vector<u8>>> read_encrypted_record_async(const u8 key[32], const u8 iv[12], u64& seq);
+    async::task<bool> send_encrypted_record_async(u8 inner_type, const std::vector<u8>& data,
+                                                   const u8 key[32], const u8 iv[12], u64& seq);
+    async::task<std::vector<u8>> read_encrypted_record_async(const u8 key[32], const u8 iv[12], u64& seq);
 
     void append_handshake_to_transcript(u8 type, const std::vector<u8>& body);
     std::vector<u8> compute_transcript_hash() const;
@@ -118,3 +120,4 @@ private:
 };
 
 } // namespace browser::net::tls
+

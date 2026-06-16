@@ -33,12 +33,12 @@ public:
     const std::string& host() const { return host_; }
     u16 port() const { return port_; }
 
-    // Async methods
-    async::task<Result<void>> open_async(const std::string& host, u16 port, const ConnectionConfig& config = ConnectionConfig{});
-    async::task<Result<u32>> send_async(const u8* data, u32 len);
-    async::task<Result<void>> send_all_async(const u8* data, u32 len);
-    async::task<Result<u32>> receive_async(u8* buf, u32 len);
-    async::task<Result<std::vector<u8>>> receive_until_close_async(u32 chunk_size = 4096);
+    // Async methods (bool return = true on success, error on failure)
+    async::task<bool> open_async(const std::string& host, u16 port, const ConnectionConfig& config = ConnectionConfig{});
+    async::task<u32> send_async(const u8* data, u32 len);
+    async::task<bool> send_all_async(const u8* data, u32 len);
+    async::task<u32> receive_async(u8* buf, u32 len);
+    async::task<std::vector<u8>> receive_until_close_async(u32 chunk_size = 4096);
 
 private:
     std::unique_ptr<Socket> socket_;

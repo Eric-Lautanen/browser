@@ -20,11 +20,13 @@ Result<void> Connection::open(const std::string& host, u16 port, const Connectio
     } else if (host == "localhost") {
         ips.push_back(IPv4Address(127, 0, 0, 1));
     } else {
-        auto addrs = resolver_.resolve_a(host);
-        if (addrs.is_err()) {
-            return std::string("DNS resolution failed for " + host + ": " + addrs.unwrap_err());
+        // Sync resolve - use the task and sync_wait
+        auto addrs_task = resolver_.resolve_a(host);
+        auto addrs_result = addrs_task.sync_wait();
+        if (addrs_result.is_err()) {
+            return std::string("DNS resolution failed for " + host + ": " + addrs_result.unwrap_err());
         }
-        ips = addrs.unwrap();
+        ips = addrs_result.unwrap();
     }
 
     if (ips.empty()) return std::string("no addresses resolved for " + host);
@@ -88,7 +90,8 @@ bool Connection::is_open() const {
 
 // --- Async methods ---
 
-async::task<Result<void>> Connection::open_async(const std::string& host, u16 port, const ConnectionConfig& config) {
+async::task<bool> Connection::open_async(const std::string& host, u16 port, const ConnectionConfig& config) {
+    (void)config;
     host_ = host;
     port_ = port;
 
@@ -102,12 +105,12 @@ async::task<Result<void>> Connection::open_async(const std::string& host, u16 po
         auto addrs_task = resolver_.resolve_a(host);
         auto addrs_r = co_await addrs_task;
         if (addrs_r.is_err()) {
-            co_return std::string("DNS failed for " + host + ": " + addrs_r.unwrap_err());
+            co_return std::string("DNS failed for " + host + ": ") + addrs_r.unwrap_err();
         }
         ips = addrs_r.unwrap();
     }
 
-    if (ips.empty()) co_return std::string("no addresses for " + host);
+    if (ips.empty()) co_return std::string("no addresses for ") + host;
 
     auto sock = Socket::create_tcp();
     if (sock.is_err()) co_return std::string("failed to create TCP socket");
@@ -117,33 +120,33 @@ async::task<Result<void>> Connection::open_async(const std::string& host, u16 po
         auto conn_task = socket_->async_connect_ip(ip, port);
         auto r = co_await conn_task;
         if (r.is_ok()) {
-            co_return {};
+            co_return true;
         }
     }
 
     socket_.reset();
-    co_return std::string("failed to connect to " + host);
+    co_return std::string("failed to connect to ") + host;
 }
 
-async::task<Result<u32>> Connection::send_async(const u8* data, u32 len) {
-    if (!socket_ || !socket_->is_connected()) co_return Result<u32>::err("not open");
+async::task<u32> Connection::send_async(const u8* data, u32 len) {
+    if (!socket_ || !socket_->is_connected()) co_return std::string("not open");
     auto r = co_await socket_->async_send(span<u8>(const_cast<u8*>(data), len));
     co_return r;
 }
 
-async::task<Result<void>> Connection::send_all_async(const u8* data, u32 len) {
+async::task<bool> Connection::send_all_async(const u8* data, u32 len) {
     if (!socket_ || !socket_->is_connected()) co_return std::string("not open");
     auto r = co_await socket_->async_send_all(span<u8>(const_cast<u8*>(data), len));
     co_return r;
 }
 
-async::task<Result<u32>> Connection::receive_async(u8* buf, u32 len) {
-    if (!socket_ || !socket_->is_connected()) co_return Result<u32>::err("not open");
+async::task<u32> Connection::receive_async(u8* buf, u32 len) {
+    if (!socket_ || !socket_->is_connected()) co_return std::string("not open");
     auto r = co_await socket_->async_recv(span<u8>(buf, len));
     co_return r;
 }
 
-async::task<Result<std::vector<u8>>> Connection::receive_until_close_async(u32 chunk_size) {
+async::task<std::vector<u8>> Connection::receive_until_close_async(u32 chunk_size) {
     if (!socket_ || !socket_->is_connected()) co_return std::string("not open");
     std::vector<u8> result;
     std::vector<u8> buf(chunk_size);
@@ -161,3 +164,4 @@ async::task<Result<std::vector<u8>>> Connection::receive_until_close_async(u32 c
 }
 
 } // namespace browser::net
+

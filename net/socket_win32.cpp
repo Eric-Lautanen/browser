@@ -253,10 +253,12 @@ bool Win32TCPSocket::is_connected() const { return handle_ != INVALID_SOCKET; }
 
 // --- Async methods ---
 
-async::task<void> Win32TCPSocket::async_connect(const std::string& host, u16 port) {
+async::task<bool> Win32TCPSocket::async_connect(const std::string& host, u16 port) {
     ensure_closed();
-    auto iocp_r = ensure_iocp();
-    if (iocp_r.is_err()) co_return Result<void>{iocp_r.unwrap_err()};
+    {
+        auto iocp_r = ensure_iocp();
+        if (iocp_r.is_err()) co_return iocp_r.unwrap_err();
+    }
 
     struct addrinfo hints = {};
     hints.ai_family = AF_INET;
@@ -274,7 +276,6 @@ async::task<void> Win32TCPSocket::async_connect(const std::string& host, u16 por
     auto assoc_r = iocp_->associate_socket(handle_, reinterpret_cast<ULONG_PTR>(this));
     if (assoc_r.is_err()) { ::freeaddrinfo(result); ::closesocket(handle_); handle_ = INVALID_SOCKET; co_return std::string("IOCP: ") + assoc_r.unwrap_err(); }
 
-    // Load ConnectEx
     GUID guid = WSAID_CONNECTEX;
     DWORD bytes = 0;
     LPFN_CONNECTEX connect_ex = nullptr;
@@ -308,13 +309,15 @@ async::task<void> Win32TCPSocket::async_connect(const std::string& host, u16 por
         co_await async::iocp_awaiter{&ol};
     }
     if (ol.error) { ::closesocket(handle_); handle_ = INVALID_SOCKET; co_return std::string("ConnectEx error"); }
-    co_return {};
+    co_return true;
 }
 
-async::task<void> Win32TCPSocket::async_connect_ip(const IPv4Address& addr, u16 port) {
+async::task<bool> Win32TCPSocket::async_connect_ip(const IPv4Address& addr, u16 port) {
     ensure_closed();
-    auto iocp_r = ensure_iocp();
-    if (iocp_r.is_err()) co_return Result<void>{iocp_r.unwrap_err()};
+    {
+        auto iocp_r = ensure_iocp();
+        if (iocp_r.is_err()) co_return iocp_r.unwrap_err();
+    }
 
     handle_ = ::WSASocket(AF_INET, SOCK_STREAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
     if (handle_ == INVALID_SOCKET) co_return std::string("WSASocket failed");
@@ -363,27 +366,27 @@ async::task<void> Win32TCPSocket::async_connect_ip(const IPv4Address& addr, u16 
         co_await async::iocp_awaiter{&ol};
     }
     if (ol.error) { ::closesocket(handle_); handle_ = INVALID_SOCKET; co_return std::string("ConnectEx error"); }
-    co_return {};
+    co_return true;
 }
 
 async::task<u32> Win32TCPSocket::async_send(span<u8> data) {
-    if (handle_ == INVALID_SOCKET) co_return Result<u32>::err("not connected");
+    if (handle_ == INVALID_SOCKET) co_return std::string("not connected");
     WSABUF buf = { data.size(), reinterpret_cast<char*>(data.data()) };
     DWORD sent = 0;
     IoOverlapped ol;
     int ret = ::WSASend(handle_, &buf, 1, &sent, 0, &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (err != WSA_IO_PENDING) co_return Result<u32>::err("WSASend failed");
+        if (err != WSA_IO_PENDING) co_return std::string("WSASend failed");
         co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return Result<u32>::err("WSASend error");
+        if (ol.error) co_return std::string("WSASend error");
         co_return ol.bytes;
     }
     co_return static_cast<u32>(sent);
 }
 
 async::task<u32> Win32TCPSocket::async_recv(span<u8> buf) {
-    if (handle_ == INVALID_SOCKET) co_return Result<u32>::err("not connected");
+    if (handle_ == INVALID_SOCKET) co_return std::string("not connected");
     WSABUF wbuf = { buf.size(), reinterpret_cast<char*>(buf.data()) };
     DWORD flags = 0;
     DWORD recvd = 0;
@@ -391,34 +394,34 @@ async::task<u32> Win32TCPSocket::async_recv(span<u8> buf) {
     int ret = ::WSARecv(handle_, &wbuf, 1, &recvd, &flags, &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (err != WSA_IO_PENDING) co_return Result<u32>::err("WSARecv failed");
+        if (err != WSA_IO_PENDING) co_return std::string("WSARecv failed");
         co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return Result<u32>::err("WSARecv error");
+        if (ol.error) co_return std::string("WSARecv error");
         co_return ol.bytes;
     }
     co_return static_cast<u32>(recvd);
 }
 
-async::task<void> Win32TCPSocket::async_send_all(span<u8> data) {
+async::task<bool> Win32TCPSocket::async_send_all(span<u8> data) {
     u32 total = 0;
     while (total < data.size()) {
         auto r = co_await async_send(span<u8>(data.data() + total, data.size() - total));
-        if (r.is_err()) co_return Result<void>{r.unwrap_err()};
+        if (r.is_err()) co_return r.unwrap_err();
         total += r.unwrap();
     }
-    co_return {};
+    co_return true;
 }
 
-async::task<void> Win32TCPSocket::async_recv_exact(span<u8> buf) {
+async::task<bool> Win32TCPSocket::async_recv_exact(span<u8> buf) {
     u32 total = 0;
     while (total < buf.size()) {
         auto r = co_await async_recv(span<u8>(buf.data() + total, buf.size() - total));
-        if (r.is_err()) co_return Result<void>{r.unwrap_err()};
+        if (r.is_err()) co_return r.unwrap_err();
         u32 n = r.unwrap();
         if (n == 0) co_return std::string("connection closed");
         total += n;
     }
-    co_return {};
+    co_return true;
 }
 
 // --- Win32UDPSocket ---
@@ -477,7 +480,7 @@ Result<void> Win32UDPSocket::set_read_timeout(u32 ms) {
 void Win32UDPSocket::close() { ensure_closed(); }
 
 async::task<u32> Win32UDPSocket::async_send_to(span<u8> data, const IPv4Address& dest, u16 port) {
-    if (handle_ == INVALID_SOCKET) co_return Result<u32>::err("UDP socket not created");
+    if (handle_ == INVALID_SOCKET) co_return std::string("UDP socket not created");
     struct sockaddr_in dest_addr = {};
     dest_addr.sin_family = AF_INET;
     dest_addr.sin_port = htons(port);
@@ -491,16 +494,16 @@ async::task<u32> Win32UDPSocket::async_send_to(span<u8> data, const IPv4Address&
     int ret = ::WSASendTo(handle_, &buf, 1, &sent, 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr), &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (err != WSA_IO_PENDING) co_return Result<u32>::err("WSASendTo failed");
+        if (err != WSA_IO_PENDING) co_return std::string("WSASendTo failed");
         co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return Result<u32>::err("WSASendTo error");
+        if (ol.error) co_return std::string("WSASendTo error");
         co_return ol.bytes;
     }
     co_return static_cast<u32>(sent);
 }
 
 async::task<u32> Win32UDPSocket::async_recv_from(span<u8> buf, IPv4Address* sender, u16* sender_port) {
-    if (handle_ == INVALID_SOCKET) co_return Result<u32>::err("UDP socket not created");
+    if (handle_ == INVALID_SOCKET) co_return std::string("UDP socket not created");
     struct sockaddr_in from_addr = {};
     int from_len = sizeof(from_addr);
     WSABUF wbuf = { buf.size(), reinterpret_cast<char*>(buf.data()) };
@@ -510,9 +513,9 @@ async::task<u32> Win32UDPSocket::async_recv_from(span<u8> buf, IPv4Address* send
     int ret = ::WSARecvFrom(handle_, &wbuf, 1, &recvd, &flags, (struct sockaddr*)&from_addr, &from_len, &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
-        if (err != WSA_IO_PENDING) co_return Result<u32>::err("WSARecvFrom failed");
+        if (err != WSA_IO_PENDING) co_return std::string("WSARecvFrom failed");
         co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return Result<u32>::err("WSARecvFrom error");
+        if (ol.error) co_return std::string("WSARecvFrom error");
     } else {
         if (sender) { u32 sip = ntohl(from_addr.sin_addr.s_addr); sender->octets[0] = (u8)(sip>>24); sender->octets[1] = (u8)(sip>>16); sender->octets[2] = (u8)(sip>>8); sender->octets[3] = (u8)sip; }
         if (sender_port) *sender_port = ntohs(from_addr.sin_port);
@@ -524,3 +527,4 @@ async::task<u32> Win32UDPSocket::async_recv_from(span<u8> buf, IPv4Address* send
 }
 
 } // namespace browser::net
+

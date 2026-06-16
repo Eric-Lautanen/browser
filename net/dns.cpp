@@ -102,22 +102,20 @@ static Result<std::pair<std::string, u16>> read_dns_name(const u8* data, u32 len
     return std::make_pair(name, consumed);
 }
 
-async::task<Result<std::vector<IPv4Address>>> DNSResolver::resolve_a(const std::string& hostname) {
+async::task<std::vector<IPv4Address>> DNSResolver::resolve_a(const std::string& hostname) {
     u16 id = next_tid_++;
     auto query = build_query(hostname, 1, id);
 
     auto sr = ensure_socket();
-    if (sr.is_err()) co_return std::string("socket: " + sr.unwrap_err());
+    if (sr.is_err()) co_return std::string("socket: ") + sr.unwrap_err();
 
-    auto sends = sock_->async_send_to(span<u8>(query.data(), static_cast<u32>(query.size())), dns_server_, 53);
-    auto send_r = co_await sends;
+    auto send_r = co_await sock_->async_send_to(span<u8>(query.data(), static_cast<u32>(query.size())), dns_server_, 53);
     if (send_r.is_err()) co_return std::string("DNS send: ") + send_r.unwrap_err();
 
     u8 recv_buf[1500];
     IPv4Address sender;
     u16 sender_port;
-    auto recvs = sock_->async_recv_from(span<u8>(recv_buf, sizeof(recv_buf)), &sender, &sender_port);
-    auto recv_r = co_await recvs;
+    auto recv_r = co_await sock_->async_recv_from(span<u8>(recv_buf, sizeof(recv_buf)), &sender, &sender_port);
     if (recv_r.is_err()) co_return std::string("DNS recv: ") + recv_r.unwrap_err();
 
     u32 recv_len = recv_r.unwrap();

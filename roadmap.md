@@ -17,6 +17,7 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 | **Standards compliant** | HTML5 (WHATWG living standard), CSS (W3C), ECMAScript (latest), Web APIs (WHATWG). Full compliance, not "good enough." |
 | **Audited correctness** | No memory leaks. No race conditions. Every subsystem has comprehensive tests. Every merge is tested. |
 | **Modular design** | Each major subsystem lives in its own folder (`html/`, `css/`, `js/`, `net/`, `render/`, `image/`, `platform/`, `async/`, `browser/`) with a clear public API. No circular dependencies. Each folder is a separate CMake library target with its own test executable. Easy to build, test, and maintain independently. New subsystems follow the same pattern. |
+| **Web research on stuck tasks** | If an implementation step is unclear or blocked, search the web for current (2026-era) solutions before writing code — C++20/23 standards updates, Win32 API patterns, protocol specs, security guidance, or known pitfalls. Do not guess or rely on pre-2025 knowledge when the web has a better answer. This applies to both human and AI contributors. |
 | **Living roadmap** | On completion of each phase, the roadmap is updated with lessons learned, corrected estimates, and refined scope. A second pass audit is performed before the next phase begins — verifying that the completed phase actually works as intended and that the remaining roadmap stays accurate and realistic. |
 
 ### Current State (June 2026)

@@ -34,9 +34,7 @@ struct io_executor {
     bool await_ready() noexcept { return false; }
 
     bool await_suspend(std::coroutine_handle<> h) noexcept {
-        overlapped_->u.HighOffset = 0;
-        overlapped_->u.LowOffset = 0;
-        overlapped_->u.s_inner = reinterpret_cast<ULONG_PTR>(h.address());
+        overlapped_->hEvent = reinterpret_cast<HANDLE>(h.address());
         PostQueuedCompletionStatus(iocp_, 0, 0, overlapped_);
         return true;
     }

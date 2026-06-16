@@ -1,4 +1,6 @@
 #include "deflate.hpp"
+#include "../async/task.hpp"
+#include "../async/executor.hpp"
 #include <cstring>
 
 namespace browser::net {
@@ -307,6 +309,16 @@ std::vector<u8> gzip_decompress(const u8* data, u32 len) {
     auto decompressed = inflate_internal(data + pos, len - pos);
 
     return decompressed;
+}
+
+async::task<std::vector<u8>> inflate_async(const u8* data, u32 len) {
+    co_await async::thread_pool_executor{};
+    co_return inflate(data, len);
+}
+
+async::task<std::vector<u8>> gzip_decompress_async(const u8* data, u32 len) {
+    co_await async::thread_pool_executor{};
+    co_return gzip_decompress(data, len);
 }
 
 }

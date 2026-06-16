@@ -1004,5 +1004,160 @@ Result<http::Response> HTTP2Client::execute(const http::Request& req) {
     return resp;
 }
 
+// --- Async methods ---
+
+async::task<http::Response> HTTP2Client::execute_async(const http::Request& req) {
+    if (!connected_) co_return std::string("not connected");
+
+    u32 stream_id = next_stream_id_;
+    next_stream_id_ += 2;
+
+    auto entries = request_to_hpack(req);
+    auto hpack_data = hpack_.encode(entries);
+
+    // Send HEADERS frame async
+    {
+        u8 flags = 0x04;
+        if (req.body.empty()) flags |= 0x01;
+        FrameHeader hdr;
+        hdr.length = static_cast<u32>(hpack_data.size());
+        hdr.type = HEADERS;
+        hdr.flags = flags;
+        hdr.stream_id = stream_id;
+        auto frame = serialize_frame(hdr, hpack_data.data());
+        if (use_tls_) {
+            auto r = co_await tls_->send_all_async(frame.data(), static_cast<u32>(frame.size()));
+            if (r.is_err()) co_return std::string("send headers: ") + r.unwrap_err();
+        } else {
+            auto r = co_await tcp_.send_all_async(frame.data(), static_cast<u32>(frame.size()));
+            if (r.is_err()) co_return std::string("send headers: ") + r.unwrap_err();
+        }
+    }
+
+    // Read response
+    std::vector<HPackEntry> resp_entries;
+    bool headers_complete = false;
+    bool has_body = false;
+    std::vector<u8> body;
+
+    while (true) {
+        // Read frame header async
+        u8 header[9];
+        u32 got = 0;
+        while (got < 9) {
+            auto r = use_tls_ ? co_await tls_->receive_async(header + got, 9 - got)
+                              : co_await tcp_.receive_async(header + got, 9 - got);
+            if (r.is_err()) co_return std::string("read frame header: ") + r.unwrap_err();
+            u32 n = r.unwrap();
+            if (n == 0) co_return std::string("connection closed");
+            got += n;
+        }
+
+        u32 pos = 0;
+        auto fh_r = parse_frame_header(header, 9, pos);
+        if (fh_r.is_err()) co_return fh_r.unwrap_err();
+        auto fh = fh_r.unwrap();
+
+        if (fh.length > server_max_frame_size_) {
+            close();
+            co_return std::string("frame exceeds max frame size");
+        }
+
+        // Read frame payload async
+        std::vector<u8> payload;
+        if (fh.length > 0) {
+            payload.resize(fh.length);
+            u32 pgot = 0;
+            while (pgot < fh.length) {
+                auto r = use_tls_ ? co_await tls_->receive_async(payload.data() + pgot, fh.length - pgot)
+                                  : co_await tcp_.receive_async(payload.data() + pgot, fh.length - pgot);
+                if (r.is_err()) co_return std::string("read payload: ") + r.unwrap_err();
+                u32 n = r.unwrap();
+                if (n == 0) co_return std::string("connection closed");
+                pgot += n;
+            }
+        }
+
+        if (fh.stream_id == 0) {
+            if (fh.type == GOAWAY) {
+                co_return std::string("GOAWAY");
+            }
+            if (fh.type == PING && (fh.flags & 0x01) == 0) {
+                // Send PING ACK async
+                FrameHeader ack_hdr;
+                ack_hdr.length = fh.length;
+                ack_hdr.type = PING;
+                ack_hdr.flags = 0x01;
+                ack_hdr.stream_id = 0;
+                auto ack = serialize_frame(ack_hdr, payload.data());
+                if (use_tls_) {
+                    auto r = co_await tls_->send_all_async(ack.data(), static_cast<u32>(ack.size()));
+                    if (r.is_err()) { close(); co_return std::string("ping ack: ") + r.unwrap_err(); }
+                } else {
+                    auto r = co_await tcp_.send_all_async(ack.data(), static_cast<u32>(ack.size()));
+                    if (r.is_err()) { close(); co_return std::string("ping ack: ") + r.unwrap_err(); }
+                }
+            }
+            if (fh.type == WINDOW_UPDATE && fh.length >= 4) {
+                u32 inc = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
+                          (static_cast<u32>(payload[2]) << 8) | payload[3];
+                server_window_ += inc;
+            }
+            continue;
+        }
+
+        if (fh.stream_id != stream_id) continue;
+
+        if (fh.type == HEADERS || fh.type == CONTINUATION) {
+            auto new_entries = hpack_.decode(payload.data(), fh.length);
+            resp_entries.insert(resp_entries.end(), new_entries.begin(), new_entries.end());
+            if (fh.flags & 0x04) headers_complete = true;
+            if (fh.flags & 0x01) { has_body = false; break; }
+        } else if (fh.type == DATA) {
+            if (!headers_complete) { close(); co_return std::string("DATA before HEADERS"); }
+            if (fh.length > server_window_) { close(); co_return std::string("flow control"); }
+            has_body = true;
+            body.insert(body.end(), payload.begin(), payload.begin() + fh.length);
+            server_window_ -= fh.length;
+            // Send window update async
+            {
+                auto sup1 = send_window_update(stream_id, fh.length);
+                auto sup2 = send_window_update(0, fh.length);
+                if (sup1.is_err() || sup2.is_err()) { close(); co_return std::string("window update failed"); }
+            }
+            if (fh.flags & 0x01) break;
+        } else if (fh.type == RST_STREAM) {
+            co_return std::string("RST_STREAM");
+        } else if (fh.type == GOAWAY) {
+            co_return std::string("GOAWAY");
+        } else if (fh.type == WINDOW_UPDATE && fh.length >= 4) {
+            u32 inc = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
+                      (static_cast<u32>(payload[2]) << 8) | payload[3];
+            server_window_ += inc;
+        }
+    }
+
+    if (!headers_complete) { close(); co_return std::string("incomplete headers"); }
+
+    auto resp_r = hpack_to_response(resp_entries);
+    if (resp_r.is_err()) co_return resp_r.unwrap_err();
+    auto resp = resp_r.unwrap();
+
+    if (has_body) {
+        if (resp.headers.has("content-length")) {
+            std::string cl = resp.headers.get("content-length");
+            char* cl_end = nullptr;
+            long cl_val = std::strtol(cl.c_str(), &cl_end, 10);
+            if (*cl_end == '\0' && cl_val >= 0) {
+                if (body.size() > static_cast<std::size_t>(cl_val))
+                    body.resize(static_cast<std::size_t>(cl_val));
+            }
+        }
+        resp.body = std::move(body);
+    }
+
+    co_return resp;
+}
+
 } // namespace browser::net::http2
 

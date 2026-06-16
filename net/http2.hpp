@@ -1,5 +1,6 @@
 #pragma once
 #include "../tests/utility.hpp"
+#include "../async/task.hpp"
 #include "url.hpp"
 #include "connection.hpp"
 #include "tls.hpp"
@@ -122,6 +123,8 @@ public:
     Result<http::Response> execute(const http::Request& req);
     void close();
     bool is_connected() const;
+
+    async::task<http::Response> execute_async(const http::Request& req);
 
 private:
     Connection tcp_;

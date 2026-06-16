@@ -1,5 +1,7 @@
 #pragma once
+#include <winsock2.h>
 #include <windows.h>
+#include <cstring>
 #include <vector>
 #include <thread>
 #include <atomic>

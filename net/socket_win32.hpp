@@ -1,9 +1,9 @@
 #pragma once
-#include "socket.hpp"
-#include "iocp.hpp"
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <mswsock.h>
+#include "socket.hpp"
+#include "iocp.hpp"
 #include <coroutine>
 
 namespace browser::net {
@@ -23,12 +23,12 @@ public:
     void close() override;
     bool is_connected() const override;
 
-    async::task<void> async_connect(const std::string& host, u16 port) override;
-    async::task<void> async_connect_ip(const IPv4Address& addr, u16 port) override;
+    async::task<bool> async_connect(const std::string& host, u16 port) override;
+    async::task<bool> async_connect_ip(const IPv4Address& addr, u16 port) override;
     async::task<u32> async_send(span<u8> data) override;
     async::task<u32> async_recv(span<u8> buf) override;
-    async::task<void> async_send_all(span<u8> data) override;
-    async::task<void> async_recv_exact(span<u8> buf) override;
+    async::task<bool> async_send_all(span<u8> data) override;
+    async::task<bool> async_recv_exact(span<u8> buf) override;
 
 public:
     static Result<void> ensure_wsa_started();

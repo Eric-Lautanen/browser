@@ -1,5 +1,6 @@
 #pragma once
 #include "../tests/utility.hpp"
+#include "../async/task.hpp"
 #include "url.hpp"
 #include "connection.hpp"
 #include "tls.hpp"
@@ -26,6 +27,10 @@ public:
     void close();
     bool is_connected() const;
 
+    // Async methods
+    async::task<http::Response> fetch_async(const http::Request& req);
+    async::task<http::Response> get_async(const std::string& url_str);
+
 private:
     Connection tcp_;
     std::unique_ptr<tls::TLSConnection> tls_;
@@ -35,6 +40,8 @@ private:
     static TrackerBlocker* tracker_;
 
     Result<void> connect_if_needed(const http::Request& req);
+    async::task<bool> connect_if_needed_async(const http::Request& req);
 };
 
 } // namespace browser::net
+

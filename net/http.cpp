@@ -347,6 +347,52 @@ Result<Response> HTTP1Client::execute(const Request& req) {
     return read_response();
 }
 
+async::task<Response> HTTP1Client::execute_async(const Request& req) {
+    auto cr = connect_if_needed(req);
+    if (cr.is_err()) co_return std::string("execute: ") + cr.unwrap_err();
+
+    auto wire = req.serialize();
+
+    if (use_tls_) {
+        auto sr = co_await tls_->send_all_async(wire.data(), static_cast<u32>(wire.size()));
+        if (sr.is_err()) co_return std::string("send: ") + sr.unwrap_err();
+    } else {
+        auto sr = co_await tcp_.send_all_async(wire.data(), static_cast<u32>(wire.size()));
+        if (sr.is_err()) co_return std::string("send: ") + sr.unwrap_err();
+    }
+
+    // Read response using async methods
+    std::vector<u8> all_data;
+    auto try_parse = [&]() -> Result<Response> {
+        return Response::parse(all_data.data(), static_cast<u32>(all_data.size()));
+    };
+
+    if (use_tls_) {
+        while (true) {
+            u8 buf[65536];
+            auto r = co_await tls_->receive_async(buf, sizeof(buf));
+            if (r.is_err()) {
+                if (all_data.empty()) co_return std::string("receive: ") + r.unwrap_err();
+                break;
+            }
+            u32 n = r.unwrap();
+            if (n == 0) break;
+            all_data.insert(all_data.end(), buf, buf + n);
+
+            auto parsed = try_parse();
+            if (parsed.is_ok()) co_return parsed.unwrap();
+            if (all_data.size() > 1024 * 1024) break;
+        }
+    } else {
+        auto r = co_await tcp_.receive_until_close_async(65536);
+        if (r.is_err()) co_return std::string("receive: ") + r.unwrap_err();
+        auto vec = r.unwrap();
+        all_data = std::move(vec);
+    }
+
+    co_return try_parse();
+}
+
 void HTTP1Client::close() {
     if (tls_) { tls_->close(); tls_.reset(); }
     tcp_.close();

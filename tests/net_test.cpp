@@ -126,7 +126,8 @@ TEST(connection_receive_until_close_no_open, {
 
 TEST(dns_resolve_google, {
     browser::net::DNSResolver resolver;
-    auto result = resolver.resolve_a("www.google.com");
+    auto task = resolver.resolve_a("www.google.com");
+    auto result = task.sync_wait();
     if (result.is_err()) return true;
     auto addrs = result.unwrap();
     ASSERT(addrs.size() > 0);
@@ -138,7 +139,8 @@ TEST(dns_resolve_google, {
 
 TEST(dns_resolve_localhost, {
     browser::net::DNSResolver resolver;
-    auto result = resolver.resolve_a("localhost");
+    auto task = resolver.resolve_a("localhost");
+    auto result = task.sync_wait();
     if (result.is_err()) return true;
     auto addrs = result.unwrap();
     ASSERT(addrs.size() > 0);
@@ -192,7 +194,8 @@ TEST(connection_move_assign, {
 TEST(dns_set_server, {
     browser::net::DNSResolver resolver;
     resolver.set_dns_server(browser::net::IPv4Address(1, 1, 1, 1));
-    auto result = resolver.resolve_a("example.com");
+    auto task = resolver.resolve_a("example.com");
+    auto result = task.sync_wait();
     if (result.is_err()) return true;
     auto addrs = result.unwrap();
     ASSERT(addrs.size() > 0);

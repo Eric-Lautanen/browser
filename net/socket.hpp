@@ -62,13 +62,13 @@ public:
     virtual void close() = 0;
     virtual bool is_connected() const = 0;
 
-    // Async methods
-    virtual async::task<void> async_connect(const std::string& host, u16 port) = 0;
-    virtual async::task<void> async_connect_ip(const IPv4Address& addr, u16 port) = 0;
+    // Async methods (return true on success, error string on failure)
+    virtual async::task<bool> async_connect(const std::string& host, u16 port) = 0;
+    virtual async::task<bool> async_connect_ip(const IPv4Address& addr, u16 port) = 0;
     virtual async::task<u32> async_send(span<u8> data) = 0;
     virtual async::task<u32> async_recv(span<u8> buf) = 0;
-    virtual async::task<void> async_send_all(span<u8> data) = 0;
-    virtual async::task<void> async_recv_exact(span<u8> buf) = 0;
+    virtual async::task<bool> async_send_all(span<u8> data) = 0;
+    virtual async::task<bool> async_recv_exact(span<u8> buf) = 0;
 
     static Result<std::unique_ptr<Socket>> create_tcp();
 };
