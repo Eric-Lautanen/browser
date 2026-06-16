@@ -16,6 +16,7 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 | **No telemetry, ever** | The existing `telemetry.cpp` generates a local `about:performance` report only. It never sends data anywhere. This is non-negotiable. |
 | **Standards compliant** | HTML5 (WHATWG living standard), CSS (W3C), ECMAScript (latest), Web APIs (WHATWG). Full compliance, not "good enough." |
 | **Audited correctness** | No memory leaks. No race conditions. Every subsystem has comprehensive tests. Every merge is tested. |
+| **Living roadmap** | On completion of each phase, the roadmap is updated with lessons learned, corrected estimates, and refined scope. A second pass audit is performed before the next phase begins — verifying that the completed phase actually works as intended and that the remaining roadmap stays accurate and realistic. |
 
 ### Current State (June 2026)
 
@@ -37,7 +38,9 @@ Each phase must pass this checklist before moving to the next:
 - [x] **Thread-safe** — no mutable globals added; all cross-thread data uses `channel<T>` or `async::mutex`; `std::atomic` for flags
 - [x] **Goal achieved** — the phase goal statement is verified (e.g., "UI stays responsive during load")
 - [x] **Phase-specific checks** — each phase lists additional items below
-- [x] **Committed and pushed to git** — `git add -A && git commit -m "Phase N: <summary>" && git push`
+- [ ] **Committed and pushed to git** — `git add -A && git commit -m "Phase N: <summary>" && git push`
+- [ ] **Roadmap updated with phase lessons** — update roadmap.md with corrected estimates, discovered dependencies, or scope adjustments learned during the phase
+- [ ] **Second-pass audit performed** — re-read the completed phase's code with fresh eyes. Verify correctness, thread safety, memory, and that the phase goal is genuinely met before declaring it done
 - [x] **Web research performed** — before implementing each phase, search the web for 2026-era best practices, API changes, C++20/C++23 standards updates, Win32 API advancements, and security guidance relevant to the phase. Incorporate findings into the implementation. Do not assume pre-2025 knowledge is current.
 - [x] **Temp files cleaned** — delete any debug logs, test artifacts, cache files, or temporary output created during development (`font_debug.txt`, `click_debug.txt`, `glyph_drop.txt`, `cache/`, `*.log`, etc.). Do not commit build artifacts or temp data.
 
