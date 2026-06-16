@@ -346,7 +346,7 @@ void BrowserWindow::render_caption_buttons() {
     draw_cap(chrome_.rects.maximize_btn, ChromeUI::MAXIMIZE, Icon::MAXIMIZE,
              t.surface_hover, t.text_secondary);
     draw_cap(chrome_.rects.close_btn,    ChromeUI::CLOSE,    Icon::CLOSE,
-             {0.9f, 0.2f, 0.2f, 1.0f}, render::Color::WHITE);
+             {0.9f, 0.2f, 0.2f, 1.0f}, t.text_secondary);
 }
 
 void BrowserWindow::render_nav_buttons() {

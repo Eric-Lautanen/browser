@@ -14,6 +14,8 @@ struct GridTrackDef;
 
 struct EdgeSizes { f32 top=0, right=0, bottom=0, left=0; };
 
+using TextMeasureFn = f32 (*)(void* ctx, const std::string& text, u32 pixel_size);
+
 struct Rect {
     f32 x=0, y=0, width=0, height=0;
     std::optional<Rect> intersect(const Rect& o) const;
@@ -100,6 +102,7 @@ private:
 class LayoutEngine {
 public:
     LayoutEngine();
+    void set_text_measure(void* ctx, TextMeasureFn fn) { text_measurer_ctx_ = ctx; text_measure_fn_ = fn; }
     std::unique_ptr<LayoutNode> layout(
         html::Document* doc,
         std::unordered_map<const html::Element*, ComputedStyle>& styles,
@@ -113,6 +116,8 @@ private:
     f32 root_font_size_ = 16.0f;
     f32 viewport_width_ = 0;
     f32 viewport_height_ = 0;
+    void* text_measurer_ctx_ = nullptr;
+    TextMeasureFn text_measure_fn_ = nullptr;
 
     f32 resolve_length(const Length& len, f32 parent_value, f32 font_size) const;
     f32 resolve_font_size(const ComputedStyle& style, f32 parent_font_size) const;

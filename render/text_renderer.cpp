@@ -71,7 +71,8 @@ f32 TextRenderer::render_text(Renderer* r, const std::string& text, f32 x, f32 y
         }
 
         f32 glyph_x = cursor_x + (f32)gt->bearing_x;
-        f32 glyph_y = y + (f32)pixel_size - (f32)gt->bearing_y;
+        f32 asc = face_ ? face_->ascender(pixel_size) : (f32)pixel_size * 0.8f;
+        f32 glyph_y = y + asc - (f32)gt->bearing_y;
 
         r->add_tex_quad(glyph_x, glyph_y, (f32)gt->width, (f32)gt->height,
                         color, gt->u0, gt->v0, gt->u1, gt->v1);

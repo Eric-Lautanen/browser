@@ -9,7 +9,8 @@ namespace browser::css {
 
 static constexpr const char* UA_STYLESHEET = R"(
 body { display: block; margin: 8px; }
-div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, table { display: block; }
+div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, table, tr, th, td { display: block; }
+pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, thead, tbody, tfoot, tfoot, optgroup, option, select, button, textarea, input { display: block; }
 b, i, u, s, span, a, strong, em, code, mark, sub, sup, small, label, abbr, cite, dfn, kbd, q, samp, tt, var { display: inline; }
 h1 { font-size: 2em; font-weight: bold; }
 h2 { font-size: 1.5em; font-weight: bold; }
@@ -199,6 +200,37 @@ Cascade::compute(const html::Document& doc, const StyleSheet& author) {
                 {
                     const std::string& prop = md.decl->property;
                     const CSSValue& val = style.properties[md.decl->property];
+
+                    // Handle multi-value border-* shorthands: extract width and color
+                    if ((prop == "border" || prop == "border-top" || prop == "border-right" ||
+                         prop == "border-bottom" || prop == "border-left") &&
+                        md.decl->values.size() > 1) {
+                        for (const auto& v : md.decl->values) {
+                            if (v.type == CSSValue::Type::LENGTH) {
+                                CSSValue bwidth = v;
+                                if (prop == "border") {
+                                    style.properties["border-top-width"] = bwidth;
+                                    style.properties["border-right-width"] = bwidth;
+                                    style.properties["border-bottom-width"] = bwidth;
+                                    style.properties["border-left-width"] = bwidth;
+                                } else {
+                                    style.properties[prop + "-width"] = bwidth;
+                                }
+                            }
+                            if (v.type == CSSValue::Type::COLOR) {
+                                CSSValue bcolor = v;
+                                if (prop == "border") {
+                                    style.properties["border-top-color"] = bcolor;
+                                    style.properties["border-right-color"] = bcolor;
+                                    style.properties["border-bottom-color"] = bcolor;
+                                    style.properties["border-left-color"] = bcolor;
+                                } else {
+                                    style.properties[prop + "-color"] = bcolor;
+                                }
+                            }
+                        }
+                    }
+
                     if (prop == "margin" && val.type == CSSValue::Type::STRING) {
                         std::vector<std::string> parts;
                         std::string s = val.string_value;
@@ -358,7 +390,7 @@ Cascade::compute(const html::Document& doc, const StyleSheet& author) {
                             set_bw("border-bottom-width", parts[2]); set_bw("border-left-width", parts[3]);
                         }
                     }
-                    if (prop == "background" && val.type == CSSValue::Type::STRING) {
+                    if (prop == "background" && (val.type == CSSValue::Type::STRING || val.type == CSSValue::Type::COLOR)) {
                         if (!style.has("background-color"))
                             style.properties["background-color"] = val;
                     }

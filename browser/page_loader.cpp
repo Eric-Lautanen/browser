@@ -16,6 +16,10 @@
 
 namespace browser {
 
+static f32 text_measure_cb(void* ctx, const std::string& text, u32 pixel_size) {
+    return static_cast<render::TextRenderer*>(ctx)->measure_text(text, pixel_size);
+}
+
 PageLoader::PageLoader(Telemetry* telemetry, SettingsManager* settings,
                        net::TrackerBlocker* tracker, render::FontManager* fm,
                        render::TextRenderer* text_renderer)
@@ -162,6 +166,7 @@ Result<LoadedPage> PageLoader::load(const std::string& url_str) {
     // 8. Layout
     if (page.dom) {
         css::LayoutEngine layout_engine;
+        layout_engine.set_text_measure(text_renderer_, text_measure_cb);
         page.layout = layout_engine.layout(page.dom.get(), page.styles,
                                            static_cast<f32>(viewport_width_),
                                            static_cast<f32>(viewport_height_));
@@ -200,6 +205,7 @@ Result<LoadedPage> PageLoader::load_html(const std::string& html) {
     }
 
     css::LayoutEngine layout_engine;
+    layout_engine.set_text_measure(text_renderer_, text_measure_cb);
     page.layout = layout_engine.layout(page.dom.get(), page.styles,
                                        static_cast<f32>(viewport_width_),
                                        static_cast<f32>(viewport_height_));

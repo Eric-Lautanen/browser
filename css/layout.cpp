@@ -1541,6 +1541,7 @@ void LayoutEngine::layout_block(LayoutNode* node, f32 containing_width, f32 cont
             margins.right = half;
         }
     }
+    node->margin = margins;
 
     if (is_grid_element(node->style())) {
         layout_grid(node, containing_width, containing_height);
@@ -1597,8 +1598,8 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
     f32 font_size = resolve_font_size(node->style(), parent_font_size);
     f32 char_width = char_width_factor * font_size;
 
-    // Read line-height from style, fall back to 1.2x font-size
-    f32 line_height = font_size * 1.2f;
+    // Read line-height from style, fall back to 1.75x font-size
+    f32 line_height = font_size * 1.75f;
     auto* lh = node->style().get("line-height");
     if (lh && lh->type == CSSValue::Type::NUMBER && lh->number > 0) {
         line_height = font_size * lh->number;
@@ -1621,14 +1622,16 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
     std::size_t start = 0;
     while (start < text.size()) {
         while (start < text.size() && text[start] == ' ') {
-            words.push_back({" ", char_width});
+            f32 sp_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, " ", (u32)font_size) : char_width;
+            words.push_back({" ", sp_w});
             ++start;
         }
         if (start >= text.size()) break;
         std::size_t end = text.find(' ', start);
         if (end == std::string::npos) end = text.size();
         std::string word_text = text.substr(start, end - start);
-        f32 word_width = static_cast<f32>(word_text.size()) * char_width;
+        f32 word_width = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, word_text, (u32)font_size)
+                                          : static_cast<f32>(word_text.size()) * char_width;
         words.push_back({std::move(word_text), word_width});
         start = end;
     }
@@ -1639,7 +1642,7 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
 
     for (auto& word : words) {
         if (word.text == " ") {
-            line_x += char_width;
+            line_x += word.width;
             continue;
         }
         if (line_x + word.width > containing_width && line_x > 0) {
@@ -1652,7 +1655,7 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
     }
     // Strip trailing space from max_line_width
     if (max_line_width > 0 && !words.empty() && words.back().text == " ") {
-        max_line_width -= char_width;
+        max_line_width -= words.back().width;
     }
     f32 total_height = line_y + (line_x > 0 ? line_height : 0);
 
@@ -1728,6 +1731,22 @@ void LayoutEngine::layout_children(LayoutNode* node, f32 containing_width, f32 c
             }
 
             child->content.x = child->margin.left + child->border.left + child->padding.left;
+
+            // Apply text-align for inline text nodes
+            if (child->is_text()) {
+                auto* ta = node->style().get("text-align");
+                if (ta && ta->type == CSSValue::Type::KEYWORD) {
+                    f32 remaining = node->content.width
+                                    - child->margin.left - child->border.left - child->padding.left
+                                    - child->padding.right - child->border.right - child->margin.right
+                                    - child->content.width;
+                    if (ta->keyword == "center" && remaining > 0)
+                        child->content.x += remaining / 2.0f;
+                    else if (ta->keyword == "right" && remaining > 0)
+                        child->content.x += remaining;
+                }
+            }
+
             child->content.y = current_y + collapsed_gap;
 
             f32 child_border_bottom = child->content.y +
@@ -1867,8 +1886,8 @@ std::unique_ptr<LayoutNode> LayoutEngine::layout(
 
     layout_block(tree.get(), viewport_width, viewport_height);
 
-    tree->content.x = 0;
-    tree->content.y = 0;
+    tree->content.x = tree->margin.left + tree->border.left + tree->padding.left;
+    tree->content.y = tree->margin.top + tree->border.top + tree->padding.top;
 
     f32 body_font_size = resolve_font_size(tree->style(), root_font_size_);
     layout_absolute_pass(tree.get(), nullptr, viewport_width, viewport_height, body_font_size);
