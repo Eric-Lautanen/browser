@@ -65,10 +65,4 @@ struct task_yield {
     void await_resume() noexcept {}
 };
 
-// Returns an awaiter that captures the current coroutine handle
-// for use with IOCP overlapped operations.
-inline auto get_awaiter() noexcept {
-    return iocp_awaiter{};
-}
-
 } // namespace browser::async

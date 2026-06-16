@@ -91,7 +91,6 @@ bool Connection::is_open() const {
 // --- Async methods ---
 
 async::task<bool> Connection::open_async(const std::string& host, u16 port, const ConnectionConfig& config) {
-    (void)config;
     host_ = host;
     port_ = port;
 
@@ -120,6 +119,8 @@ async::task<bool> Connection::open_async(const std::string& host, u16 port, cons
         auto conn_task = socket_->async_connect_ip(ip, port);
         auto r = co_await conn_task;
         if (r.is_ok()) {
+            auto to = socket_->set_read_timeout(config.read_timeout_ms);
+            if (to.is_err()) { socket_->close(); co_return std::string("set read timeout failed"); }
             co_return true;
         }
     }

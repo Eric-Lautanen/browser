@@ -125,13 +125,18 @@ std::string WebSocket::generate_key() const {
     static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     std::string result;
     for (int i = 0; i < 16; i += 3) {
-        u32 v = (static_cast<u32>(key[i]) << 16) | (static_cast<u32>(key[i + 1]) << 8) | static_cast<u32>(key[i + 2]);
+        int remaining = 16 - i;
+        u32 v = (static_cast<u32>(key[i]) << 16);
+        if (remaining > 1) v |= (static_cast<u32>(key[i + 1]) << 8);
+        if (remaining > 2) v |= static_cast<u32>(key[i + 2]);
         result += b64[(v >> 18) & 0x3F];
         result += b64[(v >> 12) & 0x3F];
-        result += b64[(v >> 6) & 0x3F];
-        result += b64[v & 0x3F];
+        if (remaining > 1) result += b64[(v >> 6) & 0x3F];
+        else result += '=';
+        if (remaining > 2) result += b64[v & 0x3F];
+        else result += '=';
     }
-    result += "=";
+    // 16 bytes = 24 base64 chars, no extra padding needed
     return result;
 }
 
@@ -141,13 +146,17 @@ std::string WebSocket::compute_accept_key(const std::string& key) {
     static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     std::string result;
     for (std::size_t i = 0; i < hash.size(); i += 3) {
-        u32 v = (static_cast<u32>(hash[i]) << 16) | (static_cast<u32>(hash[i + 1]) << 8) | static_cast<u32>(hash[i + 2]);
+        int remaining = static_cast<int>(hash.size() - i);
+        u32 v = (static_cast<u32>(hash[i]) << 16);
+        if (remaining > 1) v |= (static_cast<u32>(hash[i + 1]) << 8);
+        if (remaining > 2) v |= static_cast<u32>(hash[i + 2]);
         result += b64[(v >> 18) & 0x3F];
         result += b64[(v >> 12) & 0x3F];
-        result += b64[(v >> 6) & 0x3F];
-        result += b64[v & 0x3F];
+        if (remaining > 1) result += b64[(v >> 6) & 0x3F];
+        else result += '=';
+        if (remaining > 2) result += b64[v & 0x3F];
+        else result += '=';
     }
-    result += "==";
     return result;
 }
 

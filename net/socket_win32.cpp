@@ -372,34 +372,33 @@ async::task<bool> Win32TCPSocket::async_connect_ip(const IPv4Address& addr, u16 
 async::task<u32> Win32TCPSocket::async_send(span<u8> data) {
     if (handle_ == INVALID_SOCKET) co_return std::string("not connected");
     WSABUF buf = { data.size(), reinterpret_cast<char*>(data.data()) };
-    DWORD sent = 0;
     IoOverlapped ol;
+    DWORD sent = 0;
     int ret = ::WSASend(handle_, &buf, 1, &sent, 0, &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         if (err != WSA_IO_PENDING) co_return std::string("WSASend failed");
-        co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return std::string("WSASend error");
-        co_return ol.bytes;
     }
-    co_return static_cast<u32>(sent);
+    // Always wait for IOCP completion (even on immediate completion, a packet is queued)
+    co_await async::iocp_awaiter{&ol};
+    if (ol.error) co_return std::string("WSASend error");
+    co_return ol.bytes;
 }
 
 async::task<u32> Win32TCPSocket::async_recv(span<u8> buf) {
     if (handle_ == INVALID_SOCKET) co_return std::string("not connected");
     WSABUF wbuf = { buf.size(), reinterpret_cast<char*>(buf.data()) };
     DWORD flags = 0;
-    DWORD recvd = 0;
     IoOverlapped ol;
+    DWORD recvd = 0;
     int ret = ::WSARecv(handle_, &wbuf, 1, &recvd, &flags, &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         if (err != WSA_IO_PENDING) co_return std::string("WSARecv failed");
-        co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return std::string("WSARecv error");
-        co_return ol.bytes;
     }
-    co_return static_cast<u32>(recvd);
+    co_await async::iocp_awaiter{&ol};
+    if (ol.error) co_return std::string("WSARecv error");
+    co_return ol.bytes;
 }
 
 async::task<bool> Win32TCPSocket::async_send_all(span<u8> data) {
@@ -489,17 +488,16 @@ async::task<u32> Win32UDPSocket::async_send_to(span<u8> data, const IPv4Address&
              (static_cast<u32>(dest.octets[2]) << 8) | static_cast<u32>(dest.octets[3]);
     dest_addr.sin_addr.s_addr = htonl(ip);
     WSABUF buf = { data.size(), reinterpret_cast<char*>(data.data()) };
-    DWORD sent = 0;
     IoOverlapped ol;
+    DWORD sent = 0;
     int ret = ::WSASendTo(handle_, &buf, 1, &sent, 0, (struct sockaddr*)&dest_addr, sizeof(dest_addr), &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         if (err != WSA_IO_PENDING) co_return std::string("WSASendTo failed");
-        co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return std::string("WSASendTo error");
-        co_return ol.bytes;
     }
-    co_return static_cast<u32>(sent);
+    co_await async::iocp_awaiter{&ol};
+    if (ol.error) co_return std::string("WSASendTo error");
+    co_return ol.bytes;
 }
 
 async::task<u32> Win32UDPSocket::async_recv_from(span<u8> buf, IPv4Address* sender, u16* sender_port) {
@@ -508,19 +506,15 @@ async::task<u32> Win32UDPSocket::async_recv_from(span<u8> buf, IPv4Address* send
     int from_len = sizeof(from_addr);
     WSABUF wbuf = { buf.size(), reinterpret_cast<char*>(buf.data()) };
     DWORD flags = 0;
-    DWORD recvd = 0;
     IoOverlapped ol;
+    DWORD recvd = 0;
     int ret = ::WSARecvFrom(handle_, &wbuf, 1, &recvd, &flags, (struct sockaddr*)&from_addr, &from_len, &ol, nullptr);
     if (ret == SOCKET_ERROR) {
         int err = WSAGetLastError();
         if (err != WSA_IO_PENDING) co_return std::string("WSARecvFrom failed");
-        co_await async::iocp_awaiter{&ol};
-        if (ol.error) co_return std::string("WSARecvFrom error");
-    } else {
-        if (sender) { u32 sip = ntohl(from_addr.sin_addr.s_addr); sender->octets[0] = (u8)(sip>>24); sender->octets[1] = (u8)(sip>>16); sender->octets[2] = (u8)(sip>>8); sender->octets[3] = (u8)sip; }
-        if (sender_port) *sender_port = ntohs(from_addr.sin_port);
-        co_return static_cast<u32>(recvd);
     }
+    co_await async::iocp_awaiter{&ol};
+    if (ol.error) co_return std::string("WSARecvFrom error");
     if (sender) { u32 sip = ntohl(from_addr.sin_addr.s_addr); sender->octets[0] = (u8)(sip>>24); sender->octets[1] = (u8)(sip>>16); sender->octets[2] = (u8)(sip>>8); sender->octets[3] = (u8)sip; }
     if (sender_port) *sender_port = ntohs(from_addr.sin_port);
     co_return ol.bytes;
