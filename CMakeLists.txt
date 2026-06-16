@@ -54,7 +54,9 @@ add_library(net STATIC
     net/connection.cpp
     net/url.cpp
     net/http.cpp
-    net/http2.cpp
+    net/http2/connection.cpp
+    net/http2/frames.cpp
+    net/http2/hpack.cpp
     net/http_client.cpp
     net/tracker_blocker.cpp
     net/deflate.cpp
@@ -77,6 +79,8 @@ add_library(net STATIC
     net/url.hpp
     net/http.hpp
     net/http2.hpp
+    net/http2/connection.hpp
+    net/http2/internal.hpp
     net/http_client.hpp
     net/deflate.hpp
     net/websocket.hpp
