@@ -113,6 +113,13 @@ void GCJSObject::mark_children(GCHeap& heap) {
     }
 }
 
-void GCJSFunction::mark_children(GCHeap&) {}
+void GCJSFunction::mark_children(GCHeap& heap) {
+    if (fn.prototype_property.type == JSValue::Type::OBJECT && fn.prototype_property.object_val) {
+        auto* gc_obj = heap.lookup_object(fn.prototype_property.object_val);
+        if (gc_obj && !gc_obj->is_marked()) {
+            gc_obj->mark(heap);
+        }
+    }
+}
 
 }

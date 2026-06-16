@@ -315,6 +315,9 @@ target_link_libraries(jit_test test_framework js)
 add_executable(dom_bindings_test tests/main.cpp tests/dom_bindings_test.cpp)
 target_link_libraries(dom_bindings_test test_framework js html)
 
+add_executable(web_api_test tests/main.cpp tests/web_api_test.cpp)
+target_link_libraries(web_api_test test_framework js html)
+
 # --- Render tests ---
 add_executable(mesh_test tests/main.cpp tests/mesh_test.cpp)
 target_link_libraries(mesh_test test_framework render)

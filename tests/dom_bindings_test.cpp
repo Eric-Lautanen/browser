@@ -74,12 +74,12 @@ TEST(dom_get_attribute, {
     ASSERT(attr_fn.type == JSValue::Type::FUNCTION);
 
     JSValue result = attr_fn.function_val->native_fn(
-        {JSValue::string("class")}, attr_fn.function_val->native_context);
+        {wrapper, JSValue::string("class")}, attr_fn.function_val->native_context);
     ASSERT(result.type == JSValue::Type::STRING);
     ASSERT_EQ(result.string_val, "foo");
 
     JSValue missing = attr_fn.function_val->native_fn(
-        {JSValue::string("nonexistent")}, attr_fn.function_val->native_context);
+        {wrapper, JSValue::string("nonexistent")}, attr_fn.function_val->native_context);
     ASSERT(missing.type == JSValue::Type::NULL_VAL);
 })
 
@@ -139,4 +139,42 @@ TEST(dom_event_listener, {
     f.bindings.fire_event(div_ptr, "click", f.vm.get());
 
     ASSERT(handler_called);
+})
+
+TEST(dom_create_element, {
+    Fixture f;
+    f.bindings.register_dom_bindings(f.vm.get(), f.root_ptr);
+    
+    // Simulate creating an element via native function
+    auto div = create_element("div");
+    auto* div_ptr = div.get();
+    div_ptr->attributes["id"] = "test-div";
+    append_child(f.root_ptr, std::move(div));
+    
+    JSValue wrapper = f.bindings.wrap_element(div_ptr, f.vm.get());
+    ASSERT(wrapper.type == JSValue::Type::OBJECT);
+    
+    // Test getAttribute (args[0]=this/receiver, args[1]=attribute name)
+    JSValue get_attr_fn = wrapper.object_val->get("getAttribute");
+    JSValue id_val = get_attr_fn.function_val->native_fn(
+        {wrapper, JSValue::string("id")}, get_attr_fn.function_val->native_context);
+    ASSERT(id_val.type == JSValue::Type::STRING);
+    ASSERT_EQ(id_val.string_val, "test-div");
+    
+    // Test querySelector via document
+    JSValue doc = f.vm->global_object()->get("document");
+    ASSERT(doc.type == JSValue::Type::OBJECT);
+})
+
+TEST(dom_prototype_chain, {
+    Fixture f;
+    auto* proto = f.vm->heap()->alloc_object();
+    proto->obj.set("customMethod", JSValue::string("works"));
+    
+    auto* obj = f.vm->heap()->alloc_object();
+    obj->obj.prototype = JSValue::object(&proto->obj);
+    
+    JSValue result = obj->obj.get_property("customMethod");
+    ASSERT(result.type == JSValue::Type::STRING);
+    ASSERT_EQ(result.string_val, "works");
 })

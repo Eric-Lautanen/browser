@@ -2,6 +2,9 @@
 #include "utility.hpp"
 #include "../js/token.hpp"
 #include "../js/lexer.hpp"
+#include "../js/value.hpp"
+#include "../js/vm.hpp"
+#include "../js/gc.hpp"
 
 using namespace browser::js;
 
@@ -617,9 +620,7 @@ TEST(phase4_new_operator, {
     VM vm;
     // Create a constructor function
     auto* ctor_fn = vm.create_native_fn(
-        [](const std::vector<JSValue>& args, void*) -> JSValue {
-            // args[0] = this (global), args[1] = value
-            // For 'new', the VM handles the new object creation
+        [](const std::vector<JSValue>&, void*) -> JSValue {
             return JSValue::undefined();
         }, true, nullptr);
     // Set prototype property on constructor
@@ -630,6 +631,6 @@ TEST(phase4_new_operator, {
     // Test instance creation via prototype_chain_contains
     auto* instance = vm.heap()->alloc_object();
     instance->obj.prototype = ctor_fn->prototype_property;
-    bool in_chain = JSObject::prototype_chain_contains(JSValue::object(&instance->obj), JSValue::object(&proto_gc->obj));
+    bool in_chain = instance->obj.prototype_chain_contains(JSValue::object(&instance->obj), JSValue::object(&proto_gc->obj));
     ASSERT(in_chain);
 })

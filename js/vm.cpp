@@ -240,7 +240,10 @@ void VM::register_builtins() {
             auto* vm = static_cast<VM*>(context);
             auto* arr = vm->heap()->alloc_object();
             arr->obj.is_array = true;
-            // args[0] = this, args[1..n] = elements
+            // Called via 'new Array(...)' or 'Array(...)':
+            // When called via NEW opcode: args[0] = new object (this), args[1..n] = elements
+            // When called directly: args[0] = global (this), args[1..n] = elements
+            // In both cases, actual elements start at index 1
             for (u32 i = 1; i < args.size(); i++) {
                 arr->obj.array_elements.push_back(args[i]);
             }
@@ -581,13 +584,14 @@ JSValue VM::run() {
                         new_obj->prototype = proto;
                     }
                     if (ctor->native_fn) {
+                        // Prepend this=new_obj as args[0], then user args
                         std::vector<JSValue> args;
+                        args.push_back(JSValue::object(new_obj));
                         for (u32 i = 0; i < argc; i++) {
                             args.push_back(stack_[stack_.size() - argc + i]);
                         }
                         stack_.resize(stack_.size() - argc - 1);
                         JSValue result = ctor->native_fn(args, ctor->native_context);
-                        // If constructor returned an object, use it; otherwise use new_obj
                         if (result.type == JSValue::Type::OBJECT || result.type == JSValue::Type::FUNCTION) {
                             push(result);
                         } else {

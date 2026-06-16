@@ -135,8 +135,9 @@ JSValue DOMBindings::native_get_inner_html(const std::vector<JSValue>&, void* co
 
 JSValue DOMBindings::native_get_attribute(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<NativeCallContext*>(context);
-    if (args.empty()) return JSValue::undefined();
-    std::string name = args[0].to_string();
+    // args[0] = this, args[1] = first real arg
+    if (args.size() < 2) return JSValue::undefined();
+    std::string name = args[1].to_string();
     if (ctx->element->has_attribute(name)) {
         return JSValue::string(ctx->element->get_attribute(name));
     }
@@ -145,8 +146,9 @@ JSValue DOMBindings::native_get_attribute(const std::vector<JSValue>& args, void
 
 JSValue DOMBindings::native_set_attribute(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<NativeCallContext*>(context);
-    if (args.size() < 2) return JSValue::undefined();
-    ctx->element->attributes[args[0].to_string()] = args[1].to_string();
+    // args[0] = this, args[1] = name, args[2] = value
+    if (args.size() < 3) return JSValue::undefined();
+    ctx->element->attributes[args[1].to_string()] = args[2].to_string();
     return JSValue::undefined();
 }
 
@@ -156,8 +158,9 @@ JSValue DOMBindings::native_append_child(const std::vector<JSValue>&, void*) {
 
 JSValue DOMBindings::native_query_selector(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<NativeCallContext*>(context);
-    if (args.empty()) return JSValue::null();
-    std::string selector = args[0].to_string();
+    // args[0] = this, args[1] = selector
+    if (args.size() < 2) return JSValue::null();
+    std::string selector = args[1].to_string();
     auto* found = html::find_element_by_tag(ctx->element, selector);
     if (found) {
         return ctx->bindings->wrap_element(found, ctx->vm);
@@ -167,9 +170,10 @@ JSValue DOMBindings::native_query_selector(const std::vector<JSValue>& args, voi
 
 JSValue DOMBindings::native_add_event_listener(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<NativeCallContext*>(context);
-    if (args.size() < 2) return JSValue::undefined();
-    std::string event_type = args[0].to_string();
-    JSValue handler = args[1];
+    // args[0] = this, args[1] = type, args[2] = handler
+    if (args.size() < 3) return JSValue::undefined();
+    std::string event_type = args[1].to_string();
+    JSValue handler = args[2];
     if (handler.type == JSValue::Type::FUNCTION) {
         ctx->bindings->add_event_listener(ctx->element, event_type, handler);
     }
@@ -178,8 +182,9 @@ JSValue DOMBindings::native_add_event_listener(const std::vector<JSValue>& args,
 
 JSValue DOMBindings::native_get_element_by_id(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<NativeCallContext*>(context);
-    if (args.empty()) return JSValue::null();
-    std::string id = args[0].to_string();
+    // args[0] = this, args[1] = id
+    if (args.size() < 2) return JSValue::null();
+    std::string id = args[1].to_string();
     if (id.empty()) return JSValue::null();
 
     html::Element* found = nullptr;

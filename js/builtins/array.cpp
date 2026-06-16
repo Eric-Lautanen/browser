@@ -94,8 +94,18 @@ static JSValue arr_reduce(const std::vector<JSValue>& args, void*) {
     if (args.size() < 2) return JSValue::undefined();
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::undefined();
-    u32 start = 1;
-    JSValue acc = args.size() > 2 ? args[2] : (start = 0, el.empty() ? JSValue::undefined() : el[0]);
+    u32 start = 0;
+    JSValue acc;
+    bool has_initial = args.size() > 2;
+    if (has_initial) {
+        acc = args[2];
+        start = 0;
+    } else if (!el.empty()) {
+        acc = el[0];
+        start = 1;
+    } else {
+        return JSValue::undefined();
+    }
     for (u32 i = start; i < el.size(); i++) {
         std::vector<JSValue> cb_args = {args[0], acc, el[i], JSValue::number(static_cast<f64>(i)), args[0]};
         if (callback.function_val->native_fn)
@@ -109,8 +119,18 @@ static JSValue arr_reduce_right(const std::vector<JSValue>& args, void*) {
     if (args.size() < 2) return JSValue::undefined();
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::undefined();
-    i32 start = static_cast<i32>(el.size()) - 1;
-    JSValue acc = args.size() > 2 ? args[2] : (start = static_cast<i32>(el.size()) - 2, el.empty() ? JSValue::undefined() : el.back());
+    bool has_initial = args.size() > 2;
+    i32 start;
+    JSValue acc;
+    if (has_initial) {
+        acc = args[2];
+        start = static_cast<i32>(el.size()) - 1;
+    } else if (!el.empty()) {
+        acc = el.back();
+        start = static_cast<i32>(el.size()) - 2;
+    } else {
+        return JSValue::undefined();
+    }
     for (i32 i = start; i >= 0; i--) {
         std::vector<JSValue> cb_args = {args[0], acc, el[i], JSValue::number(static_cast<f64>(i)), args[0]};
         if (callback.function_val->native_fn)
@@ -219,6 +239,27 @@ static JSValue arr_index_of(const std::vector<JSValue>& args, void*) {
                 if (el[i].string_val == args[1].string_val) return JSValue::number(static_cast<f64>(i));
             } else if (el[i].type == JSValue::Type::BOOLEAN) {
                 if (el[i].bool_val == args[1].bool_val) return JSValue::number(static_cast<f64>(i));
+            }
+        }
+    }
+    return JSValue::number(-1);
+}
+
+static JSValue arr_last_index_of(const std::vector<JSValue>& args, void*) {
+    auto& el = elems(args[0]);
+    if (args.size() < 2 || el.empty()) return JSValue::number(-1);
+    i32 from = get_int_arg(args, 2, static_cast<i32>(el.size()) - 1);
+    if (from < 0) from = 0;
+    if (from >= static_cast<i32>(el.size())) from = static_cast<i32>(el.size()) - 1;
+    for (i32 i = from; i >= 0; i--) {
+        u32 u = static_cast<u32>(i);
+        if (el[u].type == args[1].type) {
+            if (el[u].type == JSValue::Type::NUMBER) {
+                if (el[u].number_val == args[1].number_val) return JSValue::number(static_cast<f64>(i));
+            } else if (el[u].type == JSValue::Type::STRING) {
+                if (el[u].string_val == args[1].string_val) return JSValue::number(static_cast<f64>(i));
+            } else if (el[u].type == JSValue::Type::BOOLEAN) {
+                if (el[u].bool_val == args[1].bool_val) return JSValue::number(static_cast<f64>(i));
             }
         }
     }
@@ -424,7 +465,7 @@ void register_array_prototype(VM* vm) {
     set_prototype_method(&arr_proto->obj, "every", make_fn(vm, arr_every));
     set_prototype_method(&arr_proto->obj, "includes", make_fn(vm, arr_includes));
     set_prototype_method(&arr_proto->obj, "indexOf", make_fn(vm, arr_index_of));
-    set_prototype_method(&arr_proto->obj, "lastIndexOf", make_fn(vm, arr_index_of)); // simplified
+    set_prototype_method(&arr_proto->obj, "lastIndexOf", make_fn(vm, arr_last_index_of));
     set_prototype_method(&arr_proto->obj, "splice", make_fn(vm, arr_splice_fn, false, ctx));
     set_prototype_method(&arr_proto->obj, "slice", make_fn(vm, arr_slice, false, ctx));
     set_prototype_method(&arr_proto->obj, "join", make_fn(vm, arr_join));
@@ -435,13 +476,17 @@ void register_array_prototype(VM* vm) {
     set_prototype_method(&arr_proto->obj, "flat", make_fn(vm, arr_flat, false, ctx));
     set_prototype_method(&arr_proto->obj, "flatMap", make_fn(vm, arr_flat_map, false, ctx));
     arr_proto->obj.set("length", JSValue::number(0));
-    // Static methods on Array constructor
-    auto* arr_ctor = vm->heap()->alloc_object();
-    arr_ctor->obj.set("prototype", JSValue::object(&arr_proto->obj));
-    arr_ctor->obj.set("isArray", JSValue::function(make_fn(vm, arr_is_array)));
-    arr_ctor->obj.set("from", JSValue::function(make_fn(vm, arr_from, false, ctx)));
-    arr_ctor->obj.set("of", JSValue::function(make_fn(vm, arr_of, false, ctx)));
-    vm->global_object()->set("Array", JSValue::object(&arr_ctor->obj));
+    // The Array global is a native function (registered in vm.cpp).
+    // Set its prototype_property so 'new Array()' creates objects with the right prototype.
+    JSValue existing_arr = vm->global_object()->get("Array");
+    if (existing_arr.type == JSValue::Type::FUNCTION) {
+        existing_arr.function_val->prototype_property = JSValue::object(&arr_proto->obj);
+    }
+    // Store static methods as separate globals for now (JSFunction can't hold properties).
+    // In a full implementation, JSFunction would also be a JSObject.
+    vm->global_object()->set("Array_isArray", JSValue::function(make_fn(vm, arr_is_array)));
+    vm->global_object()->set("Array_from", JSValue::function(make_fn(vm, arr_from, false, ctx)));
+    vm->global_object()->set("Array_of", JSValue::function(make_fn(vm, arr_of, false, ctx)));
 }
 
 } // namespace browser::js::builtins
