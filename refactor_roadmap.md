@@ -220,11 +220,11 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `net/http2/hpack.cpp` | HPACK encoder/decoder (already partially separate, but embedded in http2.cpp). ~300 lines. |
 
 ### Phase R4 Checklist
-- [ ] Frame encode/decode for all 10 frame types work identically
-- [ ] HPACK round-trips match previous output
-- [ ] Connection multiplexing works (stream IDs, concurrent streams)
-- [ ] All net tests pass
-- [ ] Committed and pushed
+- [x] Frame encode/decode for all 10 frame types work identically
+- [x] HPACK round-trips match previous output
+- [x] Connection multiplexing works (stream IDs, concurrent streams)
+- [x] All net tests pass
+- [x] Committed and pushed
 
 ---
 
