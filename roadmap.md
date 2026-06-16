@@ -16,6 +16,7 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 | **No telemetry, ever** | The existing `telemetry.cpp` generates a local `about:performance` report only. It never sends data anywhere. This is non-negotiable. |
 | **Standards compliant** | HTML5 (WHATWG living standard), CSS (W3C), ECMAScript (latest), Web APIs (WHATWG). Full compliance, not "good enough." |
 | **Audited correctness** | No memory leaks. No race conditions. Every subsystem has comprehensive tests. Every merge is tested. |
+| **Modular design** | Each major subsystem lives in its own folder (`html/`, `css/`, `js/`, `net/`, `render/`, `image/`, `platform/`, `async/`, `browser/`) with a clear public API. No circular dependencies. Each folder is a separate CMake library target with its own test executable. Easy to build, test, and maintain independently. New subsystems follow the same pattern. |
 | **Living roadmap** | On completion of each phase, the roadmap is updated with lessons learned, corrected estimates, and refined scope. A second pass audit is performed before the next phase begins — verifying that the completed phase actually works as intended and that the remaining roadmap stays accurate and realistic. |
 
 ### Current State (June 2026)
