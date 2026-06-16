@@ -1,0 +1,24 @@
+BasedOnStyle: Google
+IndentWidth: 4
+ColumnLimit: 120
+AccessModifierOffset: -4
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+BreakBeforeBraces: Attach
+NamespaceIndentation: All
+PointerAlignment: Right
+ReferenceAlignment: Right
+SortIncludes: true
+IncludeCategories:
+  - Regex: '^"(browser|html|css|js|net|render|platform|image|async|tests)/'
+    Priority: 1
+  - Regex: '^"'
+    Priority: 2
+  - Regex: '^<'
+    Priority: 3
+UseTab: Never
+IndentCaseLabels: true
+BinPackParameters: false
+BinPackArguments: false

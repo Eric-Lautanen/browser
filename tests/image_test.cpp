@@ -113,28 +113,26 @@ TEST(decode_bmp_via_handwritten, {
     ASSERT_EQ(img.rgba_pixels[3], 0xFFu);
 })
 
-TEST(decode_png_via_wic, {
+TEST(decode_png, {
     auto decoder = create_decoder(ImageFormat::PNG);
     ASSERT(decoder != nullptr);
     auto result = decoder->decode(test_png, sizeof(test_png));
-    if (result.is_ok()) {
-        auto img = std::move(result.unwrap());
-        ASSERT_EQ(img.width, 1u);
-        ASSERT_EQ(img.height, 1u);
-        ASSERT_EQ(img.rgba_pixels.size(), 4u);
-        ASSERT_EQ(img.rgba_pixels[3], 0xFFu);
-    }
+    ASSERT(result.is_ok());
+    auto img = std::move(result.unwrap());
+    ASSERT_EQ(img.width, 1u);
+    ASSERT_EQ(img.height, 1u);
+    ASSERT_EQ(img.rgba_pixels.size(), 4u);
+    ASSERT_EQ(img.rgba_pixels[3], 0xFFu);
 })
 
-TEST(decode_gif_via_wic, {
+TEST(decode_gif, {
     auto decoder = create_decoder(ImageFormat::GIF);
     ASSERT(decoder != nullptr);
     auto result = decoder->decode(test_gif, sizeof(test_gif));
-    if (result.is_ok()) {
-        auto img = std::move(result.unwrap());
-        ASSERT_EQ(img.width, 1u);
-        ASSERT_EQ(img.height, 1u);
-    }
+    ASSERT(result.is_ok());
+    auto img = std::move(result.unwrap());
+    ASSERT_EQ(img.width, 1u);
+    ASSERT_EQ(img.height, 1u);
 })
 
 TEST(format_detect_and_decode_roundtrip, {
@@ -146,37 +144,73 @@ TEST(format_detect_and_decode_roundtrip, {
     ASSERT(result.is_ok());
 })
 
-TEST(wic_decoder_format_bmp, {
-    auto wic_decoder = create_decoder(ImageFormat::UNKNOWN);
-    ASSERT(wic_decoder != nullptr);
-    auto result = wic_decoder->decode(test_bmp, sizeof(test_bmp));
-    if (result.is_ok()) {
-        auto img = std::move(result.unwrap());
-        ASSERT_EQ(img.width, 1u);
-        ASSERT_EQ(img.height, 1u);
-    }
-})
+// A minimal 8x8 grayscale JPEG (all pixels = 128 = medium gray)
+// Uses simplified Huffman tables: 1 code for DC (category 0) and 1 code for AC (EOB)
+static const u8 test_jpeg[] = {
+    0xFF, 0xD8, // SOI
+    // APP0 (JFIF)
+    0xFF, 0xE0, 0x00, 0x10, // marker + length
+    0x4A, 0x46, 0x49, 0x46, 0x00, // "JFIF\0"
+    0x01, 0x01, // version 1.1
+    0x00, // units
+    0x00, 0x01, // X density
+    0x00, 0x01, // Y density
+    0x00, 0x00, // no thumbnail
+    // DQT (luminance table 0, all 1s)
+    0xFF, 0xDB, 0x00, 0x43, 0x00, // marker, length=67, precision=0, table=0
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,
+    // SOF0 (baseline, 8x8, 1 component)
+    0xFF, 0xC0, 0x00, 0x0B, // marker + length=11
+    0x08, // precision=8
+    0x00, 0x08, // height=8
+    0x00, 0x08, // width=8
+    0x01, // 1 component
+    0x01, 0x11, 0x00, // ID=1, sampling=0x11, QTable=0
+    // DHT (DC table 0): 1 code, category 0 = "0"
+    0xFF, 0xC4, 0x00, 0x14, // marker + length=20
+    0x00, // class=0(DC), table=0
+    0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, // counts: 1 code of length 1
+    0x00, // value: category 0
+    // DHT (AC table 0): 1 code, EOB = "0"
+    0xFF, 0xC4, 0x00, 0x14, // marker + length=20
+    0x10, // class=1(AC), table=0
+    0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+    0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, // counts: 1 code of length 1
+    0x00, // value: EOB
+    // SOS (start of scan)
+    0xFF, 0xDA, 0x00, 0x08, // marker + length=8
+    0x01, // 1 component
+    0x01, 0x00, // ID=1, DC table=0, AC table=0
+    0x00, 0x3F, 0x00, // SS=0, SE=63, Ah=0, Al=0
+    // Entropy-coded data: DC=cat0(1bit "0") + AC=EOB(1bit "0") = 2 bits, padded
+    0x3F,
+    // EOI
+    0xFF, 0xD9
+};
 
-TEST(compare_wic_vs_handwritten_bmp, {
-    auto hand_decoder = create_decoder(ImageFormat::BMP);
-    auto wic_decoder = create_decoder(ImageFormat::UNKNOWN);
-    ASSERT(hand_decoder != nullptr);
-    ASSERT(wic_decoder != nullptr);
-
-    auto hand_result = hand_decoder->decode(test_bmp, sizeof(test_bmp));
-    auto wic_result = wic_decoder->decode(test_bmp, sizeof(test_bmp));
-
-    if (hand_result.is_ok() && wic_result.is_ok()) {
-        auto hand_img = hand_result.unwrap();
-        auto wic_img = wic_result.unwrap();
-        ASSERT_EQ(hand_img.width, wic_img.width);
-        ASSERT_EQ(hand_img.height, wic_img.height);
-        ASSERT_EQ(hand_img.rgba_pixels.size(), wic_img.rgba_pixels.size());
-        if (hand_img.rgba_pixels.size() == wic_img.rgba_pixels.size()) {
-            for (size_t i = 0; i < hand_img.rgba_pixels.size(); i++) {
-                ASSERT_EQ(hand_img.rgba_pixels[i], wic_img.rgba_pixels[i]);
-            }
-        }
+TEST(decode_jpeg, {
+    auto decoder = create_decoder(ImageFormat::JPEG);
+    ASSERT(decoder != nullptr);
+    auto result = decoder->decode(test_jpeg, sizeof(test_jpeg));
+    ASSERT(result.is_ok());
+    auto img = std::move(result.unwrap());
+    ASSERT_EQ(img.width, 8u);
+    ASSERT_EQ(img.height, 8u);
+    ASSERT_EQ(img.rgba_pixels.size(), 8u * 8u * 4u);
+    // All pixels should be medium gray (128)
+    for (u32 i = 0; i < 8 * 8 * 4; i += 4) {
+        ASSERT_EQ(img.rgba_pixels[i + 0], 128u);
+        ASSERT_EQ(img.rgba_pixels[i + 1], 128u);
+        ASSERT_EQ(img.rgba_pixels[i + 2], 128u);
+        ASSERT_EQ(img.rgba_pixels[i + 3], 255u);
     }
 })
 
