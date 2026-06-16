@@ -464,6 +464,63 @@ Do NOT proceed to Phase 3. Stop after Phase 2 is verified complete.
 | New: `render/font_loader.cpp` | `FontLoader` — async fetch `@font-face` URLs, decode TTF/WOFF/WOFF2, register with `FontManager`. |
 | `browser/page_loader.cpp` | During CSS collection, extract `@font-face` URLs, fetch them concurrently with other resources. |
 
+### Phase 3 Prompt — Use this prompt in a new session:
+
+```
+You are tasked with completing Phase 3 of the browser roadmap at C:\github\browser\roadmap.md. Read the roadmap file first (Phase 3, lines 415-493, plus Phase 1 Lessons at lines 224-236, Phase 2 Lessons at lines 404-408, and Phase 3 Lessons at lines 481-492), then implement ALL items.
+
+WARNING: Phase 2 is being reworked concurrently and Phase 3 was previously attempted. The codebase has partial implementations from the prior attempt. Some of those files (e.g., image/decoder_wic.cpp) have been removed. Read the full state of every file before editing. The PageLoader currently has both old sync code and new async code from Phase 2 — accommodate both during transition.
+
+Phase 3: Sub-Resource Loading
+
+Goal: CSS, JavaScript, images, and fonts are fetched concurrently with HTML parsing. No sequential blocking.
+
+CRITICAL — Type system constraints (violating these will not compile):
+- task<T>::await_resume() returns Result<T>. DO NOT write task<Result<T>> — double-wraps.
+- task<std::string> is impossible (Result<T, E=std::string> asserts T != E). Use task<std::vector<u8>>.
+- task<void> cannot return errors. Use task<bool> for fallible void ops: true=success, co_return "error".
+- task<T> starts suspended. Call .start() or co_await to begin.
+- Always co_await thread_pool_executor{} at the start of CPU-bound coroutine pipelines.
+
+3.1 — Preload Scanner
+- html/preload_scanner.cpp + html/preload_scanner.hpp: Lightweight token peek that runs alongside the main HTML parser. Scans for <img src>, <link rel=stylesheet href>, <script src>, <link rel=preload>. Fires async fetch requests via ResourceLoader immediately — before the DOM tree is built.
+- html/parser.cpp: Feed tokens to preload scanner as they're emitted by the tokenizer.
+
+3.2 — Resource Loader
+- html/resource_loader.cpp + html/resource_loader.hpp: class ResourceLoader manages a priority queue of pending fetches. Priority: CSS (highest, blocks render) > JS (depends on async/defer) > images > fonts > prefetch (lowest). URL dedup. Supports async/defer/module for scripts.
+- browser/page_loader.cpp: Route all sub-resource fetches through ResourceLoader.
+
+3.3 — Image Loading & Decoding (ALL HAND-WRITTEN, NO WIC)
+- image/format.hpp: enum ImageFormat { PNG, JPEG, GIF, BMP, UNKNOWN }. detect_format() via magic bytes. struct Image { u32 w, h; std::vector<u8> rgba; }.
+- image/decoder.hpp: abstract Decoder base with virtual Result<Image> decode(span<u8>). Factory create_decoder(ImageFormat).
+- image/decoder_bmp.cpp: BITMAPFILEHEADER + BITMAPINFOHEADER. 1/4/8/16/24/32 bpp. RLE. Build incrementally: header first, then pixel data, then RLE.
+- image/decoder_gif.cpp: Header + logical screen descriptor → color table → LZW decode → deinterlace → palette-to-RGBA. No animation (single frame first). Build: header first, then LZW, then pixel output.
+- image/decoder_png.cpp: IHDR → PLTE (optional) → IDAT chunks → deflate via net/deflate.cpp → filter reconstruction (None/Sub/Up/Average/Paeth) → CRC. No Adam7 interlacing (pass 1 only). Build: chunk parsing first, then deflate, then filters.
+- image/decoder_jpeg.cpp: SOI → APP0 (JFIF) → DQT → SOF → DHT → SOS → Huffman decode → IDCT → chroma upsampling. Build incrementally: (1) marker parsing + struct population, (2) Huffman decode, (3) IDCT math, (4) MCU assembly, (5) chroma upsampling. Test each step.
+- CMakeLists.txt: add image/ library target. No external libs. No windowscodecs.lib.
+- browser/page_loader.cpp: <img src=""> → async fetch via ResourceLoader → magic byte detection → decode on thread pool → ship Image via channel → main thread renders.
+- render/painter.cpp: add DrawImage display command.
+- render/paint_executor.cpp: bind Image RGBA as OpenGL texture via glTexImage2D. Cache in std::map<const Image*, GLuint>.
+
+3.4 — Font Loading via @font-face
+- css/parser.cpp: Parse @font-face rules: font-family, src: url(), font-weight, font-style, unicode-range.
+- render/font_loader.cpp: FontLoader — async fetch @font-face URLs, decode TTF/WOFF/WOFF2, register with FontManager via load_from_memory.
+- browser/page_loader.cpp: During CSS collection, extract @font-face URLs, fetch concurrently via ResourceLoader.
+
+Incremental build rule for all large decoder files:
+- Never write more than 200-400 lines per edit. Build + test after each step.
+- Stub out the file with format detection + header parsing first, then fill in decode logic one stage at a time.
+
+Verification:
+1. cmake --build build succeeds with no warnings (-Werror)
+2. image_test.cpp passes: decode embedded test BMP, GIF, PNG, JPEG images, verify known pixel values
+3. <img src="file:///test.png"> renders on about:blank
+4. @font-face loaded fonts render in page text
+5. No WIC, no COM, no windowscodecs.lib anywhere
+6. All pre-existing tests still pass
+
+Do NOT proceed to Phase 4. Stop after Phase 3 is verified complete.
+```
 ### Phase 3 Checklist
 - [ ] Preload scanner runs alongside HTML tokenizer, fires async fetches for `<img>`, `<link>`, `<script>` before DOM build
 - [ ] `ResourceLoader` manages priority queue: CSS > JS > images > fonts > prefetch. URL dedup works.
@@ -479,17 +536,6 @@ Do NOT proceed to Phase 3. Stop after Phase 2 is verified complete.
 - [ ] All pre-existing tests still pass
 
 ### Phase 3 Lessons Learned
-
-| Lesson | Details |
-|--------|---------|
-| **COM initialization required for WIC** | `CoInitializeEx` must be called before any WIC operations. Since WIC may be used from thread pool threads, the decoder handles this internally with `CoInitializeEx(nullptr, COINIT_MULTITHREADED)`. |
-| **PNG CRC validation skipped** | CRC-32 validation on PNG chunks was implemented but removed to avoid unused-code warnings since the inflate step already validates data integrity. Can be re-added for strict validation. |
-| **WIC uses BGR pixel order** | WIC's `GUID_WICPixelFormat32bppRGBA` returns RGBA data, not BGRA. Matches our `Image` struct expectations. |
-| **GIF LZW edge cases** | GIF LZW decoding requires handling of clear code (resets dictionary), end-of-info code, and variable-width codes (3-12 bits). The decoder uses LSB-first packing per GIF spec. |
-| **BMP top-down vs bottom-up** | BMPs can be encoded top-down (negative height) or bottom-up (positive height). The decoder handles both. |
-| **@font-face CSS parsing** | The existing CSS parser's `parse_at_rule` method treats block contents as style rules (selectors + declarations). For @font-face, the body contains only declarations. Added a special case when `at.name == "font-face"`. |
-| **FontManager::load_from_memory** | The existing `FontManager` only had `load_from_file`. Added `load_from_memory` so `FontLoader` can register fonts from fetched data without writing temp files. |
-| **Tiled texturing approach** | The paint executor caches `Texture2D` objects keyed by `Image*` address, avoiding redundant GPU uploads when the same image appears multiple times on a page. |
 
 ---
 
