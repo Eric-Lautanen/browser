@@ -1,5 +1,6 @@
 #pragma once
 #include "socket.hpp"
+#include "../async/task.hpp"
 #include <memory>
 #include <vector>
 #include <string>
@@ -15,7 +16,7 @@ public:
     DNSResolver& operator=(DNSResolver&&) noexcept = default;
     DNSResolver(const DNSResolver&) = delete;
 
-    Result<std::vector<IPv4Address>> resolve_a(const std::string& hostname);
+    async::task<Result<std::vector<IPv4Address>>> resolve_a(const std::string& hostname);
     void set_dns_server(const IPv4Address& server) { dns_server_ = server; }
 
     static std::vector<u8> encode_name(const std::string& hostname);

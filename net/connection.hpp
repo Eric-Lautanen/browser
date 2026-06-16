@@ -1,6 +1,7 @@
 #pragma once
 #include "socket.hpp"
 #include "dns.hpp"
+#include "../async/task.hpp"
 #include <vector>
 #include <string>
 
@@ -20,6 +21,7 @@ public:
     Connection& operator=(Connection&&) noexcept;
     Connection(const Connection&) = delete;
 
+    // Sync methods (backward compat)
     Result<void> open(const std::string& host, u16 port, const ConnectionConfig& config = ConnectionConfig{});
     Result<u32> send(const u8* data, u32 len);
     Result<void> send_all(const u8* data, u32 len);
@@ -30,6 +32,13 @@ public:
     Socket* socket() { return socket_.get(); }
     const std::string& host() const { return host_; }
     u16 port() const { return port_; }
+
+    // Async methods
+    async::task<Result<void>> open_async(const std::string& host, u16 port, const ConnectionConfig& config = ConnectionConfig{});
+    async::task<Result<u32>> send_async(const u8* data, u32 len);
+    async::task<Result<void>> send_all_async(const u8* data, u32 len);
+    async::task<Result<u32>> receive_async(u8* buf, u32 len);
+    async::task<Result<std::vector<u8>>> receive_until_close_async(u32 chunk_size = 4096);
 
 private:
     std::unique_ptr<Socket> socket_;

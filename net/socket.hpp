@@ -3,9 +3,23 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <cstring>
 #include "../tests/utility.hpp"
+#include "../async/task.hpp"
 
 namespace browser::net {
+
+template<typename T>
+struct span {
+    T* data_;
+    u32 size_;
+    span() : data_(nullptr), size_(0) {}
+    span(T* data, u32 size) : data_(data), size_(size) {}
+    T* data() const { return data_; }
+    u32 size() const { return size_; }
+    T& operator[](u32 i) { return data_[i]; }
+    const T& operator[](u32 i) const { return data_[i]; }
+};
 
 struct IPv4Address {
     u8 octets[4];
@@ -37,6 +51,7 @@ public:
     Socket& operator=(Socket&&) noexcept = default;
     virtual ~Socket() = default;
 
+    // Sync methods (backward compat)
     virtual Result<void> connect(const std::string& host, u16 port) = 0;
     virtual Result<void> connect_ip(const IPv4Address& addr, u16 port) = 0;
     virtual Result<u32> send(const u8* data, u32 len) = 0;
@@ -46,6 +61,14 @@ public:
     virtual Result<void> set_read_timeout(u32 ms) = 0;
     virtual void close() = 0;
     virtual bool is_connected() const = 0;
+
+    // Async methods
+    virtual async::task<void> async_connect(const std::string& host, u16 port) = 0;
+    virtual async::task<void> async_connect_ip(const IPv4Address& addr, u16 port) = 0;
+    virtual async::task<u32> async_send(span<u8> data) = 0;
+    virtual async::task<u32> async_recv(span<u8> buf) = 0;
+    virtual async::task<void> async_send_all(span<u8> data) = 0;
+    virtual async::task<void> async_recv_exact(span<u8> buf) = 0;
 
     static Result<std::unique_ptr<Socket>> create_tcp();
 };
@@ -59,10 +82,15 @@ public:
     UDPSocket& operator=(UDPSocket&&) noexcept = default;
     virtual ~UDPSocket() = default;
 
+    // Sync methods
     virtual Result<void> send(const u8* data, u32 len, const IPv4Address& dest, u16 port) = 0;
     virtual Result<u32> receive(u8* buf, u32 len, IPv4Address* sender, u16* sender_port) = 0;
     virtual Result<void> set_read_timeout(u32 ms) = 0;
     virtual void close() = 0;
+
+    // Async methods
+    virtual async::task<u32> async_send_to(span<u8> data, const IPv4Address& dest, u16 port) = 0;
+    virtual async::task<u32> async_recv_from(span<u8> buf, IPv4Address* sender = nullptr, u16* sender_port = nullptr) = 0;
 
     static Result<std::unique_ptr<UDPSocket>> create();
 };
