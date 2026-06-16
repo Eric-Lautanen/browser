@@ -54,9 +54,9 @@ struct JPEGDecoder : Decoder {
         }
 
         Image img;
-        img.w = 0;
-        img.h = 0;
-        img.fmt = ImageFormat::JPEG;
+        img.width = 0;
+        img.height = 0;
+        img.format = ImageFormat::JPEG;
         return img;
     }
 };
