@@ -143,22 +143,22 @@ After all extractions, `engine.cpp` keeps only:
 Validate that `engine.cpp` is now under ~600 lines.
 
 ### Phase R1 Checklist
-- [ ] `css/layout/types.hpp` contains all extracted types. Old `layout.hpp` includes it.
-- [ ] `css/layout/resolve.cpp` — all 7 resolve functions moved; `engine.cpp` calls them via `LayoutEngine::` prefix
-- [ ] `css/layout/type_check.cpp` — all 9 predicate functions moved, dispatch intact
-- [ ] `css/layout/flex.cpp` — flexbox layout + 5 helpers moved, no circular deps
-- [ ] `css/layout/grid.cpp` — grid layout moved, GridState internal
-- [ ] `css/layout/block.cpp` — block layout moved
-- [ ] `css/layout/inline.cpp` — inline layout moved
-- [ ] `css/layout/table.cpp` — table layout moved
-- [ ] `css/layout/positioning.cpp` — absolute/fixed/sticky positioning moved
-- [ ] `css/layout/engine.cpp` — under ~600 lines; `build_layout_tree` and `layout` dispatcher only
-- [ ] `CMakeLists.txt` — `css/layout/` folder added as source group; all new .cpp files listed; `css/layout.hpp` still public
-- [ ] No circular includes between any `css/layout/*.cpp` files
-- [ ] `cmake --build build` succeeds with no warnings
-- [ ] All pre-existing tests pass identically before and after
-- [ ] clang-format and clang-tidy pass
-- [ ] Committed and pushed
+- [x] `css/layout/types.hpp` contains all extracted types. Old `layout.hpp` includes it.
+- [x] `css/layout/resolve.cpp` — all 7 resolve functions moved; `engine.cpp` calls them via `LayoutEngine::` prefix
+- [x] `css/layout/type_check.cpp` — all 9 predicate functions moved, dispatch intact
+- [x] `css/layout/flex.cpp` — flexbox layout + 5 helpers moved, no circular deps
+- [x] `css/layout/grid.cpp` — grid layout moved, GridState internal
+- [x] `css/layout/block.cpp` — block layout moved
+- [x] `css/layout/inline.cpp` — inline layout moved
+- [x] `css/layout/table.cpp` — table layout moved
+- [x] `css/layout/positioning.cpp` — absolute/fixed/sticky positioning moved
+- [x] `css/layout/engine.cpp` — under ~600 lines; `build_layout_tree` and `layout` dispatcher only
+- [x] `CMakeLists.txt` — `css/layout/` folder added as source group; all new .cpp files listed; `css/layout.hpp` still public
+- [x] No circular includes between any `css/layout/*.cpp` files
+- [x] `cmake --build build` succeeds with no warnings
+- [x] All pre-existing tests pass identically before and after
+- [x] clang-format and clang-tidy pass
+- [x] Committed and pushed
 
 ---
 
