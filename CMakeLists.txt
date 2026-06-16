@@ -69,7 +69,10 @@ add_library(net STATIC
     net/crypto/bignum.cpp
     net/crypto/ecc.cpp
     net/crypto/x25519.cpp
-    net/tls.cpp
+    net/tls/connection.cpp
+    net/tls/cipher.cpp
+    net/tls/record.cpp
+    net/tls/handshake.cpp
     net/websocket.cpp
     net/http_cache.cpp
     net/socket.hpp

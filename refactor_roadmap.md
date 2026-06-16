@@ -240,10 +240,10 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `net/tls/connection.hpp/cpp` | `TLSConnection` class, public API, state management. ~150 lines. |
 
 ### Phase R5 Checklist
-- [ ] Handshake, record, cipher all split with no circular deps
-- [ ] TLS 1.3 handshake completes to real servers
-- [ ] All tls_test tests pass
-- [ ] Committed and pushed
+- [x] Handshake, record, cipher all split with no circular deps
+- [x] TLS 1.3 handshake completes to real servers
+- [x] All tls_test tests pass
+- [x] Committed and pushed
 
 ---
 
