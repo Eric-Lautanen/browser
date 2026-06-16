@@ -6,6 +6,10 @@ namespace browser::render {
 Painter::Painter(TextRenderer* tr)
     : text_renderer_(tr) {}
 
+void Painter::set_image_data(const std::unordered_map<std::string, std::shared_ptr<image::Image>>& images) {
+    images_ = &images;
+}
+
 async::task<std::shared_ptr<DisplayList>> Painter::paint(css::LayoutNode* root) {
     co_await async::thread_pool_executor{};
     auto list = std::make_shared<DisplayList>();
@@ -18,6 +22,7 @@ void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
 
     paint_background(list, node, ox, oy);
     paint_border(list, node, ox, oy);
+    paint_image(list, node, ox, oy);
 
     bool has_clip = false;
     auto* overflow = node->style().get("overflow");
@@ -122,6 +127,29 @@ void Painter::paint_text(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
     list.push({PaintCommand::Type::DRAW_TEXT,
         {ox, oy, node->content.width, node->content.height + descender_pad},
         text_color, node->text(), font_size});
+}
+
+void Painter::paint_image(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
+    if (node->is_text()) return;
+    html::Node* n = node->node();
+    if (!n || n->type != html::NodeType::ELEMENT) return;
+    auto* el = static_cast<html::Element*>(n);
+    if (el->tag_name != "img") return;
+
+    std::string src = el->get_attribute("src");
+    if (src.empty() || !images_) return;
+
+    auto it = images_->find(src);
+    if (it == images_->end() || !it->second) return;
+
+    auto* img = it->second.get();
+    ImageId id = reinterpret_cast<ImageId>(img);
+    f32 bx = ox;
+    f32 by = oy;
+    f32 bw = node->content.width > 0 ? node->content.width : static_cast<f32>(img->width);
+    f32 bh = node->content.height > 0 ? node->content.height : static_cast<f32>(img->height);
+
+    list.push({PaintCommand::Type::DRAW_IMAGE, {bx, by, bw, bh}, Color::WHITE, "", 0, id});
 }
 
 Color Painter::resolve_color(const css::ComputedStyle& style,

@@ -6,6 +6,7 @@
 #include "../async/executor.hpp"
 #include "dom.hpp"
 #include "tokenizer.hpp"
+#include "preload_scanner.hpp"
 
 namespace browser::html {
 
@@ -21,9 +22,12 @@ enum class InsertionMode {
 class Parser {
 public:
     Parser();
+    Parser(PreloadScanner* scanner, const std::string& base_url = "");
     std::unique_ptr<Document> parse(const std::string& html);
 
 private:
+    PreloadScanner* preload_scanner_ = nullptr;
+    std::string base_url_;
     std::unique_ptr<Tokenizer> tokenizer_;
     std::unique_ptr<Document> document_;
     InsertionMode mode_ = InsertionMode::INITIAL;
@@ -98,6 +102,12 @@ bool is_void_element(const std::string& tag);
 inline async::task<std::unique_ptr<Document>> parse(const std::string& html) {
     co_await async::thread_pool_executor{};
     Parser p;
+    co_return p.parse(html);
+}
+
+inline async::task<std::unique_ptr<Document>> parse(const std::string& html, PreloadScanner* scanner, const std::string& base_url) {
+    co_await async::thread_pool_executor{};
+    Parser p(scanner, base_url);
     co_return p.parse(html);
 }
 

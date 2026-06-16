@@ -3,6 +3,7 @@
 #include "../render/painter.hpp"
 #include "../render/text_renderer.hpp"
 #include "../css/layout.hpp"
+#include "../async/task.hpp"
 
 // ── Helper: create a CSSValue with a COLOR type ─────────────────────────
 
@@ -38,9 +39,9 @@ TEST(paint_fill_rect_for_background, {
     node.border = {0, 0, 0, 0};
 
     browser::render::Painter painter(nullptr);
-    painter.paint(&node);
+    auto _list = painter.paint(&node).sync_wait().unwrap();
 
-    auto& cmds = painter.display_list().commands();
+    auto& cmds = _list->commands();
     // Background FILL_RECT + PUSH_CLIP + POP_CLIP = 3
     if (cmds.size() != 3) { _err = "expected 3 commands got " + std::to_string(cmds.size()); return false; }
     if (cmds[0].type != browser::render::PaintCommand::Type::FILL_RECT) { _err = "expected FILL_RECT"; return false; }
@@ -67,9 +68,9 @@ TEST(paint_draw_text_for_text_node, {
     node.content = {0, 0, 50, 20};
 
     browser::render::Painter painter(nullptr);
-    painter.paint(&node);
+    auto _list = painter.paint(&node).sync_wait().unwrap();
 
-    auto& cmds = painter.display_list().commands();
+    auto& cmds = _list->commands();
     // PUSH_CLIP + DRAW_TEXT + POP_CLIP = 3
     if (cmds.size() != 3) { _err = "expected 3 commands got " + std::to_string(cmds.size()); return false; }
     if (cmds[1].type != browser::render::PaintCommand::Type::DRAW_TEXT) { _err = "expected DRAW_TEXT"; return false; }
@@ -97,9 +98,9 @@ TEST(paint_clip_pairs_balanced, {
     parent->children.push_back(std::move(child));
 
     browser::render::Painter painter(nullptr);
-    painter.paint(parent.get());
+    auto _list = painter.paint(parent.get()).sync_wait().unwrap();
 
-    auto& cmds = painter.display_list().commands();
+    auto& cmds = _list->commands();
     int depth = 0;
     unsigned push_count = 0, pop_count = 0;
     for (auto& cmd : cmds) {
@@ -122,8 +123,8 @@ TEST(paint_clip_pairs_balanced, {
 
 TEST(paint_null_root_produces_no_commands, {
     browser::render::Painter painter(nullptr);
-    painter.paint(nullptr);
-    if (painter.display_list().commands().size() != 0) { _err = "expected no commands"; return false; }
+    auto _list = painter.paint(nullptr).sync_wait().unwrap();
+    if (_list->commands().size() != 0) { _err = "expected no commands"; return false; }
 })
 
 TEST(paint_tree_with_no_visible_children_produces_clips, {
@@ -133,9 +134,9 @@ TEST(paint_tree_with_no_visible_children_produces_clips, {
     node.content = {0, 0, 100, 50};
 
     browser::render::Painter painter(nullptr);
-    painter.paint(&node);
+    auto _list = painter.paint(&node).sync_wait().unwrap();
 
-    auto& cmds = painter.display_list().commands();
+    auto& cmds = _list->commands();
     // With overflow:hidden, we get PUSH_CLIP + POP_CLIP = 2
     if (cmds.size() < 2) { _err = "expected at least 2 commands"; return false; }
     if (cmds[0].type != browser::render::PaintCommand::Type::PUSH_CLIP) { _err = "expected PUSH_CLIP"; return false; }
@@ -153,10 +154,10 @@ TEST(paint_border_emits_four_fill_rects, {
     node.border = {5, 5, 5, 5};
 
     browser::render::Painter painter(nullptr);
-    painter.paint(&node);
+    auto _list = painter.paint(&node).sync_wait().unwrap();
 
     unsigned fill_rect_count = 0;
-    for (auto& cmd : painter.display_list().commands()) {
+    for (auto& cmd : _list->commands()) {
         if (cmd.type == browser::render::PaintCommand::Type::FILL_RECT) {
             fill_rect_count++;
         }
@@ -172,10 +173,10 @@ TEST(paint_border_skip_all_zero, {
     node.border = {0, 0, 0, 0};
 
     browser::render::Painter painter(nullptr);
-    painter.paint(&node);
+    auto _list = painter.paint(&node).sync_wait().unwrap();
 
     unsigned fill_rect_count = 0;
-    for (auto& cmd : painter.display_list().commands()) {
+    for (auto& cmd : _list->commands()) {
         if (cmd.type == browser::render::PaintCommand::Type::FILL_RECT) {
             fill_rect_count++;
         }
@@ -190,10 +191,10 @@ TEST(paint_border_edge_sizes, {
     node.border = {3, 0, 0, 0};
 
     browser::render::Painter painter(nullptr);
-    painter.paint(&node);
+    auto _list = painter.paint(&node).sync_wait().unwrap();
 
     unsigned fill_count = 0;
-    for (auto& cmd : painter.display_list().commands()) {
+    for (auto& cmd : _list->commands()) {
         if (cmd.type == browser::render::PaintCommand::Type::FILL_RECT) {
             fill_count++;
         }
@@ -214,9 +215,9 @@ TEST(paint_background_covers_padding_area, {
     node.border = {5, 5, 5, 5};
 
     browser::render::Painter painter(nullptr);
-    painter.paint(&node);
+    auto _list = painter.paint(&node).sync_wait().unwrap();
 
-    auto& cmds = painter.display_list().commands();
+    auto& cmds = _list->commands();
     // Background FILL_RECT is first
     if (cmds.size() < 1) { _err = "expected at least 1 command"; return false; }
     if (cmds[0].type != browser::render::PaintCommand::Type::FILL_RECT) { _err = "expected FILL_RECT"; return false; }

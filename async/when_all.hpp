@@ -30,14 +30,12 @@ struct when_all_context {
 
 template<typename T>
 task<void> make_when_all_task(task<T> t, when_all_context* ctx, Result<T>* out) {
-    auto r = co_await t;
-    if (out) *out = std::move(r);
-    ctx->task_completed();
-}
-
-template<>
-inline task<void> make_when_all_task<void>(task<void> t, when_all_context* ctx, void*) {
-    co_await t;
+    if constexpr (std::is_same_v<T, void>) {
+        co_await t;
+    } else {
+        auto r = co_await t;
+        if (out) *out = std::move(r);
+    }
     ctx->task_completed();
 }
 

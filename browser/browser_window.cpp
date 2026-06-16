@@ -492,7 +492,7 @@ void BrowserWindow::render_page() {
     renderer_->flush();
     render::PaintExecutor executor(renderer_.get(), text_renderer_.get());
     executor.set_offset(0, ChromeUI::CHROME_H - static_cast<f32>(chrome_.scroll_y));
-    executor.execute(page.display_list);
+    if (page.display_list) executor.execute(*page.display_list);
     // Re-apply outer scissor — executor may have disabled it at end of display list
     pgl::glEnable(GL_SCISSOR_TEST);
     pgl::glScissor(0, 0, static_cast<GLsizei>(viewport_width_),
@@ -978,6 +978,9 @@ void BrowserWindow::update_chrome_state() {
     }
     if (bookmarks_) {
         chrome_.is_bookmarked = bookmarks_->is_bookmarked(chrome_.url);
+    }
+    if (page_loader_) {
+        chrome_.is_loading = page_loader_->is_loading();
     }
 }
 

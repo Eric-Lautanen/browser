@@ -1881,10 +1881,10 @@ async::task<std::unique_ptr<LayoutNode>> LayoutEngine::layout(
     if (!body) {
         body = html::find_element_by_tag(doc, "html");
     }
-    if (!body) return nullptr;
+    if (!body) co_return nullptr;
 
     auto tree = build_layout_tree(body, styles);
-    if (!tree) return nullptr;
+    if (!tree) co_return nullptr;
 
     layout_block(tree.get(), viewport_width, viewport_height);
 

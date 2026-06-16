@@ -2,18 +2,22 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <cstdint>
 #include "../css/layout.hpp"
 #include "renderer.hpp"
 
 namespace browser::render {
 
+using ImageId = std::uintptr_t;
+
 struct PaintCommand {
-    enum class Type { FILL_RECT, DRAW_TEXT, PUSH_CLIP, POP_CLIP };
+    enum class Type { FILL_RECT, DRAW_TEXT, PUSH_CLIP, POP_CLIP, DRAW_IMAGE };
     Type type;
     css::Rect rect;
     Color color;
     std::string text;
     f32 font_size = 16;
+    ImageId image_id = 0;
 };
 
 class DisplayList {
