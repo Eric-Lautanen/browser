@@ -79,3 +79,10 @@ stdout.txt
 tls_err.txt
 tls_out.txt
 test_output.txt
+
+# Runtime debug logs
+browser_err*.txt
+browser_out*.txt
+browser_http_err*.txt
+trace_log*.txt
+glyph_drop.txt
