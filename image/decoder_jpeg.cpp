@@ -379,15 +379,15 @@ private:
         if (num_sc < 1 || num_sc > 4) return false;
         // Baseline JPEG requires all components in one scan
         if (num_sc != comp_count_) return false;
-        // SOS segment length must match: 2(len) + 1(nc) + 2*nc + 3(spectral)
-        if (sos_len < static_cast<u16>(6 + 2 * num_sc)) return false;
+        // SOS segment must contain: 1(nc) + 2*nc + 3(spectral) bytes after length
+        size_t sos_payload = static_cast<size_t>(sos_len) - 2;
+        size_t expected = static_cast<size_t>(1 + 2 * num_sc + 3);
+        if (sos_payload < expected) return false;
 
-        size_t sos_end = pos_ + (sos_len - 2) - 1 - 2 * num_sc - 3;
         for (int i = 0; i < num_sc; i++) {
-            if (pos_ + 2 > size_ || pos_ > sos_end) return false;
+            if (pos_ + 2 > size_) return false;
             u8 cid = data_[pos_++];
             u8 tbl = data_[pos_++];
-            // find matching component
             for (int j = 0; j < comp_count_; j++) {
                 if (comps_[j].id == cid) {
                     comps_[j].dc_tbl = (tbl >> 4) & 0x0F;
@@ -397,7 +397,7 @@ private:
             }
         }
         // spectral selection (3 bytes) — only baseline (0,63,0) is handled
-        if (pos_ + 3 > size_ || pos_ > sos_end) return false;
+        if (pos_ + 3 > size_) return false;
         pos_ += 3;
 
         // --- bit reader starts at current position ---

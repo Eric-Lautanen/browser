@@ -337,7 +337,7 @@ task<LoadedPage> PageLoader::load(const std::string& url_str) {
 - [x] `browser/page_loader.cpp`: `load()` rewritten as coroutine pipeline. HTML fetch → decompress → parse → CSS cascade → layout → paint → channel, all off-main-thread.
 - [x] `BrowserWindow::start_load()` fires async pipeline and returns immediately; result delivered via `channel<LoadedPage>`.
 - [x] UI remains interactive during page load (click/scroll/type while loading) — main thread never blocks.
-- [x] All pre-existing test executables pass (0 regressions). Phase 3 `image_test` has 2 pre-existing WIC stub failures, `net_test`/`parser_test` pre-existing hangs.
+- [x] All pre-existing test executables pass (0 regressions). `net_test`/`parser_test` have pre-existing hangs unrelated to this phase. Phase 3 WIC stub tests removed in Phase 3.
 
 ### Phase 2 Lessons
 1. **`task<T>::await_resume()` returns `Result<T>`**: The `co_await` expression on `task<T>` yields `Result<T>`, not `T`. All call sites must check `r.is_ok()` before `r.unwrap()`. For `task<void>`, `co_await` returns nothing (void). Never write `task<Result<T>>` — that double-wraps.
@@ -425,6 +425,7 @@ task<LoadedPage> PageLoader::load(const std::string& url_str) {
 4. **WIC references removed**: The `image_test.cpp` had tests referencing WIC decoders (`create_decoder(ImageFormat::UNKNOWN)` expected a COM-based WIC decoder). These were replaced with direct handwritten decoder tests. All image decoders are now pure C++ with no system imaging dependencies.
 5. **No regressions**: All 27 pre-existing test executables pass. The `test_framework_test::trivial_fail` is the only expected failure. `net_test`/`parser_test` pre-existing hangs noted in Phase 2 checklist remain as pre-existing conditions unrelated to Phase 3.
 6. **`task<Result<T>>` constraint**: The JPEG decoder's `decode()` returns `Result<Image>` (not `task<Result<Image>>`), matching the `Decoder` base class signature. This is correct — the decoder is called from a thread pool context and doesn't need to be async itself.
+7. **Post-audit fixes (June 2026)**: A second-pass audit of the JPEG decoder found 10 issues beyond the original stub. Critical fixes: bit reader infinite-loop on EOI marker (0xFF backtrack left `bits_left` at 0, re-reading the marker forever), chroma buffer storage formula bug (`(blk_x+bx)/h_samp_max_` vs `blk_x/h_samp_max_+xx` compressed 8×8 IDCT output into 4 columns for 4:2:0), and all 6 additional issues enumerated below.
 
 ## Phase 4: JavaScript Execution & DOM Bindings
 
