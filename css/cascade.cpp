@@ -5,13 +5,15 @@
 #include "../async/executor.hpp"
 #include <algorithm>
 #include <cstdlib>
+#include <unordered_set>
+#include <regex>
 
 namespace browser::css {
 
 static constexpr const char* UA_STYLESHEET = R"(
 body { display: block; margin: 8px; }
 div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, table, tr, th, td { display: block; }
-pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, thead, tbody, tfoot, tfoot, optgroup, option, select, button, textarea, input { display: block; }
+pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, thead, tbody, tfoot, optgroup, option, select, button, textarea, input { display: block; }
 b, i, u, s, span, a, strong, em, code, mark, sub, sup, small, label, abbr, cite, dfn, kbd, q, samp, tt, var { display: inline; }
 h1 { font-size: 2em; font-weight: bold; }
 h2 { font-size: 1.5em; font-weight: bold; }
@@ -27,6 +29,11 @@ em { font-style: italic; }
 code { font-family: monospace; }
 )";
 
+static constexpr const char* UA_STYLESHEET_PSEUDO = R"(
+::before { display: inline; content: ''; }
+::after { display: inline; content: ''; }
+)";
+
 bool is_inherited(const std::string& property) {
     return property == "color" ||
            property == "font-size" ||
@@ -35,14 +42,271 @@ bool is_inherited(const std::string& property) {
            property == "font-style" ||
            property == "line-height" ||
            property == "visibility" ||
-           property == "cursor";
+           property == "cursor" ||
+           property == "text-align" ||
+           property == "white-space" ||
+           property == "word-break" ||
+           property == "overflow-wrap";
+}
+
+static bool evaluate_media_query(const std::string& prelude, f32 viewport_width, f32 viewport_height,
+                                  f32 device_pixel_ratio, const std::string& color_scheme) {
+    // Simplistic media query evaluation
+    std::string lower;
+    for (char c : prelude) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+    // Default: always apply if no conditions
+    if (lower.empty() || lower == "all") return true;
+
+    // Check for not
+    bool negate = false;
+    if (lower.substr(0, 4) == "not ") {
+        negate = true;
+        lower = lower.substr(4);
+    }
+
+    // Check for "only" keyword
+    if (lower.substr(0, 5) == "only ") {
+        lower = lower.substr(5);
+    }
+
+    // Evaluate "and" separated conditions
+    auto eval_single = [&](const std::string& cond) -> bool {
+        if (cond == "all") return true;
+        if (cond == "screen") return true;
+        if (cond == "print") return false;
+
+        // min-width: Npx
+        std::regex minw_re(R"(min-width:\s*(\d+)\s*px)");
+        std::smatch m;
+        if (std::regex_search(cond, m, minw_re)) {
+            f32 minw = std::stof(m[1].str());
+            return viewport_width >= minw;
+        }
+
+        // max-width: Npx
+        std::regex maxw_re(R"(max-width:\s*(\d+)\s*px)");
+        if (std::regex_search(cond, m, maxw_re)) {
+            f32 maxw = std::stof(m[1].str());
+            return viewport_width <= maxw;
+        }
+
+        // min-height: Npx
+        std::regex minh_re(R"(min-height:\s*(\d+)\s*px)");
+        if (std::regex_search(cond, m, minh_re)) {
+            f32 minh = std::stof(m[1].str());
+            return viewport_height >= minh;
+        }
+
+        // max-height: Npx
+        std::regex maxh_re(R"(max-height:\s*(\d+)\s*px)");
+        if (std::regex_search(cond, m, maxh_re)) {
+            f32 maxh = std::stof(m[1].str());
+            return viewport_height <= maxh;
+        }
+
+        // width: Npx
+        std::regex w_re(R"(width:\s*(\d+)\s*px)");
+        if (std::regex_search(cond, m, w_re)) {
+            f32 w = std::stof(m[1].str());
+            return std::abs(viewport_width - w) < 0.5f;
+        }
+
+        // height: Npx
+        std::regex h_re(R"(height:\s*(\d+)\s*px)");
+        if (std::regex_search(cond, m, h_re)) {
+            f32 h = std::stof(m[1].str());
+            return std::abs(viewport_height - h) < 0.5f;
+        }
+
+        // prefers-color-scheme
+        if (cond.find("prefers-color-scheme") != std::string::npos) {
+            if (cond.find("dark") != std::string::npos) return color_scheme == "dark";
+            if (cond.find("light") != std::string::npos) return color_scheme == "light";
+        }
+
+        // prefers-reduced-motion
+        if (cond.find("prefers-reduced-motion") != std::string::npos) {
+            if (cond.find("reduce") != std::string::npos) return false; // No reduced motion by default
+            if (cond.find("no-preference") != std::string::npos) return true;
+        }
+
+        // orientation
+        if (cond.find("orientation") != std::string::npos) {
+            if (cond.find("portrait") != std::string::npos) return viewport_height > viewport_width;
+            if (cond.find("landscape") != std::string::npos) return viewport_width >= viewport_height;
+        }
+
+        // resolution
+        std::regex res_re(R"(resolution:\s*(\d+(?:\.\d+)?)\s*dpi)");
+        if (std::regex_search(cond, m, res_re)) {
+            f32 res = std::stof(m[1].str());
+            return device_pixel_ratio * 96.0f >= res;
+        }
+
+        // hover
+        if (cond.find("hover") != std::string::npos) {
+            return true; // Assume hover-capable
+        }
+
+        // pointer
+        if (cond.find("pointer") != std::string::npos) {
+            if (cond.find("fine") != std::string::npos) return true;
+            if (cond.find("coarse") != std::string::npos) return false;
+        }
+
+        // Unknown condition - default to true
+        return true;
+    };
+
+    // Split by "and"
+    bool result = true;
+    size_t pos = 0;
+    while (pos < lower.size()) {
+        while (pos < lower.size() && (lower[pos] == ' ' || lower[pos] == '(' || lower[pos] == ')')) pos++;
+        if (pos >= lower.size()) break;
+        size_t and_pos = lower.find(" and ", pos);
+        std::string cond;
+        if (and_pos == std::string::npos) {
+            cond = lower.substr(pos);
+            pos = lower.size();
+        } else {
+            cond = lower.substr(pos, and_pos - pos);
+            pos = and_pos + 5;
+        }
+        // Trim whitespace and parentheses
+        while (!cond.empty() && (cond.back() == ' ' || cond.back() == ')')) cond.pop_back();
+        while (!cond.empty() && (cond[0] == ' ' || cond[0] == '(')) cond = cond.substr(1);
+
+        if (!cond.empty() && cond != "and") {
+            result = result && eval_single(cond);
+        }
+    }
+
+    return negate ? !result : result;
+}
+
+static void collect_rules_from_sheet(const StyleSheet& sheet, const html::Element* el,
+                                      const html::Document* doc, std::vector<MatchedDecl>& decls,
+                                      u32& source_order, u8 origin,
+                                      f32 viewport_width, f32 viewport_height,
+                                      f32 device_pixel_ratio, const std::string& color_scheme) {
+    for (const auto& rule : sheet.rules) {
+        for (const auto& sel : rule.selectors) {
+            if (matches_selector(sel, el, doc)) {
+                for (const auto& decl : rule.declarations) {
+                    decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
+                }
+                break;
+            }
+        }
+    }
+    for (const auto& at : sheet.at_rules) {
+        std::string lower_name;
+        for (char c : at.name) lower_name += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (lower_name == "media") {
+            if (evaluate_media_query(at.prelude, viewport_width, viewport_height,
+                                      device_pixel_ratio, color_scheme)) {
+                for (const auto& rule : at.rules) {
+                    for (const auto& sel : rule.selectors) {
+                        if (matches_selector(sel, el, doc)) {
+                            for (const auto& decl : rule.declarations) {
+                                decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        for (const auto& nested : at.at_rules) {
+            std::string nlower;
+            for (char c : nested.name) nlower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (nlower == "media") {
+                if (evaluate_media_query(nested.prelude, viewport_width, viewport_height,
+                                          device_pixel_ratio, color_scheme)) {
+                    for (const auto& rule : nested.rules) {
+                        for (const auto& sel : rule.selectors) {
+                            if (matches_selector(sel, el, doc)) {
+                                for (const auto& decl : rule.declarations) {
+                                    decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Custom property resolution: resolve var(--name, fallback)
+static std::string resolve_var(const std::string& value_str,
+                                const ComputedStyle& style) {
+    (void)style;
+    std::string result = value_str;
+    size_t var_pos = result.find("var(");
+    while (var_pos != std::string::npos) {
+        size_t close_paren = result.find(')', var_pos);
+        if (close_paren == std::string::npos) break;
+
+        std::string inner = result.substr(var_pos + 4, close_paren - var_pos - 4);
+        // Trim whitespace
+        while (!inner.empty() && inner[0] == ' ') inner = inner.substr(1);
+        while (!inner.empty() && inner.back() == ' ') inner.pop_back();
+
+        // Split by comma for fallback
+        std::string var_name;
+        std::string fallback;
+        size_t comma = inner.find(',');
+        if (comma != std::string::npos) {
+            var_name = inner.substr(0, comma);
+            fallback = inner.substr(comma + 1);
+            while (!fallback.empty() && fallback[0] == ' ') fallback = fallback.substr(1);
+        } else {
+            var_name = inner;
+        }
+
+        std::string replacement;
+        // Look up the custom property value
+        if (var_name.size() >= 2 && var_name[0] == '-' && var_name[1] == '-') {
+            auto* v = style.properties.find(var_name) != style.properties.end()
+                      ? &style.properties.find(var_name)->second : nullptr;
+            if (v) {
+                replacement = v->string_value.empty() ? v->keyword : v->string_value;
+            } else if (style.parent) {
+                // Walk inheritance chain
+                const ComputedStyle* parent = style.parent;
+                while (parent) {
+                    auto pit = parent->properties.find(var_name);
+                    if (pit != parent->properties.end()) {
+                        const auto& pv = pit->second;
+                        replacement = pv.string_value.empty() ? pv.keyword : pv.string_value;
+                        break;
+                    }
+                    parent = parent->parent;
+                }
+            }
+        }
+
+        if (replacement.empty()) replacement = fallback;
+
+        result.replace(var_pos, close_paren - var_pos + 1, replacement);
+        var_pos = result.find("var(", var_pos + replacement.size());
+    }
+    return result;
 }
 
 async::task<std::unordered_map<const html::Element*, ComputedStyle>>
-Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
+Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
+                        f32 viewport_width, f32 viewport_height,
+                        f32 device_pixel_ratio, const std::string& color_scheme) {
     co_await async::thread_pool_executor{};
     CssParser ua_parser(UA_STYLESHEET);
     StyleSheet ua = ua_parser.parse();
+    CssParser ua_pseudo_parser(UA_STYLESHEET_PSEUDO);
+    StyleSheet ua_pseudo = ua_pseudo_parser.parse();
 
     std::unordered_map<const html::Element*, std::vector<MatchedDecl>> matched;
     u32 source_order = 0;
@@ -55,48 +319,13 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
 
         std::vector<MatchedDecl> decls;
 
-        // Collect rules from a stylesheet (including @media)
-        for (u8 origin = 0; origin <= 1; origin++) {
-            const StyleSheet* sheet = (origin == 0) ? &ua : &author;
-            for (const auto& rule : sheet->rules) {
-                for (const auto& sel : rule.selectors) {
-                    if (matches_selector(sel, el, &doc)) {
-                        for (const auto& decl : rule.declarations) {
-                            decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
-                        }
-                        break;
-                    }
-                }
-            }
-            for (const auto& at : sheet->at_rules) {
-                if (at.name == "media") {
-                    for (const auto& rule : at.rules) {
-                        for (const auto& sel : rule.selectors) {
-                            if (matches_selector(sel, el, &doc)) {
-                                for (const auto& decl : rule.declarations) {
-                                    decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
-                                }
-                                break;
-                            }
-                        }
-                    }
-                }
-                for (const auto& nested : at.at_rules) {
-                    if (nested.name == "media") {
-                        for (const auto& rule : nested.rules) {
-                            for (const auto& sel : rule.selectors) {
-                                if (matches_selector(sel, el, &doc)) {
-                                    for (const auto& decl : rule.declarations) {
-                                        decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        // Collect from UA sheet
+        collect_rules_from_sheet(ua, el, doc_node, decls, source_order, 0,
+                                  viewport_width, viewport_height, device_pixel_ratio, color_scheme);
+
+        // Collect from author sheet
+        collect_rules_from_sheet(author, el, doc_node, decls, source_order, 1,
+                                  viewport_width, viewport_height, device_pixel_ratio, color_scheme);
 
         // Collect inline style from element's style attribute (origin=2, highest)
         std::string inline_style = el->get_attribute("style");
@@ -115,18 +344,15 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
         matched[el] = std::move(decls);
     });
 
-    // Phase 2: Sort (origin: 0=UA, 1=author, 2=inline; !important flips the order)
+    // Phase 2: Sort
     for (auto& [el, decls] : matched) {
         std::sort(decls.begin(), decls.end(), [](const MatchedDecl& a, const MatchedDecl& b) {
-            // !important declarations win regardless of origin
             bool a_imp = a.decl->important;
             bool b_imp = b.decl->important;
             if (a_imp != b_imp) return a_imp > b_imp;
-            // For non-important: 0=UA, 1=author, 2=inline (higher wins)
             if (!a_imp) {
                 if (a.origin != b.origin) return a.origin < b.origin;
             } else {
-                // For important: reverse order — author !important beats UA !important
                 if (a.origin != b.origin) return a.origin > b.origin;
             }
             if (a.specificity.bits != b.specificity.bits) return a.specificity.bits < b.specificity.bits;
@@ -145,8 +371,89 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
         auto& decls = matched[el];
         for (const auto& md : decls) {
             if (!md.decl->values.empty()) {
+                std::string prop = md.decl->property;
+
+                // Detect custom properties (--*)
+                if (prop.size() >= 2 && prop[0] == '-' && prop[1] == '-') {
+                    // Store as string value
+                    CSSValue cv;
+                    cv.type = CSSValue::Type::STRING;
+                    for (size_t vi = 0; vi < md.decl->values.size(); vi++) {
+                        if (vi > 0) cv.string_value += ' ';
+                        const auto& val = md.decl->values[vi];
+                        switch (val.type) {
+                            case CSSValue::Type::KEYWORD: cv.string_value += val.keyword; break;
+                            case CSSValue::Type::STRING: cv.string_value += val.string_value; break;
+                            case CSSValue::Type::NUMBER: cv.string_value += std::to_string(val.number); break;
+                            case CSSValue::Type::LENGTH: {
+                                cv.string_value += std::to_string(val.length.value);
+                                switch (val.length.unit) {
+                                    case Length::Unit::PX: cv.string_value += "px"; break;
+                                    case Length::Unit::EM: cv.string_value += "em"; break;
+                                    case Length::Unit::REM: cv.string_value += "rem"; break;
+                                    case Length::Unit::PERCENT: cv.string_value += "%"; break;
+                                    case Length::Unit::VW: cv.string_value += "vw"; break;
+                                    case Length::Unit::VH: cv.string_value += "vh"; break;
+                                    default: break;
+                                }
+                                break;
+                            }
+                            case CSSValue::Type::COLOR: {
+                                char buf[16];
+                                snprintf(buf, sizeof(buf), "#%02x%02x%02x", val.color.r, val.color.g, val.color.b);
+                                cv.string_value += buf;
+                                break;
+                            }
+                            default: cv.string_value += val.keyword; break;
+                        }
+                    }
+                    style.properties[prop] = cv;
+                    continue;
+                }
+
                 if (md.decl->values.size() == 1) {
-                    style.properties[md.decl->property] = md.decl->values[0];
+                    CSSValue val = md.decl->values[0];
+                    // Resolve var() in string/function values
+                        if (val.type == CSSValue::Type::KEYWORD && val.keyword.substr(0, 4) == "var(") {
+                            std::string resolved = resolve_var(val.keyword, style);
+                        CSSValue cv;
+                        // Try to re-parse as number/length/color
+                        if ((!resolved.empty() && std::isdigit(static_cast<unsigned char>(resolved[0]))) ||
+                            (!resolved.empty() && (resolved[0] == '-' || resolved[0] == '+'))) {
+                            char* end = nullptr;
+                            f32 num = std::strtof(resolved.c_str(), &end);
+                            if (end && end != resolved.c_str()) {
+                                std::string unit = end;
+                                if (unit == "px") { cv.type = CSSValue::Type::LENGTH; cv.length = {num, Length::Unit::PX}; }
+                                else if (unit == "em") { cv.type = CSSValue::Type::LENGTH; cv.length = {num, Length::Unit::EM}; }
+                                else if (unit == "%") { cv.type = CSSValue::Type::PERCENTAGE; cv.number = num; }
+                                else if (unit.empty()) { cv.type = CSSValue::Type::NUMBER; cv.number = num; }
+                                else { cv.type = CSSValue::Type::STRING; cv.string_value = resolved; }
+                            } else {
+                                cv.type = CSSValue::Type::STRING;
+                                cv.string_value = resolved;
+                            }
+                        } else if (resolved[0] == '#') {
+                            cv.type = CSSValue::Type::COLOR;
+                            cv.color = Color::from_hex(resolved);
+                        } else {
+                            auto named = Color::from_name(resolved);
+                            if (named.a != 0 || resolved == "transparent") {
+                                cv.type = CSSValue::Type::COLOR;
+                                cv.color = named;
+                            } else {
+                                cv.type = CSSValue::Type::KEYWORD;
+                                cv.keyword = resolved;
+                            }
+                        }
+                        style.properties[prop] = cv;
+                    } else if (val.type == CSSValue::Type::STRING && val.string_value.find("var(") != std::string::npos) {
+                        std::string resolved = resolve_var(val.string_value, style);
+                        val.string_value = resolved;
+                        style.properties[prop] = val;
+                    } else {
+                        style.properties[prop] = val;
+                    }
                 } else {
                     CSSValue combined;
                     combined.type = CSSValue::Type::STRING;
@@ -174,6 +481,9 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
                                     case Length::Unit::VW: combined.string_value += "vw"; break;
                                     case Length::Unit::VH: combined.string_value += "vh"; break;
                                     case Length::Unit::NONE: combined.string_value += "fr"; break;
+                                    case Length::Unit::DEG: combined.string_value += "deg"; break;
+                                    case Length::Unit::S: combined.string_value += "s"; break;
+                                    case Length::Unit::MS: combined.string_value += "ms"; break;
                                 }
                                 break;
                             }
@@ -194,16 +504,18 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
                             case CSSValue::Type::PERCENTAGE:
                             case CSSValue::Type::URL:
                                 break;
+                            default:
+                                break;
                         }
                     }
-                    style.properties[md.decl->property] = std::move(combined);
+                    style.properties[prop] = std::move(combined);
                 }
-                // Expand shorthands into longhands
+
+                // Expand shorthands
                 {
                     const std::string& prop = md.decl->property;
                     const CSSValue& val = style.properties[md.decl->property];
 
-                    // Handle multi-value border-* shorthands: extract width and color
                     if ((prop == "border" || prop == "border-top" || prop == "border-right" ||
                          prop == "border-bottom" || prop == "border-left") &&
                         md.decl->values.size() > 1) {
@@ -233,68 +545,10 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
                         }
                     }
 
-                    if (prop == "margin" && val.type == CSSValue::Type::STRING) {
+                    // margin shorthand expansion
+                    auto expand_four_sides = [&](const std::string& base, const std::string& val_str) {
                         std::vector<std::string> parts;
-                        std::string s = val.string_value;
-                        size_t pp = 0;
-                        while (pp < s.size()) {
-                            while (pp < s.size() && s[pp] == ' ') pp++;
-                            if (pp >= s.size()) break;
-                            size_t end = s.find(' ', pp);
-                            if (end == std::string::npos) end = s.size();
-                            parts.push_back(s.substr(pp, end - pp));
-                            pp = end + 1;
-                        }
-                        auto set_side = [&](const std::string& side, const std::string& pv) {
-                            if (pv.empty() || style.has(side)) return;
-                            CSSValue cv;
-                            if (pv == "auto") {
-                                cv.type = CSSValue::Type::KEYWORD;
-                                cv.keyword = "auto";
-                            } else {
-                                cv.type = CSSValue::Type::STRING;
-                                cv.string_value = pv;
-                                char* endp = nullptr;
-                                f32 num = std::strtof(pv.c_str(), &endp);
-                                if (endp != pv.c_str()) {
-                                    cv.type = CSSValue::Type::LENGTH;
-                                    cv.length.value = num;
-                                    std::string unit = endp;
-                                    if (unit == "px") cv.length.unit = Length::Unit::PX;
-                                    else if (unit == "em") cv.length.unit = Length::Unit::EM;
-                                    else if (unit == "rem") cv.length.unit = Length::Unit::REM;
-                                    else if (unit == "%") cv.length.unit = Length::Unit::PERCENT;
-                                    else { cv.type = CSSValue::Type::STRING; cv.string_value = pv; }
-                                }
-                            }
-                            style.properties[side] = cv;
-                        };
-                        auto set_side_fn = set_side;
-                        if (parts.size() == 1) {
-                            set_side_fn("margin-top", parts[0]);
-                            set_side_fn("margin-right", parts[0]);
-                            set_side_fn("margin-bottom", parts[0]);
-                            set_side_fn("margin-left", parts[0]);
-                        } else if (parts.size() == 2) {
-                            set_side_fn("margin-top", parts[0]);
-                            set_side_fn("margin-right", parts[1]);
-                            set_side_fn("margin-bottom", parts[0]);
-                            set_side_fn("margin-left", parts[1]);
-                        } else if (parts.size() == 3) {
-                            set_side_fn("margin-top", parts[0]);
-                            set_side_fn("margin-right", parts[1]);
-                            set_side_fn("margin-bottom", parts[2]);
-                            set_side_fn("margin-left", parts[1]);
-                        } else if (parts.size() == 4) {
-                            set_side_fn("margin-top", parts[0]);
-                            set_side_fn("margin-right", parts[1]);
-                            set_side_fn("margin-bottom", parts[2]);
-                            set_side_fn("margin-left", parts[3]);
-                        }
-                    }
-                    if (prop == "padding" && val.type == CSSValue::Type::STRING) {
-                        std::vector<std::string> parts;
-                        std::string s = val.string_value;
+                        std::string s = val_str;
                         size_t pp = 0;
                         while (pp < s.size()) {
                             while (pp < s.size() && s[pp] == ' ') pp++;
@@ -306,38 +560,54 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
                         }
                         auto set_side_fn = [&](const std::string& side, const std::string& pv) {
                             if (pv.empty() || style.has(side)) return;
-                            CSSValue cv; cv.type = CSSValue::Type::STRING; cv.string_value = pv;
-                            char* endp = nullptr;
-                            f32 num = std::strtof(pv.c_str(), &endp);
-                            if (endp != pv.c_str()) {
-                                cv.type = CSSValue::Type::LENGTH;
-                                cv.length.value = num;
-                                std::string unit = endp;
-                                if (unit == "px") cv.length.unit = Length::Unit::PX;
-                                else if (unit == "em") cv.length.unit = Length::Unit::EM;
-                                else if (unit == "rem") cv.length.unit = Length::Unit::REM;
-                                else if (unit == "%") cv.length.unit = Length::Unit::PERCENT;
-                                else { cv.type = CSSValue::Type::STRING; cv.string_value = pv; }
+                            CSSValue cv;
+                            if (pv == "auto") { cv.type = CSSValue::Type::KEYWORD; cv.keyword = "auto"; }
+                            else {
+                                cv.type = CSSValue::Type::STRING; cv.string_value = pv;
+                                char* endp = nullptr;
+                                f32 num = std::strtof(pv.c_str(), &endp);
+                                if (endp != pv.c_str()) {
+                                    cv.type = CSSValue::Type::LENGTH; cv.length.value = num;
+                                    std::string unit = endp;
+                                    if (unit == "px") cv.length.unit = Length::Unit::PX;
+                                    else if (unit == "em") cv.length.unit = Length::Unit::EM;
+                                    else if (unit == "rem") cv.length.unit = Length::Unit::REM;
+                                    else if (unit == "%") cv.length.unit = Length::Unit::PERCENT;
+                                    else { cv.type = CSSValue::Type::STRING; cv.string_value = pv; }
+                                }
                             }
                             style.properties[side] = cv;
                         };
                         if (parts.size() == 1) {
-                            set_side_fn("padding-top", parts[0]);
-                            set_side_fn("padding-right", parts[0]);
-                            set_side_fn("padding-bottom", parts[0]);
-                            set_side_fn("padding-left", parts[0]);
+                            set_side_fn(base + "-top", parts[0]);
+                            set_side_fn(base + "-right", parts[0]);
+                            set_side_fn(base + "-bottom", parts[0]);
+                            set_side_fn(base + "-left", parts[0]);
                         } else if (parts.size() == 2) {
-                            set_side_fn("padding-top", parts[0]);
-                            set_side_fn("padding-right", parts[1]);
-                            set_side_fn("padding-bottom", parts[0]);
-                            set_side_fn("padding-left", parts[1]);
+                            set_side_fn(base + "-top", parts[0]);
+                            set_side_fn(base + "-right", parts[1]);
+                            set_side_fn(base + "-bottom", parts[0]);
+                            set_side_fn(base + "-left", parts[1]);
+                        } else if (parts.size() == 3) {
+                            set_side_fn(base + "-top", parts[0]);
+                            set_side_fn(base + "-right", parts[1]);
+                            set_side_fn(base + "-bottom", parts[2]);
+                            set_side_fn(base + "-left", parts[1]);
                         } else if (parts.size() == 4) {
-                            set_side_fn("padding-top", parts[0]);
-                            set_side_fn("padding-right", parts[1]);
-                            set_side_fn("padding-bottom", parts[2]);
-                            set_side_fn("padding-left", parts[3]);
+                            set_side_fn(base + "-top", parts[0]);
+                            set_side_fn(base + "-right", parts[1]);
+                            set_side_fn(base + "-bottom", parts[2]);
+                            set_side_fn(base + "-left", parts[3]);
                         }
+                    };
+
+                    if (prop == "margin" && val.type == CSSValue::Type::STRING) {
+                        expand_four_sides("margin", val.string_value);
                     }
+                    if (prop == "padding" && val.type == CSSValue::Type::STRING) {
+                        expand_four_sides("padding", val.string_value);
+                    }
+
                     auto expand_border_side = [&](const std::string& side, const CSSValue& bval) {
                         if (!style.has(side + "-width") && !style.has("border-width"))
                             style.properties[side + "-width"] = bval;
@@ -348,53 +618,65 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
                         expand_border_side("border-bottom", val);
                         expand_border_side("border-left", val);
                     }
-                    if ((prop == "border-top" || prop == "border-right" ||
-                         prop == "border-bottom" || prop == "border-left") &&
-                        val.type == CSSValue::Type::STRING) {
-                        expand_border_side(prop, val);
-                    }
+
                     if (prop == "border-width" && val.type == CSSValue::Type::STRING) {
-                        // Expand 1-4 values similar to margin/padding
-                        std::vector<std::string> parts;
-                        std::string s = val.string_value;
-                        size_t pp = 0;
-                        while (pp < s.size()) {
-                            while (pp < s.size() && s[pp] == ' ') pp++;
-                            if (pp >= s.size()) break;
-                            size_t end = s.find(' ', pp);
-                            if (end == std::string::npos) end = s.size();
-                            parts.push_back(s.substr(pp, end - pp));
-                            pp = end + 1;
-                        }
-                        auto set_bw = [&](const std::string& side, const std::string& pv) {
-                            if (pv.empty() || style.has(side)) return;
-                            CSSValue cv; cv.type = CSSValue::Type::STRING; cv.string_value = pv;
-                            char* endp = nullptr;
-                            f32 num = std::strtof(pv.c_str(), &endp);
-                            if (endp != pv.c_str()) {
-                                cv.type = CSSValue::Type::LENGTH; cv.length.value = num;
-                                std::string unit = endp;
-                                if (unit == "px") cv.length.unit = Length::Unit::PX;
-                                else if (unit == "em") cv.length.unit = Length::Unit::EM;
-                                else if (unit == "rem") cv.length.unit = Length::Unit::REM;
-                                else { cv.type = CSSValue::Type::STRING; cv.string_value = pv; }
-                            }
-                            style.properties[side] = cv;
-                        };
-                        if (parts.size() == 1) {
-                            set_bw("border-top-width", parts[0]); set_bw("border-right-width", parts[0]);
-                            set_bw("border-bottom-width", parts[0]); set_bw("border-left-width", parts[0]);
-                        } else if (parts.size() == 2) {
-                            set_bw("border-top-width", parts[0]); set_bw("border-right-width", parts[1]);
-                            set_bw("border-bottom-width", parts[0]); set_bw("border-left-width", parts[1]);
-                        } else if (parts.size() == 4) {
-                            set_bw("border-top-width", parts[0]); set_bw("border-right-width", parts[1]);
-                            set_bw("border-bottom-width", parts[2]); set_bw("border-left-width", parts[3]);
-                        }
+                        expand_four_sides("border", val.string_value + "-width");
                     }
+
                     if (prop == "background" && (val.type == CSSValue::Type::STRING || val.type == CSSValue::Type::COLOR)) {
                         if (!style.has("background-color"))
                             style.properties["background-color"] = val;
+                    }
+
+                    // animation shorthand
+                    if (prop == "animation" && val.type == CSSValue::Type::STRING) {
+                        std::string s = val.string_value;
+                        size_t sp = 0;
+                        std::vector<std::string> parts;
+                        while (sp < s.size()) {
+                            while (sp < s.size() && s[sp] == ' ') sp++;
+                            if (sp >= s.size()) break;
+                            size_t end = s.find(' ', sp);
+                            if (end == std::string::npos) end = s.size();
+                            parts.push_back(s.substr(sp, end - sp));
+                            sp = end + 1;
+                        }
+
+                        auto set_anim = [&](const std::string& subprop, const std::string& v) {
+                            CSSValue cv; cv.type = CSSValue::Type::KEYWORD; cv.keyword = v;
+                            style.properties[subprop] = cv;
+                        };
+
+                        // Very simplified animation shorthand parse
+                        // First numeric value with 's' or 'ms' is duration
+                        // Second numeric value is delay
+                        // After that, keywords map to their respective sub-properties
+                        int num_seen = 0;
+                        for (const auto& p : parts) {
+                            if (!p.empty() && (std::isdigit(static_cast<unsigned char>(p[0])) || p[0] == '.')) {
+                                char* end = nullptr;
+                                f32 num = std::strtof(p.c_str(), &end);
+                                if (end && *end != '\0') {
+                                    if (num_seen == 0) {
+                                        if (std::string(end) == "ms") set_anim("animation-duration", std::to_string(num / 1000.0f) + "s");
+                                        else set_anim("animation-duration", p);
+                                        num_seen++;
+                                    }
+                                } else {
+                                    num_seen++;
+                                }
+                            }
+                        }
+
+                        if (!parts.empty() && parts[0] != "infinite") {
+                            std::string first = parts[0];
+                            if (first != "ease" && first != "linear" && first != "ease-in" &&
+                                first != "ease-out" && first != "ease-in-out" &&
+                                first.substr(0, 6) != "cubic-" && first.substr(0, 6) != "steps(" &&
+                                first.find("ms") == std::string::npos && first.find('s') == std::string::npos) {
+                                set_anim("animation-name", first);
+                            }
+                        }
                     }
                 }
             }
@@ -403,8 +685,7 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
         styles[el] = std::move(style);
     });
 
-    // Relink parent pointers after map is finalized
-    // (the map may reallocate during insertion, invalidating pointers)
+    // Relink parent pointers
     html::traverse_depth_first(doc_node, [&](html::Node* node) {
         if (node->type != html::NodeType::ELEMENT) return;
         auto* el = static_cast<html::Element*>(node);

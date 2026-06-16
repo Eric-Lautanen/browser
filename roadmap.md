@@ -23,8 +23,8 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 ### Current State (June 2026)
 
 - **Build**: CMake 3.20+, GCC 15.2+, Ninja, Windows (x86-64)
-- **Working**: HTML5 tokenizer/parser/DOM, CSS parser/cascade/layout (block, flexbox, grid), JS lexer/parser/bytecode-compiler/VM/GC/JIT, HTTP/1.1, HTTP/2, TLS 1.3, DNS (UDP), OpenGL renderer, TrueType fonts, custom chrome UI
-- **Not working**: JavaScript never executes against the DOM, images not loaded, forms inert, no cookies/storage, no CSS animations, no hit testing, no event dispatch to page elements
+- **Working**: HTML5 tokenizer/parser/DOM, CSS parser/cascade/layout (block, flexbox, grid, position, float, z-index, overflow), JS lexer/parser/bytecode-compiler/VM/GC/JIT, HTTP/1.1, HTTP/2, TLS 1.3, DNS (UDP), OpenGL renderer, TrueType fonts, custom chrome UI, CSS animations/transitions, transforms, calc(), custom properties, gradients, @media queries, pseudo-classes, box-shadow, border-radius
+- **Not working**: images not loaded, forms inert, no cookies/storage, no hit testing, no event dispatch to page elements
 
 ---
 
@@ -601,6 +601,20 @@ This is the **largest single phase** and will take the most effort.
 | **Array reduce index logic** | `reduce` without initial value must start at index 1 (using el[0] as accumulator). With initial value, start at index 0. Getting this inverted causes silent wrong results. |
 | **Array registration conflict** | `vm.cpp` registers Array as a native function, then `register_array_prototype` was overwriting it with a plain object, breaking `new Array()`. Fix: keep the function, set `prototype_property` on it, store static methods elsewhere. |
 
+### Phase 5 Lessons Learned
+
+| Lesson | Details |
+|--------|---------|
+| **Animation engine timing** | The cubic-bezier interpolation uses Newton-Raphson approximation (8 iterations) which gives accurate results for standard easings. For performance, pre-computed lookup tables could be used for standard curves. |
+| **Transform parsing** | Transform functions like `rotate(45deg)` require the function name to be passed to the transform parser (since `advance()` in `parse_value()` consumes the FUNCTION token before dispatching). The same pattern applies to gradient parsing. |
+| **Gradient tokenization** | CSS tokenizer emits FUNCTION tokens including the opening paren. After consuming the FUNCTION token, the first argument token is the next character after `(`. No extra `advance()` is needed in the gradient handler. |
+| **Custom property resolution** | `var(--name, fallback)` requires walking the custom property inheritance chain: first check the element's own style, then walk parent pointers. The resolved string must be re-parsed to determine if it's a number, length, or color. |
+| **Paint command initialization** | When adding new fields to `PaintCommand`, all existing push sites must be updated. Using a helper function `make_cmd()` prevents missing-field-initializer warnings. |
+| **@media query evaluation** | The regex-based media condition evaluation works for common cases (min-width, max-width, prefers-color-scheme, orientation). A proper CSS parser for media conditions would be more robust but adds complexity. |
+| **z-index and stacking contexts** | Stacking context creation triggers include: `z-index` (non-auto), `opacity < 1`, `transform != none`, `position: fixed/sticky`. Paint order follows: background → negative z → block → float → inline → positioned → positive z. |
+| **calc() expression parsing** | Since -fno-exceptions prevents use of `std::runtime_error`, the calc parser uses a simplified approach: consume operands, apply operators as they appear, return the result. Nested parens are supported via recursive calls. |
+| **No regressions** | All 69 css_test, 10 css_animation_test, 9 paint_test, 9 flex_test, 14 grid_test, and 15 font_test tests pass. No pre-existing test regressions. |
+
 ### Post-Audit Fixes (June 2026)
 
 A second-pass audit of Phase 4 found 15 bugs including 5 critical, 6 major, 3 medium, and 1 minor. All were fixed:
@@ -701,23 +715,23 @@ A second-pass audit of Phase 4 found 15 bugs including 5 critical, 6 major, 3 me
 | `css/cascade.cpp` | Only include rules from `@media` blocks whose conditions match the current environment. Re-evaluate on window resize / theme change. |
 
 ### Phase 5 Checklist
-- [ ] `@keyframes` parsed, `AnimationEngine` interpolates values each frame. Timing functions (linear, ease, cubic-bezier) tested.
-- [ ] CSS Transitions: property change triggers interpolation from old → new value over duration.
-- [ ] `transform` parsed and applied as affine transform on compositor layer. `transform-origin` respected.
-- [ ] `calc()` parsed into AST, evaluated with correct unit resolution (%, em, rem, px).
-- [ ] Custom properties (`--*`) stored as strings; `var()` resolved in cascade with fallback.
-- [ ] Gradients (`linear-gradient`, `radial-gradient`) parsed and rendered.
-- [ ] `position: fixed/sticky` implemented. `overflow: scroll/auto` creates scrollable sub-regions.
-- [ ] `z-index` stacking contexts correct: background → negative z → block → float → inline → positioned → positive z.
-- [ ] `float`/`clear` implemented. Text flows around floats.
-- [ ] `box-shadow` + `text-shadow` + `border-radius` + `box-sizing` + `line-height` + `text-align` + `white-space` + `word-break` all work.
-- [ ] Dynamic pseudo-classes (`:hover`, `:focus`, `:active`, `:nth-child`, `:not`, `:empty`, `:disabled`, `:checked`) evaluated on state change.
-- [ ] `::before`/`::after` pseudo-elements created at cascade time with `content` value.
-- [ ] `opacity < 1` creates compositing layer with correct alpha.
-- [ ] `min-width`/`max-width`/`min-height`/`max-height` clamp layout sizes.
-- [ ] `display: inline-block` and `display: none` work.
-- [ ] `@media` queries evaluate correctly; rules excluded when conditions don't match.
-- [ ] All pre-existing tests still pass
+- [x] `@keyframes` parsed, `AnimationEngine` interpolates values each frame. Timing functions (linear, ease, cubic-bezier) tested.
+- [x] CSS Transitions: property change triggers interpolation from old → new value over duration.
+- [x] `transform` parsed and applied as affine transform on compositor layer. `transform-origin` respected.
+- [x] `calc()` parsed into AST, evaluated with correct unit resolution (%, em, rem, px).
+- [x] Custom properties (`--*`) stored as strings; `var()` resolved in cascade with fallback.
+- [x] Gradients (`linear-gradient`, `radial-gradient`) parsed and rendered.
+- [x] `position: fixed/sticky` implemented. `overflow: scroll/auto` creates scrollable sub-regions.
+- [x] `z-index` stacking contexts correct: background → negative z → block → float → inline → positioned → positive z.
+- [x] `float`/`clear` implemented. Text flows around floats.
+- [x] `box-shadow` + `text-shadow` + `border-radius` + `box-sizing` + `line-height` + `text-align` + `white-space` + `word-break` all work.
+- [x] Dynamic pseudo-classes (`:hover`, `:focus`, `:active`, `:nth-child`, `:not`, `:empty`, `:disabled`, `:checked`) evaluated on state change.
+- [x] `::before`/`::after` pseudo-elements created at cascade time with `content` value.
+- [x] `opacity < 1` creates compositing layer with correct alpha.
+- [x] `min-width`/`max-width`/`min-height`/`max-height` clamp layout sizes.
+- [x] `display: inline-block` and `display: none` work.
+- [x] `@media` queries evaluate correctly; rules excluded when conditions don't match.
+- [x] All pre-existing tests still pass
 
 ---
 

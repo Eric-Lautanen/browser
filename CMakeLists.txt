@@ -143,6 +143,9 @@ add_library(css STATIC
     css/layout.cpp
     css/grid.hpp
     css/grid.cpp
+    css/animation.hpp
+    css/animation.cpp
+    css/transition.cpp
 )
 target_include_directories(css PUBLIC .)
 target_link_libraries(css html)
@@ -292,6 +295,9 @@ target_link_libraries(flex_test test_framework css html)
 
 add_executable(grid_test tests/main.cpp tests/grid_test.cpp)
 target_link_libraries(grid_test test_framework css html)
+
+add_executable(css_animation_test tests/main.cpp tests/css_animation_test.cpp)
+target_link_libraries(css_animation_test test_framework css html)
 
 # --- JavaScript tests ---
 add_executable(js_test tests/main.cpp tests/js_test.cpp)

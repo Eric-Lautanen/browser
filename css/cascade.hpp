@@ -35,7 +35,10 @@ struct ComputedStyle {
 class Cascade {
 public:
     async::task<std::unordered_map<const html::Element*, ComputedStyle>>
-    compute_async(const html::Document& doc, const StyleSheet& author);
+    compute_async(const html::Document& doc, const StyleSheet& author,
+                  f32 viewport_width = 800, f32 viewport_height = 600,
+                  f32 device_pixel_ratio = 1.0f,
+                  const std::string& color_scheme = "light");
 };
 
 }

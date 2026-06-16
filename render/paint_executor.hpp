@@ -24,7 +24,16 @@ private:
     std::unordered_map<ImageId, std::unique_ptr<class Texture2D>> texture_cache_;
     const std::unordered_map<std::string, std::shared_ptr<image::Image>>* images_ = nullptr;
     class Texture2D* get_or_create_texture(const image::Image& img);
+
+    // New state for Phase 5
+    std::vector<css::Mat3x3> transform_stack_;
+    css::Mat3x3 current_transform_;
+    std::vector<f32> opacity_stack_;
+    f32 current_opacity_ = 1.0f;
+    std::unordered_map<uint64_t, std::unique_ptr<class Texture2D>> gradient_cache_;
+    class Texture2D* get_or_create_gradient_texture(const css::CSSGradient& grad, f32 w, f32 h);
+    void generate_linear_gradient_colors(const css::CSSGradient& grad, f32 w, f32 h,
+                                          std::vector<Color>& pixels);
 };
 
-
-} // namespace browser::render
+}

@@ -1,5 +1,6 @@
 #include "selector_match.hpp"
 #include <cctype>
+#include <cmath>
 
 namespace browser::css {
 
@@ -71,7 +72,6 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
             return false;
         }
         case SimpleSelector::Type::PSEUDO_CLASS: {
-            // Basic pseudo-class support
             if (ss.name == "first-child") {
                 if (!el->parent || el->parent->children.empty()) return false;
                 return el->parent->children.front().get() == el;
@@ -91,13 +91,102 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
             if (ss.name == "root") {
                 return el->parent && el->parent->type == html::NodeType::DOCUMENT;
             }
-            // All other pseudo-classes (:hover, :focus, :nth-child, :not, etc.) are
-            // not supported — return false so they don't incorrectly apply styles.
+            if (ss.name == "empty") {
+                return el->children.empty();
+            }
+            if (ss.name == "disabled") {
+                return el->has_attribute("disabled");
+            }
+            if (ss.name == "enabled") {
+                auto tag = el->tag_name;
+                for (auto& c : tag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                return (tag == "input" || tag == "button" || tag == "select" || tag == "textarea") &&
+                       !el->has_attribute("disabled");
+            }
+            if (ss.name == "checked") {
+                return el->has_attribute("checked");
+            }
+            if (ss.name == "target") {
+                return el->has_attribute("id"); // simplified: matches if element has an id
+            }
+            if (ss.name.substr(0, 10) == "nth-child(") {
+                std::string inner = ss.name.substr(10);
+                if (!inner.empty() && inner.back() == ')') inner.pop_back();
+                // Find element index among siblings (1-based)
+                if (!el->parent) return false;
+                i32 idx = 0;
+                for (auto& sib : el->parent->children) {
+                    if (sib.get() == el) break;
+                    if (sib->type == html::NodeType::ELEMENT) idx++;
+                }
+                idx++; // 1-based
+
+                if (inner == "odd") return idx % 2 == 1;
+                if (inner == "even") return idx % 2 == 0;
+
+                // Parse an+b
+                i32 a = 0, b = 0;
+                int n_pos = inner.find('n');
+                if (n_pos != -1) {
+                    std::string a_part = inner.substr(0, n_pos);
+                    if (a_part.empty() || a_part == "+") a = 1;
+                    else if (a_part == "-") a = -1;
+                    else a = std::stoi(a_part);
+                    std::string b_part = inner.substr(n_pos + 1);
+                    if (!b_part.empty()) {
+                        if (b_part[0] == '+') b_part = b_part.substr(1);
+                        b = std::stoi(b_part);
+                    }
+                } else {
+                    b = std::stoi(inner);
+                }
+                if (a == 0) return idx == b;
+                if (idx < b) return false;
+                return (idx - b) % a == 0;
+            }
+            if (ss.name.substr(0, 5) == "not(") {
+                // Negation pseudo-class - simplified: parse inner simple selector
+                std::string inner = ss.name.substr(4);
+                if (!inner.empty() && inner.back() == ')') inner.pop_back();
+                // Trim whitespace
+                while (!inner.empty() && (inner.back() == ' ' || inner.back() == '\t')) inner.pop_back();
+                while (!inner.empty() && (inner[0] == ' ' || inner[0] == '\t')) inner = inner.substr(1);
+                if (inner.empty()) return true;
+                // Check if this element matches the negated selector
+                if (inner[0] == '.') {
+                    // Class negation
+                    return !match_simple({SimpleSelector::Type::CLASS, inner.substr(1), "", 0}, el);
+                }
+                if (inner[0] == '#') {
+                    return !match_simple({SimpleSelector::Type::ID, inner.substr(1), "", 0}, el);
+                }
+                // Tag negation
+                SimpleSelector tag_sel;
+                tag_sel.type = SimpleSelector::Type::TAG;
+                tag_sel.name = inner;
+                return !match_simple(tag_sel, el);
+            }
+            // Dynamic pseudo-classes - evaluated later via element state
+            if (ss.name == "hover" || ss.name == "focus" || ss.name == "active" ||
+                ss.name == "visited" || ss.name == "link" || ss.name == "focus-within" ||
+                ss.name == "focus-visible") {
+                // These are evaluated based on element state stored externally.
+                // For now, match by default unless we can check state
+                std::string state = el->get_attribute("data-pseudo-state");
+                if (!state.empty()) {
+                    return state.find(ss.name) != std::string::npos;
+                }
+                return false; // Don't match by default for safety
+            }
             return false;
         }
-        case SimpleSelector::Type::PSEUDO_ELEMENT:
-            // Pseudo-elements select into generated content — not supported
+        case SimpleSelector::Type::PSEUDO_ELEMENT: {
+            // Pseudo-elements select into generated content
+            if (ss.name == "before" || ss.name == "after") {
+                return true; // These are handled during cascade
+            }
             return false;
+        }
     }
     return false;
 }

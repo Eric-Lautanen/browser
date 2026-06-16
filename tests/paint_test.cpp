@@ -84,9 +84,9 @@ TEST(paint_draw_text_for_text_node, {
 
 TEST(paint_clip_pairs_balanced, {
     browser::css::ComputedStyle parent_style;
-    parent_style.properties["overflow"] = {browser::css::CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, ""};
+    parent_style.properties["overflow"] = {browser::css::CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}};
     browser::css::ComputedStyle child_style;
-    child_style.properties["overflow"] = {browser::css::CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, ""};
+    child_style.properties["overflow"] = {browser::css::CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}};
 
     auto parent = std::make_unique<browser::css::LayoutNode>(nullptr, parent_style);
     parent->content = {0, 0, 400, 300};
@@ -129,7 +129,7 @@ TEST(paint_null_root_produces_no_commands, {
 
 TEST(paint_tree_with_no_visible_children_produces_clips, {
     browser::css::ComputedStyle style;
-    style.properties["overflow"] = {browser::css::CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, ""};
+    style.properties["overflow"] = {browser::css::CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}};
     browser::css::LayoutNode node(nullptr, style);
     node.content = {0, 0, 100, 50};
 

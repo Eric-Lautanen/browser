@@ -3,6 +3,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <cmath>
 #include "../tests/utility.hpp"
 #include "css_values.hpp"
 #include "cascade.hpp"
@@ -30,6 +31,62 @@ enum class JustifyContent { FLEX_START, FLEX_END, CENTER, SPACE_BETWEEN, SPACE_A
 enum class AlignItems { STRETCH, FLEX_START, FLEX_END, CENTER, BASELINE };
 enum class AlignSelf { AUTO, STRETCH, FLEX_START, FLEX_END, CENTER, BASELINE };
 enum class AlignContent { FLEX_START, FLEX_END, CENTER, SPACE_BETWEEN, SPACE_AROUND, STRETCH };
+
+struct Mat3x3 {
+    f32 m[3][3] = {{1,0,0},{0,1,0},{0,0,1}};
+
+    static Mat3x3 identity() { Mat3x3 r; return r; }
+    static Mat3x3 from_values(f32 a, f32 b, f32 c, f32 d, f32 e, f32 f) {
+        Mat3x3 r;
+        r.m[0][0] = a; r.m[0][1] = c; r.m[0][2] = e;
+        r.m[1][0] = b; r.m[1][1] = d; r.m[1][2] = f;
+        return r;
+    }
+
+    Mat3x3 translate(f32 tx, f32 ty) const {
+        Mat3x3 r;
+        r.m[0][0] = 1; r.m[0][1] = 0; r.m[0][2] = tx;
+        r.m[1][0] = 0; r.m[1][1] = 1; r.m[1][2] = ty;
+        r.m[2][0] = 0; r.m[2][1] = 0; r.m[2][2] = 1;
+        return multiply(r);
+    }
+
+    Mat3x3 scale(f32 sx, f32 sy) const {
+        Mat3x3 r;
+        r.m[0][0] = sx; r.m[0][1] = 0;  r.m[0][2] = 0;
+        r.m[1][0] = 0;  r.m[1][1] = sy; r.m[1][2] = 0;
+        r.m[2][0] = 0;  r.m[2][1] = 0;  r.m[2][2] = 1;
+        return multiply(r);
+    }
+
+    Mat3x3 rotate(f32 angle) const {
+        f32 c = std::cos(angle), s = std::sin(angle);
+        Mat3x3 r;
+        r.m[0][0] = c; r.m[0][1] = -s; r.m[0][2] = 0;
+        r.m[1][0] = s; r.m[1][1] = c;  r.m[1][2] = 0;
+        r.m[2][0] = 0; r.m[2][1] = 0;  r.m[2][2] = 1;
+        return multiply(r);
+    }
+
+    Mat3x3 skew(f32 ax, f32 ay) const {
+        Mat3x3 r;
+        r.m[0][0] = 1; r.m[0][1] = std::tan(ax); r.m[0][2] = 0;
+        r.m[1][0] = std::tan(ay); r.m[1][1] = 1;  r.m[1][2] = 0;
+        r.m[2][0] = 0;            r.m[2][1] = 0;  r.m[2][2] = 1;
+        return multiply(r);
+    }
+
+    Mat3x3 multiply(const Mat3x3& o) const {
+        Mat3x3 r;
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++) {
+                r.m[i][j] = 0;
+                for (int k = 0; k < 3; k++)
+                    r.m[i][j] += m[i][k] * o.m[k][j];
+            }
+        return r;
+    }
+};
 
 struct FlexConfig {
     FlexDirection direction = FlexDirection::ROW;
@@ -81,6 +138,15 @@ public:
     Rect content;
     EdgeSizes padding, border, margin;
 
+    // Extended properties
+    Mat3x3 transform_matrix;
+    bool has_transform = false;
+    bool is_floating = false;
+    u32 float_direction = 0; // 0=left, 1=right
+    bool is_scrollable = false;
+    f32 scroll_offset_x = 0, scroll_offset_y = 0;
+    f32 opacity = 1.0f;
+
     Rect get_padding_box() const;
     Rect get_border_box() const;
     Rect get_margin_box() const;
@@ -92,12 +158,14 @@ public:
     ComputedStyle& style() { return style_; }
     bool is_text() const { return is_text_; }
     const std::string& text() const { return text_; }
+    const std::string& element_key() const { return element_key_; }
 
 private:
     html::Node* node_;
     ComputedStyle style_;
     bool is_text_ = false;
     std::string text_;
+    std::string element_key_;
 };
 
 class LayoutEngine {
@@ -111,6 +179,8 @@ public:
         f32 viewport_height);
 
     static bool is_grid_element(const ComputedStyle& style);
+    static f32 get_z_index(const ComputedStyle& style);
+    f32 resolve_calc_string(const std::string& calc_expr, f32 parent_value, f32 font_size) const;
     void resolve_grid_tracks(std::vector<GridTrackDef>& tracks, f32 container_size, f32 font_size, f32 gap = 0);
 
 private:
@@ -143,6 +213,8 @@ private:
     static bool is_block_element(const ComputedStyle& style);
     static bool is_inline_element(const ComputedStyle& style);
     static bool is_positioned(const ComputedStyle& style);
+    static bool is_fixed_or_sticky(const ComputedStyle& style);
+    static bool creates_stacking_context(const ComputedStyle& style);
     static bool is_flex_element(const ComputedStyle& style);
     static LayoutNode* find_positioned_ancestor(LayoutNode* node);
 
@@ -163,4 +235,4 @@ private:
     void layout_grid(LayoutNode* node, f32 containing_width, f32 containing_height);
 };
 
-} // namespace browser::css
+}

@@ -11,13 +11,19 @@ namespace browser::render {
 using ImageId = std::uintptr_t;
 
 struct PaintCommand {
-    enum class Type { FILL_RECT, DRAW_TEXT, PUSH_CLIP, POP_CLIP, DRAW_IMAGE };
+    enum class Type { FILL_RECT, DRAW_TEXT, PUSH_CLIP, POP_CLIP, DRAW_IMAGE,
+                      DRAW_GRADIENT, DRAW_SHADOW, PUSH_TRANSFORM, POP_TRANSFORM,
+                      PUSH_OPACITY, POP_OPACITY, DRAW_ROUNDED_RECT };
     Type type;
     css::Rect rect;
     Color color;
     std::string text;
     f32 font_size = 16;
     ImageId image_id = 0;
+    css::CSSGradient gradient;
+    f32 radius = 0; // for border-radius
+    css::Mat3x3 transform;
+    f32 opacity = 1.0f;
 };
 
 class DisplayList {
@@ -41,4 +47,4 @@ inline Color css_to_render_color(const css::Color& c) {
     };
 }
 
-} // namespace browser::render
+}

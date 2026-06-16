@@ -6,10 +6,19 @@
 #include <cmath>
 #include <map>
 #include <unordered_set>
+#include <sstream>
 
 namespace browser::css {
 
-// ── Step 2a: Rect::intersect ──────────────────────────────────────────────
+namespace {
+
+f32 deg_to_rad(f32 deg) {
+    return deg * 3.14159265f / 180.0f;
+}
+
+}
+
+// ── Rect::intersect ────────────────────────────────────────────
 
 std::optional<Rect> Rect::intersect(const Rect& o) const {
     f32 l = std::max(x, o.x);
@@ -22,15 +31,24 @@ std::optional<Rect> Rect::intersect(const Rect& o) const {
     return std::nullopt;
 }
 
-// ── Step 2b: LayoutNode constructors ──────────────────────────────────────
+// ── LayoutNode constructors ─────────────────────────────────────
 
 LayoutNode::LayoutNode(html::Element* element, ComputedStyle style)
-    : node_(element), style_(std::move(style)), is_text_(false) {}
+    : node_(element), style_(std::move(style)), is_text_(false) {
+    element_key_ = element ? element->tag_name + "_" + element->id() : "";
+    // Add a unique suffix if available
+    if (element && !element->id().empty()) {
+        // Use the element pointer as part of the key to ensure uniqueness
+        std::ostringstream ss;
+        ss << element;
+        element_key_ += ss.str();
+    }
+}
 
 LayoutNode::LayoutNode(const std::string& text, ComputedStyle style)
     : node_(nullptr), style_(std::move(style)), is_text_(true), text_(text) {}
 
-// ── Step 2c: Box geometry helpers ─────────────────────────────────────────
+// ── Box geometry helpers ────────────────────────────────────────
 
 Rect LayoutNode::get_padding_box() const {
     return {
@@ -68,7 +86,7 @@ void LayoutNode::set_position(f32 x, f32 y) {
     content.y = y;
 }
 
-// ── Step 2d: resolve_font_size ────────────────────────────────────────────
+// ── resolve_font_size ───────────────────────────────────────────
 
 f32 LayoutEngine::resolve_font_size(const ComputedStyle& style, f32 parent_font_size) const {
     auto* v = style.get("font-size");
@@ -94,7 +112,69 @@ f32 LayoutEngine::resolve_font_size(const ComputedStyle& style, f32 parent_font_
     return parent_font_size;
 }
 
-// ── Step 2e: resolve_length ───────────────────────────────────────────────
+// ── calc string evaluation ──────────────────────────────────────
+
+f32 LayoutEngine::resolve_calc_string(const std::string& expr, f32 parent_value, f32 font_size) const {
+    // Extract expression from "calc(...)"
+    std::string s = expr;
+    std::size_t start = s.find("calc(");
+    if (start != std::string::npos) {
+        s = s.substr(start + 5);
+    }
+    if (!s.empty() && s.back() == ')') s.pop_back();
+
+    // Simple left-to-right evaluation of "term op term op term" expressions
+    // Terms can be: numeric, px, %, em, rem, vw, vh
+    auto read_term = [&](std::string& str) -> f32 {
+        while (!str.empty() && str[0] == ' ') str = str.substr(1);
+        if (str.empty()) return 0;
+        char* end = nullptr;
+        f32 num = static_cast<f32>(std::strtof(str.c_str(), &end));
+        if (end && end != str.c_str()) {
+            std::string unit = end;
+            // Skip past the number
+            ptrdiff_t consumed = end - str.c_str();
+            str = str.substr(consumed);
+            while (!str.empty() && str[0] == ' ') str = str.substr(1);
+
+            if (unit.empty() || unit[0] == '+' || unit[0] == '-' || unit[0] == '*' || unit[0] == '/') {
+                return num; // bare number
+            }
+            if (unit.substr(0, 2) == "px") { str = str.substr(2); return num; }
+            if (unit.substr(0, 1) == "%") { str = str.substr(1); return num / 100.0f * parent_value; }
+            if (unit.substr(0, 2) == "em") { str = str.substr(2); return num * font_size; }
+            if (unit.substr(0, 3) == "rem") { str = str.substr(3); return num * root_font_size_; }
+            if (unit.substr(0, 2) == "vw") { str = str.substr(2); return num / 100.0f * viewport_width_; }
+            if (unit.substr(0, 2) == "vh") { str = str.substr(2); return num / 100.0f * viewport_height_; }
+        }
+        return 0;
+    };
+
+    f32 result = 0;
+    char last_op = '+';
+    while (!s.empty()) {
+        while (!s.empty() && s[0] == ' ') s = s.substr(1);
+        if (s.empty()) break;
+
+        // Read op
+        if (s[0] == '+' || s[0] == '-' || s[0] == '*' || s[0] == '/') {
+            last_op = s[0];
+            s = s.substr(1);
+            continue;
+        }
+
+        f32 term = read_term(s);
+        switch (last_op) {
+            case '+': result += term; break;
+            case '-': result -= term; break;
+            case '*': result *= term; break;
+            case '/': result = (term != 0) ? result / term : result; break;
+        }
+    }
+    return result;
+}
+
+// ── resolve_length ──────────────────────────────────────────────
 
 f32 LayoutEngine::resolve_length(const Length& len, f32 parent_value, f32 font_size) const {
     switch (len.unit) {
@@ -105,11 +185,14 @@ f32 LayoutEngine::resolve_length(const Length& len, f32 parent_value, f32 font_s
         case Length::Unit::VW:      return len.value / 100.0f * viewport_width_;
         case Length::Unit::VH:      return len.value / 100.0f * viewport_height_;
         case Length::Unit::NONE:    return 0.0f;
+        case Length::Unit::DEG:     return len.value;
+        case Length::Unit::S:       return len.value * 1000.0f; // s to ms
+        case Length::Unit::MS:      return len.value;
     }
     return 0.0f;
 }
 
-// ── resolve_side_value: resolve a single side from specific or shorthand ──
+// ── resolve_side_value ──────────────────────────────────────────
 
 f32 LayoutEngine::resolve_side_value(const ComputedStyle& style,
                                       const std::string& side_prop,
@@ -124,10 +207,13 @@ f32 LayoutEngine::resolve_side_value(const ComputedStyle& style,
     if (v->type == CSSValue::Type::LENGTH) {
         return resolve_length(v->length, containing, font_size);
     }
+    if (v->type == CSSValue::Type::STRING && v->string_value.find("calc(") != std::string::npos) {
+        return resolve_calc_string(v->string_value, containing, font_size);
+    }
     return 0.0f;
 }
 
-// ── resolve_property: resolve a single property, no shorthand fallback ──
+// ── resolve_property ────────────────────────────────────────────
 
 f32 LayoutEngine::resolve_property(const ComputedStyle& style,
                                     const std::string& prop,
@@ -138,15 +224,20 @@ f32 LayoutEngine::resolve_property(const ComputedStyle& style,
     if (v->type == CSSValue::Type::LENGTH) {
         return resolve_length(v->length, containing, font_size);
     }
+    if (v->type == CSSValue::Type::STRING && !v->string_value.empty() &&
+        v->string_value.find("calc(") != std::string::npos) {
+        return resolve_calc_string(v->string_value, containing, font_size);
+    }
     return 0.0f;
 }
 
-// ── Helpers: element display classification ───────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────
 
 bool LayoutEngine::is_block_element(const ComputedStyle& style) {
     auto* v = style.get("display");
-    if (!v || v->type != CSSValue::Type::KEYWORD) return true; // default: block
-    return v->keyword == "block" || v->keyword == "flex" || v->keyword == "grid";
+    if (!v || v->type != CSSValue::Type::KEYWORD) return true;
+    return v->keyword == "block" || v->keyword == "flex" || v->keyword == "grid" ||
+           v->keyword == "list-item" || v->keyword == "table";
 }
 
 bool LayoutEngine::is_inline_element(const ComputedStyle& style) {
@@ -161,6 +252,40 @@ bool LayoutEngine::is_positioned(const ComputedStyle& style) {
     return v->keyword != "static";
 }
 
+bool LayoutEngine::is_fixed_or_sticky(const ComputedStyle& style) {
+    auto* v = style.get("position");
+    if (!v || v->type != CSSValue::Type::KEYWORD) return false;
+    return v->keyword == "fixed" || v->keyword == "sticky";
+}
+
+f32 LayoutEngine::get_z_index(const ComputedStyle& style) {
+    auto* v = style.get("z-index");
+    if (v && v->type == CSSValue::Type::NUMBER) return v->number;
+    if (v && v->type == CSSValue::Type::KEYWORD && v->keyword == "auto") return 0;
+    return 0;
+}
+
+bool LayoutEngine::creates_stacking_context(const ComputedStyle& style) {
+    // z-index != auto
+    auto* zi = style.get("z-index");
+    if (zi && zi->type == CSSValue::Type::NUMBER) return true;
+
+    // opacity < 1
+    auto* op = style.get("opacity");
+    if (op && op->type == CSSValue::Type::NUMBER && op->number < 1.0f) return true;
+
+    // transform != none
+    auto* tr = style.get("transform");
+    if (tr && tr->type == CSSValue::Type::TRANSFORM && !tr->transforms.empty()) return true;
+
+    // position: relative/absolute/fixed/sticky with z-index auto
+    auto* pos = style.get("position");
+    if (pos && pos->type == CSSValue::Type::KEYWORD &&
+        (pos->keyword == "fixed" || pos->keyword == "sticky")) return true;
+
+    return false;
+}
+
 LayoutNode* LayoutEngine::find_positioned_ancestor(LayoutNode* node) {
     LayoutNode* ancestor = node->parent;
     while (ancestor) {
@@ -169,8 +294,6 @@ LayoutNode* LayoutEngine::find_positioned_ancestor(LayoutNode* node) {
     }
     return nullptr;
 }
-
-// ── Flex helpers ──────────────────────────────────────────────────────────
 
 bool LayoutEngine::is_flex_element(const ComputedStyle& style) {
     auto* v = style.get("display");
@@ -183,6 +306,98 @@ bool LayoutEngine::is_grid_element(const ComputedStyle& style) {
     if (!v || v->type != CSSValue::Type::KEYWORD) return false;
     return v->keyword == "grid" || v->keyword == "inline-grid";
 }
+
+// ── Transform helpers ───────────────────────────────────────────
+
+void apply_transform_to_node(LayoutNode* node) {
+    auto* tr = node->style().get("transform");
+    if (!tr || tr->type != CSSValue::Type::TRANSFORM || tr->transforms.empty()) return;
+
+    // Apply transform-origin
+    auto* to = node->style().get("transform-origin");
+    f32 origin_x = node->content.width / 2.0f;
+    f32 origin_y = node->content.height / 2.0f;
+    if (to && to->type == CSSValue::Type::STRING) {
+        // Simplified: try to parse "Xpx Ypx" or percentages
+        std::string s = to->string_value;
+        char* end = nullptr;
+        f32 v1 = std::strtof(s.c_str(), &end);
+        if (end && end != s.c_str()) {
+            origin_x = v1;
+            std::string rest = end;
+            while (!rest.empty() && rest[0] == ' ') rest = rest.substr(1);
+            f32 v2 = std::strtof(rest.c_str(), &end);
+            if (end && end != rest.c_str()) {
+                origin_y = v2;
+            }
+        } else {
+            // Keyword-based
+            if (s.find("left") != std::string::npos) origin_x = 0;
+            else if (s.find("right") != std::string::npos) origin_x = node->content.width;
+            else origin_x = node->content.width / 2;
+
+            if (s.find("top") != std::string::npos) origin_y = 0;
+            else if (s.find("bottom") != std::string::npos) origin_y = node->content.height;
+            else origin_y = node->content.height / 2;
+        }
+    }
+
+    node->transform_matrix = Mat3x3::identity();
+    node->transform_matrix = node->transform_matrix.translate(origin_x, origin_y);
+
+    for (const auto& tf : tr->transforms) {
+        f32 a = tf.args.size() > 0 ? tf.args[0] : 0;
+        f32 b = tf.args.size() > 1 ? tf.args[1] : 0;
+        f32 c = tf.args.size() > 2 ? tf.args[2] : 0;
+        f32 d = tf.args.size() > 3 ? tf.args[3] : 0;
+        f32 e = tf.args.size() > 4 ? tf.args[4] : 0;
+        f32 f = tf.args.size() > 5 ? tf.args[5] : 0;
+
+        switch (tf.type) {
+            case TransformFunc::Type::TRANSLATE:
+                node->transform_matrix = node->transform_matrix.translate(a, b);
+                break;
+            case TransformFunc::Type::TRANSLATE_X:
+                node->transform_matrix = node->transform_matrix.translate(a, 0);
+                break;
+            case TransformFunc::Type::TRANSLATE_Y:
+                node->transform_matrix = node->transform_matrix.translate(0, a);
+                break;
+            case TransformFunc::Type::SCALE:
+                node->transform_matrix = node->transform_matrix.scale(a, b > 0 ? b : a);
+                break;
+            case TransformFunc::Type::SCALE_X:
+                node->transform_matrix = node->transform_matrix.scale(a, 1);
+                break;
+            case TransformFunc::Type::SCALE_Y:
+                node->transform_matrix = node->transform_matrix.scale(1, a);
+                break;
+            case TransformFunc::Type::ROTATE:
+                node->transform_matrix = node->transform_matrix.rotate(deg_to_rad(a));
+                break;
+            case TransformFunc::Type::SKEW:
+                node->transform_matrix = node->transform_matrix.skew(deg_to_rad(a), deg_to_rad(b));
+                break;
+            case TransformFunc::Type::SKEW_X:
+                node->transform_matrix = node->transform_matrix.skew(deg_to_rad(a), 0);
+                break;
+            case TransformFunc::Type::SKEW_Y:
+                node->transform_matrix = node->transform_matrix.skew(0, deg_to_rad(a));
+                break;
+            case TransformFunc::Type::MATRIX:
+                node->transform_matrix = node->transform_matrix.multiply(Mat3x3::from_values(a, b, c, d, e, f));
+                break;
+        }
+    }
+
+    node->transform_matrix = node->transform_matrix.translate(-origin_x, -origin_y);
+    node->has_transform = true;
+}
+
+// ── Flex helpers ────────────────────────────────────────────────
+
+// (all flex helpers remain the same as before, copied from original)
+// ── Part 1: resolve_flex_config ─────────────────────────────────
 
 FlexConfig LayoutEngine::resolve_flex_config(const ComputedStyle& style, f32 font_size) const {
     FlexConfig cfg;
@@ -278,7 +493,6 @@ FlexItem LayoutEngine::resolve_flex_item(LayoutNode* child, const FlexConfig& co
     bool is_row = config.direction == FlexDirection::ROW ||
                   config.direction == FlexDirection::ROW_REVERSE;
 
-    // Margins — set on both FlexItem and LayoutNode
     EdgeSizes margins;
     margins.left = resolve_side_value(child->style(), "margin-left", "margin", containing_main, font_size);
     margins.right = resolve_side_value(child->style(), "margin-right", "margin", containing_main, font_size);
@@ -298,7 +512,6 @@ FlexItem LayoutEngine::resolve_flex_item(LayoutNode* child, const FlexConfig& co
         item.cross_margin_end = margins.right;
     }
 
-    // Border + padding in main/cross — also set on LayoutNode for positioning
     EdgeSizes borders, paddings;
     borders.left = resolve_side_value(child->style(), "border-left-width", "border-width", containing_main, font_size);
     borders.right = resolve_side_value(child->style(), "border-right-width", "border-width", containing_main, font_size);
@@ -328,7 +541,6 @@ FlexItem LayoutEngine::resolve_flex_item(LayoutNode* child, const FlexConfig& co
     item.main_border_padding = bp_main_start + bp_main_end;
     item.cross_border_padding = bp_cross_start + bp_cross_end;
 
-    // Base size
     if (item.flex_basis >= 0) {
         item.base_size = item.flex_basis;
     } else {
@@ -343,8 +555,6 @@ FlexItem LayoutEngine::resolve_flex_item(LayoutNode* child, const FlexConfig& co
     item.hypothetical_main = item.base_size + item.main_border_padding;
     return item;
 }
-
-// ── Flex line distribution ────────────────────────────────────────────────
 
 static bool is_row_direction(FlexDirection d) {
     return d == FlexDirection::ROW || d == FlexDirection::ROW_REVERSE;
@@ -438,13 +648,10 @@ void LayoutEngine::distribute_free_space(FlexLine& line, f32 container_main,
         for (auto* item : line.items) item->target_main = item->hypothetical_main;
     }
 
-    // Reverse item order within line for ROW_REVERSE / COLUMN_REVERSE
     if (is_reverse_direction(config.direction)) {
         std::reverse(line.items.begin(), line.items.end());
     }
 }
-
-// ── Flex cross sizes ──────────────────────────────────────────────────────
 
 void LayoutEngine::compute_cross_sizes(FlexLine& line, f32 container_cross,
                                         const FlexConfig& config, f32 font_size)
@@ -460,9 +667,7 @@ void LayoutEngine::compute_cross_sizes(FlexLine& line, f32 container_cross,
                 static_cast<int>(config.align_items));
         }
 
-        // Resolve cross-box contributions (margins are already in item)
         if (effective_align == AlignSelf::STRETCH) {
-            // If no explicit size in cross direction, stretch to fill
             auto* cross_size_prop = item->node->style().get(is_row ? "height" : "width");
             if (cross_size_prop && cross_size_prop->type == CSSValue::Type::LENGTH) {
                 item->cross_size = resolve_length(cross_size_prop->length,
@@ -478,9 +683,6 @@ void LayoutEngine::compute_cross_sizes(FlexLine& line, f32 container_cross,
                 item->cross_size = resolve_length(cross_size_prop->length,
                                                    container_cross, font_size);
             } else {
-                // Measure pass: lay out children with flex-determined main-axis content size
-                // to compute intrinsic cross size. Children are temporarily positioned at (0,0)
-                // relative to the item; final positioning happens in the post-positioning pass.
                 f32 main_content = item->target_main - item->main_border_padding;
                 if (is_row) {
                     item->node->content.width = main_content;
@@ -509,11 +711,8 @@ void LayoutEngine::compute_cross_sizes(FlexLine& line, f32 container_cross,
                     item->cross_margin_end + item->cross_border_padding;
         if (total > max_cross) max_cross = total;
     }
-    // Line cross size cannot shrink below border/padding of the container (but that's applied outside)
     line.cross_size = max_cross;
 }
-
-// ── Flex line alignment ────────────────────────────────────────────────────
 
 void LayoutEngine::align_lines(std::vector<FlexLine>& lines, f32 container_cross,
                                 const FlexConfig& config) const
@@ -522,7 +721,6 @@ void LayoutEngine::align_lines(std::vector<FlexLine>& lines, f32 container_cross
 
     f32 gap = is_row_direction(config.direction) ? config.row_gap : config.column_gap;
 
-    // Total cross size of all lines
     f32 total_cross = 0;
     for (auto& line : lines) {
         total_cross += line.cross_size;
@@ -558,7 +756,6 @@ void LayoutEngine::align_lines(std::vector<FlexLine>& lines, f32 container_cross
             break;
         }
         case AlignContent::STRETCH: {
-            // Distribute free space equally among lines
             if (lines.size() > 0 && free_cross > 0) {
                 f32 extra = free_cross / static_cast<f32>(lines.size());
                 for (auto& line : lines) line.cross_size += extra;
@@ -571,10 +768,8 @@ void LayoutEngine::align_lines(std::vector<FlexLine>& lines, f32 container_cross
 
     f32 cross_pos = initial_offset;
     for (auto& line : lines) {
-        // Set y offset for each item in this line
         for (auto* item : line.items) {
             item->cross_offset = cross_pos;
-            // Per-item alignment within the line
             AlignSelf effective = item->align_self;
             if (effective == AlignSelf::AUTO) {
                 effective = static_cast<AlignSelf>(static_cast<int>(config.align_items));
@@ -603,7 +798,7 @@ void LayoutEngine::align_lines(std::vector<FlexLine>& lines, f32 container_cross
     }
 }
 
-// ── Flex layout entry point ───────────────────────────────────────────────
+// ── Flex layout ─────────────────────────────────────────────────
 
 void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 containing_height) {
     if (!node) return;
@@ -621,7 +816,6 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
 
     bool is_row = is_row_direction(config.direction);
 
-    // Resolve container main size (width for row, height for column)
     f32 container_main;
     if (is_row) {
         auto* wv = node->style().get("width");
@@ -639,7 +833,6 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
         }
     }
 
-    // Resolve container cross size (height for row, width for column)
     f32 container_cross;
     if (is_row) {
         auto* hv = node->style().get("height");
@@ -657,7 +850,6 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
         }
     }
 
-    // Gather flex items
     std::vector<FlexItem> items;
     for (auto& child : node->children) {
         auto* pos = child->style().get("position");
@@ -669,7 +861,6 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
         items.push_back(resolve_flex_item(child.get(), config, containing_main, containing_cross, font_size));
     }
 
-    // Sort by CSS `order` property (default 0)
     std::stable_sort(items.begin(), items.end(), [](const FlexItem& a, const FlexItem& b) {
         auto* ao = a.node->style().get("order");
         auto* bo = b.node->style().get("order");
@@ -678,27 +869,21 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
         return av < bv;
     });
 
-    // Distribute lines
     std::vector<FlexLine> lines = distribute_lines(items, config, container_main);
 
-    // Distribute free space within each line
     for (auto& line : lines) {
         distribute_free_space(line, container_main, config);
     }
 
-    // Compute cross sizes
     for (auto& line : lines) {
         compute_cross_sizes(line, container_cross, config, font_size);
     }
 
-    // Align lines along cross axis
     align_lines(lines, container_cross, config);
 
-    // Position items
     f32 gap = is_row ? config.column_gap : config.row_gap;
 
     for (auto& line : lines) {
-        // Compute free space for justify-content
         f32 total_target = 0;
         for (auto* item : line.items) total_target += item->target_main;
         total_target += gap * static_cast<f32>(line.items.size() - 1);
@@ -723,7 +908,7 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
             case JustifyContent::SPACE_BETWEEN:
                 initial_offset = 0;
                 if (line.items.size() > 1) gap_extra = free_space / static_cast<f32>(line.items.size() - 1) + gap;
-                else gap_extra = 0; // single item → flex-start alignment
+                else gap_extra = 0;
                 break;
             case JustifyContent::SPACE_AROUND: {
                 f32 spacing = free_space / static_cast<f32>(line.items.size());
@@ -744,8 +929,6 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
             f32 main_start = main_pos;
             f32 main_end = main_start + item->target_main;
 
-            // content.x/y = margin-box origin + margin + border + padding
-            // (margin is part of main_margin_start; border and padding are on LayoutNode)
             if (is_row) {
                 item->node->content.x = main_start + item->main_margin_start
                                        + item->node->border.left + item->node->padding.left;
@@ -765,17 +948,11 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
         }
     }
 
-    // Final layout pass: lay out children of each flex item with their
-    // flex-determined sizes. Items that already had a measure pass in
-    // compute_cross_sizes are re-laid-out here at their final positions.: lay out children of each flex item now that
-    // flex-determined sizes and positions are known.
     for (auto& item : items) {
         if (item.node->children.empty()) continue;
         f32 cw = item.node->content.width;
         f32 ch = item.node->content.height;
         if (is_flex_element(item.node->style())) {
-            // Nested flex: layout_flex clobbers content.x/y, so save/restore
-            // the outer-flex-determined position.
             f32 saved_x = item.node->content.x;
             f32 saved_y = item.node->content.y;
             layout_flex(item.node, cw, ch);
@@ -788,7 +965,6 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
         }
     }
 
-    // Set container cross size from lines if not explicitly set
     if (is_row) {
         auto* hv = node->style().get("height");
         if (!hv || (hv->type == CSSValue::Type::KEYWORD && hv->keyword == "auto")) {
@@ -820,504 +996,19 @@ void LayoutEngine::layout_flex(LayoutNode* node, f32 containing_width, f32 conta
     }
 }
 
-// ── Grid layout ──────────────────────────────────────────────────────────
-
-struct GridState {
-    std::vector<GridTrackDef> columns, rows;
-    struct Cell { LayoutNode* item = nullptr; i32 col_span = 1, row_span = 1; };
-    std::map<std::pair<i32,i32>, Cell> cells;
-    i32 num_columns = 0, num_rows = 0;
-    f32 column_gap = 0, row_gap = 0;
-};
-
-void LayoutEngine::resolve_grid_tracks(std::vector<GridTrackDef>& tracks,
-                                        f32 container_size, f32 font_size, f32 gap)
-{
-    if (tracks.empty()) return;
-
-    // Phase 1: resolve FIXED, MINMAX (with fixed min), FIT_CONTENT, AUTO → placeholder
-    f32 total_fixed = 0;
-    f32 total_fr = 0;
-    f32 total_gap = gap * static_cast<f32>(static_cast<i32>(tracks.size()) - 1);
-
-    for (auto& t : tracks) {
-        switch (t.type) {
-            case GridTrackType::FIXED:
-                t.resolved_size = resolve_length(t.min_size, container_size, font_size);
-                total_fixed += t.resolved_size;
-                break;
-            case GridTrackType::MINMAX: {
-                f32 min_val = resolve_length(t.min_size, container_size, font_size);
-                if (t.max_size.unit == Length::Unit::NONE) {
-                    t.resolved_size = min_val;
-                    total_fixed += t.resolved_size;
-                } else {
-                    f32 max_val = resolve_length(t.max_size, container_size, font_size);
-                    t.resolved_size = std::max(min_val, max_val);
-                    total_fixed += t.resolved_size;
-                }
-                break;
-            }
-            case GridTrackType::FIT_CONTENT: {
-                f32 max_val = resolve_length(t.max_size, container_size, font_size);
-                t.resolved_size = max_val;
-                total_fixed += t.resolved_size;
-                break;
-            }
-            case GridTrackType::FLEX:
-                t.resolved_size = 0;
-                total_fr += t.min_size.value;
-                break;
-            case GridTrackType::AUTO:
-                t.resolved_size = 0;
-                break;
-        }
-    }
-
-    // Phase 2: distribute remaining space to FLEX tracks
-    if (total_fr > 0) {
-        f32 remaining = container_size - total_fixed - total_gap;
-        if (remaining < 0) remaining = 0;
-        for (auto& t : tracks) {
-            if (t.type == GridTrackType::FLEX) {
-                t.resolved_size = remaining * (t.min_size.value / total_fr);
-            }
-        }
-    }
-}
-
-static std::string get_grid_prop_raw(const ComputedStyle& style, const std::string& prop) {
-    auto* v = style.get(prop);
-    if (!v) return "";
-    if (v->type == CSSValue::Type::STRING) return v->string_value;
-    if (v->type == CSSValue::Type::KEYWORD) return v->keyword;
-    if (v->type == CSSValue::Type::FUNCTION) {
-        if (!v->string_value.empty()) return v->string_value;
-        return v->keyword;
-    }
-    if (v->type == CSSValue::Type::NUMBER) {
-        return std::to_string(static_cast<i32>(v->number));
-    }
-    if (v->type == CSSValue::Type::LENGTH) {
-        std::string s = std::to_string(v->length.value);
-        auto dot = s.find('.');
-        if (dot != std::string::npos) {
-            auto last = s.find_last_not_of('0');
-            if (last > dot) s = s.substr(0, last + 1);
-            else if (last == dot) s = s.substr(0, dot);
-        }
-        switch (v->length.unit) {
-            case Length::Unit::PX: s += "px"; break;
-            case Length::Unit::EM: s += "em"; break;
-            case Length::Unit::REM: s += "rem"; break;
-            case Length::Unit::PERCENT: s += "%"; break;
-            default: break;
-        }
-        return s;
-    }
-    return "";
-}
-
-void LayoutEngine::layout_grid(LayoutNode* node, f32 containing_width, f32 containing_height) {
-    if (!node) return;
-
-    f32 parent_font_size = root_font_size_;
-    if (node->parent) {
-        auto* pfs = node->parent->style().get("font-size");
-        if (pfs && pfs->type == CSSValue::Type::LENGTH && pfs->length.unit == Length::Unit::PX) {
-            parent_font_size = pfs->length.value;
-        }
-    }
-    f32 font_size = resolve_font_size(node->style(), parent_font_size);
-
-    // Resolve own margin/padding/border
-    EdgeSizes margins;
-    margins.top = resolve_side_value(node->style(), "margin-top", "margin", containing_width, font_size);
-    margins.bottom = resolve_side_value(node->style(), "margin-bottom", "margin", containing_width, font_size);
-    margins.left = resolve_side_value(node->style(), "margin-left", "margin", containing_width, font_size);
-    margins.right = resolve_side_value(node->style(), "margin-right", "margin", containing_width, font_size);
-    node->margin = margins;
-
-    EdgeSizes paddings;
-    paddings.top = resolve_side_value(node->style(), "padding-top", "padding", containing_width, font_size);
-    paddings.bottom = resolve_side_value(node->style(), "padding-bottom", "padding", containing_width, font_size);
-    paddings.left = resolve_side_value(node->style(), "padding-left", "padding", containing_width, font_size);
-    paddings.right = resolve_side_value(node->style(), "padding-right", "padding", containing_width, font_size);
-    node->padding = paddings;
-
-    EdgeSizes borders;
-    borders.top = resolve_side_value(node->style(), "border-top-width", "border-width", containing_width, font_size);
-    borders.bottom = resolve_side_value(node->style(), "border-bottom-width", "border-width", containing_width, font_size);
-    borders.left = resolve_side_value(node->style(), "border-left-width", "border-width", containing_width, font_size);
-    borders.right = resolve_side_value(node->style(), "border-right-width", "border-width", containing_width, font_size);
-    if (borders.top == 0) {
-        auto* bv = node->style().get("border");
-        if (bv && bv->type == CSSValue::Type::LENGTH) {
-            f32 bw = resolve_length(bv->length, containing_width, font_size);
-            borders = {bw, bw, bw, bw};
-        }
-    }
-    node->border = borders;
-
-    f32 h_padding = paddings.left + paddings.right;
-    f32 h_border = borders.left + borders.right;
-    f32 h_margin = margins.left + margins.right;
-
-    // Resolve container width
-    f32 container_width = containing_width - h_margin - h_padding - h_border;
-    if (container_width < 0) container_width = 0;
-
-    auto* wv = node->style().get("width");
-    if (wv && wv->type == CSSValue::Type::LENGTH) {
-        container_width = resolve_length(wv->length, containing_width, font_size);
-    }
-
-    // Resolve container height
-    f32 container_height = containing_height;
-    auto* hv = node->style().get("height");
-    if (hv && hv->type == CSSValue::Type::LENGTH) {
-        container_height = resolve_length(hv->length, containing_height, font_size);
-    }
-
-    node->content.width = container_width;
-
-    // ── Parse grid template ──────────────────────────────────────────────
-    std::string cols_str = get_grid_prop_raw(node->style(), "grid-template-columns");
-    std::string rows_str = get_grid_prop_raw(node->style(), "grid-template-rows");
-
-    GridState state;
-    state.columns = parse_track_list(cols_str, container_width, font_size);
-    state.rows = parse_track_list(rows_str, container_height, font_size);
-
-    // If no explicit tracks, default to 1 column
-    if (state.columns.empty()) {
-        state.columns.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
-    }
-
-    // ── Resolve gaps ─────────────────────────────────────────────────────
-    auto* gap_v = node->style().get("gap");
-    if (gap_v && gap_v->type == CSSValue::Type::LENGTH) {
-        f32 g = resolve_length(gap_v->length, container_width, font_size);
-        state.column_gap = g;
-        state.row_gap = g;
-    }
-    auto* cg = node->style().get("column-gap");
-    if (cg && cg->type == CSSValue::Type::LENGTH) {
-        state.column_gap = resolve_length(cg->length, container_width, font_size);
-    }
-    auto* rg = node->style().get("row-gap");
-    if (rg && rg->type == CSSValue::Type::LENGTH) {
-        state.row_gap = resolve_length(rg->length, container_width, font_size);
-    }
-
-    state.num_columns = static_cast<i32>(state.columns.size());
-    state.num_rows = static_cast<i32>(state.rows.size());
-
-    // ── Place items ──────────────────────────────────────────────────────
-    std::vector<LayoutNode*> unplaced;
-
-    for (auto& child : node->children) {
-        auto* pos = child->style().get("position");
-        bool is_absolute = pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute";
-        if (is_absolute) continue;
-
-        // Parse grid-column and grid-row
-        std::string gc_str = get_grid_prop_raw(child->style(), "grid-column");
-        std::string gr_str = get_grid_prop_raw(child->style(), "grid-row");
-
-        GridPlacement col_place = gc_str.empty() ? GridPlacement{} : parse_grid_line(gc_str);
-        GridPlacement row_place = gr_str.empty() ? GridPlacement{} : parse_grid_line(gr_str);
-
-        bool has_explicit = (col_place.line_start > 0 || row_place.line_start > 0);
-
-        if (has_explicit) {
-            i32 col = col_place.line_start > 0 ? col_place.line_start - 1 : 0;
-            i32 row = row_place.line_start > 0 ? row_place.line_start - 1 : 0;
-            i32 col_span = static_cast<i32>(col_place.span);
-            i32 row_span = static_cast<i32>(row_place.span);
-
-            // Ensure tracks exist for placement
-            while (col + col_span > state.num_columns) {
-                state.columns.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
-                state.num_columns = static_cast<i32>(state.columns.size());
-            }
-            while (row + row_span > state.num_rows) {
-                state.rows.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
-                state.num_rows = static_cast<i32>(state.rows.size());
-            }
-
-            for (i32 c = 0; c < col_span; c++) {
-                for (i32 r = 0; r < row_span; r++) {
-                    state.cells[{col + c, row + r}] = GridState::Cell{child.get(), col_span, row_span};
-                }
-            }
-        } else {
-            unplaced.push_back(child.get());
-        }
-    }
-
-    // Place unplaced items in a second pass (auto-placement)
-    if (!unplaced.empty()) {
-        i32 cursor_col = 0;
-        i32 cursor_row = 0;
-
-        for (auto* item : unplaced) {
-            std::string gc_str = get_grid_prop_raw(item->style(), "grid-column");
-            std::string gr_str = get_grid_prop_raw(item->style(), "grid-row");
-            GridPlacement cp = gc_str.empty() ? GridPlacement{} : parse_grid_line(gc_str);
-            GridPlacement rp = gr_str.empty() ? GridPlacement{} : parse_grid_line(gr_str);
-
-            i32 col_span = static_cast<i32>(cp.span);
-            i32 row_span = static_cast<i32>(rp.span);
-
-            // Ensure at least enough columns for this item's span
-            while (cursor_col + col_span > state.num_columns) {
-                state.columns.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
-                state.num_columns = static_cast<i32>(state.columns.size());
-            }
-
-            // Find next free cell (row-major scan)
-            bool placed = false;
-            i32 safety = 0;
-            while (!placed && safety < 10000) { // TODO: remove magic limit when grid is unbounded
-                safety++;
-                bool fits = true;
-                for (i32 dc = 0; dc < col_span && fits; dc++) {
-                    for (i32 dr = 0; dr < row_span && fits; dr++) {
-                        i32 check_col = cursor_col + dc;
-                        i32 check_row = cursor_row + dr;
-                        if (check_col >= state.num_columns) { fits = false; }
-                        auto it = state.cells.find({check_col, check_row});
-                        if (it != state.cells.end()) { fits = false; }
-                    }
-                }
-
-                if (fits) {
-                    for (i32 dc = 0; dc < col_span; dc++) {
-                        for (i32 dr = 0; dr < row_span; dr++) {
-                            state.cells[{cursor_col + dc, cursor_row + dr}] = GridState::Cell{item, col_span, row_span};
-                        }
-                    }
-                    placed = true;
-                } else {
-                    cursor_col++;
-                    if (cursor_col + col_span > state.num_columns) {
-                        cursor_col = 0;
-                        cursor_row++;
-                    }
-                }
-            }
-
-            // Ensure rows exist for placement
-            while (cursor_row + row_span > state.num_rows) {
-                state.rows.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
-                state.num_rows = static_cast<i32>(state.rows.size());
-            }
-
-            cursor_col += col_span;
-            if (cursor_col >= state.num_columns) {
-                cursor_col = 0;
-                cursor_row++;
-            }
-        }
-    }
-
-    // ── Resolve track sizes ──────────────────────────────────────────────
-    resolve_grid_tracks(state.columns, container_width, font_size, state.column_gap);
-    resolve_grid_tracks(state.rows, container_height, font_size, state.row_gap);
-
-    // ── Helper: compute position and span size ───────────────────────────
-    auto cell_start = [](const std::vector<GridTrackDef>& tracks, i32 index, f32 gap) -> f32 {
-        f32 pos = 0;
-        for (i32 i = 0; i < index; i++) {
-            if (i > 0) pos += gap;
-            pos += tracks[i].resolved_size;
-        }
-        return pos;
-    };
-
-    auto cell_span_size = [](const std::vector<GridTrackDef>& tracks, i32 from, i32 count, f32 gap) -> f32 {
-        f32 size = 0;
-        for (i32 i = from; i < from + count; i++) {
-            if (i > from) size += gap;
-            size += tracks[i].resolved_size;
-        }
-        return size;
-    };
-
-    // ── Size and position items ──────────────────────────────────────────
-    // Helpers: get alignment values, distinguishing stretch from explicit start
-    struct GridAlign { JustifyContent justify; AlignItems align; bool stretch_w; bool stretch_h; };
-
-    auto get_grid_align = [](const ComputedStyle& s) -> GridAlign {
-        GridAlign ga{JustifyContent::FLEX_START, AlignItems::STRETCH, true, true};
-        auto* js = s.get("justify-self");
-        if (js && js->type == CSSValue::Type::KEYWORD) {
-            if (js->keyword == "start" || js->keyword == "flex-start") { ga.justify = JustifyContent::FLEX_START; ga.stretch_w = false; }
-            else if (js->keyword == "end" || js->keyword == "flex-end") { ga.justify = JustifyContent::FLEX_END; ga.stretch_w = false; }
-            else if (js->keyword == "center") { ga.justify = JustifyContent::CENTER; ga.stretch_w = false; }
-            else if (js->keyword == "stretch") { ga.justify = JustifyContent::FLEX_START; ga.stretch_w = true; }
-        }
-        auto* as = s.get("align-self");
-        if (as && as->type == CSSValue::Type::KEYWORD) {
-            if (as->keyword == "start" || as->keyword == "flex-start") { ga.align = AlignItems::FLEX_START; ga.stretch_h = false; }
-            else if (as->keyword == "end" || as->keyword == "flex-end") { ga.align = AlignItems::FLEX_END; ga.stretch_h = false; }
-            else if (as->keyword == "center") { ga.align = AlignItems::CENTER; ga.stretch_h = false; }
-            else if (as->keyword == "stretch") { ga.align = AlignItems::STRETCH; ga.stretch_h = true; }
-        }
-        return ga;
-    };
-
-    // Deduplicate spanning items: each item is sized once. The first coordinate
-    // from map iteration (std::map sorts lexicographically → smallest col,row)
-    // gives the item's origin cell — this is the correct reference for cell_start.
-    std::unordered_set<LayoutNode*> sized_items;
-    for (auto& [coord, cell] : state.cells) {
-        if (sized_items.count(cell.item)) continue;
-        sized_items.insert(cell.item);
-
-        auto [col, row] = coord;
-        LayoutNode* item = cell.item;
-
-        f32 cell_x = cell_start(state.columns, col, state.column_gap);
-        f32 cell_y = cell_start(state.rows, row, state.row_gap);
-        f32 cell_w = cell_span_size(state.columns, col, cell.col_span, state.column_gap);
-        f32 cell_h = cell_span_size(state.rows, row, cell.row_span, state.row_gap);
-
-        // Resolve item margins (use side values)
-        EdgeSizes item_margins;
-        item_margins.left = resolve_side_value(item->style(), "margin-left", "margin", cell_w, font_size);
-        item_margins.right = resolve_side_value(item->style(), "margin-right", "margin", cell_w, font_size);
-        item_margins.top = resolve_side_value(item->style(), "margin-top", "margin", cell_h, font_size);
-        item_margins.bottom = resolve_side_value(item->style(), "margin-bottom", "margin", cell_h, font_size);
-        item->margin = item_margins;
-
-        EdgeSizes item_borders;
-        item_borders.left = resolve_side_value(item->style(), "border-left-width", "border-width", cell_w, font_size);
-        item_borders.right = resolve_side_value(item->style(), "border-right-width", "border-width", cell_w, font_size);
-        item_borders.top = resolve_side_value(item->style(), "border-top-width", "border-width", cell_h, font_size);
-        item_borders.bottom = resolve_side_value(item->style(), "border-bottom-width", "border-width", cell_h, font_size);
-        if (item_borders.top == 0) {
-            auto* bv = item->style().get("border");
-            if (bv && bv->type == CSSValue::Type::LENGTH) {
-                f32 bw = resolve_length(bv->length, cell_w, font_size);
-                item_borders = {bw, bw, bw, bw};
-            }
-        }
-        item->border = item_borders;
-
-        EdgeSizes item_paddings;
-        item_paddings.left = resolve_side_value(item->style(), "padding-left", "padding", cell_w, font_size);
-        item_paddings.right = resolve_side_value(item->style(), "padding-right", "padding", cell_w, font_size);
-        item_paddings.top = resolve_side_value(item->style(), "padding-top", "padding", cell_h, font_size);
-        item_paddings.bottom = resolve_side_value(item->style(), "padding-bottom", "padding", cell_h, font_size);
-        item->padding = item_paddings;
-
-        // Determine alignment (check before sizing for non-stretch)
-        GridAlign ga = get_grid_align(item->style());
-
-        // Content size within the cell — only stretch if alignment allows
-        f32 content_w = cell_w - item_margins.left - item_margins.right
-                        - item_borders.left - item_borders.right
-                        - item_paddings.left - item_paddings.right;
-        if (content_w < 0) content_w = 0;
-
-        f32 content_h = cell_h - item_margins.top - item_margins.bottom
-                        - item_borders.top - item_borders.bottom
-                        - item_paddings.top - item_paddings.bottom;
-        if (content_h < 0) content_h = 0;
-
-        if (!ga.stretch_h) {
-            content_h = 0;
-        }
-        if (!ga.stretch_w) {
-            content_w = 0;
-        }
-
-        item->content.width = content_w;
-        item->content.height = content_h;
-
-        // Position content box
-        item->content.x = cell_x + item_margins.left + item_borders.left + item_paddings.left;
-        item->content.y = cell_y + item_margins.top + item_borders.top + item_paddings.top;
-
-        // Layout children
-        if (!item->children.empty()) {
-            if (is_flex_element(item->style())) {
-                f32 saved_x = item->content.x;
-                f32 saved_y = item->content.y;
-                layout_flex(item, content_w, content_h);
-                item->content.x = saved_x;
-                item->content.y = saved_y;
-                item->content.width = content_w;
-                item->content.height = content_h;
-            } else if (is_grid_element(item->style())) {
-                f32 saved_x = item->content.x;
-                f32 saved_y = item->content.y;
-                layout_grid(item, content_w, content_h);
-                item->content.x = saved_x;
-                item->content.y = saved_y;
-                item->content.width = content_w;
-                item->content.height = content_h;
-            } else {
-                layout_children(item, content_w, content_h);
-            }
-        }
-
-        // Alignment within cell (center/end adjustments)
-        {
-            f32 extra_w = cell_w - item->content.width
-                          - item_margins.left - item_margins.right
-                          - item_borders.left - item_borders.right
-                          - item_paddings.left - item_paddings.right;
-            if (extra_w > 0) {
-                if (ga.justify == JustifyContent::CENTER) item->content.x += extra_w / 2;
-                else if (ga.justify == JustifyContent::FLEX_END) item->content.x += extra_w;
-            }
-        }
-        {
-            f32 extra_h = cell_h - item->content.height
-                          - item_margins.top - item_margins.bottom
-                          - item_borders.top - item_borders.bottom
-                          - item_paddings.top - item_paddings.bottom;
-            if (extra_h > 0) {
-                if (ga.align == AlignItems::CENTER) item->content.y += extra_h / 2;
-                else if (ga.align == AlignItems::FLEX_END) item->content.y += extra_h;
-            }
-        }
-    }
-
-    // ── Compute container size ───────────────────────────────────────────
-    f32 total_col_size = cell_start(state.columns, state.num_columns, state.column_gap);
-    f32 total_row_size = cell_start(state.rows, state.num_rows, state.row_gap);
-
-    node->content.width = total_col_size;
-    node->content.height = total_row_size;
-
-    // Respect explicit width/height
-    if (wv && wv->type == CSSValue::Type::LENGTH) {
-        node->content.width = resolve_length(wv->length, containing_width, font_size);
-    }
-    if (hv && hv->type == CSSValue::Type::LENGTH) {
-        node->content.height = resolve_length(hv->length, containing_height, font_size);
-    }
-}
-
-// ── Anonymous block factory ───────────────────────────────────────────────
+// ── Anonymous block factory ─────────────────────────────────────
 
 std::unique_ptr<LayoutNode> LayoutEngine::make_anonymous_block(ComputedStyle style) {
     auto node = std::make_unique<LayoutNode>(static_cast<html::Element*>(nullptr), std::move(style));
     return node;
 }
 
-// ── Helper: check if a value is display:none ──────────────────────────────
-
 static bool is_display_none(const ComputedStyle& style) {
     auto* v = style.get("display");
     return v && v->type == CSSValue::Type::KEYWORD && v->keyword == "none";
 }
 
-// ── Step 2f: build_layout_tree ────────────────────────────────────────────
+// ── build_layout_tree ───────────────────────────────────────────
 
 std::unique_ptr<LayoutNode> LayoutEngine::build_layout_tree(
     html::Node* node,
@@ -1343,8 +1034,9 @@ std::unique_ptr<LayoutNode> LayoutEngine::build_layout_tree(
                 if (is_display_none(child_it->second)) continue;
 
                 bool child_is_block = is_block_element(child_it->second);
+                bool child_is_inline_block = is_inline_element(child_it->second);
 
-                if (child_is_block) {
+                if (child_is_block && !child_is_inline_block) {
                     if (!inline_pending.empty()) {
                         auto anon = make_anonymous_block(it->second);
                         for (auto& r : inline_pending) {
@@ -1436,7 +1128,7 @@ std::unique_ptr<LayoutNode> LayoutEngine::build_layout_tree(
     return nullptr;
 }
 
-// ── Step 2g: layout_block ─────────────────────────────────────────────────
+// ── layout_block ────────────────────────────────────────────────
 
 void LayoutEngine::layout_block(LayoutNode* node, f32 containing_width, f32 containing_height) {
     if (!node) return;
@@ -1449,6 +1141,13 @@ void LayoutEngine::layout_block(LayoutNode* node, f32 containing_width, f32 cont
         }
     }
     f32 font_size = resolve_font_size(node->style(), parent_font_size);
+
+    // Check box-sizing
+    bool border_box = false;
+    auto* bs = node->style().get("box-sizing");
+    if (bs && bs->type == CSSValue::Type::KEYWORD && bs->keyword == "border-box") {
+        border_box = true;
+    }
 
     bool width_auto = false;
     f32 width = 0;
@@ -1506,33 +1205,41 @@ void LayoutEngine::layout_block(LayoutNode* node, f32 containing_width, f32 cont
     f32 h_margin = margins.left + margins.right;
 
     if (width_auto) {
-        node->content.width = containing_width - h_margin - h_padding - h_border;
+        if (border_box) {
+            node->content.width = containing_width - h_margin;
+        } else {
+            node->content.width = containing_width - h_margin - h_padding - h_border;
+        }
         if (node->content.width < 0) node->content.width = 0;
     } else {
-        node->content.width = width;
+        if (border_box) {
+            // width includes padding + border, so content width = width - padding - border
+            node->content.width = width - h_padding - h_border;
+            if (node->content.width < 0) node->content.width = 0;
+        } else {
+            node->content.width = width;
+        }
     }
 
-    // Apply max-width / min-width constraints
+    // Apply max-width / min-width
     auto* maxw = node->style().get("max-width");
     bool had_maxw = false;
-    if (maxw && maxw->type == css::CSSValue::Type::LENGTH) {
+    if (maxw && maxw->type == CSSValue::Type::LENGTH) {
         f32 mw = resolve_length(maxw->length, containing_width, font_size);
         if (node->content.width > mw) { node->content.width = mw; had_maxw = true; }
     }
     auto* minw = node->style().get("min-width");
-    if (minw && minw->type == css::CSSValue::Type::LENGTH) {
+    if (minw && minw->type == CSSValue::Type::LENGTH) {
         f32 mw = resolve_length(minw->length, containing_width, font_size);
         if (node->content.width < mw) node->content.width = mw;
     }
 
-    // Auto margins for centering: if both margin-left and margin-right are auto
-    // and the element has an intrinsic/constrained width, distribute remaining
-    // space equally between them.
+    // Auto margins for centering
     auto* ml = node->style().get("margin-left");
     auto* mr = node->style().get("margin-right");
-    bool ml_auto = !ml || (ml->type == css::CSSValue::Type::KEYWORD && ml->keyword == "auto");
-    bool mr_auto = !mr || (mr->type == css::CSSValue::Type::KEYWORD && mr->keyword == "auto");
-    bool has_fixed_width = wv && wv->type == css::CSSValue::Type::LENGTH;
+    bool ml_auto = !ml || (ml->type == CSSValue::Type::KEYWORD && ml->keyword == "auto");
+    bool mr_auto = !mr || (mr->type == CSSValue::Type::KEYWORD && mr->keyword == "auto");
+    bool has_fixed_width = wv && wv->type == CSSValue::Type::LENGTH;
     if (ml_auto && mr_auto && (has_fixed_width || had_maxw)) {
         f32 used_w = node->content.width + h_padding + h_border;
         f32 remaining = containing_width - used_w;
@@ -1546,13 +1253,51 @@ void LayoutEngine::layout_block(LayoutNode* node, f32 containing_width, f32 cont
 
     if (is_grid_element(node->style())) {
         layout_grid(node, containing_width, containing_height);
+        // Apply min/max height
+        auto* maxh = node->style().get("max-height");
+        if (maxh && maxh->type == CSSValue::Type::LENGTH) {
+            f32 mh = resolve_length(maxh->length, containing_height, font_size);
+            if (node->content.height > mh) node->content.height = mh;
+        }
+        auto* minh = node->style().get("min-height");
+        if (minh && minh->type == CSSValue::Type::LENGTH) {
+            f32 mh = resolve_length(minh->length, containing_height, font_size);
+            if (node->content.height < mh) node->content.height = mh;
+        }
         return;
     }
 
     if (is_flex_element(node->style())) {
         layout_flex(node, containing_width, containing_height);
-        // Cross size for height-auto is handled inside layout_flex
+        // Apply min/max height
+        auto* maxh = node->style().get("max-height");
+        if (maxh && maxh->type == CSSValue::Type::LENGTH) {
+            f32 mh = resolve_length(maxh->length, containing_height, font_size);
+            if (node->content.height > mh) node->content.height = mh;
+        }
+        auto* minh = node->style().get("min-height");
+        if (minh && minh->type == CSSValue::Type::LENGTH) {
+            f32 mh = resolve_length(minh->length, containing_height, font_size);
+            if (node->content.height < mh) node->content.height = mh;
+        }
         return;
+    }
+
+    // Handle float
+    auto* float_val = node->style().get("float");
+    bool is_floating = float_val && float_val->type == CSSValue::Type::KEYWORD &&
+                       (float_val->keyword == "left" || float_val->keyword == "right");
+    if (is_floating) {
+        node->is_floating = true;
+        node->float_direction = float_val->keyword == "left" ? 0 : 1; // 0=left, 1=right
+    }
+
+    // Handle overflow
+    auto* overflow = node->style().get("overflow");
+    if (overflow && overflow->type == CSSValue::Type::KEYWORD) {
+        if (overflow->keyword == "scroll" || overflow->keyword == "auto") {
+            node->is_scrollable = true;
+        }
     }
 
     layout_children(node, node->content.width, containing_height);
@@ -1574,17 +1319,25 @@ void LayoutEngine::layout_block(LayoutNode* node, f32 containing_width, f32 cont
             if (child_bottom > max_y) max_y = child_bottom;
         }
         node->content.height = max_y;
-        // Parent-child margin collapse: if parent has no border/padding on the
-        // collapsing side, the child's margin bleeds through. The node's Y position
-        // is already set by its parent's layout_children; we adjust the height to
-        // account for the collapsed bottom margin of the last non-absolute child.
-        // (Full parent-child margin collapse also involves the top margin, which
-        // affects the parent's position — the parent container handles that via
-        // its own collapsed_gap logic.)
     }
+
+    // Apply min/max height
+    auto* maxh = node->style().get("max-height");
+    if (maxh && maxh->type == CSSValue::Type::LENGTH) {
+        f32 mh = resolve_length(maxh->length, containing_height, font_size);
+        if (node->content.height > mh) node->content.height = mh;
+    }
+    auto* minh = node->style().get("min-height");
+    if (minh && minh->type == CSSValue::Type::LENGTH) {
+        f32 mh = resolve_length(minh->length, containing_height, font_size);
+        if (node->content.height < mh) node->content.height = mh;
+    }
+
+    // Apply transform
+    apply_transform_to_node(node);
 }
 
-// ── Step 2h: layout_inline ────────────────────────────────────────────────
+// ── layout_inline ───────────────────────────────────────────────
 
 void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
     f32 char_width_factor = 0.6f;
@@ -1599,7 +1352,7 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
     f32 font_size = resolve_font_size(node->style(), parent_font_size);
     f32 char_width = char_width_factor * font_size;
 
-    // Read line-height from style, fall back to 1.75x font-size
+    // line-height
     f32 line_height = font_size * 1.75f;
     auto* lh = node->style().get("line-height");
     if (lh && lh->type == CSSValue::Type::NUMBER && lh->number > 0) {
@@ -1608,12 +1361,28 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
         line_height = lh->length.value;
     }
 
-    // Read text-align from style
+    // text-align
     std::string text_align = "left";
     auto* ta = node->style().get("text-align");
     if (ta && ta->type == CSSValue::Type::KEYWORD) {
         text_align = ta->keyword;
     }
+
+    // white-space
+    std::string whitespace = "normal";
+    auto* ws = node->style().get("white-space");
+    if (ws && ws->type == CSSValue::Type::KEYWORD) {
+        whitespace = ws->keyword;
+    }
+
+    // word-break / overflow-wrap
+    auto* wb = node->style().get("word-break");
+    bool break_words = (wb && wb->type == CSSValue::Type::KEYWORD && wb->keyword == "break-all");
+    auto* ow = node->style().get("overflow-wrap");
+    if (ow && ow->type == CSSValue::Type::KEYWORD && ow->keyword == "break-word") break_words = true;
+
+    bool nowrap = (whitespace == "nowrap");
+    bool preserve_ws = (whitespace == "pre" || whitespace == "pre-wrap" || whitespace == "pre-line");
 
     if (node->text().empty()) return;
 
@@ -1621,20 +1390,36 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
     std::vector<Word> words;
     std::string text = node->text();
     std::size_t start = 0;
-    while (start < text.size()) {
-        while (start < text.size() && text[start] == ' ') {
-            f32 sp_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, " ", (u32)font_size) : char_width;
-            words.push_back({" ", sp_w});
-            ++start;
+
+    if (preserve_ws) {
+        // Pre mode: each character is a word, no collapsing
+        for (char c : text) {
+            f32 w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, std::string(1, c), (u32)font_size) : char_width;
+            words.push_back({std::string(1, c), w});
         }
-        if (start >= text.size()) break;
-        std::size_t end = text.find(' ', start);
-        if (end == std::string::npos) end = text.size();
-        std::string word_text = text.substr(start, end - start);
-        f32 word_width = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, word_text, (u32)font_size)
-                                          : static_cast<f32>(word_text.size()) * char_width;
-        words.push_back({std::move(word_text), word_width});
-        start = end;
+    } else {
+        while (start < text.size()) {
+            if (text[start] == ' ' && whitespace != "pre") {
+                // Collapse multiple spaces
+                f32 sp_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, " ", (u32)font_size) : char_width;
+                words.push_back({" ", sp_w});
+                while (start < text.size() && text[start] == ' ') ++start;
+                continue;
+            }
+            if (start >= text.size()) break;
+            std::size_t end = text.find(' ', start);
+            if (end == std::string::npos) end = text.size();
+            std::string word_text = text.substr(start, end - start);
+            f32 word_width = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, word_text, (u32)font_size)
+                                              : static_cast<f32>(word_text.size()) * char_width;
+            words.push_back({std::move(word_text), word_width});
+            start = end;
+        }
+    }
+
+    // Remove trailing space if whitespace collapses
+    if (whitespace == "normal" && !words.empty() && words.back().text == " ") {
+        words.pop_back();
     }
 
     f32 line_x = 0;
@@ -1646,7 +1431,11 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
             line_x += word.width;
             continue;
         }
-        if (line_x + word.width > containing_width && line_x > 0) {
+        if (line_x + word.width > containing_width && line_x > 0 && !nowrap) {
+            // Break long words if needed
+            if (break_words && word.width > containing_width) {
+                // Force-break this word at the character level
+            }
             if (line_x > max_line_width) max_line_width = line_x;
             line_y += line_height;
             line_x = 0;
@@ -1654,25 +1443,23 @@ void LayoutEngine::layout_inline(LayoutNode* node, f32 containing_width, f32) {
         line_x += word.width;
         if (line_x > max_line_width) max_line_width = line_x;
     }
-    // Strip trailing space from max_line_width
+
     if (max_line_width > 0 && !words.empty() && words.back().text == " ") {
         max_line_width -= words.back().width;
     }
     f32 total_height = line_y + (line_x > 0 ? line_height : 0);
 
-    // Apply text-align to the measured text
-    // (text-align affects positioning within the containing block, handled
-    //  in layout_children using the computed max_line_width per line)
-    node->content.width = max_line_width;
+    node->content.width = text_align == "center" ? containing_width :
+                          text_align == "right" ? containing_width : max_line_width;
     node->content.height = total_height;
 }
 
-// ── Step 2i: layout_children ──────────────────────────────────────────────
+// ── layout_children ─────────────────────────────────────────────
 
 void LayoutEngine::layout_children(LayoutNode* node, f32 containing_width, f32 containing_height) {
     if (!node || node->children.empty()) return;
-    if (is_flex_element(node->style())) return; // flex handles its own children
-    if (is_grid_element(node->style())) return; // grid handles its own children
+    if (is_flex_element(node->style())) return;
+    if (is_grid_element(node->style())) return;
 
     bool has_block_child = false;
     bool has_inline_child = false;
@@ -1689,6 +1476,10 @@ void LayoutEngine::layout_children(LayoutNode* node, f32 containing_width, f32 c
             else has_inline_child = true;
         }
     }
+
+    // Track floats
+    f32 float_left_x = 0;
+    f32 float_right_x = containing_width;
 
     if (has_block_child) {
         f32 current_y = 0;
@@ -1710,16 +1501,30 @@ void LayoutEngine::layout_children(LayoutNode* node, f32 containing_width, f32 c
 
             layout_block(child.get(), containing_width, containing_height);
 
-            // Parent-child margin collapse: if parent has no border/padding, the
-            // first child's margin-top collapses with the parent's margin-top.
+            // Handle floats
+            if (child->is_floating) {
+                f32 float_margin_box_w = child->content.width + child->padding.left + child->padding.right +
+                                         child->border.left + child->border.right +
+                                         child->margin.left + child->margin.right;
+                if (child->float_direction == 0) { // left
+                    child->content.x = float_left_x;
+                    float_left_x += float_margin_box_w;
+                } else { // right
+                    child->content.x = containing_width - float_margin_box_w - float_right_x + float_right_x;
+                    child->content.x = containing_width - float_margin_box_w;
+                    float_right_x -= float_margin_box_w;
+                }
+                child->content.y = current_y;
+                current_y += child->content.height;
+                continue;
+            }
+
+            // Parent-child margin collapse
             f32 collapsed_gap;
             if (first) {
                 f32 parent_margin_top = node->margin.top;
                 bool parent_has_border_padding_top = node->border.top > 0 || node->padding.top > 0;
                 if (!parent_has_border_padding_top && parent_margin_top > 0) {
-                    // Collapse: child margin bleeds through parent; the parent's
-                    // margin already pushed grandparent's content_y. The child's
-                    // top margin supplements that to reach max(parent, child).
                     if (child->margin.top > parent_margin_top)
                         collapsed_gap = child->margin.top - parent_margin_top;
                     else
@@ -1733,7 +1538,17 @@ void LayoutEngine::layout_children(LayoutNode* node, f32 containing_width, f32 c
 
             child->content.x = child->margin.left + child->border.left + child->padding.left;
 
-            // Apply text-align for inline text nodes
+            // Handle clear
+            auto* clear_val = child->style().get("clear");
+            if (clear_val && clear_val->type == CSSValue::Type::KEYWORD) {
+                if (clear_val->keyword == "left" || clear_val->keyword == "both") {
+                    float_left_x = 0;
+                }
+                if (clear_val->keyword == "right" || clear_val->keyword == "both") {
+                    float_right_x = containing_width;
+                }
+            }
+
             if (child->is_text()) {
                 auto* ta = node->style().get("text-align");
                 if (ta && ta->type == CSSValue::Type::KEYWORD) {
@@ -1778,7 +1593,6 @@ void LayoutEngine::layout_children(LayoutNode* node, f32 containing_width, f32 c
             child->content.x = line_x;
             child->content.y = line_y;
             line_x += child->content.width;
-            // Track the tallest child on this line for line height
             if (child->content.height > cur_line_height)
                 cur_line_height = child->content.height;
         }
@@ -1788,7 +1602,7 @@ void LayoutEngine::layout_children(LayoutNode* node, f32 containing_width, f32 c
     }
 }
 
-// ── Step 3: Absolute / relative positioning pass ──────────────────────────
+// ── Absolute / relative positioning pass ────────────────────────
 
 void LayoutEngine::layout_absolute_pass(LayoutNode* node, LayoutNode* containing_block,
                                          f32 cb_width, f32 cb_height, f32 font_size)
@@ -1813,18 +1627,22 @@ void LayoutEngine::layout_absolute_pass(LayoutNode* node, LayoutNode* containing
         auto* child_pos = child->style().get("position");
         bool child_is_absolute = child_pos && child_pos->type == CSSValue::Type::KEYWORD &&
                                  child_pos->keyword == "absolute";
+        bool child_is_fixed = child_pos && child_pos->type == CSSValue::Type::KEYWORD &&
+                               child_pos->keyword == "fixed";
+        bool child_is_sticky = child_pos && child_pos->type == CSSValue::Type::KEYWORD &&
+                                child_pos->keyword == "sticky";
 
         f32 child_cb_width = cb_width;
         f32 child_cb_height = cb_height;
         f32 child_font_size = font_size;
 
-        if (child_is_absolute) {
-            LayoutNode* child_cb = find_positioned_ancestor(child.get());
-            if (child_cb) {
-                auto cb_padding = child_cb->get_padding_box();
-                child_cb_width = cb_padding.width;
-                child_cb_height = cb_padding.height;
-                child_font_size = resolve_font_size(child_cb->style(), font_size);
+        if (child_is_absolute || child_is_fixed) {
+            LayoutNode* child_cb = nullptr;
+            if (child_is_fixed) {
+                // Fixed: relative to viewport
+                child_cb_width = viewport_width_;
+                child_cb_height = viewport_height_;
+                child_font_size = root_font_size_;
 
                 layout_block(child.get(), child_cb_width, child_cb_height);
 
@@ -1833,27 +1651,57 @@ void LayoutEngine::layout_absolute_pass(LayoutNode* node, LayoutNode* containing
                 f32 top_off = resolve_property(child->style(), "top",
                                                child_cb_height, child_font_size);
 
-                child->content.x = cb_padding.x + left_off;
-                child->content.y = cb_padding.y + top_off;
-            } else {
-                child_cb_width = viewport_width_;
-                child_cb_height = viewport_height_;
-
-                layout_block(child.get(), child_cb_width, child_cb_height);
-
-                f32 left_off = resolve_property(child->style(), "left",
-                                                child_cb_width, root_font_size_);
-                f32 top_off = resolve_property(child->style(), "top",
-                                               child_cb_height, root_font_size_);
-
                 child->content.x = left_off;
                 child->content.y = top_off;
+            } else {
+                child_cb = find_positioned_ancestor(child.get());
+                if (child_cb) {
+                    auto cb_padding = child_cb->get_padding_box();
+                    child_cb_width = cb_padding.width;
+                    child_cb_height = cb_padding.height;
+                    child_font_size = resolve_font_size(child_cb->style(), font_size);
+
+                    layout_block(child.get(), child_cb_width, child_cb_height);
+
+                    f32 left_off = resolve_property(child->style(), "left",
+                                                    child_cb_width, child_font_size);
+                    f32 top_off = resolve_property(child->style(), "top",
+                                                   child_cb_height, child_font_size);
+
+                    child->content.x = cb_padding.x + left_off;
+                    child->content.y = cb_padding.y + top_off;
+                } else {
+                    child_cb_width = viewport_width_;
+                    child_cb_height = viewport_height_;
+
+                    layout_block(child.get(), child_cb_width, child_cb_height);
+
+                    f32 left_off = resolve_property(child->style(), "left",
+                                                    child_cb_width, root_font_size_);
+                    f32 top_off = resolve_property(child->style(), "top",
+                                                   child_cb_height, root_font_size_);
+
+                    child->content.x = left_off;
+                    child->content.y = top_off;
+                }
             }
+        }
+
+        if (child_is_sticky) {
+            // Sticky: initially positioned as normal, then sticky offset applied
+            f32 sticky_top = resolve_property(child->style(), "top",
+                                               viewport_height_, font_size);
+            f32 sticky_left = resolve_property(child->style(), "left",
+                                                viewport_width_, font_size);
+
+            // For now, just apply the sticky offset like relative
+            if (sticky_left != 0) child->content.x += sticky_left;
+            if (sticky_top != 0) child->content.y += sticky_top;
         }
 
         f32 child_fs = resolve_font_size(child->style(), font_size);
 
-        if (child_is_absolute) {
+        if (child_is_absolute || child_is_fixed) {
             layout_absolute_pass(child.get(), nullptr, child_cb_width, child_cb_height, child_fs);
         } else {
             LayoutNode* next_cb = is_positioned(child->style()) ? child.get() : containing_block;
@@ -1863,7 +1711,7 @@ void LayoutEngine::layout_absolute_pass(LayoutNode* node, LayoutNode* containing
     }
 }
 
-// ── Step 2j: LayoutEngine::layout ─────────────────────────────────────────
+// ── LayoutEngine::layout_async ──────────────────────────────────
 
 LayoutEngine::LayoutEngine() = default;
 
@@ -1897,4 +1745,455 @@ async::task<std::unique_ptr<LayoutNode>> LayoutEngine::layout_async(
     co_return tree;
 }
 
-} // namespace browser::css
+// ── Grid layout ─────────────────────────────────────────────────
+
+struct GridState {
+    std::vector<GridTrackDef> columns, rows;
+    struct Cell { LayoutNode* item = nullptr; i32 col_span = 1, row_span = 1; };
+    std::map<std::pair<i32,i32>, Cell> cells;
+    i32 num_columns = 0, num_rows = 0;
+    f32 column_gap = 0, row_gap = 0;
+};
+
+void LayoutEngine::resolve_grid_tracks(std::vector<GridTrackDef>& tracks,
+                                        f32 container_size, f32 font_size, f32 gap)
+{
+    if (tracks.empty()) return;
+
+    f32 total_fixed = 0;
+    f32 total_fr = 0;
+    f32 total_gap = gap * static_cast<f32>(static_cast<i32>(tracks.size()) - 1);
+
+    for (auto& t : tracks) {
+        switch (t.type) {
+            case GridTrackType::FIXED:
+                t.resolved_size = resolve_length(t.min_size, container_size, font_size);
+                total_fixed += t.resolved_size;
+                break;
+            case GridTrackType::MINMAX: {
+                f32 min_val = resolve_length(t.min_size, container_size, font_size);
+                if (t.max_size.unit == Length::Unit::NONE) {
+                    t.resolved_size = min_val;
+                    total_fixed += t.resolved_size;
+                } else {
+                    f32 max_val = resolve_length(t.max_size, container_size, font_size);
+                    t.resolved_size = std::max(min_val, max_val);
+                    total_fixed += t.resolved_size;
+                }
+                break;
+            }
+            case GridTrackType::FIT_CONTENT: {
+                f32 max_val = resolve_length(t.max_size, container_size, font_size);
+                t.resolved_size = max_val;
+                total_fixed += t.resolved_size;
+                break;
+            }
+            case GridTrackType::FLEX:
+                t.resolved_size = 0;
+                total_fr += t.min_size.value;
+                break;
+            case GridTrackType::AUTO:
+                t.resolved_size = 0;
+                break;
+        }
+    }
+
+    if (total_fr > 0) {
+        f32 remaining = container_size - total_fixed - total_gap;
+        if (remaining < 0) remaining = 0;
+        for (auto& t : tracks) {
+            if (t.type == GridTrackType::FLEX) {
+                t.resolved_size = remaining * (t.min_size.value / total_fr);
+            }
+        }
+    }
+}
+
+static std::string get_grid_prop_raw(const ComputedStyle& style, const std::string& prop) {
+    auto* v = style.get(prop);
+    if (!v) return "";
+    if (v->type == CSSValue::Type::STRING) return v->string_value;
+    if (v->type == CSSValue::Type::KEYWORD) return v->keyword;
+    if (v->type == CSSValue::Type::FUNCTION) {
+        if (!v->string_value.empty()) return v->string_value;
+        return v->keyword;
+    }
+    if (v->type == CSSValue::Type::NUMBER) {
+        return std::to_string(static_cast<i32>(v->number));
+    }
+    if (v->type == CSSValue::Type::LENGTH) {
+        std::string s = std::to_string(v->length.value);
+        auto dot = s.find('.');
+        if (dot != std::string::npos) {
+            auto last = s.find_last_not_of('0');
+            if (last > dot) s = s.substr(0, last + 1);
+            else if (last == dot) s = s.substr(0, dot);
+        }
+        switch (v->length.unit) {
+            case Length::Unit::PX: s += "px"; break;
+            case Length::Unit::EM: s += "em"; break;
+            case Length::Unit::REM: s += "rem"; break;
+            case Length::Unit::PERCENT: s += "%"; break;
+            default: break;
+        }
+        return s;
+    }
+    return "";
+}
+
+void LayoutEngine::layout_grid(LayoutNode* node, f32 containing_width, f32 containing_height) {
+    if (!node) return;
+
+    f32 parent_font_size = root_font_size_;
+    if (node->parent) {
+        auto* pfs = node->parent->style().get("font-size");
+        if (pfs && pfs->type == CSSValue::Type::LENGTH && pfs->length.unit == Length::Unit::PX) {
+            parent_font_size = pfs->length.value;
+        }
+    }
+    f32 font_size = resolve_font_size(node->style(), parent_font_size);
+
+    EdgeSizes margins;
+    margins.top = resolve_side_value(node->style(), "margin-top", "margin", containing_width, font_size);
+    margins.bottom = resolve_side_value(node->style(), "margin-bottom", "margin", containing_width, font_size);
+    margins.left = resolve_side_value(node->style(), "margin-left", "margin", containing_width, font_size);
+    margins.right = resolve_side_value(node->style(), "margin-right", "margin", containing_width, font_size);
+    node->margin = margins;
+
+    EdgeSizes paddings;
+    paddings.top = resolve_side_value(node->style(), "padding-top", "padding", containing_width, font_size);
+    paddings.bottom = resolve_side_value(node->style(), "padding-bottom", "padding", containing_width, font_size);
+    paddings.left = resolve_side_value(node->style(), "padding-left", "padding", containing_width, font_size);
+    paddings.right = resolve_side_value(node->style(), "padding-right", "padding", containing_width, font_size);
+    node->padding = paddings;
+
+    EdgeSizes borders;
+    borders.top = resolve_side_value(node->style(), "border-top-width", "border-width", containing_width, font_size);
+    borders.bottom = resolve_side_value(node->style(), "border-bottom-width", "border-width", containing_width, font_size);
+    borders.left = resolve_side_value(node->style(), "border-left-width", "border-width", containing_width, font_size);
+    borders.right = resolve_side_value(node->style(), "border-right-width", "border-width", containing_width, font_size);
+    if (borders.top == 0) {
+        auto* bv = node->style().get("border");
+        if (bv && bv->type == CSSValue::Type::LENGTH) {
+            f32 bw = resolve_length(bv->length, containing_width, font_size);
+            borders = {bw, bw, bw, bw};
+        }
+    }
+    node->border = borders;
+
+    f32 h_padding = paddings.left + paddings.right;
+    f32 h_border = borders.left + borders.right;
+    f32 h_margin = margins.left + margins.right;
+
+    f32 container_width = containing_width - h_margin - h_padding - h_border;
+    if (container_width < 0) container_width = 0;
+
+    auto* wv = node->style().get("width");
+    if (wv && wv->type == CSSValue::Type::LENGTH) {
+        container_width = resolve_length(wv->length, containing_width, font_size);
+    }
+
+    f32 container_height = containing_height;
+    auto* hv = node->style().get("height");
+    if (hv && hv->type == CSSValue::Type::LENGTH) {
+        container_height = resolve_length(hv->length, containing_height, font_size);
+    }
+
+    node->content.width = container_width;
+
+    // Parse grid template
+    std::string cols_str = get_grid_prop_raw(node->style(), "grid-template-columns");
+    std::string rows_str = get_grid_prop_raw(node->style(), "grid-template-rows");
+
+    GridState state;
+    state.columns = parse_track_list(cols_str, container_width, font_size);
+    state.rows = parse_track_list(rows_str, container_height, font_size);
+
+    if (state.columns.empty()) {
+        state.columns.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+    }
+
+    auto* gap_v = node->style().get("gap");
+    if (gap_v && gap_v->type == CSSValue::Type::LENGTH) {
+        f32 g = resolve_length(gap_v->length, container_width, font_size);
+        state.column_gap = g;
+        state.row_gap = g;
+    }
+    auto* cg = node->style().get("column-gap");
+    if (cg && cg->type == CSSValue::Type::LENGTH) {
+        state.column_gap = resolve_length(cg->length, container_width, font_size);
+    }
+    auto* rg = node->style().get("row-gap");
+    if (rg && rg->type == CSSValue::Type::LENGTH) {
+        state.row_gap = resolve_length(rg->length, container_width, font_size);
+    }
+
+    state.num_columns = static_cast<i32>(state.columns.size());
+    state.num_rows = static_cast<i32>(state.rows.size());
+
+    // Place items
+    std::vector<LayoutNode*> unplaced;
+    for (auto& child : node->children) {
+        auto* pos = child->style().get("position");
+        bool is_absolute = pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute";
+        if (is_absolute) continue;
+
+        std::string gc_str = get_grid_prop_raw(child->style(), "grid-column");
+        std::string gr_str = get_grid_prop_raw(child->style(), "grid-row");
+
+        GridPlacement col_place = gc_str.empty() ? GridPlacement{} : parse_grid_line(gc_str);
+        GridPlacement row_place = gr_str.empty() ? GridPlacement{} : parse_grid_line(gr_str);
+
+        bool has_explicit = (col_place.line_start > 0 || row_place.line_start > 0);
+
+        if (has_explicit) {
+            i32 col = col_place.line_start > 0 ? col_place.line_start - 1 : 0;
+            i32 row = row_place.line_start > 0 ? row_place.line_start - 1 : 0;
+            i32 col_span = static_cast<i32>(col_place.span);
+            i32 row_span = static_cast<i32>(row_place.span);
+
+            while (col + col_span > state.num_columns) {
+                state.columns.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                state.num_columns = static_cast<i32>(state.columns.size());
+            }
+            while (row + row_span > state.num_rows) {
+                state.rows.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                state.num_rows = static_cast<i32>(state.rows.size());
+            }
+
+            for (i32 c = 0; c < col_span; c++) {
+                for (i32 r = 0; r < row_span; r++) {
+                    state.cells[{col + c, row + r}] = GridState::Cell{child.get(), col_span, row_span};
+                }
+            }
+        } else {
+            unplaced.push_back(child.get());
+        }
+    }
+
+    // Auto-place remaining items
+    if (!unplaced.empty()) {
+        i32 cursor_col = 0;
+        i32 cursor_row = 0;
+        for (auto* item : unplaced) {
+            std::string gc_str = get_grid_prop_raw(item->style(), "grid-column");
+            std::string gr_str = get_grid_prop_raw(item->style(), "grid-row");
+            GridPlacement cp = gc_str.empty() ? GridPlacement{} : parse_grid_line(gc_str);
+            GridPlacement rp = gr_str.empty() ? GridPlacement{} : parse_grid_line(gr_str);
+
+            i32 col_span = static_cast<i32>(cp.span);
+            i32 row_span = static_cast<i32>(rp.span);
+
+            while (cursor_col + col_span > state.num_columns) {
+                state.columns.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                state.num_columns = static_cast<i32>(state.columns.size());
+            }
+
+            bool placed = false;
+            i32 safety = 0;
+            while (!placed && safety < 10000) {
+                safety++;
+                bool fits = true;
+                for (i32 dc = 0; dc < col_span && fits; dc++) {
+                    for (i32 dr = 0; dr < row_span && fits; dr++) {
+                        i32 check_col = cursor_col + dc;
+                        i32 check_row = cursor_row + dr;
+                        if (check_col >= state.num_columns) { fits = false; }
+                        auto it = state.cells.find({check_col, check_row});
+                        if (it != state.cells.end()) { fits = false; }
+                    }
+                }
+                if (fits) {
+                    for (i32 dc = 0; dc < col_span; dc++) {
+                        for (i32 dr = 0; dr < row_span; dr++) {
+                            state.cells[{cursor_col + dc, cursor_row + dr}] = GridState::Cell{item, col_span, row_span};
+                        }
+                    }
+                    placed = true;
+                } else {
+                    cursor_col++;
+                    if (cursor_col + col_span > state.num_columns) {
+                        cursor_col = 0;
+                        cursor_row++;
+                    }
+                }
+            }
+            while (cursor_row + row_span > state.num_rows) {
+                state.rows.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                state.num_rows = static_cast<i32>(state.rows.size());
+            }
+            cursor_col += col_span;
+            if (cursor_col >= state.num_columns) {
+                cursor_col = 0;
+                cursor_row++;
+            }
+        }
+    }
+
+    // Resolve track sizes
+    resolve_grid_tracks(state.columns, container_width, font_size, state.column_gap);
+    resolve_grid_tracks(state.rows, container_height, font_size, state.row_gap);
+
+    // Position and size items
+    auto cell_start = [](const std::vector<GridTrackDef>& tracks, i32 index, f32 gap) -> f32 {
+        f32 pos = 0;
+        for (i32 i = 0; i < index; i++) {
+            if (i > 0) pos += gap;
+            pos += tracks[i].resolved_size;
+        }
+        return pos;
+    };
+
+    auto cell_span_size = [](const std::vector<GridTrackDef>& tracks, i32 from, i32 count, f32 gap) -> f32 {
+        f32 size = 0;
+        for (i32 i = from; i < from + count; i++) {
+            if (i > from) size += gap;
+            size += tracks[i].resolved_size;
+        }
+        return size;
+    };
+
+    struct GridAlign { JustifyContent justify; AlignItems align; bool stretch_w; bool stretch_h; };
+
+    auto get_grid_align = [](const ComputedStyle& s) -> GridAlign {
+        GridAlign ga{JustifyContent::FLEX_START, AlignItems::STRETCH, true, true};
+        auto* js = s.get("justify-self");
+        if (js && js->type == CSSValue::Type::KEYWORD) {
+            if (js->keyword == "start" || js->keyword == "flex-start") { ga.justify = JustifyContent::FLEX_START; ga.stretch_w = false; }
+            else if (js->keyword == "end" || js->keyword == "flex-end") { ga.justify = JustifyContent::FLEX_END; ga.stretch_w = false; }
+            else if (js->keyword == "center") { ga.justify = JustifyContent::CENTER; ga.stretch_w = false; }
+            else if (js->keyword == "stretch") { ga.justify = JustifyContent::FLEX_START; ga.stretch_w = true; }
+        }
+        auto* as = s.get("align-self");
+        if (as && as->type == CSSValue::Type::KEYWORD) {
+            if (as->keyword == "start" || as->keyword == "flex-start") { ga.align = AlignItems::FLEX_START; ga.stretch_h = false; }
+            else if (as->keyword == "end" || as->keyword == "flex-end") { ga.align = AlignItems::FLEX_END; ga.stretch_h = false; }
+            else if (as->keyword == "center") { ga.align = AlignItems::CENTER; ga.stretch_h = false; }
+            else if (as->keyword == "stretch") { ga.align = AlignItems::STRETCH; ga.stretch_h = true; }
+        }
+        return ga;
+    };
+
+    std::unordered_set<LayoutNode*> sized_items;
+    for (auto& [coord, cell] : state.cells) {
+        if (sized_items.count(cell.item)) continue;
+        sized_items.insert(cell.item);
+
+        auto [col, row] = coord;
+        LayoutNode* item = cell.item;
+
+        f32 cell_x = cell_start(state.columns, col, state.column_gap);
+        f32 cell_y = cell_start(state.rows, row, state.row_gap);
+        f32 cell_w = cell_span_size(state.columns, col, cell.col_span, state.column_gap);
+        f32 cell_h = cell_span_size(state.rows, row, cell.row_span, state.row_gap);
+
+        EdgeSizes item_margins;
+        item_margins.left = resolve_side_value(item->style(), "margin-left", "margin", cell_w, font_size);
+        item_margins.right = resolve_side_value(item->style(), "margin-right", "margin", cell_w, font_size);
+        item_margins.top = resolve_side_value(item->style(), "margin-top", "margin", cell_h, font_size);
+        item_margins.bottom = resolve_side_value(item->style(), "margin-bottom", "margin", cell_h, font_size);
+        item->margin = item_margins;
+
+        EdgeSizes item_borders;
+        item_borders.left = resolve_side_value(item->style(), "border-left-width", "border-width", cell_w, font_size);
+        item_borders.right = resolve_side_value(item->style(), "border-right-width", "border-width", cell_w, font_size);
+        item_borders.top = resolve_side_value(item->style(), "border-top-width", "border-width", cell_h, font_size);
+        item_borders.bottom = resolve_side_value(item->style(), "border-bottom-width", "border-width", cell_h, font_size);
+        if (item_borders.top == 0) {
+            auto* bv = item->style().get("border");
+            if (bv && bv->type == CSSValue::Type::LENGTH) {
+                f32 bw = resolve_length(bv->length, cell_w, font_size);
+                item_borders = {bw, bw, bw, bw};
+            }
+        }
+        item->border = item_borders;
+
+        EdgeSizes item_paddings;
+        item_paddings.left = resolve_side_value(item->style(), "padding-left", "padding", cell_w, font_size);
+        item_paddings.right = resolve_side_value(item->style(), "padding-right", "padding", cell_w, font_size);
+        item_paddings.top = resolve_side_value(item->style(), "padding-top", "padding", cell_h, font_size);
+        item_paddings.bottom = resolve_side_value(item->style(), "padding-bottom", "padding", cell_h, font_size);
+        item->padding = item_paddings;
+
+        GridAlign ga = get_grid_align(item->style());
+
+        f32 content_w = cell_w - item_margins.left - item_margins.right
+                        - item_borders.left - item_borders.right
+                        - item_paddings.left - item_paddings.right;
+        if (content_w < 0) content_w = 0;
+
+        f32 content_h = cell_h - item_margins.top - item_margins.bottom
+                        - item_borders.top - item_borders.bottom
+                        - item_paddings.top - item_paddings.bottom;
+        if (content_h < 0) content_h = 0;
+
+        if (!ga.stretch_h) content_h = 0;
+        if (!ga.stretch_w) content_w = 0;
+
+        item->content.width = content_w;
+        item->content.height = content_h;
+
+        item->content.x = cell_x + item_margins.left + item_borders.left + item_paddings.left;
+        item->content.y = cell_y + item_margins.top + item_borders.top + item_paddings.top;
+
+        // Layout children
+        if (!item->children.empty()) {
+            if (is_flex_element(item->style())) {
+                f32 saved_x = item->content.x;
+                f32 saved_y = item->content.y;
+                layout_flex(item, content_w, content_h);
+                item->content.x = saved_x;
+                item->content.y = saved_y;
+                item->content.width = content_w;
+                item->content.height = content_h;
+            } else if (is_grid_element(item->style())) {
+                f32 saved_x = item->content.x;
+                f32 saved_y = item->content.y;
+                layout_grid(item, content_w, content_h);
+                item->content.x = saved_x;
+                item->content.y = saved_y;
+                item->content.width = content_w;
+                item->content.height = content_h;
+            } else {
+                layout_children(item, content_w, content_h);
+            }
+        }
+
+        // Alignment
+        {
+            f32 extra_w = cell_w - item->content.width
+                          - item_margins.left - item_margins.right
+                          - item_borders.left - item_borders.right
+                          - item_paddings.left - item_paddings.right;
+            if (extra_w > 0) {
+                if (ga.justify == JustifyContent::CENTER) item->content.x += extra_w / 2;
+                else if (ga.justify == JustifyContent::FLEX_END) item->content.x += extra_w;
+            }
+        }
+        {
+            f32 extra_h = cell_h - item->content.height
+                          - item_margins.top - item_margins.bottom
+                          - item_borders.top - item_borders.bottom
+                          - item_paddings.top - item_paddings.bottom;
+            if (extra_h > 0) {
+                if (ga.align == AlignItems::CENTER) item->content.y += extra_h / 2;
+                else if (ga.align == AlignItems::FLEX_END) item->content.y += extra_h;
+            }
+        }
+    }
+
+    f32 total_col_size = cell_start(state.columns, state.num_columns, state.column_gap);
+    f32 total_row_size = cell_start(state.rows, state.num_rows, state.row_gap);
+
+    node->content.width = total_col_size;
+    node->content.height = total_row_size;
+
+    if (wv && wv->type == CSSValue::Type::LENGTH) {
+        node->content.width = resolve_length(wv->length, containing_width, font_size);
+    }
+    if (hv && hv->type == CSSValue::Type::LENGTH) {
+        node->content.height = resolve_length(hv->length, containing_height, font_size);
+    }
+}
+
+}

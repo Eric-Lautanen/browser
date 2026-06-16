@@ -22,8 +22,14 @@ private:
     Declaration parse_declaration();
     SimpleSelector parse_simple_selector();
     CSSValue parse_value();
+    CSSValue parse_calc_args();
+    CSSValue parse_transform_func(const std::string& func_name);
+    CSSValue parse_gradient(const std::string& func_name);
     AtRule parse_at_rule();
+    KeyframesRule parse_keyframes();
+    bool parse_keyframe_block(KeyframeBlock& block);
     bool is_simple_selector_start() const;
+    std::string consume_function_body();
 };
 
 inline async::task<StyleSheet> parse_async(const std::string& css) {
