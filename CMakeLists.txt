@@ -3,7 +3,7 @@ project(browser VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -fno-exceptions")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines")
 
 # Test Framework Library
 add_library(test_framework STATIC
@@ -12,38 +12,20 @@ add_library(test_framework STATIC
 )
 target_include_directories(test_framework PUBLIC tests)
 
-# Test Runner (includes all passing test source files for static test registration)
-add_executable(test_runner
-    tests/main.cpp
-    tests/test_framework_impl_test.cpp
-    tests/utility_test.cpp
+# Async Library (header-only)
+add_library(async INTERFACE
+    async/task.hpp
+    async/executor.hpp
+    async/when_all.hpp
+    async/when_any.hpp
+    async/channel.hpp
+    async/mutex.hpp
+    async/scoped_lock.hpp
+    async/thread_pool.hpp
+    async/memory.hpp
+    async/this_thread.hpp
 )
-target_link_libraries(test_runner test_framework)
-
-# Render tests (CPU-side only, no GPU required)
-add_executable(mesh_test tests/main.cpp tests/mesh_test.cpp)
-target_link_libraries(mesh_test test_framework render)
-
-add_executable(font_test tests/main.cpp tests/font_test.cpp)
-target_link_libraries(font_test test_framework render)
-
-# Individual test executables (each includes main.cpp for entry point)
-add_executable(test_framework_test tests/main.cpp tests/test_framework_test.cpp)
-target_link_libraries(test_framework_test test_framework)
-
-add_executable(test_framework_impl_test tests/main.cpp tests/test_framework_impl_test.cpp)
-target_link_libraries(test_framework_impl_test test_framework)
-
-add_executable(utility_test tests/main.cpp tests/utility_test.cpp)
-target_link_libraries(utility_test test_framework)
-
-# Window smoke test (requires interactive desktop to fully run; gracefully handles failure)
-add_executable(window_smoke_test tests/main.cpp tests/window_smoke_test.cpp)
-target_link_libraries(window_smoke_test test_framework platform)
-
-# GPU smoke test (full render pipeline with OpenGL context)
-add_executable(gpu_smoke_test tests/main.cpp tests/gpu_smoke_test.cpp)
-target_link_libraries(gpu_smoke_test test_framework platform render)
+target_include_directories(async INTERFACE .)
 
 # Platform Library
 add_library(platform STATIC
@@ -59,7 +41,108 @@ if(WIN32)
     target_link_libraries(platform gdi32 user32 opengl32 comctl32)
 endif()
 
-# Render Library
+# Network Library
+add_library(net STATIC
+    net/socket.cpp
+    net/socket_win32.cpp
+    net/dns.cpp
+    net/connection.cpp
+    net/url.cpp
+    net/http.cpp
+    net/http2.cpp
+    net/http_client.cpp
+    net/tracker_blocker.cpp
+    net/deflate.cpp
+    net/iocp.hpp
+    net/iocp.cpp
+    net/crypto/chacha20.cpp
+    net/crypto/poly1305.cpp
+    net/crypto/aes.cpp
+    net/crypto/sha.cpp
+    net/crypto/bignum.cpp
+    net/crypto/ecc.cpp
+    net/crypto/x25519.cpp
+    net/tls.cpp
+    net/socket.hpp
+    net/socket_win32.hpp
+    net/dns.hpp
+    net/connection.hpp
+    net/url.hpp
+    net/http.hpp
+    net/http2.hpp
+    net/http_client.hpp
+    net/deflate.hpp
+)
+target_include_directories(net PUBLIC .)
+if(WIN32)
+    target_link_libraries(net ws2_32 bcrypt)
+endif()
+target_link_libraries(net platform)
+
+# HTML Library
+add_library(html STATIC
+    html/utf8.cpp
+    html/utf8.hpp
+    html/token.hpp
+    html/entities.hpp
+    html/entities.cpp
+    html/tokenizer.hpp
+    html/tokenizer.cpp
+    html/dom.hpp
+    html/dom.cpp
+    html/parser.hpp
+    html/parser.cpp
+    html/traversal.hpp
+    html/traversal.cpp
+)
+target_include_directories(html PUBLIC .)
+
+# CSS Library (depends on html for DOM types)
+add_library(css STATIC
+    css/css_values.hpp
+    css/css_values.cpp
+    css/tokenizer.hpp
+    css/tokenizer.cpp
+    css/parser.hpp
+    css/parser.cpp
+    css/specificity.hpp
+    css/selector_match.hpp
+    css/selector_match.cpp
+    css/cascade.hpp
+    css/cascade.cpp
+    css/layout.hpp
+    css/layout.cpp
+    css/grid.hpp
+    css/grid.cpp
+)
+target_include_directories(css PUBLIC .)
+target_link_libraries(css html)
+
+# JavaScript Library (depends on html for DOM bindings)
+add_library(js STATIC
+    js/token.hpp
+    js/lexer.hpp
+    js/lexer.cpp
+    js/ast.hpp
+    js/parser.hpp
+    js/parser.cpp
+    js/bytecode.hpp
+    js/compiler.hpp
+    js/compiler.cpp
+    js/value.hpp
+    js/gc.hpp
+    js/gc.cpp
+    js/vm.hpp
+    js/vm.cpp
+    js/jit.hpp
+    js/jit.cpp
+    js/dom_bindings.hpp
+    js/dom_bindings.cpp
+)
+target_include_directories(js PUBLIC .)
+target_link_libraries(js html)
+
+# Render Library (depends on platform for OpenGL, css/html for paint)
 add_library(render STATIC
     render/shader_program.cpp
     render/mesh.cpp
@@ -86,43 +169,57 @@ add_library(render STATIC
 target_include_directories(render PUBLIC .)
 target_link_libraries(render platform css html)
 
-# Network Library
-add_library(net STATIC
-    net/socket.cpp
-    net/socket_win32.cpp
-    net/dns.cpp
-    net/connection.cpp
-    net/url.cpp
-    net/http.cpp
-    net/http2.cpp
-    net/http_client.cpp
-    net/tracker_blocker.cpp
-    net/deflate.cpp
-    net/crypto/chacha20.cpp
-    net/crypto/poly1305.cpp
-    net/crypto/aes.cpp
-    net/crypto/sha.cpp
-    net/crypto/bignum.cpp
-    net/crypto/ecc.cpp
-    net/crypto/x25519.cpp
-    net/tls.cpp
-    net/socket.hpp
-    net/socket_win32.hpp
-    net/dns.hpp
-    net/connection.hpp
-    net/url.hpp
-    net/http.hpp
-    net/http2.hpp
-    net/http_client.hpp
-    net/deflate.hpp
+# Browser Library
+add_library(browser_lib STATIC
+    browser/browser_window.cpp
+    browser/page_loader.cpp
+    browser/history.cpp
+    browser/bookmarks.cpp
+    browser/telemetry.cpp
+    browser/settings.cpp
+    browser/browser_window.hpp
+    browser/history.hpp
+    browser/bookmarks.hpp
+    browser/telemetry.hpp
+    browser/settings.hpp
+    browser/theme.hpp
+    browser/page_loader.hpp
 )
-target_include_directories(net PUBLIC .)
-if(WIN32)
-    target_link_libraries(net ws2_32 bcrypt)
-endif()
-target_link_libraries(net platform)
+target_include_directories(browser_lib PUBLIC .)
+target_link_libraries(browser_lib net platform render js)
 
-# Network tests
+# --- Test Runner ---
+add_executable(test_runner
+    tests/main.cpp
+    tests/test_framework_impl_test.cpp
+    tests/utility_test.cpp
+)
+target_link_libraries(test_runner test_framework)
+
+# Individual test executables
+add_executable(test_framework_test tests/main.cpp tests/test_framework_test.cpp)
+target_link_libraries(test_framework_test test_framework)
+
+add_executable(test_framework_impl_test tests/main.cpp tests/test_framework_impl_test.cpp)
+target_link_libraries(test_framework_impl_test test_framework)
+
+add_executable(utility_test tests/main.cpp tests/utility_test.cpp)
+target_link_libraries(utility_test test_framework)
+
+# --- Async tests ---
+add_executable(iocp_test tests/main.cpp tests/iocp_test.cpp)
+target_link_libraries(iocp_test test_framework net)
+
+add_executable(async_test tests/main.cpp tests/async_test.cpp)
+target_link_libraries(async_test test_framework async)
+
+add_executable(channel_test tests/main.cpp tests/channel_test.cpp)
+target_link_libraries(channel_test test_framework async)
+
+add_executable(thread_pool_test tests/main.cpp tests/thread_pool_test.cpp)
+target_link_libraries(thread_pool_test test_framework async)
+
+# --- Network tests ---
 add_executable(net_test tests/main.cpp tests/net_test.cpp)
 target_link_libraries(net_test test_framework net)
 
@@ -132,73 +229,21 @@ target_link_libraries(tls_test test_framework net)
 add_executable(tracker_test tests/main.cpp tests/tracker_test.cpp net/tracker_blocker.cpp)
 target_link_libraries(tracker_test test_framework net)
 
-# HTML Library
-add_library(html STATIC
-    html/utf8.cpp
-    html/utf8.hpp
-    html/token.hpp
-    html/entities.hpp
-    html/entities.cpp
-    html/tokenizer.hpp
-    html/tokenizer.cpp
-    html/dom.hpp
-    html/dom.cpp
-    html/parser.hpp
-    html/parser.cpp
-    html/traversal.hpp
-    html/traversal.cpp
-)
-target_include_directories(html PUBLIC .)
-
-# HTML tests
+# --- HTML tests ---
 add_executable(html_test tests/main.cpp tests/html_test.cpp)
 target_link_libraries(html_test test_framework html)
 
-# CSS Library
-add_library(css STATIC
-    css/css_values.hpp
-    css/css_values.cpp
-    css/tokenizer.hpp
-    css/tokenizer.cpp
-    css/parser.hpp
-    css/parser.cpp
-    css/specificity.hpp
-    css/selector_match.hpp
-    css/selector_match.cpp
-    css/cascade.hpp
-    css/cascade.cpp
-    css/layout.hpp
-    css/layout.cpp
-    css/grid.hpp
-    css/grid.cpp
-)
-target_include_directories(css PUBLIC .)
+# --- CSS tests ---
+add_executable(css_test tests/main.cpp tests/css_test.cpp)
+target_link_libraries(css_test test_framework css)
 
-# JavaScript Library
-add_library(js STATIC
-    js/token.hpp
-    js/lexer.hpp
-    js/lexer.cpp
-    js/ast.hpp
-    js/parser.hpp
-    js/parser.cpp
-    js/bytecode.hpp
-    js/compiler.hpp
-    js/compiler.cpp
-    js/value.hpp
-    js/gc.hpp
-    js/gc.cpp
-    js/vm.hpp
-    js/vm.cpp
-    js/jit.hpp
-    js/jit.cpp
-    js/dom_bindings.hpp
-    js/dom_bindings.cpp
-)
-target_include_directories(js PUBLIC .)
-target_link_libraries(js html)
+add_executable(flex_test tests/main.cpp tests/flex_test.cpp)
+target_link_libraries(flex_test test_framework css html)
 
-# JavaScript tests
+add_executable(grid_test tests/main.cpp tests/grid_test.cpp)
+target_link_libraries(grid_test test_framework css html)
+
+# --- JavaScript tests ---
 add_executable(js_test tests/main.cpp tests/js_test.cpp)
 target_link_libraries(js_test test_framework js)
 
@@ -220,21 +265,43 @@ target_link_libraries(jit_test test_framework js)
 add_executable(dom_bindings_test tests/main.cpp tests/dom_bindings_test.cpp)
 target_link_libraries(dom_bindings_test test_framework js html)
 
-# CSS tests
-add_executable(css_test tests/main.cpp tests/css_test.cpp)
-target_link_libraries(css_test test_framework css)
+# --- Render tests ---
+add_executable(mesh_test tests/main.cpp tests/mesh_test.cpp)
+target_link_libraries(mesh_test test_framework render)
 
-# Flexbox layout tests
-add_executable(flex_test tests/main.cpp tests/flex_test.cpp)
-target_link_libraries(flex_test test_framework css html)
+add_executable(font_test tests/main.cpp tests/font_test.cpp)
+target_link_libraries(font_test test_framework render)
 
-# Grid layout tests
-add_executable(grid_test tests/main.cpp tests/grid_test.cpp)
-target_link_libraries(grid_test test_framework css html)
-
-# Paint tests
 add_executable(paint_test tests/main.cpp tests/paint_test.cpp)
 target_link_libraries(paint_test test_framework render css html)
+
+# Window smoke test (requires interactive desktop; gracefully handles failure)
+add_executable(window_smoke_test tests/main.cpp tests/window_smoke_test.cpp)
+target_link_libraries(window_smoke_test test_framework platform)
+
+# GPU smoke test (full render pipeline with OpenGL context)
+add_executable(gpu_smoke_test tests/main.cpp tests/gpu_smoke_test.cpp)
+target_link_libraries(gpu_smoke_test test_framework platform render)
+
+# --- Browser/chrome tests ---
+add_executable(telemetry_test tests/main.cpp tests/telemetry_test.cpp)
+target_link_libraries(telemetry_test test_framework browser_lib)
+
+add_executable(settings_test tests/main.cpp tests/settings_test.cpp)
+target_link_libraries(settings_test test_framework browser_lib)
+
+add_executable(chrome_test tests/main.cpp tests/chrome_test.cpp)
+target_link_libraries(chrome_test test_framework browser_lib platform render net)
+
+add_executable(history_test tests/main.cpp tests/history_test.cpp)
+target_link_libraries(history_test test_framework browser_lib)
+
+add_executable(bookmark_test tests/main.cpp tests/bookmark_test.cpp)
+target_link_libraries(bookmark_test test_framework browser_lib)
+
+# --- Browser executable ---
+add_executable(browser src/main.cpp)
+target_link_libraries(browser net platform render js browser_lib)
 
 # Custom target to run all tests
 add_custom_target(run_tests
@@ -242,29 +309,3 @@ add_custom_target(run_tests
     DEPENDS test_runner
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
-
-# Tracker blocker, telemetry, and settings tests
-add_executable(telemetry_test tests/main.cpp tests/telemetry_test.cpp browser/telemetry.cpp)
-target_link_libraries(telemetry_test test_framework)
-
-add_executable(settings_test tests/main.cpp tests/settings_test.cpp browser/settings.cpp)
-target_link_libraries(settings_test test_framework)
-
-# Browser chrome tests
-add_executable(chrome_test tests/main.cpp tests/chrome_test.cpp browser/browser_window.cpp browser/page_loader.cpp browser/history.cpp browser/bookmarks.cpp browser/telemetry.cpp browser/settings.cpp)
-target_link_libraries(chrome_test test_framework platform render net)
-
-# History and Bookmark tests
-add_executable(history_test tests/main.cpp tests/history_test.cpp browser/history.cpp)
-target_link_libraries(history_test test_framework)
-
-add_executable(bookmark_test tests/main.cpp tests/bookmark_test.cpp browser/bookmarks.cpp)
-target_link_libraries(bookmark_test test_framework)
-
-# Browser executable
-add_executable(browser src/main.cpp browser/browser_window.cpp browser/page_loader.cpp browser/history.cpp browser/bookmarks.cpp browser/telemetry.cpp browser/settings.cpp)
-target_link_libraries(browser net platform render js)
-
-
-
-

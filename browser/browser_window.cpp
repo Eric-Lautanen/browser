@@ -53,13 +53,7 @@ char keycode_to_char(platform::KeyCode key, bool shifted) {
 }
 
 BrowserWindow::BrowserWindow() = default;
-BrowserWindow::~BrowserWindow() {
-    delete history_;
-    delete bookmarks_;
-    delete telemetry_;
-    delete settings_;
-    delete tracker_;
-}
+BrowserWindow::~BrowserWindow() = default;
 
 Result<void> BrowserWindow::initialize() {
     auto win = platform::Window::create_window("Browser", 1024, 768);
@@ -68,12 +62,12 @@ Result<void> BrowserWindow::initialize() {
     window_->make_context_current();
     browser::platform::load_opengl_functions();
 
-    tracker_ = new net::TrackerBlocker();
+    tracker_ = std::make_unique<net::TrackerBlocker>();
     tracker_->load_default_list();
-    net::HTTPClient::set_tracker_blocker(tracker_);
+    net::HTTPClient::set_tracker_blocker(tracker_.get());
 
-    telemetry_ = new Telemetry();
-    settings_ = new SettingsManager();
+    telemetry_ = std::make_unique<Telemetry>();
+    settings_ = std::make_unique<SettingsManager>();
     auto rs = settings_->load_from_file("./settings.txt");
 
     set_theme(settings_->theme());
@@ -116,12 +110,12 @@ Result<void> BrowserWindow::initialize() {
         }
     }
 
-    page_loader_ = std::make_unique<PageLoader>(telemetry_, settings_, tracker_,
+    page_loader_ = std::make_unique<PageLoader>(telemetry_.get(), settings_.get(), tracker_.get(),
                                                  fm_.get(), text_renderer_.get());
     page_loader_->set_viewport_size(viewport_width_, viewport_height_);
 
-    history_ = new HistoryManager();
-    bookmarks_ = new BookmarkManager();
+    history_ = std::make_unique<HistoryManager>();
+    bookmarks_ = std::make_unique<BookmarkManager>();
     auto rb = bookmarks_->load_from_file("./bookmarks.txt");
 
     window_->set_event_callback([this](const platform::Event& e) { handle_event(e); });

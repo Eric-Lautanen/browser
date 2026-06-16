@@ -39,6 +39,7 @@ Each phase must pass this checklist before moving to the next:
 - [ ] **Phase-specific checks** — each phase lists additional items below
 - [ ] **Committed and pushed to git** — `git add -A && git commit -m "Phase N: <summary>" && git push`
 - [ ] **Web research performed** — before implementing each phase, search the web for 2026-era best practices, API changes, C++20/C++23 standards updates, Win32 API advancements, and security guidance relevant to the phase. Incorporate findings into the implementation. Do not assume pre-2025 knowledge is current.
+- [ ] **Temp files cleaned** — delete any debug logs, test artifacts, cache files, or temporary output created during development (`font_debug.txt`, `click_debug.txt`, `glyph_drop.txt`, `cache/`, `*.log`, etc.). Do not commit build artifacts or temp data.
 
 ---
 

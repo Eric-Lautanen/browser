@@ -10,6 +10,7 @@
 #include "../render/font.hpp"
 #include "theme.hpp"
 #include "page_loader.hpp"
+#include <memory>
 
 namespace browser {
 
@@ -93,11 +94,11 @@ private:
     Theme theme_;
     u32 viewport_width_ = 1024, viewport_height_ = 768;
     std::optional<LoadedPage> current_page_;
-    HistoryManager* history_ = nullptr;
-    BookmarkManager* bookmarks_ = nullptr;
-    Telemetry* telemetry_ = nullptr;
-    SettingsManager* settings_ = nullptr;
-    net::TrackerBlocker* tracker_ = nullptr;
+    std::unique_ptr<HistoryManager> history_;
+    std::unique_ptr<BookmarkManager> bookmarks_;
+    std::unique_ptr<Telemetry> telemetry_;
+    std::unique_ptr<SettingsManager> settings_;
+    std::unique_ptr<net::TrackerBlocker> tracker_;
 
     void compute_layout();
     void render_chrome();

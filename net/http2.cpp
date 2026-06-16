@@ -1,6 +1,7 @@
 #include "http2.hpp"
 #include <cstring>
 #include <algorithm>
+#include <memory>
 #include <sstream>
 
 namespace browser::net::http2 {
@@ -136,42 +137,33 @@ static const HuffmanSymbol kHuffmanTable[257] = {
 
 struct HuffmanNode {
     u16 symbol; // 0-255 for leaf, 256 for internal node
-    HuffmanNode* child[2];
+    std::unique_ptr<HuffmanNode> child[2];
 
-    HuffmanNode() : symbol(256) {
-        child[0] = child[1] = nullptr;
-    }
+    HuffmanNode() : symbol(256) {}
 };
 
 // Build a binary trie from the Huffman table
-static HuffmanNode* build_huffman_trie() {
-    auto* root = new HuffmanNode();
+static std::unique_ptr<HuffmanNode> build_huffman_trie() {
+    auto root = std::make_unique<HuffmanNode>();
     for (int sym = 0; sym < 256; sym++) {
         u32 code = kHuffmanTable[sym].code;
         u8 bits = kHuffmanTable[sym].bits;
         if (bits == 0) continue;
-        HuffmanNode* node = root;
+        HuffmanNode* node = root.get();
         for (int b = static_cast<int>(bits) - 1; b >= 0; b--) {
             u8 bit = static_cast<u8>((code >> b) & 1);
             if (!node->child[bit])
-                node->child[bit] = new HuffmanNode();
-            node = node->child[bit];
+                node->child[bit] = std::make_unique<HuffmanNode>();
+            node = node->child[bit].get();
         }
         node->symbol = static_cast<u16>(sym);
     }
     return root;
 }
 
-static void destroy_huffman_trie(HuffmanNode* node) {
-    if (!node) return;
-    destroy_huffman_trie(node->child[0]);
-    destroy_huffman_trie(node->child[1]);
-    delete node;
-}
-
 static HuffmanNode* get_huffman_trie() {
-    static HuffmanNode* trie = build_huffman_trie();
-    return trie;
+    static auto trie = build_huffman_trie();
+    return trie.get();
 }
 
 std::string HPack::huffman_decode(const u8* data, u32 len) {
@@ -188,7 +180,7 @@ std::string HPack::huffman_decode(const u8* data, u32 len) {
             u8 bit_off = static_cast<u8>(bit_pos & 7);
             u8 bit = static_cast<u8>((data[byte_off] >> (7 - bit_off)) & 1);
             bit_pos++;
-            node = node->child[bit];
+            node = node->child[bit].get();
             if (!node) {
                 // Invalid path — validate as padding
                 u64 padding_bits = total_bits - start_pos;
