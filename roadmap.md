@@ -38,6 +38,7 @@ Each phase must pass this checklist before moving to the next:
 - [ ] **Goal achieved** — the phase goal statement is verified (e.g., "UI stays responsive during load")
 - [ ] **Phase-specific checks** — each phase lists additional items below
 - [ ] **Committed and pushed to git** — `git add -A && git commit -m "Phase N: <summary>" && git push`
+- [ ] **Web research performed** — before implementing each phase, search the web for 2026-era best practices, API changes, C++20/C++23 standards updates, Win32 API advancements, and security guidance relevant to the phase. Incorporate findings into the implementation. Do not assume pre-2025 knowledge is current.
 
 ---
 
