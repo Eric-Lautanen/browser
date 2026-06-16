@@ -15,6 +15,30 @@ The browser's codebase grew organically through rapid feature development. Sever
 | **~600 line limit** | No logic file should exceed ~600 lines. Data tables (entities, font bytes) are exempt. |
 | **Phase completion checklist applies** | Same as main roadmap: build clean, clang-format, clang-tidy, all tests pass, committed, pushed. |
 
+### Method — How to split a file
+
+Each phase follows the same mechanical process. Do not skip steps.
+
+1. **Read the file start to finish.** Understand every function, every static helper, every anonymous namespace block. Identify natural boundaries.
+
+2. **Create the new folder.** Make the directory (e.g., `css/layout/`). Create a `CMakeLists.txt` entry listing all new `.cpp` files.
+
+3. **Move types first.** Extract structs, enums, and type aliases into a `types.hpp` in the new folder. Include it from the original header. Build + test — nothing should break since types are just moved includes.
+
+4. **Move one function at a time.** Cut one function from the original `.cpp` into its new file. Add `#include` for any headers it needs. Build and run the relevant tests. If tests pass, move to the next function. If they fail, the missing include is usually the cause — add it and rebuild.
+
+5. **Never move more than 3 functions per commit.** Small steps make bugs obvious. If tests break, you know exactly which function caused it.
+
+6. **Keep the original file as the dispatcher.** After all extractions, the original file should only contain the top-level entry point and any glue logic that calls into the sub-files. Rename it if appropriate (e.g., `layout.cpp` → `engine.cpp`).
+
+7. **Update CMakeLists.txt.** Add all new `.cpp` files. Remove the old monolithic `.cpp` from its old location in the build system. Build from clean.
+
+8. **Run the full test suite.** Not just the unit tests for that subsystem — all 30+ test executables must pass. The refactor must not change anything visible outside the refactored file.
+
+9. **Format and lint.** Run `clang-format -i` on all changed files, then `clang-tidy` to catch any subtle issues.
+
+10. **Commit with a descriptive message.** Format: `refactor: split css/layout/ into N files (types, resolve, flex, grid, block, inline, table, positioning, engine)`
+
 ---
 
 ## Phase R1: `css/layout/` — Split the 2,448-line Layout Monolith
