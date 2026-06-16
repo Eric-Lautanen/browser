@@ -287,31 +287,31 @@ Each phase must pass this checklist before moving to the next:
 | `browser/page_loader.cpp` | `PageLoader::load()` becomes a **coroutine pipeline**: |
 
 ```cpp
-async::task<Result<LoadedPage>> PageLoader::load(const std::string& url_str) {
+task<LoadedPage> PageLoader::load(const std::string& url_str) {
     // 1. Fetch HTML (network I/O on IOCP)
-    auto resp = co_await http_.fetch(req);
+    auto resp = co_await http_.fetch_async(req);
 
     // 2. Decompress if needed (CPU on thread pool)
     co_await thread_pool_executor{};
     auto body = maybe_decompress(resp);
 
     // 3. Parse HTML (CPU on thread pool)
-    auto doc = co_await html::parse(body);
+    auto doc = co_await html::parse_async(body);
 
     // 4. Fetch external CSS (network I/O, concurrent)
-    std::vector<async::task<std::string>> css_tasks;
+    std::vector<async::task<std::vector<u8>>> css_tasks;
     for each <link> in doc:
-        css_tasks.push_back(fetch_css(url));
+        css_tasks.push_back(fetch_css_async(url));
     auto css_results = co_await when_all(std::move(css_tasks));
 
     // 5. Parse + cascade CSS (CPU on thread pool)
-    auto styles = co_await css::cascade(doc, merged_sheet);
+    auto styles = co_await css::cascade_async(doc, merged_sheet);
 
     // 6. Layout (CPU on thread pool)
-    auto layout = co_await layout_engine.layout(doc, styles, w, h);
+    auto layout = co_await layout_engine.layout_async(doc, styles, w, h);
 
     // 7. Paint (CPU on thread pool)
-    auto display_list = co_await painter.paint(layout);
+    auto display_list = co_await painter.paint_async(layout);
 
     // 8. Ship to main thread via channel
     co_return LoadedPage{std::move(doc), std::move(styles), std::move(layout), std::move(display_list)};
@@ -326,6 +326,71 @@ async::task<Result<LoadedPage>> PageLoader::load(const std::string& url_str) {
 
 **Verification**: Navigate to complex pages. UI stays responsive during load. FPS counter shows no drop.
 
+### Phase 2 Prompt — Use this prompt in a new session:
+
+```
+You are tasked with completing Phase 2 of the browser roadmap at C:\github\browser\roadmap.md. Read the roadmap file first (Phase 2, lines 239-344, plus Phase 1 Lessons Learned at lines 224-236 and Phase 2 Lessons at lines 340-344), then implement ALL items.
+
+WARNING: Phase 2 was previously completed and Phase 3 implementation has already been started in the current codebase. The repo contains pre-existing Phase 3 files (image/ decoders, preload_scanner, resource_loader, font_loader). These may have introduced breaking changes or dependencies that Phase 2 code must accommodate. Read the full state of the codebase before making changes. Do not break Phase 3 files — adapt Phase 2 code to coexist.
+
+Phase 2: Off-Main-Thread Page Pipeline
+
+Goal: HTML parsing, CSS parsing, cascade, layout, and paint record generation all run on worker threads. The main thread only handles UI events and compositing.
+
+CRITICAL — Type system constraints from Phase 1 (violating these will not compile):
+- task<T>::await_resume() already returns Result<T>. DO NOT write task<Result<T>> — that double-wraps.
+- task<std::string> is impossible because Result<T, E=std::string> asserts T != E. Use task<std::vector<u8>> for string returns.
+- task<void> cannot return errors (task_promise<void> has only return_void()). Use task<bool> for fallible void operations: true=success, co_return std::string("error message") for failure.
+- task<T> by default starts suspended. Call .start() or co_await to begin execution.
+- Always offload to thread pool at the start of coroutine pipelines: co_await thread_pool_executor{} first.
+
+Work to complete:
+
+2.1 — Thread-Safe HTML Parser
+- html/parser.cpp: Audit for global/static mutable state. Isolate all state into a ParserState struct allocated per-invocation.
+- html::parse() becomes html::parse_async() returning task<std::unique_ptr<Document>> via co_await thread_pool_executor{}.
+- html/entities.cpp: Make entity lookup tables constexpr or const with no mutable static state.
+- html/dom.hpp: Ensure Document/Element/Text/Comment are movable (unique_ptr for children, std::vector for attributes) and not shared across threads.
+- Do NOT break the preload scanner in html/preload_scanner.cpp — it depends on the tokenizer.
+
+2.2 — Thread-Safe CSS Parser
+- css/parser.cpp: Same audit. css::parse_async() → task<StyleSheet>. No mutable globals.
+
+2.3 — Async Cascade
+- css/cascade.cpp: Cascade::compute_async() → task<ComputedStyles>. CPU-bound, runs on thread pool.
+
+2.4 — Async Layout
+- css/layout.cpp + css/layout.hpp: LayoutEngine::layout_async() → task<std::unique_ptr<LayoutNode>>.
+- LayoutNode tree must be movable via unique_ptr ownership chain.
+
+2.5 — Async Paint Record Generation
+- render/painter.cpp: Painter::paint_async() → task<std::shared_ptr<DisplayList>>.
+- DisplayList must be self-contained (no T* pointers to layout tree).
+
+2.6 — Async PageLoader Pipeline
+- browser/page_loader.cpp: Rewrite PageLoader::load() as a coroutine pipeline.
+- Stages: fetch HTTP → decompress → parse HTML → fetch CSS (concurrent when_all) → cascade → layout → paint → ship via channel.
+- All return types from co_await must be checked: r.is_ok() before r.unwrap().
+- LoadedPage must be movable (unique_ptr, shared_ptr, or value members).
+- Do NOT break the ResourceLoader integration that Phase 3 added to PageLoader.
+
+2.7 — Main Thread Consumer
+- browser/browser_window.cpp: start_load() fires async pipeline, returns immediately.
+- Result delivered via channel<LoadedPage> — main thread picks it up next frame.
+
+Build massive decoders incrementally (applies to Phase 3 when you reach it, good practice for all large files):
+- Never write a 2000-line decoder in a single edit. Break into steps: (1) header parsing + format detection, (2) metadata extraction, (3) pixel decode, (4) color conversion, (5) test each step before the next.
+- Edit sizes should be 200-400 lines max per write, then build + test.
+
+Verification:
+1. cmake --build build succeeds with no warnings (-Werror)
+2. All pre-existing test executables pass (no regressions)
+3. UI stays responsive during page load
+4. about:blank and simple HTML pages render correctly
+5. Phase 3 files (image/, preload_scanner/, resource_loader/) still compile and work
+
+Do NOT proceed to Phase 3. Stop after Phase 2 is verified complete.
+```
 ### Phase 2 Checklist
 - [x] `html/parser.cpp` thread-safe: no mutable globals, state isolated in `ParserState`. `parse()` returns `async::task<unique_ptr<Document>>`.
 - [x] `css/parser.cpp` → `async::task<StyleSheet>`. All state per-invocation.
@@ -385,7 +450,7 @@ async::task<Result<LoadedPage>> PageLoader::load(const std::string& url_str) {
 | New: `image/decoder_bmp.cpp` | BMP decoder: parse BITMAPFILEHEADER + BITMAPINFOHEADER, handle 1/4/8/16/24/32 bpp, RLE compression, pixel data extraction. |
 | New: `image/decoder_gif.cpp` | GIF decoder: header + logical screen descriptor → color table → LZW-encoded image data → deinterlace → palette-to-RGBA. Animation frame timing deferred. |
 | New: `image/decoder_png.cpp` | PNG decoder: IHDR → PLTE (optional) → IDAT chunks (deflate via `net/deflate.cpp`) → pixel filter reconstruction (None, Sub, Up, Average, Paeth) → CRC verification. Adam7 interlacing deferred. |
-| New: `image/decoder_jpeg.cpp` | JPEG decoder: SOI → APP0 (JFIF) → DQT (quantization tables) → SOF (frame dimensions + sampling) → DHT (Huffman tables) → SOS (scan). IDCT per MCU. Chroma upsampling (4:2:0 → 4:4:4). |
+| New: `image/decoder_jpeg.cpp` | JPEG decoder: SOI → APP0 (JFIF) → DQT (quantization tables) → SOF (frame dimensions + sampling) → DHT (Huffman tables) → SOS (scan). IDCT per MCU. Chroma upsampling (4:2:0 → 4:4:4). **Build incrementally — marker parsing first, then Huffman decode, then IDCT math, then chroma upsampling. Write and test each step before moving to the next.** |
 | `CMakeLists.txt` | Add `image/` library target. No additional system libraries needed. |
 | `browser/page_loader.cpp` | When `<img src>` is encountered, fire async fetch → detect format via magic bytes → decode on thread pool (via `image::Decoder`) → ship `Image` to main thread. |
 | `render/painter.cpp` | Add `DrawImage` display command. |
