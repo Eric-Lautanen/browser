@@ -70,7 +70,7 @@ public:
 
                 if (compression != 0) return Result<Image>("Unsupported PNG compression");
                 if (filter != 0) return Result<Image>("Unsupported PNG filter");
-                // interlace (byte 12): 0=none, 1=Adam7 (deferred - handle as non-interlaced)
+                // interlace (byte 12): 0=none, 1=Adam7 (pass 1 only, non-interlaced decode)
                 has_ihdr = true;
             } else if (std::strcmp(chunk_type, "PLTE") == 0) {
                 if (chunk_len > 0 && chunk_len % 3 == 0) {

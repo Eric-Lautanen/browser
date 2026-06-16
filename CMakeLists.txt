@@ -90,7 +90,6 @@ add_library(image STATIC
     image/format.hpp
     image/decoder.hpp
     image/decoder.cpp
-    image/decoder_wic.cpp
     image/decoder_bmp.cpp
     image/decoder_png.cpp
     image/decoder_gif.cpp
@@ -98,7 +97,6 @@ add_library(image STATIC
 )
 target_include_directories(image PUBLIC .)
 if(WIN32)
-    target_link_libraries(image windowscodecs ole32)
 endif()
 target_link_libraries(image net)
 

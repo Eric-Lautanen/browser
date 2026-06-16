@@ -215,8 +215,8 @@ private:
         for (u32 i = 0; i < clear_code; i++) {
             table.push_back({ {static_cast<u8>(i)} });
         }
-        table.push_back({}); // clear code placeholder
-        table.push_back({}); // eoi code placeholder
+        table.push_back({}); // reserved clear code entry
+        table.push_back({}); // reserved end-of-info entry
 
         std::vector<u8> output;
         u32 bit_pos = 0;
