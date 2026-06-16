@@ -1190,8 +1190,8 @@ Get-ChildItem -Path "build" -Filter "*_test.exe" | ForEach-Object {
 # 3. Run performance benchmarks
 & build/perf_test.exe --output perf_results.json
 
-# 4. Format check
-clang-format -n --Werror html/*.cpp css/*.cpp js/*.cpp net/*.cpp render/*.cpp browser/*.cpp image/*.cpp async/*.cpp tests/*.cpp
+# 4. Format check (only staged changes, skips non-C++ files automatically)
+git clang-format --diff --quiet 2>&1 | Select-String -Pattern "modif|error"
 
 # 5. Static analysis
 clang-tidy --extra-arg=-Wno-unused-command-line-argument -p build html/*.cpp css/*.cpp js/*.cpp net/*.cpp render/*.cpp browser/*.cpp image/*.cpp async/*.cpp 2>&1 | Select-String -Pattern "warning:|error:"

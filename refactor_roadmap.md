@@ -470,7 +470,7 @@ R13: html/tokenizer/       ← 639 lines → 5 files
 - [ ] Split produces identical compiled output (tests pass before and after)
 - [ ] `cmake --build build` succeeds with no warnings (`-Werror`)
 - [ ] All pre-existing test executables pass (zero regressions)
-- [ ] clang-format -n --Werror passes on all changed files
+- [ ] clang-format -n --Werror passes on all changed files (C++ sources only, not CMakeLists.txt)
 - [ ] clang-tidy -p build --extra-arg=-Wno-unused-command-line-argument produces no new warnings
 - [ ] No new circular `#include` dependencies introduced
 - [ ] No behavior changes — this is pure refactoring

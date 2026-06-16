@@ -140,7 +140,16 @@ add_library(css STATIC
     css/cascade.hpp
     css/cascade.cpp
     css/layout.hpp
-    css/layout.cpp
+    css/layout/types.hpp
+    css/layout/engine.cpp
+    css/layout/resolve.cpp
+    css/layout/type_check.cpp
+    css/layout/flex.cpp
+    css/layout/grid.cpp
+    css/layout/block.cpp
+    css/layout/inline.cpp
+    css/layout/table.cpp
+    css/layout/positioning.cpp
     css/grid.hpp
     css/grid.cpp
     css/animation.hpp
