@@ -72,7 +72,7 @@ static f32 parse_length_value(const std::string& token, f32 container_size, f32 
 
     f32 val = 0;
     if (num_end > (neg ? 1 : 0)) {
-        val = std::stof(token.substr(0, num_end));
+        val = std::strtof(token.substr(0, num_end).c_str(), nullptr);
     }
     if (neg) val = -val;
 
@@ -159,7 +159,46 @@ std::vector<GridTrackDef> parse_track_list(const std::string& css_value, f32 con
     auto tokens = split_whitespace(css_value);
     std::vector<GridTrackDef> tracks;
     for (const auto& tok : tokens) {
-        tracks.push_back(parse_single_track(tok, container_size, font_size));
+        // Handle repeat(N, ...)
+        if (starts_with(tok, "repeat(") && tok.back() == ')') {
+            std::string inner = tok.substr(7, tok.size() - 8);
+            // Find comma separating count from track pattern
+            auto comma = inner.find(',');
+            if (comma != std::string::npos) {
+                std::string count_str = trim(inner.substr(0, comma));
+                std::string pattern_str = trim(inner.substr(comma + 1));
+                i32 count = static_cast<i32>(std::strtol(count_str.c_str(), nullptr, 10));
+                if (count > 0 && count <= 1000) {
+                    // Parse pattern tokens (may be space-separated or comma-separated)
+                    // First try comma separation for "repeat(3, 1fr 2fr)" vs "repeat(3, 1fr, 2fr)"
+                    std::vector<std::string> pattern_tokens;
+                    {
+                        std::string cur;
+                        u32 paren_depth = 0;
+                        for (size_t i = 0; i < pattern_str.size(); i++) {
+                            char c = pattern_str[i];
+                            if (c == '(') { paren_depth++; cur += c; }
+                            else if (c == ')') { paren_depth--; cur += c; }
+                            else if (paren_depth == 0 && (c == ' ' || c == '\t')) {
+                                if (!cur.empty()) { pattern_tokens.push_back(cur); cur.clear(); }
+                            } else {
+                                if (c != ',') cur += c;
+                            }
+                        }
+                        if (!cur.empty()) pattern_tokens.push_back(cur);
+                    }
+                    if (!pattern_tokens.empty()) {
+                        for (i32 r = 0; r < count; r++) {
+                            for (const auto& pt : pattern_tokens) {
+                                tracks.push_back(parse_single_track(pt, container_size, font_size));
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            tracks.push_back(parse_single_track(tok, container_size, font_size));
+        }
     }
     return tracks;
 }
@@ -179,13 +218,13 @@ GridPlacement parse_grid_line(const std::string& value) {
         }
         if (starts_with(s, "span ")) {
             std::string num_str = trim(s.substr(5));
-            span = static_cast<u32>(std::stoi(num_str));
+            span = static_cast<u32>(std::strtol(num_str.c_str(), nullptr, 10));
             line = 0;
             is_explicit = true;
             return;
         }
         // plain number
-        line = std::stoi(s);
+        line = static_cast<i32>(std::strtol(s.c_str(), nullptr, 10));
         is_explicit = true;
     };
 

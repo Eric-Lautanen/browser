@@ -14,10 +14,12 @@ struct MatchedDecl {
     Specificity specificity;
     u32 source_order;
     u8 origin;  // 0=UA, 1=author, 2=inline
+    std::string pseudo_element; // empty for main element, "before"/"after"/etc for pseudo-elements
 };
 
 struct ComputedStyle {
     std::unordered_map<std::string, CSSValue> properties;
+    std::unordered_map<std::string, ComputedStyle> pseudo_styles; // key: "before", "after", etc.
     const ComputedStyle* parent = nullptr;
 
     bool has(const std::string& p) const {
@@ -34,7 +36,11 @@ struct ComputedStyle {
 
 class Cascade {
 public:
-    async::task<std::unordered_map<const html::Element*, ComputedStyle>>
+    struct CascadeResult {
+        std::unordered_map<const html::Element*, ComputedStyle> element_styles;
+    };
+
+    async::task<CascadeResult>
     compute_async(const html::Document& doc, const StyleSheet& author,
                   f32 viewport_width = 800, f32 viewport_height = 600,
                   f32 device_pixel_ratio = 1.0f,

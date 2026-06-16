@@ -47,6 +47,18 @@ async::task<std::shared_ptr<DisplayList>> Painter::paint_async(css::LayoutNode* 
 void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
     if (!node) return;
 
+    // Check visibility: hidden elements still occupy layout space but are not painted
+    auto* vis = node->style().get("visibility");
+    if (vis && vis->type == css::CSSValue::Type::KEYWORD && vis->keyword == "hidden") {
+        // Still paint children (visibility is inherited but can be overridden)
+        for (auto& child : node->children) {
+            paint_node(list, child.get(),
+                       ox + child->content.x + child->scroll_offset_x,
+                       oy + child->content.y + child->scroll_offset_y);
+        }
+        return;
+    }
+
     auto* opacity_val = node->style().get("opacity");
     f32 opacity = 1.0f;
     if (opacity_val && opacity_val->type == css::CSSValue::Type::NUMBER) {
@@ -66,6 +78,7 @@ void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
     paint_background(list, node, ox, oy);
     paint_shadow(list, node, ox, oy);
     paint_border(list, node, ox, oy);
+    paint_outline(list, node, ox, oy);
     paint_image(list, node, ox, oy);
 
     bool has_clip = false;
@@ -101,31 +114,62 @@ void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
         paint_text(list, node, ox, oy);
     }
 
-    // Paint children in z-index order: negative z → normal flow → positive z
-    // First pass: children without z-index or z-index:auto (normal flow)
-    // Second pass: children with positive z-index (sorted ascending)
-    // Already painted before children: elements with negative z-index
-    // For simplicity, we sort children by z-index value
-    // Sort children by z-index for correct paint order
-    // Negative z-index paints first, then normal flow, then positive z-index
-    // Use a manual approach to avoid const correctness issues
-    std::vector<css::LayoutNode*> sorted_children;
+    // Paint children in correct stacking order per CSS spec:
+    // 1. Children that create stacking contexts with negative z-index (sorted by z-index)
+    // 2. Children that don't create stacking contexts (painted in DOM order)
+    // 3. Children that create stacking contexts with positive z-index (sorted by z-index)
+    // Children with z-index:auto that don't otherwise create a stacking context paint in DOM order
+    std::vector<css::LayoutNode*> negative_z;
+    std::vector<css::LayoutNode*> normal_flow;
+    std::vector<css::LayoutNode*> positive_z;
+
     for (auto& child : node->children) {
-        sorted_children.push_back(child.get());
-    }
-    // Simple insertion sort by z-index
-    for (size_t i = 1; i < sorted_children.size(); i++) {
-        css::LayoutNode* key = sorted_children[i];
-        f32 key_z = css::LayoutEngine::get_z_index(key->style());
-        i32 j = static_cast<i32>(i) - 1;
-        while (j >= 0 && css::LayoutEngine::get_z_index(sorted_children[j]->style()) > key_z) {
-            sorted_children[static_cast<size_t>(j + 1)] = sorted_children[static_cast<size_t>(j)];
-            j--;
+        f32 zi = css::LayoutEngine::get_z_index(child->style());
+        bool creates_stack = css::LayoutEngine::creates_stacking_context(child->style());
+
+        if (creates_stack) {
+            if (zi < 0) {
+                negative_z.push_back(child.get());
+            } else {
+                positive_z.push_back(child.get());
+            }
+        } else {
+            normal_flow.push_back(child.get());
         }
-        sorted_children[static_cast<size_t>(j + 1)] = key;
     }
 
-    for (auto* child : sorted_children) {
+    // Sort negative z-index ascending, positive z-index ascending
+    auto sort_by_z = [](std::vector<css::LayoutNode*>& v) {
+        for (size_t i = 1; i < v.size(); i++) {
+            css::LayoutNode* key = v[i];
+            f32 key_z = css::LayoutEngine::get_z_index(key->style());
+            i32 j = static_cast<i32>(i) - 1;
+            while (j >= 0 && css::LayoutEngine::get_z_index(v[static_cast<size_t>(j)]->style()) > key_z) {
+                v[static_cast<size_t>(j + 1)] = v[static_cast<size_t>(j)];
+                j--;
+            }
+            v[static_cast<size_t>(j + 1)] = key;
+        }
+    };
+    sort_by_z(negative_z);
+    sort_by_z(positive_z);
+
+    // Paint negative z (behind parent background)
+    for (auto* child : negative_z) {
+        paint_node(list, child,
+                   ox + child->content.x + child->scroll_offset_x,
+                   oy + child->content.y + child->scroll_offset_y);
+    }
+
+    // Paint normal flow (DOM order)
+    for (auto* child : normal_flow) {
+        paint_node(list, child,
+                   ox + child->content.x + child->scroll_offset_x,
+                   oy + child->content.y + child->scroll_offset_y);
+    }
+
+    // Paint positive z (in front)
+    for (auto* child : positive_z) {
         paint_node(list, child,
                    ox + child->content.x + child->scroll_offset_x,
                    oy + child->content.y + child->scroll_offset_y);
@@ -307,6 +351,53 @@ void Painter::paint_image(DisplayList& list, css::LayoutNode* node, f32 ox, f32 
     f32 bh = node->content.height > 0 ? node->content.height : static_cast<f32>(img->height);
 
     list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {bx, by, bw, bh}, Color::WHITE, "", 0, id));
+}
+
+void Painter::paint_outline(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
+    auto* ow = node->style().get("outline-width");
+    f32 outline_width = 0;
+    if (ow && ow->type == css::CSSValue::Type::LENGTH) {
+        outline_width = ow->length.value;
+    }
+    if (outline_width <= 0) {
+        // Check outline shorthand
+        auto* outline = node->style().get("outline");
+        if (outline && outline->type == css::CSSValue::Type::STRING) {
+            // Try to extract width from string
+            std::string s = outline->string_value;
+            char* end = nullptr;
+            f32 w = std::strtof(s.c_str(), &end);
+            if (end && end != s.c_str() && w > 0) {
+                outline_width = w;
+            }
+        }
+    }
+    if (outline_width <= 0) return;
+
+    auto* os = node->style().get("outline-style");
+    if (os && os->type == css::CSSValue::Type::KEYWORD && os->keyword == "none") return;
+
+    f32 outline_offset = 0;
+    auto* oo = node->style().get("outline-offset");
+    if (oo && oo->type == css::CSSValue::Type::LENGTH) {
+        outline_offset = oo->length.value;
+    }
+
+    Color outline_color = resolve_color_fallback(node->style(),
+        {"outline-color", "outline"}, Color::BLACK);
+
+    f32 bx = ox - node->padding.left - node->border.left - outline_offset - outline_width;
+    f32 by = oy - node->padding.top - node->border.top - outline_offset - outline_width;
+    f32 bw = node->content.width + node->padding.left + node->padding.right
+             + node->border.left + node->border.right + 2 * outline_offset + 2 * outline_width;
+    f32 bh = node->content.height + node->padding.top + node->padding.bottom
+             + node->border.top + node->border.bottom + 2 * outline_offset + 2 * outline_width;
+
+    // Draw outline as 4 rectangles (top, right, bottom, left)
+    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, outline_width}, outline_color));
+    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, outline_color));
+    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, outline_color));
+    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, outline_width, bh}, outline_color));
 }
 
 Color Painter::resolve_color(const css::ComputedStyle& style,

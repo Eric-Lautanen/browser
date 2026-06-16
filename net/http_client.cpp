@@ -140,7 +140,8 @@ async::task<http::Response> HTTPClient::fetch_async(const http::Request& req) {
     if (http2_) {
         co_return http2_->execute(req);
     } else if (http1_) {
-        co_return http1_->execute(req);
+        auto resp = co_await http1_->execute_async(req);
+        co_return resp;
     }
 
     co_return std::string("no client available");

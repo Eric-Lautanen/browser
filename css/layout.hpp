@@ -180,7 +180,10 @@ public:
 
     static bool is_grid_element(const ComputedStyle& style);
     static f32 get_z_index(const ComputedStyle& style);
+    static bool creates_stacking_context(const ComputedStyle& style);
     f32 resolve_calc_string(const std::string& calc_expr, f32 parent_value, f32 font_size) const;
+    f32 resolve_clamp_func(const std::string& expr, f32 parent_value, f32 font_size) const;
+    f32 resolve_func_length(const ComputedStyle& style, const CSSValue* v, f32 parent_value, f32 font_size) const;
     void resolve_grid_tracks(std::vector<GridTrackDef>& tracks, f32 container_size, f32 font_size, f32 gap = 0);
 
 private:
@@ -214,8 +217,8 @@ private:
     static bool is_inline_element(const ComputedStyle& style);
     static bool is_positioned(const ComputedStyle& style);
     static bool is_fixed_or_sticky(const ComputedStyle& style);
-    static bool creates_stacking_context(const ComputedStyle& style);
     static bool is_flex_element(const ComputedStyle& style);
+    static bool is_table_element(const ComputedStyle& style);
     static LayoutNode* find_positioned_ancestor(LayoutNode* node);
 
     FlexConfig resolve_flex_config(const ComputedStyle& style, f32 font_size) const;
@@ -233,6 +236,7 @@ private:
                       const FlexConfig& config) const;
     void layout_flex(LayoutNode* node, f32 containing_width, f32 containing_height);
     void layout_grid(LayoutNode* node, f32 containing_width, f32 containing_height);
+    void layout_table(LayoutNode* node, f32 containing_width, f32 containing_height);
 };
 
 }

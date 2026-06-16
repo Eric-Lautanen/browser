@@ -5,6 +5,7 @@
 #include "../async/executor.hpp"
 #include <algorithm>
 #include <cstdlib>
+#include <memory>
 #include <unordered_set>
 #include <regex>
 
@@ -12,7 +13,11 @@ namespace browser::css {
 
 static constexpr const char* UA_STYLESHEET = R"(
 body { display: block; margin: 8px; }
-div, p, h1, h2, h3, h4, h5, h6, ul, ol, li, table, tr, th, td { display: block; }
+div, p, h1, h2, h3, h4, h5, h6, ul, ol, li { display: block; }
+table { display: table; }
+tr, thead, tbody, tfoot { display: table-row; }
+th, td { display: table-cell; }
+caption { display: table-caption; }
 pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, thead, tbody, tfoot, optgroup, option, select, button, textarea, input { display: block; }
 b, i, u, s, span, a, strong, em, code, mark, sub, sup, small, label, abbr, cite, dfn, kbd, q, samp, tt, var { display: inline; }
 h1 { font-size: 2em; font-weight: bold; }
@@ -186,6 +191,18 @@ static bool evaluate_media_query(const std::string& prelude, f32 viewport_width,
     return negate ? !result : result;
 }
 
+// Extract pseudo-element name from the last compound of a selector
+static std::string get_pseudo_element(const Selector& sel) {
+    if (sel.compounds.empty()) return "";
+    const auto& last = sel.compounds.back();
+    for (const auto& ss : last.simples) {
+        if (ss.type == SimpleSelector::Type::PSEUDO_ELEMENT) {
+            return ss.name;
+        }
+    }
+    return "";
+}
+
 static void collect_rules_from_sheet(const StyleSheet& sheet, const html::Element* el,
                                       const html::Document* doc, std::vector<MatchedDecl>& decls,
                                       u32& source_order, u8 origin,
@@ -194,8 +211,9 @@ static void collect_rules_from_sheet(const StyleSheet& sheet, const html::Elemen
     for (const auto& rule : sheet.rules) {
         for (const auto& sel : rule.selectors) {
             if (matches_selector(sel, el, doc)) {
+                std::string pe = get_pseudo_element(sel);
                 for (const auto& decl : rule.declarations) {
-                    decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
+                    decls.push_back({&decl, compute_specificity(sel), source_order++, origin, pe});
                 }
                 break;
             }
@@ -210,8 +228,9 @@ static void collect_rules_from_sheet(const StyleSheet& sheet, const html::Elemen
                 for (const auto& rule : at.rules) {
                     for (const auto& sel : rule.selectors) {
                         if (matches_selector(sel, el, doc)) {
+                            std::string pe = get_pseudo_element(sel);
                             for (const auto& decl : rule.declarations) {
-                                decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
+                                decls.push_back({&decl, compute_specificity(sel), source_order++, origin, pe});
                             }
                             break;
                         }
@@ -228,8 +247,9 @@ static void collect_rules_from_sheet(const StyleSheet& sheet, const html::Elemen
                     for (const auto& rule : nested.rules) {
                         for (const auto& sel : rule.selectors) {
                             if (matches_selector(sel, el, doc)) {
+                                std::string pe = get_pseudo_element(sel);
                                 for (const auto& decl : rule.declarations) {
-                                    decls.push_back({&decl, compute_specificity(sel), source_order++, origin});
+                                    decls.push_back({&decl, compute_specificity(sel), source_order++, origin, pe});
                                 }
                                 break;
                             }
@@ -247,19 +267,30 @@ static std::string resolve_var(const std::string& value_str,
     (void)style;
     std::string result = value_str;
     size_t var_pos = result.find("var(");
-    while (var_pos != std::string::npos) {
-        size_t close_paren = result.find(')', var_pos);
-        if (close_paren == std::string::npos) break;
+    int max_iterations = 64;
+    while (var_pos != std::string::npos && --max_iterations >= 0) {
+        size_t close_paren = var_pos + 4;
+        int depth = 1;
+        while (close_paren < result.size() && depth > 0) {
+            if (result[close_paren] == '(') depth++;
+            else if (result[close_paren] == ')') depth--;
+            if (depth > 0) close_paren++;
+        }
+        if (depth != 0) break;
 
         std::string inner = result.substr(var_pos + 4, close_paren - var_pos - 4);
-        // Trim whitespace
         while (!inner.empty() && inner[0] == ' ') inner = inner.substr(1);
         while (!inner.empty() && inner.back() == ' ') inner.pop_back();
 
-        // Split by comma for fallback
         std::string var_name;
         std::string fallback;
-        size_t comma = inner.find(',');
+        int cdepth = 0;
+        size_t comma = std::string::npos;
+        for (size_t i = 0; i < inner.size(); i++) {
+            if (inner[i] == '(') cdepth++;
+            else if (inner[i] == ')') cdepth--;
+            else if (inner[i] == ',' && cdepth == 0) { comma = i; break; }
+        }
         if (comma != std::string::npos) {
             var_name = inner.substr(0, comma);
             fallback = inner.substr(comma + 1);
@@ -269,14 +300,12 @@ static std::string resolve_var(const std::string& value_str,
         }
 
         std::string replacement;
-        // Look up the custom property value
         if (var_name.size() >= 2 && var_name[0] == '-' && var_name[1] == '-') {
-            auto* v = style.properties.find(var_name) != style.properties.end()
-                      ? &style.properties.find(var_name)->second : nullptr;
-            if (v) {
-                replacement = v->string_value.empty() ? v->keyword : v->string_value;
+            auto it = style.properties.find(var_name);
+            if (it != style.properties.end()) {
+                const auto& v = it->second;
+                replacement = v.string_value.empty() ? v.keyword : v.string_value;
             } else if (style.parent) {
-                // Walk inheritance chain
                 const ComputedStyle* parent = style.parent;
                 while (parent) {
                     auto pit = parent->properties.find(var_name);
@@ -298,7 +327,7 @@ static std::string resolve_var(const std::string& value_str,
     return result;
 }
 
-async::task<std::unordered_map<const html::Element*, ComputedStyle>>
+async::task<Cascade::CascadeResult>
 Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
                         f32 viewport_width, f32 viewport_height,
                         f32 device_pixel_ratio, const std::string& color_scheme) {
@@ -309,6 +338,7 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
     StyleSheet ua_pseudo = ua_pseudo_parser.parse();
 
     std::unordered_map<const html::Element*, std::vector<MatchedDecl>> matched;
+    std::vector<std::shared_ptr<Declaration>> inline_decl_copies;
     u32 source_order = 0;
 
     // Phase 1: Collect
@@ -328,6 +358,7 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
                                   viewport_width, viewport_height, device_pixel_ratio, color_scheme);
 
         // Collect inline style from element's style attribute (origin=2, highest)
+        // NOTE: inline_decl_copies stores parsed declarations persistently so pointers remain valid
         std::string inline_style = el->get_attribute("style");
         if (!inline_style.empty()) {
             CssParser inline_parser(inline_style);
@@ -336,7 +367,8 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
                 for (const auto& decl : rule.declarations) {
                     Specificity spec;
                     spec.bits = 0;
-                    decls.push_back({&decl, spec, source_order++, 2});
+                    inline_decl_copies.push_back(std::make_shared<Declaration>(decl));
+                    decls.push_back({inline_decl_copies.back().get(), spec, source_order++, 2, ""});
                 }
             }
         }
@@ -372,6 +404,31 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
         for (const auto& md : decls) {
             if (!md.decl->values.empty()) {
                 std::string prop = md.decl->property;
+
+                // Route pseudo-element properties to special storage
+                if (!md.pseudo_element.empty()) {
+                    // For pseudo-elements, store the property with a prefix to avoid conflicts
+                    std::string pe_key = "_" + md.pseudo_element + "_" + prop;
+                    if (md.decl->values.size() == 1 && md.decl->values[0].type == CSSValue::Type::STRING) {
+                        // Handle var() resolution for pseudo-element content
+                        CSSValue v = md.decl->values[0];
+                        if (v.string_value.find("var(") != std::string::npos) {
+                            v.string_value = resolve_var(v.string_value, style);
+                        }
+                        style.properties[pe_key] = v;
+                    } else {
+                        CSSValue combined;
+                        combined.type = CSSValue::Type::STRING;
+                        for (size_t vi = 0; vi < md.decl->values.size(); vi++) {
+                            if (vi > 0) combined.string_value += ' ';
+                            const auto& val = md.decl->values[vi];
+                            if (val.type == CSSValue::Type::STRING) combined.string_value += val.string_value;
+                            else if (val.type == CSSValue::Type::KEYWORD) combined.string_value += val.keyword;
+                        }
+                        style.properties[pe_key] = combined;
+                    }
+                    continue; // Skip normal property application for pseudo-elements
+                }
 
                 // Detect custom properties (--*)
                 if (prop.size() >= 2 && prop[0] == '-' && prop[1] == '-') {
@@ -433,7 +490,7 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
                                 cv.type = CSSValue::Type::STRING;
                                 cv.string_value = resolved;
                             }
-                        } else if (resolved[0] == '#') {
+                        } else if (!resolved.empty() && resolved[0] == '#') {
                             cv.type = CSSValue::Type::COLOR;
                             cv.color = Color::from_hex(resolved);
                         } else {
@@ -514,7 +571,7 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
                 // Expand shorthands
                 {
                     const std::string& prop = md.decl->property;
-                    const CSSValue& val = style.properties[md.decl->property];
+                    CSSValue val = style.properties[md.decl->property];
 
                     if ((prop == "border" || prop == "border-top" || prop == "border-right" ||
                          prop == "border-bottom" || prop == "border-left") &&
@@ -623,6 +680,91 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
                         expand_four_sides("border", val.string_value + "-width");
                     }
 
+                    // flex shorthand expansion
+                    if (prop == "flex" && val.type == CSSValue::Type::STRING) {
+                        std::string s = val.string_value;
+                        // Handle "flex: none"
+                        {
+                            std::string trimmed = s;
+                            while (!trimmed.empty() && trimmed[0] == ' ') trimmed = trimmed.substr(1);
+                            while (!trimmed.empty() && trimmed.back() == ' ') trimmed.pop_back();
+                            if (trimmed == "none") {
+                                auto set_flex_val = [&](const std::string& subprop, f32 num) {
+                                    CSSValue cv; cv.type = CSSValue::Type::NUMBER; cv.number = num;
+                                    style.properties[subprop] = cv;
+                                };
+                                set_flex_val("flex-grow", 0);
+                                set_flex_val("flex-shrink", 0);
+                                {
+                                    CSSValue cv; cv.type = CSSValue::Type::KEYWORD; cv.keyword = "auto";
+                                    style.properties["flex-basis"] = cv;
+                                }
+                            } else {
+                                std::vector<std::string> parts;
+                                size_t pp = 0;
+                                while (pp < s.size()) {
+                                    while (pp < s.size() && s[pp] == ' ') pp++;
+                                    if (pp >= s.size()) break;
+                                    size_t end = s.find(' ', pp);
+                                    if (end == std::string::npos) end = s.size();
+                                    parts.push_back(s.substr(pp, end - pp));
+                                    pp = end + 1;
+                                }
+                                auto set_flex_num = [&](const std::string& subprop, const std::string& pv) {
+                                    CSSValue cv;
+                                    char* endp = nullptr;
+                                    f32 num = std::strtof(pv.c_str(), &endp);
+                                    if (endp != pv.c_str()) {
+                                        cv.type = CSSValue::Type::NUMBER;
+                                        cv.number = num;
+                                        style.properties[subprop] = cv;
+                                    }
+                                };
+                                auto set_flex_basis = [&](const std::string& pv) {
+                                    CSSValue cv;
+                                    char* endp = nullptr;
+                                    f32 num = std::strtof(pv.c_str(), &endp);
+                                    if (endp != pv.c_str()) {
+                                        cv.type = CSSValue::Type::LENGTH;
+                                        cv.length.value = num;
+                                        std::string unit = endp;
+                                        if (unit == "px") cv.length.unit = Length::Unit::PX;
+                                        else if (unit == "em") cv.length.unit = Length::Unit::EM;
+                                        else if (unit == "rem") cv.length.unit = Length::Unit::REM;
+                                        else if (unit == "%") cv.length.unit = Length::Unit::PERCENT;
+                                        else { cv.type = CSSValue::Type::KEYWORD; cv.keyword = pv; }
+                                    } else {
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = pv;
+                                    }
+                                    style.properties["flex-basis"] = cv;
+                                };
+                                // flex: <grow> <shrink> <basis>?
+                                // If 1 part: <grow> (grow=val, shrink=1, basis=0%)
+                                // If 2 parts: <grow> <shrink>
+                                // If 3 parts: <grow> <shrink> <basis>
+                                if (parts.size() >= 1) set_flex_num("flex-grow", parts[0]);
+                                if (parts.size() >= 2) set_flex_num("flex-shrink", parts[1]);
+                                if (parts.size() >= 3) set_flex_basis(parts[2]);
+                                if (parts.size() == 1) {
+                                    // Just flex-grow set; default shrink=1, basis=0%
+                                    {
+                                        CSSValue cv; cv.type = CSSValue::Type::NUMBER; cv.number = 1;
+                                        style.properties["flex-shrink"] = cv;
+                                    }
+                                    {
+                                        CSSValue cv; cv.type = CSSValue::Type::LENGTH; cv.length = {0, Length::Unit::PX};
+                                        style.properties["flex-basis"] = cv;
+                                    }
+                                }
+                                if (parts.size() == 2) {
+                                    CSSValue cv; cv.type = CSSValue::Type::KEYWORD; cv.keyword = "auto";
+                                    if (!style.has("flex-basis")) style.properties["flex-basis"] = cv;
+                                }
+                            }
+                        }
+                    }
+
                     if (prop == "background" && (val.type == CSSValue::Type::STRING || val.type == CSSValue::Type::COLOR)) {
                         if (!style.has("background-color"))
                             style.properties["background-color"] = val;
@@ -699,7 +841,7 @@ Cascade::compute_async(const html::Document& doc, const StyleSheet& author,
         }
     });
 
-    co_return styles;
+    co_return CascadeResult{std::move(styles)};
 }
 
 }

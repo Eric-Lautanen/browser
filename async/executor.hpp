@@ -8,7 +8,7 @@ namespace browser::async {
 struct thread_pool_executor {
     bool await_ready() noexcept { return false; }
     void await_suspend(std::coroutine_handle<> h) noexcept {
-        auto cb = [](PTP_CALLBACK_INSTANCE, PVOID ctx, PTP_WORK) {
+        auto cb = [](PTP_CALLBACK_INSTANCE, PVOID ctx, PTP_WORK) noexcept {
             auto* handle = static_cast<std::coroutine_handle<>*>(ctx);
             handle->resume();
             delete handle;
@@ -17,7 +17,6 @@ struct thread_pool_executor {
         auto* work = CreateThreadpoolWork(cb, ctx, nullptr);
         if (work) {
             SubmitThreadpoolWork(work);
-            CloseThreadpoolWork(work);
         } else {
             delete ctx;
         }

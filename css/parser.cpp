@@ -680,6 +680,44 @@ CSSValue CssParser::parse_value() {
             return val;
         }
 
+        // clamp() / min() / max()
+        if (func_name == "clamp" || func_name == "min" || func_name == "max") {
+            val.type = CSSValue::Type::FUNCTION;
+            val.keyword = func_name;
+            val.string_value = func_name + "(";
+            u32 depth = 1;
+            while (depth > 0 && current_.type != CssTokenType::EOF_TOKEN) {
+                if (current_.type == CssTokenType::OPEN_PAREN) depth++;
+                if (current_.type == CssTokenType::CLOSE_PAREN) depth--;
+                if (depth > 0) {
+                    if (current_.type == CssTokenType::WHITESPACE) {
+                        if (!val.string_value.empty() && val.string_value.back() != ' ' && val.string_value.back() != '(') val.string_value += ' ';
+                    } else if (current_.type == CssTokenType::DELIM) {
+                        val.string_value += current_.text;
+                    } else if (current_.type == CssTokenType::NUMBER || current_.type == CssTokenType::DIMENSION || current_.type == CssTokenType::PERCENTAGE) {
+                        char buf[64];
+                        snprintf(buf, sizeof(buf), "%.2f", current_.numeric_value);
+                        std::string num = buf;
+                        auto dot = num.find('.');
+                        if (dot != std::string::npos) {
+                            auto last = num.find_last_not_of('0');
+                            if (last > dot) num = num.substr(0, last + 1);
+                            else if (last == dot) num = num.substr(0, dot);
+                        }
+                        val.string_value += num;
+                        if (current_.type == CssTokenType::DIMENSION) val.string_value += current_.text;
+                        else if (current_.type == CssTokenType::PERCENTAGE) val.string_value += '%';
+                    } else if (current_.type == CssTokenType::IDENT) {
+                        val.string_value += current_.text;
+                    }
+                    advance();
+                }
+            }
+            if (current_.type == CssTokenType::CLOSE_PAREN) advance();
+            val.string_value += ')';
+            return val;
+        }
+
         // var()
         if (func_name == "var") {
             val.type = CSSValue::Type::KEYWORD;
@@ -745,7 +783,7 @@ CSSValue CssParser::parse_value() {
                     if (func_name == "rgba") {
                         if (!expect_punct(',')) return {};
                         auto av = expect_num(); if (!av) return {};
-                        a = *av / 255.0f;
+                        a = *av;
                     }
                     if (!expect_punct(')')) return {};
                     u8 ri = static_cast<u8>(std::max(0.0f, std::min(255.0f, *r)));

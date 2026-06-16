@@ -1,0 +1,12 @@
+TRACE: load() started
+TRACE: before fetch
+TRACE: after fetch, body_size=23388
+TRACE: before html parse
+TRACE: after html parse
+TRACE: before css cascade (merged_css=5363 chars)
+TRACE: cascade phase2 sort start (elements=421)
+TRACE: cascade phase3 apply start
+TRACE: START element 255 tag=div classes=flex-item id=
+TRACE: START element 256 tag=h3 classes= id=
+TRACE: START element 257 tag=div classes=flex-container id=
+TRACE: element 257 START

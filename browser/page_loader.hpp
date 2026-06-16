@@ -63,9 +63,10 @@ private:
     u32 viewport_width_ = 980;
     u32 viewport_height_ = 980;
     async::channel<LoadedPage> loaded_channel_;
+    async::task<void> load_task_;
 
-    async::task<void> load(const std::string& url_str);
-    async::task<void> load_html(const std::string& html);
+    async::task<void> load(std::string url_str);
+    async::task<void> load_html(std::string html);
     void handle_settings_query(const std::string& url_str);
     std::string error_page(const std::string& url, const std::string& msg = "");
     void collect_css(html::Document* doc, std::string& merged_css, const net::URL& base_url);

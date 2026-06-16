@@ -149,7 +149,13 @@ Result<void> BrowserWindow::initialize() {
         viewport_width_ = ext.width;
         viewport_height_ = ext.height;
     }
-    new_tab("about:blank");
+    {
+        TabInfo tab;
+        tab.url = "about:blank";
+        chrome_.tabs.push_back(tab);
+        chrome_.active_tab = 0;
+        chrome_.url = "about:blank";
+    }
     compute_layout();
     return {};
 }

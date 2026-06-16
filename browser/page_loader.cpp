@@ -30,15 +30,15 @@ PageLoader::PageLoader(Telemetry* telemetry, SettingsManager* settings,
 
 void PageLoader::start_load(const std::string& url_str) {
     if (loading_.exchange(true)) return;
-    auto task = load(url_str);
-    task.start();
+    load_task_ = load(url_str);
+    load_task_.start();
 }
 
 std::optional<LoadedPage> PageLoader::try_get_loaded_page() {
     return loaded_channel_.try_receive();
 }
 
-async::task<void> PageLoader::load(const std::string& url_str) {
+async::task<void> PageLoader::load(std::string url_str) {
     co_await async::thread_pool_executor{};
     auto start = std::chrono::steady_clock::now();
 
@@ -109,7 +109,7 @@ async::task<void> PageLoader::load(const std::string& url_str) {
     req.headers.set("Accept", "text/html,application/xhtml+xml");
     req.headers.set("Accept-Encoding", "gzip, deflate");
 
-    auto resp_r = http_.fetch(req);
+    auto resp_r = co_await http_.fetch_async(req);
     if (resp_r.is_err()) {
         co_await load_html(error_page(url_str, resp_r.unwrap_err()));
         loading_ = false;
@@ -133,7 +133,7 @@ async::task<void> PageLoader::load(const std::string& url_str) {
                 host_hdr += ":" + std::to_string(req.url.port);
             req.headers.set("Host", host_hdr);
         }
-        auto nr = http_.fetch(req);
+        auto nr = co_await http_.fetch_async(req);
         if (nr.is_err()) break;
         resp = std::move(nr.unwrap());
     }
@@ -188,7 +188,7 @@ async::task<void> PageLoader::load(const std::string& url_str) {
             sheet = std::move(sheet_r.unwrap());
             auto styles_r = co_await cascader.compute_async(*page.dom, sheet);
             if (styles_r.is_ok()) {
-                page.styles = std::move(styles_r.unwrap());
+                page.styles = std::move(styles_r.unwrap().element_styles);
             }
         }
     }
@@ -232,7 +232,7 @@ async::task<void> PageLoader::load(const std::string& url_str) {
     co_return;
 }
 
-async::task<void> PageLoader::load_html(const std::string& html) {
+async::task<void> PageLoader::load_html(std::string html) {
     co_await async::thread_pool_executor{};
     auto start = std::chrono::steady_clock::now();
 
@@ -257,7 +257,7 @@ async::task<void> PageLoader::load_html(const std::string& html) {
         if (sheet_r.is_ok()) {
             auto styles_r = co_await cascader.compute_async(*page.dom, sheet_r.unwrap());
             if (styles_r.is_ok()) {
-                page.styles = std::move(styles_r.unwrap());
+                page.styles = std::move(styles_r.unwrap().element_styles);
             }
         }
     }

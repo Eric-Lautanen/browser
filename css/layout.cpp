@@ -7,6 +7,7 @@
 #include <map>
 #include <unordered_set>
 #include <sstream>
+#include <functional>
 
 namespace browser::css {
 
@@ -86,6 +87,88 @@ void LayoutNode::set_position(f32 x, f32 y) {
     content.y = y;
 }
 
+// ── resolve_clamp_func ──────────────────────────────────────────
+
+f32 LayoutEngine::resolve_clamp_func(const std::string& expr, f32 parent_value, f32 font_size) const {
+    std::string s = expr;
+    // Find opening parenthesis
+    size_t paren = s.find('(');
+    if (paren == std::string::npos) return 0;
+    std::string args_str = s.substr(paren + 1);
+    if (!args_str.empty() && args_str.back() == ')') args_str.pop_back();
+
+    // Split by commas
+    std::vector<std::string> args;
+    std::string cur;
+    int depth = 0;
+    for (char c : args_str) {
+        if (c == '(') { depth++; cur += c; }
+        else if (c == ')') { depth--; cur += c; }
+        else if (c == ',' && depth == 0) {
+            while (!cur.empty() && cur[0] == ' ') cur = cur.substr(1);
+            while (!cur.empty() && cur.back() == ' ') cur.pop_back();
+            args.push_back(cur);
+            cur.clear();
+        } else {
+            cur += c;
+        }
+    }
+    while (!cur.empty() && cur[0] == ' ') cur = cur.substr(1);
+    while (!cur.empty() && cur.back() == ' ') cur.pop_back();
+    if (!cur.empty()) args.push_back(cur);
+
+    // Evaluate each argument as a length
+    auto eval_arg = [&](const std::string& a) -> f32 {
+        if (a.empty()) return 0;
+        // Check for calc()
+        if (a.substr(0, 5) == "calc(" || a.find("calc(") != std::string::npos) {
+            return resolve_calc_string(a, parent_value, font_size);
+        }
+        char* end = nullptr;
+        f32 val = std::strtof(a.c_str(), &end);
+        if (end && end != a.c_str()) {
+            std::string unit = end;
+            while (!unit.empty() && unit[0] == ' ') unit = unit.substr(1);
+            if (unit == "px") return val;
+            if (unit == "em") return val * font_size;
+            if (unit == "rem") return val * root_font_size_;
+            if (unit == "%") return val / 100.0f * parent_value;
+            if (unit == "vw") return val / 100.0f * viewport_width_;
+            if (unit == "vh") return val / 100.0f * viewport_height_;
+            return val; // unitless
+        }
+        return 0;
+    };
+
+    // Determine which function
+    std::string func_name;
+    {
+        std::string temp = expr;
+        size_t p = temp.find('(');
+        if (p != std::string::npos) func_name = temp.substr(0, p);
+    }
+
+    if (func_name == "clamp" && args.size() >= 3) {
+        f32 min_val = eval_arg(args[0]);
+        f32 val = eval_arg(args[1]);
+        f32 max_val = eval_arg(args[2]);
+        return std::max(min_val, std::min(val, max_val));
+    } else if (func_name == "min" && !args.empty()) {
+        f32 result = eval_arg(args[0]);
+        for (size_t i = 1; i < args.size(); i++) {
+            result = std::min(result, eval_arg(args[i]));
+        }
+        return result;
+    } else if (func_name == "max" && !args.empty()) {
+        f32 result = eval_arg(args[0]);
+        for (size_t i = 1; i < args.size(); i++) {
+            result = std::max(result, eval_arg(args[i]));
+        }
+        return result;
+    }
+    return 0;
+}
+
 // ── resolve_font_size ───────────────────────────────────────────
 
 f32 LayoutEngine::resolve_font_size(const ComputedStyle& style, f32 parent_font_size) const {
@@ -99,6 +182,11 @@ f32 LayoutEngine::resolve_font_size(const ComputedStyle& style, f32 parent_font_
             case Length::Unit::PX:  return v->length.value;
             default: return parent_font_size;
         }
+    }
+
+    if (v->type == CSSValue::Type::FUNCTION &&
+        (v->keyword == "clamp" || v->keyword == "min" || v->keyword == "max")) {
+        return resolve_clamp_func(v->string_value, parent_font_size, parent_font_size);
     }
 
     if (v->type == CSSValue::Type::KEYWORD) {
@@ -123,55 +211,86 @@ f32 LayoutEngine::resolve_calc_string(const std::string& expr, f32 parent_value,
     }
     if (!s.empty() && s.back() == ')') s.pop_back();
 
-    // Simple left-to-right evaluation of "term op term op term" expressions
-    // Terms can be: numeric, px, %, em, rem, vw, vh
-    auto read_term = [&](std::string& str) -> f32 {
-        while (!str.empty() && str[0] == ' ') str = str.substr(1);
-        if (str.empty()) return 0;
-        char* end = nullptr;
-        f32 num = static_cast<f32>(std::strtof(str.c_str(), &end));
-        if (end && end != str.c_str()) {
-            std::string unit = end;
-            // Skip past the number
-            ptrdiff_t consumed = end - str.c_str();
-            str = str.substr(consumed);
-            while (!str.empty() && str[0] == ' ') str = str.substr(1);
+    // Recursive descent parser for calc() with proper operator precedence
+    // Grammar:
+    //   add_expr = mul_expr (('+' | '-') mul_expr)*
+    //   mul_expr = unary_expr (('*' | '/') unary_expr)*
+    //   unary_expr = '-' unary_expr | primary
+    //   primary = NUMBER [UNIT] | '(' add_expr ')'
 
-            if (unit.empty() || unit[0] == '+' || unit[0] == '-' || unit[0] == '*' || unit[0] == '/') {
-                return num; // bare number
+    const char* p = s.c_str();
+
+    // Skip whitespace
+    auto skip_ws = [&]() {
+        while (*p == ' ' || *p == '\t') p++;
+    };
+
+    // Read a number with optional unit and convert to px
+    auto read_number_with_unit = [&]() -> f32 {
+        skip_ws();
+        if (*p == '\0') return 0;
+        char* end = nullptr;
+        f32 num = static_cast<f32>(std::strtof(p, &end));
+        if (end && end != p) {
+            p = end;
+            skip_ws();
+            // Check for unit
+            std::string unit;
+            while (*p && !(*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == ')' || *p == ' ' || *p == '\t')) {
+                unit += *p;
+                p++;
             }
-            if (unit.substr(0, 2) == "px") { str = str.substr(2); return num; }
-            if (unit.substr(0, 1) == "%") { str = str.substr(1); return num / 100.0f * parent_value; }
-            if (unit.substr(0, 2) == "em") { str = str.substr(2); return num * font_size; }
-            if (unit.substr(0, 3) == "rem") { str = str.substr(3); return num * root_font_size_; }
-            if (unit.substr(0, 2) == "vw") { str = str.substr(2); return num / 100.0f * viewport_width_; }
-            if (unit.substr(0, 2) == "vh") { str = str.substr(2); return num / 100.0f * viewport_height_; }
+            if (unit == "px") return num;
+            if (unit == "%") return num / 100.0f * parent_value;
+            if (unit == "em") return num * font_size;
+            if (unit == "rem") return num * root_font_size_;
+            if (unit == "vw") return num / 100.0f * viewport_width_;
+            if (unit == "vh") return num / 100.0f * viewport_height_;
+            return num; // bare number
         }
         return 0;
     };
 
-    f32 result = 0;
-    char last_op = '+';
-    while (!s.empty()) {
-        while (!s.empty() && s[0] == ' ') s = s.substr(1);
-        if (s.empty()) break;
+    std::function<f32()> parse_add_expr;
+    std::function<f32()> parse_mul_expr;
+    std::function<f32()> parse_unary_expr;
+    std::function<f32()> parse_primary;
 
-        // Read op
-        if (s[0] == '+' || s[0] == '-' || s[0] == '*' || s[0] == '/') {
-            last_op = s[0];
-            s = s.substr(1);
-            continue;
+    parse_add_expr = [&]() -> f32 {
+        f32 left = parse_mul_expr();
+        while (true) {
+            skip_ws();
+            if (*p == '+') { p++; f32 right = parse_mul_expr(); left += right; }
+            else if (*p == '-') { p++; f32 right = parse_mul_expr(); left -= right; }
+            else break;
         }
+        return left;
+    };
 
-        f32 term = read_term(s);
-        switch (last_op) {
-            case '+': result += term; break;
-            case '-': result -= term; break;
-            case '*': result *= term; break;
-            case '/': result = (term != 0) ? result / term : result; break;
+    parse_mul_expr = [&]() -> f32 {
+        f32 left = parse_unary_expr();
+        while (true) {
+            skip_ws();
+            if (*p == '*') { p++; f32 right = parse_unary_expr(); left *= right; }
+            else if (*p == '/') { p++; f32 right = parse_unary_expr(); if (right != 0) left /= right; }
+            else break;
         }
-    }
-    return result;
+        return left;
+    };
+
+    parse_unary_expr = [&]() -> f32 {
+        skip_ws();
+        if (*p == '-') { p++; return -parse_unary_expr(); }
+        return parse_primary();
+    };
+
+    parse_primary = [&]() -> f32 {
+        skip_ws();
+        if (*p == '(') { p++; f32 val = parse_add_expr(); skip_ws(); if (*p == ')') p++; return val; }
+        return read_number_with_unit();
+    };
+
+    return parse_add_expr();
 }
 
 // ── resolve_length ──────────────────────────────────────────────
@@ -190,6 +309,28 @@ f32 LayoutEngine::resolve_length(const Length& len, f32 parent_value, f32 font_s
         case Length::Unit::MS:      return len.value;
     }
     return 0.0f;
+}
+
+f32 LayoutEngine::resolve_func_length(const ComputedStyle&, const CSSValue* v,
+                                       f32 parent_value, f32 font_size) const {
+    if (!v) return 0;
+    if (v->type == CSSValue::Type::LENGTH) {
+        return resolve_length(v->length, parent_value, font_size);
+    }
+    if (v->type == CSSValue::Type::FUNCTION &&
+        (v->keyword == "clamp" || v->keyword == "min" || v->keyword == "max")) {
+        return resolve_clamp_func(v->string_value, parent_value, font_size);
+    }
+    if (v->type == CSSValue::Type::STRING && !v->string_value.empty()) {
+        std::string s = v->string_value;
+        if (s.substr(0, 5) == "calc(" || s.find("calc(") != std::string::npos) {
+            return resolve_calc_string(s, parent_value, font_size);
+        }
+        if (s.substr(0, 6) == "clamp(" || s.substr(0, 4) == "min(" || s.substr(0, 4) == "max(") {
+            return resolve_clamp_func(s, parent_value, font_size);
+        }
+    }
+    return 0;
 }
 
 // ── resolve_side_value ──────────────────────────────────────────
@@ -237,7 +378,10 @@ bool LayoutEngine::is_block_element(const ComputedStyle& style) {
     auto* v = style.get("display");
     if (!v || v->type != CSSValue::Type::KEYWORD) return true;
     return v->keyword == "block" || v->keyword == "flex" || v->keyword == "grid" ||
-           v->keyword == "list-item" || v->keyword == "table";
+           v->keyword == "list-item" || v->keyword == "table" ||
+           v->keyword == "table-row" || v->keyword == "table-row-group" ||
+           v->keyword == "table-header-group" || v->keyword == "table-footer-group" ||
+           v->keyword == "table-caption" || v->keyword == "inline-table";
 }
 
 bool LayoutEngine::is_inline_element(const ComputedStyle& style) {
@@ -305,6 +449,16 @@ bool LayoutEngine::is_grid_element(const ComputedStyle& style) {
     auto* v = style.get("display");
     if (!v || v->type != CSSValue::Type::KEYWORD) return false;
     return v->keyword == "grid" || v->keyword == "inline-grid";
+}
+
+bool LayoutEngine::is_table_element(const ComputedStyle& style) {
+    auto* v = style.get("display");
+    if (!v || v->type != CSSValue::Type::KEYWORD) return false;
+    return v->keyword == "table" || v->keyword == "inline-table" || v->keyword == "table-row" ||
+           v->keyword == "table-cell" || v->keyword == "table-row-group" ||
+           v->keyword == "table-header-group" || v->keyword == "table-footer-group" ||
+           v->keyword == "table-column" || v->keyword == "table-column-group" ||
+           v->keyword == "table-caption";
 }
 
 // ── Transform helpers ───────────────────────────────────────────
@@ -1026,6 +1180,28 @@ std::unique_ptr<LayoutNode> LayoutEngine::build_layout_tree(
 
         std::vector<std::unique_ptr<LayoutNode>> inline_pending;
 
+        // Handle ::before generated content
+        {
+            auto before_it = it->second.properties.find("_before_content");
+            if (before_it != it->second.properties.end() && before_it->second.type == CSSValue::Type::STRING) {
+                std::string content = before_it->second.string_value;
+                // Remove surrounding quotes if present
+                if (content.size() >= 2 && content[0] == '"' && content.back() == '"') {
+                    content = content.substr(1, content.size() - 2);
+                }
+                if (!content.empty()) {
+                    ComputedStyle text_style = it->second;
+                    // Override display to inline for generated content
+                    {
+                        CSSValue dv; dv.type = CSSValue::Type::KEYWORD; dv.keyword = "inline";
+                        text_style.properties["display"] = dv;
+                    }
+                    auto text_node = std::make_unique<LayoutNode>(content, std::move(text_style));
+                    inline_pending.push_back(std::move(text_node));
+                }
+            }
+        }
+
         for (auto& child : node->children) {
             if (child->type == html::NodeType::ELEMENT) {
                 auto* child_el = static_cast<html::Element*>(child.get());
@@ -1092,6 +1268,27 @@ std::unique_ptr<LayoutNode> LayoutEngine::build_layout_tree(
                 }
             }
             inline_pending.clear();
+        }
+
+        // Handle ::after generated content
+        {
+            auto after_it = it->second.properties.find("_after_content");
+            if (after_it != it->second.properties.end() && after_it->second.type == CSSValue::Type::STRING) {
+                std::string content = after_it->second.string_value;
+                if (content.size() >= 2 && content[0] == '"' && content.back() == '"') {
+                    content = content.substr(1, content.size() - 2);
+                }
+                if (!content.empty()) {
+                    ComputedStyle text_style = it->second;
+                    {
+                        CSSValue dv; dv.type = CSSValue::Type::KEYWORD; dv.keyword = "inline";
+                        text_style.properties["display"] = dv;
+                    }
+                    auto text_node = std::make_unique<LayoutNode>(content, std::move(text_style));
+                    text_node->parent = layout_node.get();
+                    layout_node->children.push_back(std::move(text_node));
+                }
+            }
         }
 
         return layout_node;
@@ -1264,6 +1461,11 @@ void LayoutEngine::layout_block(LayoutNode* node, f32 containing_width, f32 cont
             f32 mh = resolve_length(minh->length, containing_height, font_size);
             if (node->content.height < mh) node->content.height = mh;
         }
+        return;
+    }
+
+    if (is_table_element(node->style())) {
+        layout_table(node, containing_width, containing_height);
         return;
     }
 
@@ -1688,15 +1890,38 @@ void LayoutEngine::layout_absolute_pass(LayoutNode* node, LayoutNode* containing
         }
 
         if (child_is_sticky) {
-            // Sticky: initially positioned as normal, then sticky offset applied
+            // Sticky: element remains in normal flow until its scroll container
+            // reaches a threshold, then it sticks.
             f32 sticky_top = resolve_property(child->style(), "top",
                                                viewport_height_, font_size);
             f32 sticky_left = resolve_property(child->style(), "left",
                                                 viewport_width_, font_size);
+            f32 sticky_bottom = resolve_property(child->style(), "bottom",
+                                                  viewport_height_, font_size);
 
-            // For now, just apply the sticky offset like relative
-            if (sticky_left != 0) child->content.x += sticky_left;
-            if (sticky_top != 0) child->content.y += sticky_top;
+            // Apply sticky offset: clamp between normal flow position and
+            // container boundary minus element size
+            f32 normal_x = child->content.x;
+            f32 normal_y = child->content.y;
+
+            if (sticky_top != 0) {
+                // Stick to top: don't let element scroll above sticky_top relative to container
+                f32 max_y = std::max(normal_y, sticky_top);
+                child->content.y = max_y;
+            }
+            if (sticky_left != 0) {
+                f32 max_x = std::max(normal_x, sticky_left);
+                child->content.x = max_x;
+            }
+            // For sticky bottom/right, keep element visible within container
+            if (sticky_bottom != 0 && child->parent) {
+                f32 container_bottom = child->parent->content.height;
+                f32 element_bottom = normal_y + child->content.height +
+                                     child->padding.bottom + child->border.bottom +
+                                     child->margin.bottom;
+                f32 min_y = container_bottom - element_bottom - sticky_bottom;
+                child->content.y = std::max(child->content.y, min_y);
+            }
         }
 
         f32 child_fs = resolve_font_size(child->style(), font_size);
@@ -1743,6 +1968,324 @@ async::task<std::unique_ptr<LayoutNode>> LayoutEngine::layout_async(
     layout_absolute_pass(tree.get(), nullptr, viewport_width, viewport_height, body_font_size);
 
     co_return tree;
+}
+
+// ── Table layout ────────────────────────────────────────────────
+
+static bool is_table_cell_tag(const std::string& tag) {
+    return tag == "td" || tag == "th";
+}
+
+static bool is_table_row_tag(const std::string& tag) {
+    return tag == "tr" || tag == "thead" || tag == "tbody" || tag == "tfoot";
+}
+
+void LayoutEngine::layout_table(LayoutNode* node, f32 containing_width, f32 containing_height) {
+    if (!node) return;
+
+    f32 parent_font_size = root_font_size_;
+    if (node->parent) {
+        auto* pfs = node->parent->style().get("font-size");
+        if (pfs && pfs->type == CSSValue::Type::LENGTH && pfs->length.unit == Length::Unit::PX) {
+            parent_font_size = pfs->length.value;
+        }
+    }
+    f32 font_size = resolve_font_size(node->style(), parent_font_size);
+
+    // Resolve margins, padding, borders for the table itself
+    EdgeSizes margins;
+    margins.top = resolve_side_value(node->style(), "margin-top", "margin", containing_width, font_size);
+    margins.bottom = resolve_side_value(node->style(), "margin-bottom", "margin", containing_width, font_size);
+    margins.left = resolve_side_value(node->style(), "margin-left", "margin", containing_width, font_size);
+    margins.right = resolve_side_value(node->style(), "margin-right", "margin", containing_width, font_size);
+    node->margin = margins;
+
+    EdgeSizes paddings;
+    paddings.top = resolve_side_value(node->style(), "padding-top", "padding", containing_width, font_size);
+    paddings.bottom = resolve_side_value(node->style(), "padding-bottom", "padding", containing_width, font_size);
+    paddings.left = resolve_side_value(node->style(), "padding-left", "padding", containing_width, font_size);
+    paddings.right = resolve_side_value(node->style(), "padding-right", "padding", containing_width, font_size);
+    node->padding = paddings;
+
+    EdgeSizes borders;
+    borders.top = resolve_side_value(node->style(), "border-top-width", "border-width", containing_width, font_size);
+    borders.bottom = resolve_side_value(node->style(), "border-bottom-width", "border-width", containing_width, font_size);
+    borders.left = resolve_side_value(node->style(), "border-left-width", "border-width", containing_width, font_size);
+    borders.right = resolve_side_value(node->style(), "border-right-width", "border-width", containing_width, font_size);
+    node->border = borders;
+
+    f32 h_padding = paddings.left + paddings.right;
+    f32 h_border = borders.left + borders.right;
+    f32 h_margin = margins.left + margins.right;
+
+    f32 available_width = containing_width - h_margin - h_padding - h_border;
+    if (available_width < 0) available_width = 0;
+
+    auto* wv = node->style().get("width");
+    if (wv && wv->type == CSSValue::Type::LENGTH) {
+        available_width = resolve_length(wv->length, containing_width, font_size);
+    }
+    node->content.width = available_width;
+
+    // Collect rows and cells
+    struct TableCell {
+        LayoutNode* cell = nullptr;
+        i32 col = 0, row = 0;
+        i32 colspan = 1, rowspan = 1;
+        f32 min_width = 0;
+        f32 content_height = 0;
+    };
+    struct TableRow {
+        std::vector<TableCell> cells;
+        f32 height = 0;
+    };
+
+    std::vector<TableRow> rows;
+
+    // Walk children to find rows (tr, thead, tbody, tfoot) and their cell children
+    for (auto& child : node->children) {
+        if (child->is_text()) continue;
+        html::Node* n = child->node();
+        if (!n || n->type != html::NodeType::ELEMENT) continue;
+        auto* el = static_cast<html::Element*>(n);
+        std::string tag = el->tag_name;
+        for (auto& c : tag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+        if (is_table_row_tag(tag)) {
+            TableRow row;
+            // Layout children cells of this row
+            for (auto& cell_child : child->children) {
+                if (cell_child->is_text()) continue;
+                html::Node* cn = cell_child->node();
+                if (!cn || cn->type != html::NodeType::ELEMENT) continue;
+                auto* cel = static_cast<html::Element*>(cn);
+                std::string ctag = cel->tag_name;
+                for (auto& ccc : ctag) ccc = static_cast<char>(std::tolower(static_cast<unsigned char>(ccc)));
+
+                if (is_table_cell_tag(ctag)) {
+                    TableCell tc;
+                    tc.cell = cell_child.get();
+                    // Parse colspan/rowspan from attributes
+                    std::string cs = cel->get_attribute("colspan");
+                    if (!cs.empty()) tc.colspan = std::max(1, static_cast<i32>(std::strtol(cs.c_str(), nullptr, 10)));
+                    std::string rs = cel->get_attribute("rowspan");
+                    if (!rs.empty()) tc.rowspan = std::max(1, static_cast<i32>(std::strtol(rs.c_str(), nullptr, 10)));
+
+                    row.cells.push_back(tc);
+                }
+            }
+            if (!row.cells.empty()) {
+                rows.push_back(std::move(row));
+            }
+        } else if (is_table_cell_tag(tag)) {
+            // Direct cell child (malformed but handle it)
+            TableRow row;
+            TableCell tc;
+            tc.cell = child.get();
+            tc.colspan = 1; tc.rowspan = 1;
+            row.cells.push_back(tc);
+            rows.push_back(std::move(row));
+        }
+    }
+
+    if (rows.empty()) {
+        node->content.height = 0;
+        return;
+    }
+
+    // Determine column count (max cells across rows)
+    i32 num_cols = 0;
+    for (auto& row : rows) {
+        i32 col = 0;
+        for (auto& tc : row.cells) {
+            col += tc.colspan;
+        }
+        if (col > num_cols) num_cols = col;
+    }
+    if (num_cols == 0) num_cols = 1;
+
+    // Compute column widths
+    std::vector<f32> col_widths(num_cols, 0);
+    std::vector<f32> col_min_widths(num_cols, 0);
+
+    // Layout each cell to determine its content width
+    for (auto& row : rows) {
+        i32 col = 0;
+        for (auto& tc : row.cells) {
+            // Layout the cell with available width
+            f32 cell_available = available_width / static_cast<f32>(num_cols);
+            if (tc.cell) {
+                layout_block(tc.cell, cell_available, containing_height);
+            }
+            f32 cell_content_w = tc.cell ? tc.cell->content.width + tc.cell->padding.left + tc.cell->padding.right
+                                          + tc.cell->border.left + tc.cell->border.right : 0;
+            // Distribute content width across columns
+            f32 per_col = cell_content_w / static_cast<f32>(tc.colspan);
+            for (i32 c = 0; c < tc.colspan; c++) {
+                if (col + c < num_cols) {
+                    if (per_col > col_widths[static_cast<size_t>(col + c)]) {
+                        col_widths[static_cast<size_t>(col + c)] = per_col;
+                    }
+                }
+            }
+            col += tc.colspan;
+        }
+    }
+
+    // Apply width: 100% style
+    // If we have less total than available, distribute remaining space
+    f32 total_width = 0;
+    for (auto& cw : col_widths) total_width += cw;
+    if (total_width < available_width && total_width > 0) {
+        f32 remaining = available_width - total_width;
+        f32 extra_per_col = remaining / static_cast<f32>(num_cols);
+        for (auto& cw : col_widths) cw += extra_per_col;
+    } else if (total_width == 0) {
+        // Equal distribution
+        f32 per_col = available_width / static_cast<f32>(num_cols);
+        for (auto& cw : col_widths) cw = per_col;
+    }
+
+    // Border-collapse: we do simple adjacent border collapsing
+    // (The UA stylesheet sets borders for th/td, we account for them)
+
+    // Now position cells
+    f32 current_y = 0;
+
+    // Track rowspans: for each column, track which rows have open rowspans
+    struct SpanInfo { i32 remaining_rows; LayoutNode* cell; i32 col_start; i32 colspan; };
+    std::vector<SpanInfo> active_rowspans;
+
+    for (i32 ri = 0; ri < static_cast<i32>(rows.size()); ri++) {
+        auto& row = rows[static_cast<size_t>(ri)];
+        f32 row_height = 0;
+
+        f32 current_x = 0;
+        i32 col = 0;
+
+        // Process active rowspans first: add to this row's cells
+        std::vector<SpanInfo> still_active;
+        for (auto& span : active_rowspans) {
+            span.remaining_rows--;
+            if (span.remaining_rows > 0) {
+                still_active.push_back(span);
+            }
+            // Account for the spanned column space
+            f32 span_width = 0;
+            for (i32 c = span.col_start; c < span.col_start + span.colspan; c++) {
+                if (c < num_cols) span_width += col_widths[static_cast<size_t>(c)];
+            }
+            current_x += span_width;
+            col += span.colspan;
+        }
+        active_rowspans = still_active;
+
+        for (auto& tc : row.cells) {
+            // Skip columns already occupied by rowspan from above
+            while (col < num_cols) {
+                bool occupied = false;
+                for (auto& span : active_rowspans) {
+                    if (col >= span.col_start && col < span.col_start + span.colspan) {
+                        occupied = true;
+                        break;
+                    }
+                }
+                if (!occupied) break;
+                // Advance past the spanning cell
+                for (auto& span : active_rowspans) {
+                    if (col >= span.col_start && col < span.col_start + span.colspan) {
+                        f32 span_width = 0;
+                        for (i32 c = span.col_start; c < span.col_start + span.colspan; c++) {
+                            if (c < num_cols) span_width += col_widths[static_cast<size_t>(c)];
+                        }
+                        current_x += span_width;
+                        col += span.colspan;
+                        break;
+                    }
+                }
+            }
+
+            f32 cell_width = 0;
+            for (i32 c = 0; c < tc.colspan; c++) {
+                if (col + c < num_cols) cell_width += col_widths[static_cast<size_t>(col + c)];
+            }
+
+            if (tc.cell && tc.cell->node()) {
+                auto* cel = static_cast<html::Element*>(tc.cell->node());
+                std::string ctag = cel->tag_name;
+                for (auto& ccc : ctag) ccc = static_cast<char>(std::tolower(static_cast<unsigned char>(ccc)));
+
+                // Resolve cell margins/padding/borders
+                EdgeSizes cell_margins;
+                cell_margins.left = resolve_side_value(tc.cell->style(), "margin-left", "margin", cell_width, font_size);
+                cell_margins.right = resolve_side_value(tc.cell->style(), "margin-right", "margin", cell_width, font_size);
+                tc.cell->margin = cell_margins;
+
+                EdgeSizes cell_borders;
+                cell_borders.top = resolve_side_value(tc.cell->style(), "border-top-width", "border-width", cell_width, font_size);
+                cell_borders.bottom = resolve_side_value(tc.cell->style(), "border-bottom-width", "border-width", cell_width, font_size);
+                cell_borders.left = resolve_side_value(tc.cell->style(), "border-left-width", "border-width", cell_width, font_size);
+                cell_borders.right = resolve_side_value(tc.cell->style(), "border-right-width", "border-width", cell_width, font_size);
+                tc.cell->border = cell_borders;
+
+                EdgeSizes cell_paddings;
+                cell_paddings.left = resolve_side_value(tc.cell->style(), "padding-left", "padding", cell_width, font_size);
+                cell_paddings.right = resolve_side_value(tc.cell->style(), "padding-right", "padding", cell_width, font_size);
+                cell_paddings.top = resolve_side_value(tc.cell->style(), "padding-top", "padding", cell_width, font_size);
+                cell_paddings.bottom = resolve_side_value(tc.cell->style(), "padding-bottom", "padding", cell_width, font_size);
+                tc.cell->padding = cell_paddings;
+
+                f32 content_w = cell_width - cell_margins.left - cell_margins.right
+                               - cell_borders.left - cell_borders.right
+                               - cell_paddings.left - cell_paddings.right;
+                if (content_w < 0) content_w = 0;
+
+                tc.cell->content.width = content_w;
+                tc.cell->content.x = current_x + cell_margins.left + cell_borders.left + cell_paddings.left;
+                tc.cell->content.y = current_y + cell_margins.top + cell_borders.top + cell_paddings.top;
+
+                // Layout cell content
+                if (!tc.cell->children.empty()) {
+                    layout_children(tc.cell, content_w, containing_height);
+                }
+
+                f32 cell_h = tc.cell->content.height + tc.cell->padding.top + tc.cell->padding.bottom
+                            + tc.cell->border.top + tc.cell->border.bottom + tc.cell->margin.top + tc.cell->margin.bottom;
+                if (cell_h > row_height) row_height = cell_h;
+            }
+
+            // Handle rowspan
+            if (tc.rowspan > 1) {
+                active_rowspans.push_back({tc.rowspan - 1, tc.cell, col, tc.colspan});
+            }
+
+            current_x += cell_width;
+            col += tc.colspan;
+        }
+
+        // Row height
+        for (auto& tc : row.cells) {
+            if (tc.cell) {
+                // Expand cell to row height
+                f32 cell_total_height = tc.cell->content.height + tc.cell->padding.top + tc.cell->padding.bottom
+                                       + tc.cell->border.top + tc.cell->border.bottom + tc.cell->margin.top + tc.cell->margin.bottom;
+                if (row_height > cell_total_height) {
+                    // Center cell vertically
+                    f32 extra = row_height - cell_total_height;
+                    tc.cell->content.y += extra / 2;
+                }
+            }
+        }
+
+        current_y += row_height;
+    }
+
+    node->content.height = current_y;
+
+    auto* hv = node->style().get("height");
+    if (hv && hv->type == CSSValue::Type::LENGTH) {
+        node->content.height = resolve_length(hv->length, containing_height, font_size);
+    }
 }
 
 // ── Grid layout ─────────────────────────────────────────────────
@@ -1909,6 +2452,57 @@ void LayoutEngine::layout_grid(LayoutNode* node, f32 containing_width, f32 conta
     state.columns = parse_track_list(cols_str, container_width, font_size);
     state.rows = parse_track_list(rows_str, container_height, font_size);
 
+    // Parse named grid areas
+    std::unordered_map<std::string, std::pair<i32,i32>> named_areas;
+    std::vector<std::vector<std::string>> area_grid;
+    i32 area_num_cols = 0, area_num_rows = 0;
+    {
+        std::string areas_str = get_grid_prop_raw(node->style(), "grid-template-areas");
+        if (!areas_str.empty()) {
+            std::vector<std::string> area_tokens;
+            std::string cur;
+            for (char c : areas_str) {
+                if (c == ' ' || c == '\t') {
+                    if (!cur.empty()) { area_tokens.push_back(cur); cur.clear(); }
+                } else cur += c;
+            }
+            if (!cur.empty()) area_tokens.push_back(cur);
+
+            area_num_cols = static_cast<i32>(state.columns.size());
+            if (area_num_cols == 0 && !area_tokens.empty()) {
+                area_num_cols = 1;
+            }
+            if (area_num_cols > 0 && !area_tokens.empty()) {
+                area_num_rows = static_cast<i32>(area_tokens.size()) / area_num_cols;
+                if (area_num_rows > 0 && static_cast<i32>(area_tokens.size()) % area_num_cols == 0) {
+                    for (i32 r = 0; r < area_num_rows; r++) {
+                        std::vector<std::string> row;
+                        for (i32 c = 0; c < area_num_cols; c++) {
+                            row.push_back(area_tokens[static_cast<size_t>(r * area_num_cols + c)]);
+                        }
+                        area_grid.push_back(row);
+                    }
+                    // Build named area map
+                    for (i32 r = 0; r < area_num_rows; r++) {
+                        for (i32 c = 0; c < area_num_cols; c++) {
+                            const std::string& name = area_grid[static_cast<size_t>(r)][static_cast<size_t>(c)];
+                            if (name != "." && named_areas.find(name) == named_areas.end()) {
+                                named_areas[name] = {c, r};
+                            }
+                        }
+                    }
+                }
+            }
+            // Also ensure rows match
+            if (area_num_rows > 0 && state.rows.size() < static_cast<size_t>(area_num_rows)) {
+                while (state.rows.size() < static_cast<size_t>(area_num_rows)) {
+                    state.rows.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                }
+                state.num_rows = static_cast<i32>(state.rows.size());
+            }
+        }
+    }
+
     if (state.columns.empty()) {
         state.columns.push_back(GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
     }
@@ -1940,9 +2534,21 @@ void LayoutEngine::layout_grid(LayoutNode* node, f32 containing_width, f32 conta
 
         std::string gc_str = get_grid_prop_raw(child->style(), "grid-column");
         std::string gr_str = get_grid_prop_raw(child->style(), "grid-row");
+        std::string ga_str = get_grid_prop_raw(child->style(), "grid-area");
 
         GridPlacement col_place = gc_str.empty() ? GridPlacement{} : parse_grid_line(gc_str);
         GridPlacement row_place = gr_str.empty() ? GridPlacement{} : parse_grid_line(gr_str);
+
+        // Check if grid-area maps to a named area
+        if (!ga_str.empty() && gc_str.empty() && gr_str.empty()) {
+            auto it = named_areas.find(ga_str);
+            if (it != named_areas.end()) {
+                col_place.line_start = it->second.first + 1;
+                row_place.line_start = it->second.second + 1;
+                col_place.is_explicit = true;
+                row_place.is_explicit = true;
+            }
+        }
 
         bool has_explicit = (col_place.line_start > 0 || row_place.line_start > 0);
 

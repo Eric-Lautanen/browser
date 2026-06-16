@@ -131,14 +131,14 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
                     std::string a_part = inner.substr(0, n_pos);
                     if (a_part.empty() || a_part == "+") a = 1;
                     else if (a_part == "-") a = -1;
-                    else a = std::stoi(a_part);
+                    else a = static_cast<i32>(std::strtol(a_part.c_str(), nullptr, 10));
                     std::string b_part = inner.substr(n_pos + 1);
                     if (!b_part.empty()) {
                         if (b_part[0] == '+') b_part = b_part.substr(1);
-                        b = std::stoi(b_part);
+                        b = static_cast<i32>(std::strtol(b_part.c_str(), nullptr, 10));
                     }
                 } else {
-                    b = std::stoi(inner);
+                    b = static_cast<i32>(std::strtol(inner.c_str(), nullptr, 10));
                 }
                 if (a == 0) return idx == b;
                 if (idx < b) return false;
@@ -176,13 +176,14 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
                 if (!state.empty()) {
                     return state.find(ss.name) != std::string::npos;
                 }
-                return false; // Don't match by default for safety
+                return true; // Match by default for correct static rendering
             }
             return false;
         }
         case SimpleSelector::Type::PSEUDO_ELEMENT: {
             // Pseudo-elements select into generated content
-            if (ss.name == "before" || ss.name == "after") {
+            if (ss.name == "before" || ss.name == "after" ||
+                ss.name == "first-line" || ss.name == "first-letter") {
                 return true; // These are handled during cascade
             }
             return false;

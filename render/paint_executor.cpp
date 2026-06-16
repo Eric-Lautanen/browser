@@ -12,6 +12,30 @@ namespace pgl = browser::platform;
 PaintExecutor::PaintExecutor(Renderer* r, TextRenderer* tr)
     : renderer_(r), text_renderer_(tr) {}
 
+bool PaintExecutor::is_identity(const css::Mat3x3& m) const {
+    return m.m[0][0] == 1 && m.m[0][1] == 0 && m.m[0][2] == 0 &&
+           m.m[1][0] == 0 && m.m[1][1] == 1 && m.m[1][2] == 0 &&
+           m.m[2][0] == 0 && m.m[2][1] == 0 && m.m[2][2] == 1;
+}
+
+void PaintExecutor::transform_rect(f32& x, f32& y, f32& w, f32& h) const {
+    f32 corners[4][2] = {{x, y}, {x + w, y}, {x, y + h}, {x + w, y + h}};
+    f32 min_x = 1e30f, min_y = 1e30f, max_x = -1e30f, max_y = -1e30f;
+    for (int i = 0; i < 4; i++) {
+        f32 px = corners[i][0], py = corners[i][1];
+        f32 tx = current_transform_.m[0][0] * px + current_transform_.m[0][1] * py + current_transform_.m[0][2];
+        f32 ty = current_transform_.m[1][0] * px + current_transform_.m[1][1] * py + current_transform_.m[1][2];
+        if (tx < min_x) min_x = tx;
+        if (ty < min_y) min_y = ty;
+        if (tx > max_x) max_x = tx;
+        if (ty > max_y) max_y = ty;
+    }
+    x = min_x;
+    y = min_y;
+    w = max_x - min_x;
+    h = max_y - min_y;
+}
+
 void PaintExecutor::set_offset(f32 x, f32 y) {
     offset_x_ = x;
     offset_y_ = y;
@@ -147,9 +171,14 @@ void PaintExecutor::execute(const DisplayList& list) {
             case PaintCommand::Type::FILL_RECT: {
                 f32 x = cmd.rect.x + offset_x_;
                 f32 y = cmd.rect.y + offset_y_;
+                f32 w = cmd.rect.width;
+                f32 h = cmd.rect.height;
+                if (!is_identity(current_transform_)) {
+                    transform_rect(x, y, w, h);
+                }
                 Color c = cmd.color;
                 c.a *= current_opacity_;
-                renderer_->fill_rect(x, y, cmd.rect.width, cmd.rect.height, c);
+                renderer_->fill_rect(x, y, w, h, c);
                 break;
             }
             case PaintCommand::Type::DRAW_TEXT: {
@@ -191,6 +220,9 @@ void PaintExecutor::execute(const DisplayList& list) {
                 f32 y = cmd.rect.y + offset_y_;
                 f32 w = cmd.rect.width;
                 f32 h = cmd.rect.height;
+                if (!is_identity(current_transform_)) {
+                    transform_rect(x, y, w, h);
+                }
                 ImageId id = cmd.image_id;
                 auto it = texture_cache_.find(id);
                 if (it != texture_cache_.end() && it->second) {
@@ -225,6 +257,10 @@ void PaintExecutor::execute(const DisplayList& list) {
 
                 if (w <= 0 || h <= 0) break;
 
+                if (!is_identity(current_transform_)) {
+                    transform_rect(x, y, w, h);
+                }
+
                 Texture2D* tex = get_or_create_gradient_texture(cmd.gradient, w, h);
                 if (tex) {
                     renderer_->draw_textured_quad(x, y, w, h, Color{1,1,1,current_opacity_}, tex);
@@ -237,6 +273,9 @@ void PaintExecutor::execute(const DisplayList& list) {
                 f32 w = cmd.rect.width;
                 f32 h = cmd.rect.height;
                 f32 blur = cmd.radius;
+                if (!is_identity(current_transform_)) {
+                    transform_rect(x, y, w, h);
+                }
 
                 Color c = cmd.color;
                 c.a *= current_opacity_;
@@ -252,12 +291,8 @@ void PaintExecutor::execute(const DisplayList& list) {
             }
             case PaintCommand::Type::PUSH_TRANSFORM: {
                 renderer_->flush();
-                // Apply the 3x3 affine transform matrix to the OpenGL modelview
-                // Save current matrix
                 transform_stack_.push_back(current_transform_);
                 current_transform_ = cmd.transform;
-                // For now, we apply the transform by translating the offset
-                // (proper OpenGL matrix manipulation would be done here)
                 break;
             }
             case PaintCommand::Type::POP_TRANSFORM: {
@@ -286,16 +321,89 @@ void PaintExecutor::execute(const DisplayList& list) {
                 f32 w = cmd.rect.width;
                 f32 h = cmd.rect.height;
                 f32 r = cmd.radius;
+                if (!is_identity(current_transform_)) {
+                    transform_rect(x, y, w, h);
+                }
                 Color c = cmd.color;
                 c.a *= current_opacity_;
 
-                // Simple approximation: draw a rounded rect using the fill rect
-                // For a proper implementation, we'd use a fragment shader
-                renderer_->fill_rect(x + r, y, w - 2 * r, r, c); // top
-                renderer_->fill_rect(x + r, y + h - r, w - 2 * r, r, c); // bottom
-                renderer_->fill_rect(x, y + r, r, h - 2 * r, c); // left
-                renderer_->fill_rect(x + w - r, y + r, r, h - 2 * r, c); // right
-                renderer_->fill_rect(x + r, y + r, w - 2 * r, h - 2 * r, c); // center
+                // Draw 5 rectangles to fill the rounded area, plus quarter-circles at corners
+                f32 inner_x1 = x + r, inner_y1 = y + r;
+                f32 inner_x2 = x + w - r, inner_y2 = y + h - r;
+                if (inner_x2 < inner_x1) inner_x2 = inner_x1;
+                if (inner_y2 < inner_y1) inner_y2 = inner_y1;
+                f32 inner_w = inner_x2 - inner_x1;
+                f32 inner_h = inner_y2 - inner_y1;
+
+                // Top, bottom, left, right, center
+                renderer_->fill_rect(inner_x1, y, inner_w, r, c);
+                renderer_->fill_rect(inner_x1, y + h - r, inner_w, r, c);
+                renderer_->fill_rect(x, inner_y1, r, inner_h, c);
+                renderer_->fill_rect(x + w - r, inner_y1, r, inner_h, c);
+                renderer_->fill_rect(inner_x1, inner_y1, inner_w, inner_h, c);
+
+                // Draw quarter-circle corners using small quads for approximation
+                if (r > 0) {
+                    i32 segments = static_cast<i32>(r * 0.5f);
+                    if (segments < 2) segments = 2;
+                    if (segments > 12) segments = 12;
+                    // Top-left corner
+                    for (i32 i = 0; i < segments; i++) {
+                        f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
+                        f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
+                        f32 x1c = x + r - r * cosf(a1);
+                        f32 y1c = y + r - r * sinf(a1);
+                        f32 x2c = x + r - r * cosf(a2);
+                        f32 y2c = y + r - r * sinf(a2);
+                        f32 tri_x = std::min({x1c, x2c, x + r});
+                        f32 tri_y = std::min({y1c, y2c, y + r});
+                        f32 tri_w = std::max({x1c, x2c, x + r}) - tri_x;
+                        f32 tri_h = std::max({y1c, y2c, y + r}) - tri_y;
+                        renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
+                    }
+                    // Top-right corner
+                    for (i32 i = 0; i < segments; i++) {
+                        f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
+                        f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
+                        f32 x1c = x + w - r + r * sinf(a1);
+                        f32 y1c = y + r - r * cosf(a1);
+                        f32 x2c = x + w - r + r * sinf(a2);
+                        f32 y2c = y + r - r * cosf(a2);
+                        f32 tri_x = std::min({x1c, x2c, x + w - r});
+                        f32 tri_y = std::min({y1c, y2c, y + r});
+                        f32 tri_w = std::max({x1c, x2c, x + w - r}) - tri_x;
+                        f32 tri_h = std::max({y1c, y2c, y + r}) - tri_y;
+                        renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
+                    }
+                    // Bottom-left corner
+                    for (i32 i = 0; i < segments; i++) {
+                        f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
+                        f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
+                        f32 x1c = x + r - r * cosf(a1);
+                        f32 y1c = y + h - r + r * sinf(a1);
+                        f32 x2c = x + r - r * cosf(a2);
+                        f32 y2c = y + h - r + r * sinf(a2);
+                        f32 tri_x = std::min({x1c, x2c, x + r});
+                        f32 tri_y = std::min({y1c, y2c, y + h - r});
+                        f32 tri_w = std::max({x1c, x2c, x + r}) - tri_x;
+                        f32 tri_h = std::max({y1c, y2c, y + h - r}) - tri_y;
+                        renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
+                    }
+                    // Bottom-right corner
+                    for (i32 i = 0; i < segments; i++) {
+                        f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
+                        f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
+                        f32 x1c = x + w - r + r * sinf(a1);
+                        f32 y1c = y + h - r + r * cosf(a1);
+                        f32 x2c = x + w - r + r * sinf(a2);
+                        f32 y2c = y + h - r + r * cosf(a2);
+                        f32 tri_x = std::min({x1c, x2c, x + w - r});
+                        f32 tri_y = std::min({y1c, y2c, y + h - r});
+                        f32 tri_w = std::max({x1c, x2c, x + w - r}) - tri_x;
+                        f32 tri_h = std::max({y1c, y2c, y + h - r}) - tri_y;
+                        renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
+                    }
+                }
                 break;
             }
         }
