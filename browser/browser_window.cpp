@@ -461,6 +461,13 @@ void BrowserWindow::render_settings() {
 }
 
 void BrowserWindow::render_page() {
+    // Check for freshly loaded pages from the async pipeline
+    if (page_loader_) {
+        auto loaded = page_loader_->try_get_loaded_page();
+        if (loaded.has_value()) {
+            current_page_ = std::move(loaded.value());
+        }
+    }
     if (!current_page_.has_value()) return;
     auto& page = current_page_.value();
     f32 content_h = static_cast<f32>(viewport_height_) - ChromeUI::CHROME_H;
@@ -894,10 +901,7 @@ void BrowserWindow::handle_scroll(i32 delta) {
 void BrowserWindow::start_load(const std::string& url) {
     chrome_.scroll_y = 0;
     if (page_loader_) {
-        auto result = page_loader_->load(url);
-        if (result.is_ok()) {
-            current_page_ = std::move(result.unwrap());
-        }
+        page_loader_->start_load(url);
     }
     if (telemetry_ && tracker_) {
         telemetry_->set_trackers_blocked(tracker_->blocked_count());

@@ -2,6 +2,8 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include "../async/task.hpp"
+#include "../async/executor.hpp"
 #include "dom.hpp"
 #include "tokenizer.hpp"
 
@@ -93,9 +95,10 @@ private:
 
 bool is_void_element(const std::string& tag);
 
-inline std::unique_ptr<Document> parse(const std::string& html) {
+inline async::task<std::unique_ptr<Document>> parse(const std::string& html) {
+    co_await async::thread_pool_executor{};
     Parser p;
-    return p.parse(html);
+    co_return p.parse(html);
 }
 
 } // namespace browser::html

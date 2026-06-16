@@ -13,6 +13,7 @@
 #include "../css/cascade.hpp"
 #include "../css/layout.hpp"
 #include "../render/painter.hpp"
+#include "../async/executor.hpp"
 
 namespace browser {
 
@@ -24,11 +25,20 @@ PageLoader::PageLoader(Telemetry* telemetry, SettingsManager* settings,
                        net::TrackerBlocker* tracker, render::FontManager* fm,
                        render::TextRenderer* text_renderer)
     : telemetry_(telemetry), settings_(settings), tracker_(tracker),
-      fm_(fm), text_renderer_(text_renderer) {}
+      fm_(fm), text_renderer_(text_renderer), loaded_channel_(1) {}
 
-Result<LoadedPage> PageLoader::load(const std::string& url_str) {
-    auto start = std::chrono::steady_clock::now();
+void PageLoader::start_load(const std::string& url_str) {
     loading_ = true;
+    auto task = load(url_str);
+    task.start();
+}
+
+std::optional<LoadedPage> PageLoader::try_get_loaded_page() {
+    return loaded_channel_.try_receive();
+}
+
+async::task<Result<LoadedPage>> PageLoader::load(const std::string& url_str) {
+    auto start = std::chrono::steady_clock::now();
 
     // 1. Handle about: URLs
     if (url_str.rfind("about:", 0) == 0) {
@@ -45,24 +55,28 @@ Result<LoadedPage> PageLoader::load(const std::string& url_str) {
         } else {
             html = error_page(url_str, "Unknown about: page");
         }
-        auto r = load_html(html);
+        auto r = co_await load_html(html);
+        loaded_channel_.send(std::move(r.unwrap()));
         loading_ = false;
-        return r;
+        co_return r;
     }
 
     // 2. Handle file: URLs
     if (url_str.rfind("file:///", 0) == 0) {
-        std::string path = url_str.substr(8); // strip "file:///"
+        std::string path = url_str.substr(8);
         std::ifstream f(path);
         if (!f.is_open()) {
+            auto r = co_await load_html(error_page(url_str, "Cannot open file: " + path));
+            loaded_channel_.send(std::move(r.unwrap()));
             loading_ = false;
-            auto r = load_html(error_page(url_str, "Cannot open file: " + path));
-            return r;
+            co_return r;
         }
         std::string html((std::istreambuf_iterator<char>(f)),
                           std::istreambuf_iterator<char>());
+        auto r = co_await load_html(html);
+        loaded_channel_.send(std::move(r.unwrap()));
         loading_ = false;
-        return load_html(html);
+        co_return r;
     }
 
     // 3. Parse URL (add default http:// if no scheme)
@@ -73,18 +87,20 @@ Result<LoadedPage> PageLoader::load(const std::string& url_str) {
     }
     auto parsed = net::URL::parse(normal_url);
     if (parsed.is_err()) {
+        auto r = co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()));
+        loaded_channel_.send(std::move(r.unwrap()));
         loading_ = false;
-        auto r = load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()));
-        return r;
+        co_return r;
     }
 
-    // 3. Check tracker blocker before fetching
+    // 3b. Check tracker blocker before fetching
     if (tracker_ && tracker_->should_block(url_str)) {
         telemetry_->record({TelemetryEvent::TRACKER_BLOCKED, url_str, 0});
         telemetry_->set_trackers_blocked(tracker_->blocked_count());
+        auto r = co_await load_html(error_page(url_str, "Blocked by tracker blocker"));
+        loaded_channel_.send(std::move(r.unwrap()));
         loading_ = false;
-        auto r = load_html(error_page(url_str, "Blocked by tracker blocker"));
-        return r;
+        co_return r;
     }
 
     net::http::Request req;
@@ -100,15 +116,17 @@ Result<LoadedPage> PageLoader::load(const std::string& url_str) {
     req.headers.set("Accept", "text/html,application/xhtml+xml");
     req.headers.set("Accept-Encoding", "gzip, deflate");
 
-    auto resp_r = http_.fetch(req);
+    // 4. Fetch HTML (network I/O on IOCP)
+    auto resp_r = co_await http_.fetch(req);
     if (resp_r.is_err()) {
+        auto r = co_await load_html(error_page(url_str, resp_r.unwrap_err()));
+        loaded_channel_.send(std::move(r.unwrap()));
         loading_ = false;
-        auto r = load_html(error_page(url_str, resp_r.unwrap_err()));
-        return r;
+        co_return r;
     }
     auto resp = std::move(resp_r.unwrap());
 
-    // 4. Handle redirects (follow 301/302/303/307/308 up to 5 times)
+    // 5. Handle redirects (follow 301/302/303/307/308 up to 5 times)
     u32 redirect_count = 0;
     while ((resp.status.code == 301 || resp.status.code == 302 ||
             resp.status.code == 303 || resp.status.code == 307 ||
@@ -125,13 +143,14 @@ Result<LoadedPage> PageLoader::load(const std::string& url_str) {
                 host_hdr += ":" + std::to_string(req.url.port);
             req.headers.set("Host", host_hdr);
         }
-        auto nr = http_.fetch(req);
+        auto nr = co_await http_.fetch(req);
         if (nr.is_err()) break;
         resp = std::move(nr.unwrap());
     }
 
-    // 5. Decompress if Content-Encoding is gzip/deflate
+    // 6. Decompress if needed (CPU on thread pool)
     if (resp.headers.has("content-encoding")) {
+        co_await async::thread_pool_executor{};
         std::string ce = resp.headers.get("content-encoding");
         if (ce.find("gzip") != std::string::npos) {
             resp.body = net::gzip_decompress(resp.body.data(), static_cast<u32>(resp.body.size()));
@@ -143,80 +162,84 @@ Result<LoadedPage> PageLoader::load(const std::string& url_str) {
     std::string body_str(reinterpret_cast<const char*>(resp.body.data()),
                          resp.body.size());
 
-    // 6. Parse HTML
-    auto doc = html::parse(body_str);
+    // 7. Parse HTML (CPU on thread pool)
+    auto doc = co_await html::parse(body_str);
     LoadedPage page;
     page.dom = std::move(doc);
 
-    // Extract page title from <title> element
+    // Extract page title
     auto* title_el = html::find_element_by_tag(page.dom.get(), "title");
     if (title_el) page.page_title = html::inner_text(title_el);
 
-    // 7. Collect CSS
+    // 8. Collect CSS
     std::string merged_css;
     collect_css(page.dom.get(), merged_css, req.url);
 
-    // 7. Cascade
-    if (!merged_css.empty()) {
-        auto sheet = css::parse(merged_css);
-        css::Cascade cascader;
-        page.styles = cascader.compute(*page.dom, sheet);
-    }
+    // 9. Parse + cascade CSS (CPU on thread pool) - parse already runs on thread pool
+    css::Cascade cascader;
+    auto styles = co_await cascader.compute(*page.dom, css::parse(merged_css).sync_wait());
+    page.styles = std::move(styles);
 
-    // 8. Layout
+    // 10. Layout (CPU on thread pool)
     if (page.dom) {
         css::LayoutEngine layout_engine;
         layout_engine.set_text_measure(text_renderer_, text_measure_cb);
-        page.layout = layout_engine.layout(page.dom.get(), page.styles,
-                                           static_cast<f32>(viewport_width_),
-                                           static_cast<f32>(viewport_height_));
+        page.layout = co_await layout_engine.layout(page.dom.get(), page.styles,
+                                                     static_cast<f32>(viewport_width_),
+                                                     static_cast<f32>(viewport_height_));
     }
 
-    // 9. Paint
+    // 11. Paint (CPU on thread pool)
     if (page.layout) {
         render::Painter painter(text_renderer_);
-        painter.paint(page.layout.get());
-        page.display_list = painter.display_list();
+        page.display_list = co_await painter.paint(page.layout.get());
     }
 
     page.load_time_ms = static_cast<u32>(elapsed_ms(start));
     telemetry_->record({TelemetryEvent::PAGE_LOAD, url_str, static_cast<f64>(page.load_time_ms)});
+
+    // 12. Ship to main thread via channel
+    loaded_channel_.send(std::move(page));
     loading_ = false;
-    return page;
+    co_return Result<LoadedPage>(LoadedPage{});
 }
 
-Result<LoadedPage> PageLoader::load_html(const std::string& html) {
-    auto doc = html::parse(html);
+async::task<Result<LoadedPage>> PageLoader::load_html(const std::string& html) {
+    auto start = std::chrono::steady_clock::now();
+
+    auto doc = co_await browser::html::parse(html);
     LoadedPage page;
     page.dom = std::move(doc);
 
-    // Extract page title from <title> element
     auto* title_el = html::find_element_by_tag(page.dom.get(), "title");
     if (title_el) page.page_title = html::inner_text(title_el);
 
-    // Cascade UA stylesheet + any inline <style> elements
     std::string merged_css;
     net::URL empty_base;
     collect_css(page.dom.get(), merged_css, empty_base);
+
+    css::Cascade cascader;
     if (!merged_css.empty()) {
-        auto sheet = css::parse(merged_css);
-        css::Cascade cascader;
-        page.styles = cascader.compute(*page.dom, sheet);
+        auto styles = co_await cascader.compute(*page.dom, css::parse(merged_css).sync_wait());
+        page.styles = std::move(styles);
     }
 
-    css::LayoutEngine layout_engine;
-    layout_engine.set_text_measure(text_renderer_, text_measure_cb);
-    page.layout = layout_engine.layout(page.dom.get(), page.styles,
-                                       static_cast<f32>(viewport_width_),
-                                       static_cast<f32>(viewport_height_));
+    if (page.dom) {
+        css::LayoutEngine layout_engine;
+        layout_engine.set_text_measure(text_renderer_, text_measure_cb);
+        page.layout = co_await layout_engine.layout(page.dom.get(), page.styles,
+                                                     static_cast<f32>(viewport_width_),
+                                                     static_cast<f32>(viewport_height_));
+    }
 
     if (page.layout) {
         render::Painter painter(text_renderer_);
-        painter.paint(page.layout.get());
-        page.display_list = painter.display_list();
+        page.display_list = co_await painter.paint(page.layout.get());
     }
 
-    return page;
+    page.load_time_ms = static_cast<u32>(elapsed_ms(start));
+    loaded_channel_.send(std::move(page));
+    co_return Result<LoadedPage>(LoadedPage{});
 }
 
 void PageLoader::cancel() {

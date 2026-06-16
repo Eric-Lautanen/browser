@@ -2,9 +2,9 @@
 #include "parser.hpp"
 #include "selector_match.hpp"
 #include "../html/traversal.hpp"
+#include "../async/executor.hpp"
 #include <algorithm>
 #include <cstdlib>
-#include "../async/executor.hpp"
 
 namespace browser::css {
 

@@ -6,22 +6,19 @@ namespace browser::render {
 Painter::Painter(TextRenderer* tr)
     : text_renderer_(tr) {}
 
-void Painter::paint(css::LayoutNode* root) {
-    list_.clear();
-    if (root) paint_node(root, 0, 0);
+async::task<std::shared_ptr<DisplayList>> Painter::paint(css::LayoutNode* root) {
+    co_await async::thread_pool_executor{};
+    auto list = std::make_shared<DisplayList>();
+    if (root) paint_node(*list, root, 0, 0);
+    co_return list;
 }
 
-const DisplayList& Painter::display_list() const {
-    return list_;
-}
-
-void Painter::paint_node(css::LayoutNode* node, f32 ox, f32 oy) {
+void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
     if (!node) return;
 
-    paint_background(node, ox, oy);
-    paint_border(node, ox, oy);
+    paint_background(list, node, ox, oy);
+    paint_border(list, node, ox, oy);
 
-    // Check overflow property — only clip for overflow:hidden/scroll/auto
     bool has_clip = false;
     auto* overflow = node->style().get("overflow");
     if (overflow && overflow->type == css::CSSValue::Type::KEYWORD) {
@@ -48,24 +45,23 @@ void Painter::paint_node(css::LayoutNode* node, f32 ox, f32 oy) {
         f32 py = oy - node->padding.top;
         f32 pw = node->content.width + node->padding.left + node->padding.right;
         f32 ph = node->content.height + node->padding.top + node->padding.bottom;
-        list_.push({PaintCommand::Type::PUSH_CLIP, {px, py, pw, ph}, Color::TRANSPARENT, "", 0});
+        list.push({PaintCommand::Type::PUSH_CLIP, {px, py, pw, ph}, Color::TRANSPARENT, "", 0});
     }
 
-    // Emit text before children (CSS paint order: bg → border → content → children)
     if (node->is_text()) {
-        paint_text(node, ox, oy);
+        paint_text(list, node, ox, oy);
     }
 
     for (auto& child : node->children) {
-        paint_node(child.get(), ox + child->content.x, oy + child->content.y);
+        paint_node(list, child.get(), ox + child->content.x, oy + child->content.y);
     }
 
     if (has_clip) {
-        list_.push({PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT, "", 0});
+        list.push({PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT, "", 0});
     }
 }
 
-void Painter::paint_background(css::LayoutNode* node, f32 ox, f32 oy) {
+void Painter::paint_background(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
     Color bg = resolve_color(node->style(), "background-color", Color::TRANSPARENT);
     if (bg.a == 0.0f) return;
 
@@ -75,10 +71,10 @@ void Painter::paint_background(css::LayoutNode* node, f32 ox, f32 oy) {
              + node->border.left + node->border.right;
     f32 bh = node->content.height + node->padding.top + node->padding.bottom
              + node->border.top + node->border.bottom;
-    list_.push({PaintCommand::Type::FILL_RECT, {bx, by, bw, bh}, bg, "", 0});
+    list.push({PaintCommand::Type::FILL_RECT, {bx, by, bw, bh}, bg, "", 0});
 }
 
-void Painter::paint_border(css::LayoutNode* node, f32 ox, f32 oy) {
+void Painter::paint_border(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
     auto& b = node->border;
     if (b.top == 0.0f && b.right == 0.0f && b.bottom == 0.0f && b.left == 0.0f) return;
 
@@ -91,7 +87,6 @@ void Painter::paint_border(css::LayoutNode* node, f32 ox, f32 oy) {
     Color border_left = resolve_color_fallback(node->style(),
         {"border-left-color", "border-color"}, Color::BLACK);
 
-    // Border box (includes padding + border)
     f32 bx = ox - node->padding.left - b.left;
     f32 by = oy - node->padding.top - b.top;
     f32 bw = node->content.width + node->padding.left + node->padding.right
@@ -99,38 +94,32 @@ void Painter::paint_border(css::LayoutNode* node, f32 ox, f32 oy) {
     f32 bh = node->content.height + node->padding.top + node->padding.bottom
              + b.top + b.bottom;
 
-    // Top border
     if (b.top > 0.0f) {
-        list_.push({PaintCommand::Type::FILL_RECT,
+        list.push({PaintCommand::Type::FILL_RECT,
             {bx, by, bw, b.top}, border_color, "", 0});
     }
 
-    // Right border
     if (b.right > 0.0f) {
-        list_.push({PaintCommand::Type::FILL_RECT,
+        list.push({PaintCommand::Type::FILL_RECT,
             {bx + bw - b.right, by, b.right, bh}, border_right, "", 0});
     }
 
-    // Bottom border
     if (b.bottom > 0.0f) {
-        list_.push({PaintCommand::Type::FILL_RECT,
+        list.push({PaintCommand::Type::FILL_RECT,
             {bx, by + bh - b.bottom, bw, b.bottom}, border_bottom, "", 0});
     }
 
-    // Left border
     if (b.left > 0.0f) {
-        list_.push({PaintCommand::Type::FILL_RECT,
+        list.push({PaintCommand::Type::FILL_RECT,
             {bx, by, b.left, bh}, border_left, "", 0});
     }
 }
 
-void Painter::paint_text(css::LayoutNode* node, f32 ox, f32 oy) {
+void Painter::paint_text(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
     Color text_color = resolve_color(node->style(), "color", Color::BLACK);
     f32 font_size = resolve_font_size(node->style());
-    // Extend height by descender allowance so p/q/g/y aren't clipped by
-    // ancestor overflow:hidden clips sized to the ascender-only content box.
     f32 descender_pad = std::ceil(font_size * 0.25f);
-    list_.push({PaintCommand::Type::DRAW_TEXT,
+    list.push({PaintCommand::Type::DRAW_TEXT,
         {ox, oy, node->content.width, node->content.height + descender_pad},
         text_color, node->text(), font_size});
 }
@@ -169,7 +158,6 @@ Color Painter::resolve_color_fallback(const css::ComputedStyle& style,
     return fallback;
 }
 
-// TODO: share resolve_font_size logic with LayoutEngine (layout.cpp)
 f32 Painter::resolve_font_size(const css::ComputedStyle& style) const {
     auto* v = style.get("font-size");
     if (!v) return 16.0f;

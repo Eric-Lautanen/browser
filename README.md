@@ -4,6 +4,18 @@ A from-scratch web browser built in modern C++ with its own HTML5 parser, CSS en
 
 ![current_screenshot](current_screenshot.png)
 
+## Philosophy
+
+**Zero dependencies.** No Boost, Qt, WebKit, Chromium, libcurl, OpenSSL, zlib, Freetype, or any other third-party library. Only the C++ standard library, Win32 API, and OpenGL. Every line of HTML parsing, CSS layout, JavaScript execution, TLS encryption, HTTP/2 multiplexing, font rasterization, and OpenGL rendering is hand-written.
+
+**No telemetry, ever.** The browser tracks its own local performance for debugging only, never phones home, and has no analytics, ads, or user tracking.
+
+**Secure by default.** TLS 1.3 only. Same-origin policy, CSP, CORS, HSTS enforced. Downloads disabled by default with extension blocklists. No passwords stored without encryption.
+
+**Simple & clean.** Minimal settings. No bloat. The entire browser is ~25K lines of C++20, compared to Chromium's ~30M lines.
+
+**Built with AI.** This project is developed collaboratively with DeepSeek V4 and other frontier AI models on free tiers — proving what's possible when human intent meets machine assistance, no big-budget team required.
+
 ## Build
 
 Requires GCC 15.2+, CMake 3.20+, and Ninja.

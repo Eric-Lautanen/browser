@@ -12,6 +12,9 @@
 #include "../render/paint.hpp"
 #include "../net/http_client.hpp"
 #include "../net/url.hpp"
+#include "../async/task.hpp"
+#include "../async/channel.hpp"
+#include "../async/when_all.hpp"
 
 namespace browser {
 
@@ -26,7 +29,7 @@ struct LoadedPage {
     std::unique_ptr<html::Document> dom;
     std::unordered_map<const html::Element*, css::ComputedStyle> styles;
     std::unique_ptr<css::LayoutNode> layout;
-    render::DisplayList display_list;
+    std::shared_ptr<render::DisplayList> display_list;
     u32 load_time_ms = 0;
     std::string page_title;
 };
@@ -37,11 +40,11 @@ public:
                net::TrackerBlocker* tracker, render::FontManager* fm,
                render::TextRenderer* text_renderer);
 
-    Result<LoadedPage> load(const std::string& url_str);
-    Result<LoadedPage> load_html(const std::string& html);
+    void start_load(const std::string& url_str);
     void cancel();
     bool is_loading() const;
     void set_viewport_size(u32 w, u32 h) { viewport_width_ = w; viewport_height_ = h; }
+    std::optional<LoadedPage> try_get_loaded_page();
 
 private:
     net::HTTPClient http_;
@@ -53,7 +56,10 @@ private:
     std::atomic<bool> loading_{false};
     u32 viewport_width_ = 980;
     u32 viewport_height_ = 980;
+    async::channel<LoadedPage> loaded_channel_;
 
+    async::task<Result<LoadedPage>> load(const std::string& url_str);
+    async::task<Result<LoadedPage>> load_html(const std::string& html);
     void handle_settings_query(const std::string& url_str);
     std::string error_page(const std::string& url, const std::string& msg = "");
     void collect_css(html::Document* doc, std::string& merged_css, const net::URL& base_url);

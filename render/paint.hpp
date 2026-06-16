@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
+#include <memory>
 #include "../css/layout.hpp"
 #include "renderer.hpp"
 
@@ -17,6 +18,9 @@ struct PaintCommand {
 
 class DisplayList {
 public:
+    DisplayList() = default;
+    DisplayList(DisplayList&&) = default;
+    DisplayList& operator=(DisplayList&&) = default;
     void push(const PaintCommand& cmd);
     void clear();
     const std::vector<PaintCommand>& commands() const;
