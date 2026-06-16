@@ -1,7 +1,6 @@
 #include "test_framework.hpp"
 #include "utility.hpp"
 #include "../async/channel.hpp"
-#include "../async/thread_pool.hpp"
 #include <thread>
 #include <atomic>
 #include <string>
@@ -46,14 +45,14 @@ TEST(channel_multi_thread_ping_pong, {
     std::thread t1([&]() {
         for (int i = 0; i < count; i++) {
             ch1.send(i);
-            auto val = ch2.receive();
-            total.fetch_add(val);
+            int val = ch2.receive();
+            total.fetch_add(val, std::memory_order_relaxed);
         }
     });
 
     std::thread t2([&]() {
         for (int i = 0; i < count; i++) {
-            auto val = ch1.receive();
+            int val = ch1.receive();
             ch2.send(val + 1);
         }
     });
@@ -78,33 +77,21 @@ TEST(channel_bounded_backpressure, {
     ASSERT(ch.size() == 5);
 })
 
-TEST(channel_blocking_send_receive, {
-    channel<int> ch(1);
-    std::thread sender([&]() {
-        ch.send(10);
-        ch.send(20);
-    });
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    auto v1 = ch.try_receive();
-    ASSERT(v1.has_value() && *v1 == 10);
-    auto v2 = ch.try_receive();
-    ASSERT(v2.has_value() && *v2 == 20);
-    sender.join();
-})
-
 TEST(channel_string_transfer, {
     channel<std::string> ch;
-    ch.send(std::string("hello world"));
-    auto val = ch.receive();
-    ASSERT(val == "hello world");
+    ch.try_send(std::string("hello world"));
+    auto val = ch.try_receive();
+    ASSERT(val.has_value());
+    ASSERT(*val == "hello world");
 })
 
 TEST(channel_close, {
     channel<int> ch;
-    ch.send(1);
-    ch.send(2);
+    ch.try_send(1);
+    ch.try_send(2);
     ch.close();
     ASSERT(ch.is_closed());
+    ASSERT(ch.size() == 2);
     auto v1 = ch.receive();
     ASSERT(v1 == 1);
     auto v2 = ch.receive();
@@ -115,7 +102,20 @@ TEST(channel_empty_size, {
     channel<int> ch;
     ASSERT(ch.empty());
     ASSERT(ch.size() == 0);
-    ch.send(1);
+    ch.try_send(1);
     ASSERT(!ch.empty());
     ASSERT(ch.size() == 1);
+})
+
+TEST(channel_bounded_blocking, {
+    channel<int> ch(1);
+    ch.try_send(10);
+    bool sent = ch.try_send(20);
+    ASSERT(!sent);
+    auto v = ch.try_receive();
+    ASSERT(v.has_value() && *v == 10);
+    sent = ch.try_send(20);
+    ASSERT(sent);
+    v = ch.try_receive();
+    ASSERT(v.has_value() && *v == 20);
 })

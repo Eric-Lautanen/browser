@@ -1,4 +1,4 @@
-# Browser — Web Browser from Scratch in C++20
+# browser — Web Browser from Scratch in C++20
 
 A from-scratch web browser built in modern C++ with its own HTML5 parser, CSS engine (Flexbox + Grid), JavaScript runtime (parser → bytecode VM → x86-64 JIT), networking stack (HTTP/1.1, HTTP/2, TLS 1.3), and an OpenGL-rendered UI.
 
