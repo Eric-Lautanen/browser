@@ -250,7 +250,12 @@ target_link_libraries(render platform css html image)
 
 # Browser Library
 add_library(browser_lib STATIC
-    browser/browser_window.cpp
+    browser/chrome/window.cpp
+    browser/chrome/navigator.cpp
+    browser/chrome/titlebar.cpp
+    browser/chrome/toolbar.cpp
+    browser/chrome/page_view.cpp
+    browser/chrome/event_handler.cpp
     browser/page_loader.cpp
     browser/history.cpp
     browser/bookmarks.cpp
@@ -263,6 +268,7 @@ add_library(browser_lib STATIC
     browser/settings.hpp
     browser/theme.hpp
     browser/page_loader.hpp
+    browser/chrome/window.hpp
 )
 target_include_directories(browser_lib PUBLIC .)
 target_link_libraries(browser_lib net platform render js html image)
