@@ -1,0 +1,81 @@
+# Build directory
+build/
+out/
+
+# Compiled archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bz2
+
+# Object files
+*.o
+*.obj
+*.pdb
+*.ilk
+
+# Static / dynamic libraries
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# CMake generated
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+CMakeUserPresets.json
+CTestTestfile.cmake
+*.cmake
+
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+
+# IDE
+.vs/
+*.sln
+*.vcxproj*
+*.vcxproj.user
+*.vcxproj.filters
+*.user
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.DS_Store?
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Debug / test output files
+click_debug.txt
+font_debug.txt
+parse_debug.txt
+tokens_debug.txt
+err.txt
+out.txt
+stderr.txt
+stdout.txt
+tls_err.txt
+tls_out.txt
+test_output.txt
