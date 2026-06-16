@@ -133,7 +133,12 @@ add_library(css STATIC
     css/tokenizer.hpp
     css/tokenizer.cpp
     css/parser.hpp
-    css/parser.cpp
+    css/parser/parser.hpp
+    css/parser/parser.cpp
+    css/parser/selector.cpp
+    css/parser/declaration.cpp
+    css/parser/at_rule.cpp
+    css/parser/property.cpp
     css/specificity.hpp
     css/selector_match.hpp
     css/selector_match.cpp

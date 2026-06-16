@@ -176,13 +176,13 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `css/parser/property.cpp` | Property name recognition, shorthand expansion maps. ~150 lines. |
 
 ### Phase R2 Checklist
-- [ ] `css/parser/parser.cpp` under ~200 lines
-- [ ] `selector.cpp` parses all selector types correctly
-- [ ] `declaration.cpp` handles all value types (length, color, string, func, list, calc)
-- [ ] `at_rule.cpp` handles all `@` rules
-- [ ] `property.cpp` handles all shorthand expansions
-- [ ] All tests pass, no regressions
-- [ ] Committed and pushed
+- [x] `css/parser/parser.cpp` under ~200 lines
+- [x] `selector.cpp` parses all selector types correctly
+- [x] `declaration.cpp` handles all value types (length, color, string, func, list, calc)
+- [x] `at_rule.cpp` handles all `@` rules
+- [x] `property.cpp` handles all shorthand expansions
+- [x] All tests pass, no regressions
+- [x] Committed and pushed
 
 ---
 
