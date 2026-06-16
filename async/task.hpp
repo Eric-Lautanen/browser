@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <utility>
 #include <atomic>
+#include <thread>
 #include <cstdlib>
 #include "../tests/utility.hpp"
 
@@ -94,8 +95,10 @@ public:
     void start() { resume(); }
     Result<T> sync_wait() {
         start();
-        while (!is_done()) {}
-        return await_resume();
+        while (!is_done()) {
+            std::this_thread::yield();
+        }
+        return std::move(coro_.promise().result());
     }
 
 private:
@@ -133,7 +136,9 @@ public:
     void start() { resume(); }
     void sync_wait() {
         start();
-        while (!is_done()) {}
+        while (!is_done()) {
+            std::this_thread::yield();
+        }
     }
 
 private:

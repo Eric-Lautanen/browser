@@ -137,24 +137,24 @@ static const HuffmanSymbol kHuffmanTable[257] = {
 
 struct HuffmanNode {
     u16 symbol; // 0-255 for leaf, 256 for internal node
-    std::unique_ptr<HuffmanNode> child[2];
+    HuffmanNode* child[2];
 
-    HuffmanNode() : symbol(256) {}
+    HuffmanNode() : symbol(256) { child[0] = child[1] = nullptr; }
 };
 
 // Build a binary trie from the Huffman table
-static std::unique_ptr<HuffmanNode> build_huffman_trie() {
-    auto root = std::make_unique<HuffmanNode>();
+static HuffmanNode* build_huffman_trie() {
+    auto* root = new HuffmanNode();
     for (int sym = 0; sym < 256; sym++) {
         u32 code = kHuffmanTable[sym].code;
         u8 bits = kHuffmanTable[sym].bits;
         if (bits == 0) continue;
-        HuffmanNode* node = root.get();
+        HuffmanNode* node = root;
         for (int b = static_cast<int>(bits) - 1; b >= 0; b--) {
             u8 bit = static_cast<u8>((code >> b) & 1);
             if (!node->child[bit])
-                node->child[bit] = std::make_unique<HuffmanNode>();
-            node = node->child[bit].get();
+                node->child[bit] = new HuffmanNode();
+            node = node->child[bit];
         }
         node->symbol = static_cast<u16>(sym);
     }
@@ -162,8 +162,8 @@ static std::unique_ptr<HuffmanNode> build_huffman_trie() {
 }
 
 static HuffmanNode* get_huffman_trie() {
-    static auto trie = build_huffman_trie();
-    return trie.get();
+    static auto* trie = build_huffman_trie();
+    return trie;
 }
 
 std::string HPack::huffman_decode(const u8* data, u32 len) {
@@ -180,7 +180,7 @@ std::string HPack::huffman_decode(const u8* data, u32 len) {
             u8 bit_off = static_cast<u8>(bit_pos & 7);
             u8 bit = static_cast<u8>((data[byte_off] >> (7 - bit_off)) & 1);
             bit_pos++;
-            node = node->child[bit].get();
+            node = node->child[bit];
             if (!node) {
                 // Invalid path — validate as padding
                 u64 padding_bits = total_bits - start_pos;
@@ -1005,3 +1005,4 @@ Result<http::Response> HTTP2Client::execute(const http::Request& req) {
 }
 
 } // namespace browser::net::http2
+

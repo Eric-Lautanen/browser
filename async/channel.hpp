@@ -1,9 +1,9 @@
 #pragma once
 #include <atomic>
 #include <optional>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
+#include <new>
+#include <type_traits>
+#include <cstddef>
 #include "../tests/utility.hpp"
 
 namespace browser::async {
@@ -11,94 +11,106 @@ namespace browser::async {
 template<typename T>
 class channel {
 public:
-    explicit channel(size_t capacity = 0) : capacity_(capacity) {}
+    explicit channel(size_t capacity = 0) {
+        if (capacity == 0) capacity = 4096;
+        size_t p2 = 1;
+        while (p2 < capacity + 2) p2 <<= 1;
+        capacity_ = p2;
+        mask_ = capacity_ - 1;
+        usable_capacity_ = capacity;
+        buffer_ = static_cast<T*>(::operator new(capacity_ * sizeof(T)));
+    }
+
+    ~channel() {
+        size_t h = head_.load(std::memory_order_relaxed);
+        size_t t = tail_.load(std::memory_order_relaxed);
+        while (h != t) {
+            buffer_[h].~T();
+            h = (h + 1) & mask_;
+        }
+        ::operator delete(buffer_);
+    }
 
     channel(const channel&) = delete;
     channel& operator=(const channel&) = delete;
 
     bool try_send(T value) {
-        if (capacity_ > 0) {
-            std::lock_guard<std::mutex> lock(mtx_);
-            if (queue_.size() >= capacity_) return false;
-            queue_.push(std::move(value));
-            count_.store(queue_.size(), std::memory_order_release);
-        } else {
-            std::lock_guard<std::mutex> lock(mtx_);
-            queue_.push(std::move(value));
-        }
-        cv_.notify_one();
+        size_t t = tail_.load(std::memory_order_relaxed);
+        size_t h = head_.load(std::memory_order_acquire);
+        size_t next = (t + 1) & mask_;
+        if (next == h || ((t - h) & mask_) >= usable_capacity_) return false;
+        ::new (&buffer_[t]) T(std::move(value));
+        tail_.store(next, std::memory_order_release);
         return true;
     }
 
-    void send(T value) {
-        std::unique_lock<std::mutex> lock(mtx_);
-        if (capacity_ > 0) {
-            cv_.wait(lock, [this] { return queue_.size() < capacity_; });
-        }
-        queue_.push(std::move(value));
-        if (capacity_ > 0) {
-            count_.store(queue_.size(), std::memory_order_release);
-        }
-        lock.unlock();
-        cv_.notify_one();
+    std::optional<T> try_receive() {
+        size_t h = head_.load(std::memory_order_relaxed);
+        size_t t = tail_.load(std::memory_order_acquire);
+        if (h == t) return std::nullopt;
+        T val(std::move(buffer_[h]));
+        buffer_[h].~T();
+        head_.store((h + 1) & mask_, std::memory_order_release);
+        return val;
     }
 
-    std::optional<T> try_receive() {
-        std::unique_lock<std::mutex> lock(mtx_);
-        if (queue_.empty()) return std::nullopt;
-        T val = std::move(queue_.front());
-        queue_.pop();
-        if (capacity_ > 0) {
-            count_.store(queue_.size(), std::memory_order_release);
+    void send(T value) {
+        for (;;) {
+            size_t t = tail_.load(std::memory_order_relaxed);
+            size_t h = head_.load(std::memory_order_acquire);
+            size_t next = (t + 1) & mask_;
+            if (next != h) {
+                ::new (&buffer_[t]) T(std::move(value));
+                tail_.store(next, std::memory_order_release);
+                return;
+            }
+            __builtin_ia32_pause();
         }
-        lock.unlock();
-        cv_.notify_one();
-        return val;
     }
 
     T receive() {
-        std::unique_lock<std::mutex> lock(mtx_);
-        cv_.wait(lock, [this] { return !queue_.empty() || closed_; });
-        T val = std::move(queue_.front());
-        queue_.pop();
-        if (capacity_ > 0) {
-            count_.store(queue_.size(), std::memory_order_release);
+        for (;;) {
+            size_t h = head_.load(std::memory_order_relaxed);
+            size_t t = tail_.load(std::memory_order_acquire);
+            if (h != t) {
+                T val(std::move(buffer_[h]));
+                buffer_[h].~T();
+                head_.store((h + 1) & mask_, std::memory_order_release);
+                return val;
+            }
+            __builtin_ia32_pause();
         }
-        lock.unlock();
-        cv_.notify_one();
-        return val;
     }
 
     void close() {
-        {
-            std::lock_guard<std::mutex> lock(mtx_);
-            closed_ = true;
-        }
-        cv_.notify_all();
+        closed_.store(true, std::memory_order_release);
     }
 
     bool is_closed() const {
-        std::lock_guard<std::mutex> lock(mtx_);
-        return closed_;
+        return closed_.load(std::memory_order_acquire);
     }
 
     size_t size() const {
-        std::lock_guard<std::mutex> lock(mtx_);
-        return queue_.size();
+        size_t t = tail_.load(std::memory_order_acquire);
+        size_t h = head_.load(std::memory_order_acquire);
+        return (t - h) & mask_;
     }
 
     bool empty() const {
-        std::lock_guard<std::mutex> lock(mtx_);
-        return queue_.empty();
+        return head_.load(std::memory_order_acquire) ==
+               tail_.load(std::memory_order_acquire);
     }
+
+    size_t capacity() const { return usable_capacity_; }
 
 private:
     size_t capacity_;
-    std::queue<T> queue_;
-    mutable std::mutex mtx_;
-    std::condition_variable cv_;
-    std::atomic<size_t> count_{0};
-    bool closed_ = false;
+    size_t mask_;
+    size_t usable_capacity_;
+    T* buffer_;
+    std::atomic<size_t> head_{0};
+    std::atomic<size_t> tail_{0};
+    std::atomic<bool> closed_{false};
 };
 
 } // namespace browser::async
