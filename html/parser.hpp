@@ -99,13 +99,13 @@ private:
 
 bool is_void_element(const std::string& tag);
 
-inline async::task<std::unique_ptr<Document>> parse(const std::string& html) {
+inline async::task<std::unique_ptr<Document>> parse_async(const std::string& html) {
     co_await async::thread_pool_executor{};
     Parser p;
     co_return p.parse(html);
 }
 
-inline async::task<std::unique_ptr<Document>> parse(const std::string& html, PreloadScanner* scanner, const std::string& base_url) {
+inline async::task<std::unique_ptr<Document>> parse_async(const std::string& html, PreloadScanner* scanner, const std::string& base_url) {
     co_await async::thread_pool_executor{};
     Parser p(scanner, base_url);
     co_return p.parse(html);

@@ -104,7 +104,7 @@ class LayoutEngine {
 public:
     LayoutEngine();
     void set_text_measure(void* ctx, TextMeasureFn fn) { text_measurer_ctx_ = ctx; text_measure_fn_ = fn; }
-    async::task<std::unique_ptr<LayoutNode>> layout(
+    async::task<std::unique_ptr<LayoutNode>> layout_async(
         html::Document* doc,
         std::unordered_map<const html::Element*, ComputedStyle>& styles,
         f32 viewport_width,

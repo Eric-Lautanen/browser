@@ -35,7 +35,7 @@ struct ComputedStyle {
 class Cascade {
 public:
     async::task<std::unordered_map<const html::Element*, ComputedStyle>>
-    compute(const html::Document& doc, const StyleSheet& author);
+    compute_async(const html::Document& doc, const StyleSheet& author);
 };
 
 }

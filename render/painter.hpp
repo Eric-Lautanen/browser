@@ -14,7 +14,7 @@ class Painter {
 public:
     explicit Painter(TextRenderer* tr);
     void set_image_data(const std::unordered_map<std::string, std::shared_ptr<image::Image>>& images);
-    async::task<std::shared_ptr<DisplayList>> paint(css::LayoutNode* root);
+    async::task<std::shared_ptr<DisplayList>> paint_async(css::LayoutNode* root);
 private:
     TextRenderer* text_renderer_;
     const std::unordered_map<std::string, std::shared_ptr<image::Image>>* images_ = nullptr;

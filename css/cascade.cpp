@@ -39,7 +39,7 @@ bool is_inherited(const std::string& property) {
 }
 
 async::task<std::unordered_map<const html::Element*, ComputedStyle>>
-Cascade::compute(const html::Document& doc, const StyleSheet& author) {
+Cascade::compute_async(const html::Document& doc, const StyleSheet& author) {
     co_await async::thread_pool_executor{};
     CssParser ua_parser(UA_STYLESHEET);
     StyleSheet ua = ua_parser.parse();

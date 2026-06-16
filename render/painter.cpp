@@ -10,7 +10,7 @@ void Painter::set_image_data(const std::unordered_map<std::string, std::shared_p
     images_ = &images;
 }
 
-async::task<std::shared_ptr<DisplayList>> Painter::paint(css::LayoutNode* root) {
+async::task<std::shared_ptr<DisplayList>> Painter::paint_async(css::LayoutNode* root) {
     co_await async::thread_pool_executor{};
     auto list = std::make_shared<DisplayList>();
     if (root) paint_node(*list, root, 0, 0);

@@ -26,7 +26,7 @@ private:
     bool is_simple_selector_start() const;
 };
 
-inline async::task<StyleSheet> parse(const std::string& css) {
+inline async::task<StyleSheet> parse_async(const std::string& css) {
     co_await async::thread_pool_executor{};
     CssParser p(css);
     co_return p.parse();

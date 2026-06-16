@@ -1867,7 +1867,7 @@ void LayoutEngine::layout_absolute_pass(LayoutNode* node, LayoutNode* containing
 
 LayoutEngine::LayoutEngine() = default;
 
-async::task<std::unique_ptr<LayoutNode>> LayoutEngine::layout(
+async::task<std::unique_ptr<LayoutNode>> LayoutEngine::layout_async(
     html::Document* doc,
     std::unordered_map<const html::Element*, ComputedStyle>& styles,
     f32 viewport_width,
