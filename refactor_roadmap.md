@@ -200,12 +200,12 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `css/cascade/media.cpp` | `@media` condition evaluation, re-evaluation on resize/theme change. ~150 lines. |
 
 ### Phase R3 Checklist
-- [ ] All cascade logic moved, dispatch preserved
-- [ ] Specificity + !important correct: UA < author < inline, important reverses
-- [ ] Inheritance chain correct for all inherited properties
-- [ ] `@media` conditions re-evaluated on resize
-- [ ] All tests pass
-- [ ] Committed and pushed
+- [x] All cascade logic moved, dispatch preserved
+- [x] Specificity + !important correct: UA < author < inline, important reverses
+- [x] Inheritance chain correct for all inherited properties
+- [x] `@media` conditions re-evaluated on resize
+- [x] All tests pass
+- [x] Committed and pushed
 
 ---
 
@@ -431,7 +431,7 @@ Validate that `engine.cpp` is now under ~600 lines.
 ```
 R1:  css/layout/           ← HIGHEST IMPACT (2,448 lines → 11 files)
 R2:  css/parser/           ← 953 lines → 5 files
-R3:  css/cascade/          ← 783 lines → 5 files
+R3:  css/cascade/          ← 783 lines → 6 files (engine, specificity, important, inheritance, media)
 R4:  net/http2/            ← 1,057 lines → 3 files
 R5:  net/tls/              ← 987 lines → 4 files
 R6:  browser/chrome/       ← 910 lines → 6 files

@@ -143,7 +143,12 @@ add_library(css STATIC
     css/selector_match.hpp
     css/selector_match.cpp
     css/cascade.hpp
-    css/cascade.cpp
+    css/cascade/engine.hpp
+    css/cascade/engine.cpp
+    css/cascade/specificity.cpp
+    css/cascade/important.cpp
+    css/cascade/inheritance.cpp
+    css/cascade/media.cpp
     css/layout.hpp
     css/layout/types.hpp
     css/layout/engine.cpp
