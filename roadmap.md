@@ -37,6 +37,7 @@ Each phase must pass this checklist before moving to the next:
 - [ ] **Thread-safe** — no mutable globals added; all cross-thread data uses `channel<T>` or `async::mutex`; `std::atomic` for flags
 - [ ] **Goal achieved** — the phase goal statement is verified (e.g., "UI stays responsive during load")
 - [ ] **Phase-specific checks** — each phase lists additional items below
+- [ ] **Committed and pushed to git** — `git add -A && git commit -m "Phase N: <summary>" && git push`
 
 ---
 
