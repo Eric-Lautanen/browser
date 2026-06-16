@@ -39,7 +39,7 @@ TEST(paint_fill_rect_for_background, {
     node.border = {0, 0, 0, 0};
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(&node).sync_wait().unwrap();
+    auto _list = painter.paint_async(&node).sync_wait().unwrap();
 
     auto& cmds = _list->commands();
     // Background FILL_RECT + PUSH_CLIP + POP_CLIP = 3
@@ -68,7 +68,7 @@ TEST(paint_draw_text_for_text_node, {
     node.content = {0, 0, 50, 20};
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(&node).sync_wait().unwrap();
+    auto _list = painter.paint_async(&node).sync_wait().unwrap();
 
     auto& cmds = _list->commands();
     // PUSH_CLIP + DRAW_TEXT + POP_CLIP = 3
@@ -98,7 +98,7 @@ TEST(paint_clip_pairs_balanced, {
     parent->children.push_back(std::move(child));
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(parent.get()).sync_wait().unwrap();
+    auto _list = painter.paint_async(parent.get()).sync_wait().unwrap();
 
     auto& cmds = _list->commands();
     int depth = 0;
@@ -123,7 +123,7 @@ TEST(paint_clip_pairs_balanced, {
 
 TEST(paint_null_root_produces_no_commands, {
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(nullptr).sync_wait().unwrap();
+    auto _list = painter.paint_async(nullptr).sync_wait().unwrap();
     if (_list->commands().size() != 0) { _err = "expected no commands"; return false; }
 })
 
@@ -134,7 +134,7 @@ TEST(paint_tree_with_no_visible_children_produces_clips, {
     node.content = {0, 0, 100, 50};
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(&node).sync_wait().unwrap();
+    auto _list = painter.paint_async(&node).sync_wait().unwrap();
 
     auto& cmds = _list->commands();
     // With overflow:hidden, we get PUSH_CLIP + POP_CLIP = 2
@@ -154,7 +154,7 @@ TEST(paint_border_emits_four_fill_rects, {
     node.border = {5, 5, 5, 5};
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(&node).sync_wait().unwrap();
+    auto _list = painter.paint_async(&node).sync_wait().unwrap();
 
     unsigned fill_rect_count = 0;
     for (auto& cmd : _list->commands()) {
@@ -173,7 +173,7 @@ TEST(paint_border_skip_all_zero, {
     node.border = {0, 0, 0, 0};
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(&node).sync_wait().unwrap();
+    auto _list = painter.paint_async(&node).sync_wait().unwrap();
 
     unsigned fill_rect_count = 0;
     for (auto& cmd : _list->commands()) {
@@ -191,7 +191,7 @@ TEST(paint_border_edge_sizes, {
     node.border = {3, 0, 0, 0};
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(&node).sync_wait().unwrap();
+    auto _list = painter.paint_async(&node).sync_wait().unwrap();
 
     unsigned fill_count = 0;
     for (auto& cmd : _list->commands()) {
@@ -215,7 +215,7 @@ TEST(paint_background_covers_padding_area, {
     node.border = {5, 5, 5, 5};
 
     browser::render::Painter painter(nullptr);
-    auto _list = painter.paint(&node).sync_wait().unwrap();
+    auto _list = painter.paint_async(&node).sync_wait().unwrap();
 
     auto& cmds = _list->commands();
     // Background FILL_RECT is first

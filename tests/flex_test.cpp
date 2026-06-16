@@ -83,7 +83,7 @@ TEST(flex_base_size, {
     styles[static_cast<Element*>(child_ptr)] = std::move(child_style);
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* container_node = root.get();
@@ -143,7 +143,7 @@ TEST(flex_base_auto, {
     styles[static_cast<Element*>(child_ptr)] = std::move(child_style);
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();
@@ -205,7 +205,7 @@ TEST(flex_grow_equal, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();
@@ -279,7 +279,7 @@ TEST(flex_grow_unequal, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();
@@ -343,7 +343,7 @@ TEST(flex_shrink, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();
@@ -420,7 +420,7 @@ TEST(flex_shrink_zero, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();
@@ -488,7 +488,7 @@ TEST(flex_wrap_basic, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();
@@ -557,7 +557,7 @@ TEST(flex_row_reverse, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();
@@ -622,7 +622,7 @@ TEST(flex_column, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* flex_node = root->children[0].get();

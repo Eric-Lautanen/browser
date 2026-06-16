@@ -187,7 +187,7 @@ TEST(grid_auto_placement_basic, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* grid_node = root->children[0].get();
@@ -251,7 +251,7 @@ TEST(grid_explicit_placement, {
     styles[static_cast<Element*>(child_ptr_dom)] = std::move(child_style);
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* grid_node = root->children[0].get();
@@ -315,7 +315,7 @@ TEST(grid_implicit, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* grid_node = root->children[0].get();
@@ -378,7 +378,7 @@ TEST(grid_align_self, {
     styles[static_cast<Element*>(child_ptr_dom)] = std::move(child_style);
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* grid_node = root->children[0].get();
@@ -436,7 +436,7 @@ TEST(grid_sizing, {
     }
 
     LayoutEngine engine;
-    auto root = std::move(engine.layout(doc.get(), styles, 800, 600).sync_wait().unwrap());
+    auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
     auto* grid_node = root->children[0].get();

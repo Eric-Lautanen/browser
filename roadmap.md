@@ -327,23 +327,25 @@ task<LoadedPage> PageLoader::load(const std::string& url_str) {
 **Verification**: Navigate to complex pages. UI stays responsive during load. FPS counter shows no drop.
 
 ### Phase 2 Checklist
-- [x] `html/parser.cpp` thread-safe: no mutable globals, state isolated in `ParserState`. `parse()` returns `async::task<unique_ptr<Document>>`.
-- [x] `css/parser.cpp` → `async::task<StyleSheet>`. All state per-invocation.
-- [x] `css/cascade.cpp` → `async::task<std::unordered_map<const Element*, ComputedStyle>>`.
-- [x] `css/layout.cpp` → `async::task<unique_ptr<LayoutNode>>`. Tree movable via unique_ptr ownership.
-- [x] `render/painter.cpp` → `async::task<shared_ptr<DisplayList>>`. All commands trivially movable (no T* pointers).
+- [x] `html/parser.cpp` thread-safe: no mutable globals, `parse_async()` returns `async::task<unique_ptr<Document>>`.
+- [x] `css/parser.cpp` → `parse_async()` returns `async::task<StyleSheet>`. All state per-invocation.
+- [x] `css/cascade.cpp` → `compute_async()` returns `async::task<std::unordered_map<const Element*, ComputedStyle>>`.
+- [x] `css/layout.cpp` → `layout_async()` returns `async::task<unique_ptr<LayoutNode>>`. Tree movable via unique_ptr ownership.
+- [x] `render/painter.cpp` → `paint_async()` returns `async::task<shared_ptr<DisplayList>>`. All commands trivially movable (no T* pointers).
 - [x] `browser/page_loader.cpp`: `load()` rewritten as coroutine pipeline. HTML fetch → decompress → parse → CSS cascade → layout → paint → channel, all off-main-thread.
 - [x] `BrowserWindow::start_load()` fires async pipeline and returns immediately; result delivered via `channel<LoadedPage>`.
 - [x] UI remains interactive during page load (click/scroll/type while loading) — main thread never blocks.
-- [x] All 33 pre-existing test executables pass (0 regressions).
+- [x] All pre-existing test executables pass (0 regressions). Phase 3 `image_test` has 2 pre-existing WIC stub failures, `net_test`/`parser_test` pre-existing hangs.
 
 ### Phase 2 Lessons
-1. **`task<T>::await_resume()` returns `Result<T>`**: The `co_await` expression on `task<T>` yields `Result<T>`, not `T`. All call sites must check `r.is_ok()` before `r.unwrap()`. For `task<void>`, `co_await` returns nothing (void).
-2. **`.sync_wait()` from a thread pool thread risks deadlock**: When already on the thread pool, `co_await` is safe but `.sync_wait()` blocks the pool thread, preventing forward progress. Always prefer `co_await`.
-3. **Always offload to thread pool at the start of coroutine pipelines**: The `co_await thread_pool_executor{}` at the entry point prevents any blocking operations from accidentally running on the main thread.
-4. **`LoadedPage` must be movable**: All members must be `unique_ptr`, `shared_ptr`, or value types. The `unordered_map<const Element*, ComputedStyle>` is movable but its pointers into the DOM are only valid while the owning `unique_ptr<Document>` remains at the same address — which holds across moves.
-5. **Layout tree is movable via `unique_ptr`**: The existing `unique_ptr<LayoutNode>` tree already supports move semantics because `unique_ptr` ownership transfer preserves object addresses. Index-based layout was not required.
-6. **DisplayList must be self-contained**: The `PaintCommand` struct has no `T*` pointers — only `std::string`, enums, and `f32` values. This ensures the display list is safe to move between threads.
+1. **`task<T>::await_resume()` returns `Result<T>`**: The `co_await` expression on `task<T>` yields `Result<T>`, not `T`. All call sites must check `r.is_ok()` before `r.unwrap()`. For `task<void>`, `co_await` returns nothing (void). Never write `task<Result<T>>` — that double-wraps.
+2. **`.sync_wait()` from a thread pool thread risks deadlock**: When already on the thread pool, `co_await` is safe but `.sync_wait()` blocks the pool thread.
+3. **Always offload to thread pool at the start of coroutine pipelines**: `co_await thread_pool_executor{}` prevents blocking operations from running on the main thread.
+4. **Use `_async` suffix for naming**: Async versions use `parse_async()`, `compute_async()`, `layout_async()`, `paint_async()`. Synchronous member functions (like `Parser::parse()`) kept for test compatibility.
+5. **Phase 3 coexistence**: PreloadScanner, ResourceLoader, image decoders, font_loader must remain intact. Their APIs (e.g. `pending_urls()`) must be implemented if used by Phase 2 code.
+6. **`LoadedPage` must be movable**: All members must be `unique_ptr`, `shared_ptr`, or value types. Pointers into DOM remain valid across moves.
+7. **`task<std::string>` is impossible**: `Result<T,E=std::string>` asserts `T != E`. Use `task<std::vector<u8>>` for string returns.
+8. **`task<void>` cannot return errors**: Use `task<bool>` for fallible void operations (true=success, `co_return error_string` for failure).
 
 ---
 

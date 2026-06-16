@@ -164,7 +164,7 @@ async::task<void> PageLoader::load(const std::string& url_str) {
         resource_loader_.request({preq.url, prio, preq.is_async, preq.is_defer, preq.is_module});
     });
 
-    auto doc_r = co_await html::parse(body_str, &preload_scanner_, base_url_str);
+    auto doc_r = co_await html::parse_async(body_str, &preload_scanner_, base_url_str);
     if (doc_r.is_err()) {
         loading_ = false;
         co_return;
@@ -183,10 +183,10 @@ async::task<void> PageLoader::load(const std::string& url_str) {
     css::StyleSheet sheet;
 
     if (!merged_css.empty()) {
-        auto sheet_r = co_await css::parse(merged_css);
+        auto sheet_r = co_await css::parse_async(merged_css);
         if (sheet_r.is_ok()) {
             sheet = std::move(sheet_r.unwrap());
-            auto styles_r = co_await cascader.compute(*page.dom, sheet);
+            auto styles_r = co_await cascader.compute_async(*page.dom, sheet);
             if (styles_r.is_ok()) {
                 page.styles = std::move(styles_r.unwrap());
             }
@@ -207,7 +207,7 @@ async::task<void> PageLoader::load(const std::string& url_str) {
     if (page.dom) {
         css::LayoutEngine layout_engine;
         layout_engine.set_text_measure(text_renderer_, text_measure_cb);
-        auto layout_r = co_await layout_engine.layout(page.dom.get(), page.styles,
+        auto layout_r = co_await layout_engine.layout_async(page.dom.get(), page.styles,
                                                      static_cast<f32>(viewport_width_),
                                                      static_cast<f32>(viewport_height_));
         if (layout_r.is_ok()) {
@@ -218,7 +218,7 @@ async::task<void> PageLoader::load(const std::string& url_str) {
     if (page.layout) {
         render::Painter painter(text_renderer_);
         painter.set_image_data(page.images);
-        auto paint_r = co_await painter.paint(page.layout.get());
+        auto paint_r = co_await painter.paint_async(page.layout.get());
         if (paint_r.is_ok()) {
             page.display_list = std::move(paint_r.unwrap());
         }
@@ -236,7 +236,7 @@ async::task<void> PageLoader::load_html(const std::string& html) {
     co_await async::thread_pool_executor{};
     auto start = std::chrono::steady_clock::now();
 
-    auto doc_r = co_await browser::html::parse(html);
+    auto doc_r = co_await browser::html::parse_async(html);
     if (doc_r.is_err()) {
         loaded_channel_.send(LoadedPage{});
         co_return;
@@ -253,9 +253,9 @@ async::task<void> PageLoader::load_html(const std::string& html) {
 
     css::Cascade cascader;
     if (!merged_css.empty()) {
-        auto sheet_r = co_await css::parse(merged_css);
+        auto sheet_r = co_await css::parse_async(merged_css);
         if (sheet_r.is_ok()) {
-            auto styles_r = co_await cascader.compute(*page.dom, sheet_r.unwrap());
+            auto styles_r = co_await cascader.compute_async(*page.dom, sheet_r.unwrap());
             if (styles_r.is_ok()) {
                 page.styles = std::move(styles_r.unwrap());
             }
@@ -265,7 +265,7 @@ async::task<void> PageLoader::load_html(const std::string& html) {
     if (page.dom) {
         css::LayoutEngine layout_engine;
         layout_engine.set_text_measure(text_renderer_, text_measure_cb);
-        auto layout_r = co_await layout_engine.layout(page.dom.get(), page.styles,
+        auto layout_r = co_await layout_engine.layout_async(page.dom.get(), page.styles,
                                                      static_cast<f32>(viewport_width_),
                                                      static_cast<f32>(viewport_height_));
         if (layout_r.is_ok()) {
@@ -275,7 +275,7 @@ async::task<void> PageLoader::load_html(const std::string& html) {
 
     if (page.layout) {
         render::Painter painter(text_renderer_);
-        auto paint_r = co_await painter.paint(page.layout.get());
+        auto paint_r = co_await painter.paint_async(page.layout.get());
         if (paint_r.is_ok()) {
             page.display_list = std::move(paint_r.unwrap());
         }
@@ -378,7 +378,7 @@ async::task<bool> PageLoader::fetch_css_content(std::string& merged_css) {
     // resource_loader_ already has CSS URLs queued from collect_css.
     // We need to fetch those CSS files and merge their content.
     // Create a temporary loader for CSS only, or fetch them one by one.
-    for (const auto& [url, _] : resource_loader_.debug_pending()) {
+    for (const auto& url : resource_loader_.pending_urls()) {
         auto resp = resource_loader_.fetch_single(url, html::ResourcePriority::CSS);
         if (resp.success && !resp.data.empty()) {
             std::string css_text(reinterpret_cast<const char*>(resp.data.data()), resp.data.size());

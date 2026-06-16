@@ -91,6 +91,15 @@ bool ResourceLoader::is_requested(const std::string& url) const {
     return requested_urls_.find(url) != requested_urls_.end();
 }
 
+std::vector<std::string> ResourceLoader::pending_urls() const {
+    std::vector<std::string> urls;
+    urls.reserve(pending_.size());
+    for (const auto& req : pending_) {
+        urls.push_back(req.url);
+    }
+    return urls;
+}
+
 void ResourceLoader::cancel() {
     pending_.clear();
 }
