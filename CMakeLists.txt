@@ -225,9 +225,11 @@ add_library(render STATIC
     render/mesh.cpp
     render/renderer.cpp
     render/texture.cpp
-    render/font.cpp
-    render/text_renderer.cpp
-    render/embedded_font.cpp
+    render/font/font.cpp
+    render/font/truetype.cpp
+    render/font/rasterizer.cpp
+    render/font/atlas.cpp
+    render/font/embedded.cpp
     render/paint.cpp
     render/painter.cpp
     render/paint_executor.cpp

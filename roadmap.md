@@ -23,7 +23,7 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 ### Current State (June 2026)
 
 - **Build**: CMake 3.20+, GCC 15.2+, Ninja, Windows (x86-64)
-- **Working**: HTML5 tokenizer/parser/DOM, CSS parser/cascade/layout (block, flexbox, grid, position, float, z-index, overflow), JS lexer/parser/bytecode-compiler/VM/GC/JIT, HTTP/1.1, HTTP/2, TLS 1.3, DNS (UDP), OpenGL renderer, TrueType fonts, custom chrome UI, CSS animations/transitions, transforms, calc(), custom properties, gradients, @media queries, pseudo-classes, box-shadow, border-radius
+- **Working**: HTML5 tokenizer/parser/DOM, CSS parser/cascade/layout (block, flexbox, grid, position, float, z-index, overflow), JS lexer/parser/bytecode-compiler/VM/GC/JIT, HTTP/1.1, HTTP/2, TLS 1.3, DNS (UDP), OpenGL renderer, TrueType fonts (refactored into modular `render/font/` sub-modules in Phase R7), custom chrome UI, CSS animations/transitions, transforms, calc(), custom properties, gradients, @media queries, pseudo-classes, box-shadow, border-radius
 - **Not working**: images not loaded, forms inert, no cookies/storage, no hit testing, no event dispatch to page elements
 
 ---
