@@ -236,6 +236,35 @@ void PaintExecutor::execute(const DisplayList& list) {
                 }
                 break;
             }
+            case PaintCommand::Type::DRAW_CANVAS: {
+                if (!cmd.canvas_data || cmd.canvas_data_w == 0 || cmd.canvas_data_h == 0) break;
+                f32 x = cmd.rect.x + offset_x_;
+                f32 y = cmd.rect.y + offset_y_;
+                f32 w = cmd.rect.width;
+                f32 h = cmd.rect.height;
+                if (!is_identity(current_transform_)) {
+                    transform_rect(x, y, w, h);
+                }
+
+                ImageId canvas_id = reinterpret_cast<ImageId>(cmd.canvas_data);
+                auto tex_it = texture_cache_.find(canvas_id);
+                if (tex_it != texture_cache_.end()) {
+                    Color c = cmd.color;
+                    c.a *= current_opacity_;
+                    renderer_->draw_textured_quad(x, y, w, h, c, tex_it->second.get());
+                } else {
+                    auto tex = std::make_unique<Texture2D>();
+                    auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_data);
+                    if (r.is_ok()) {
+                        Texture2D* ptr = tex.get();
+                        texture_cache_[canvas_id] = std::move(tex);
+                        Color c = cmd.color;
+                        c.a *= current_opacity_;
+                        renderer_->draw_textured_quad(x, y, w, h, c, ptr);
+                    }
+                }
+                break;
+            }
             case PaintCommand::Type::DRAW_ROUNDED_RECT: {
                 f32 x = cmd.rect.x + offset_x_;
                 f32 y = cmd.rect.y + offset_y_;

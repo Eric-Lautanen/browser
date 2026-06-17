@@ -37,13 +37,15 @@ add_library(platform STATIC
     platform/window.cpp
     platform/window_win32.cpp
     platform/opengl.cpp
+    platform/audio.cpp
     platform/window.hpp
     platform/window_win32.hpp
     platform/opengl.hpp
+    platform/audio.hpp
 )
 target_include_directories(platform PUBLIC .)
 if(WIN32)
-    target_link_libraries(platform gdi32 user32 opengl32 comctl32)
+    target_link_libraries(platform gdi32 user32 opengl32 comctl32 winmm)
 endif()
 
 # Network Library
@@ -311,9 +313,16 @@ add_library(render STATIC
     render/svg_renderer.cpp
     render/mathml_stub.hpp
     render/mathml_stub.cpp
+    render/canvas.hpp
+    render/canvas.cpp
+    render/audio_element.hpp
+    render/audio_element.cpp
+    render/video_element.hpp
+    render/video_element.cpp
+    render/canvas_bindings.cpp
 )
 target_include_directories(render PUBLIC .)
-target_link_libraries(render platform css html image)
+target_link_libraries(render platform css html image js)
 
 # Browser Library
 add_library(browser_lib STATIC

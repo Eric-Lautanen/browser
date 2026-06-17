@@ -1,6 +1,7 @@
 #include "window.hpp"
 
 #include "../../html/form_state.hpp"
+#include "../../render/canvas.hpp"
 #include "../../net/http_client.hpp"
 #include "../../net/storage.hpp"
 #include "../../net/tracker_blocker.hpp"
@@ -132,6 +133,7 @@ namespace browser {
 
         page_loader_ = std::make_unique<PageLoader>(
             telemetry_.get(), settings_.get(), tracker_.get(), fm_.get(), text_renderer_.get());
+    render::setup_canvas_bindings();
         page_loader_->set_viewport_size(viewport_width_, viewport_height_);
         page_loader_->set_download_callback([this](const std::string& url, const std::string& cd, const std::string& mt, u64 cl) -> bool {
             if (download_manager_->should_download(url, cd, mt, cl)) {

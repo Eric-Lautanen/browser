@@ -2,6 +2,7 @@
 
 #include "../../html/form_state.hpp"
 #include "../form_controls.hpp"
+#include "../canvas.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -179,6 +180,7 @@ namespace browser::render {
             paint_border(list, node, ox, oy);
             paint_outline(list, node, ox, oy);
             paint_image(list, node, ox, oy);
+            paint_canvas(list, node, ox, oy);
         }
 
         bool has_clip = false;
@@ -460,6 +462,35 @@ namespace browser::render {
         f32 bh = node->content.height > 0 ? node->content.height : static_cast<f32>(img->height);
 
         list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {bx, by, bw, bh}, Color::WHITE, "", 0, id));
+    }
+
+    void Painter::paint_canvas(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
+        if (node->is_text()) return;
+        html::Node *n = node->node();
+        if (!n || n->type != html::NodeType::ELEMENT) return;
+        auto *el = static_cast<html::Element *>(n);
+        if (el->tag_name != "canvas") return;
+
+        auto it = g_canvas_registry.find(el);
+        if (it == g_canvas_registry.end() || !it->second) return;
+
+        auto *canvas = it->second.get();
+        if (canvas->width() == 0 || canvas->height() == 0) return;
+
+        f32 bx = ox;
+        f32 by = oy;
+        f32 bw = node->content.width > 0 ? node->content.width : static_cast<f32>(canvas->width());
+        f32 bh = node->content.height > 0 ? node->content.height : static_cast<f32>(canvas->height());
+
+        // Create a DRAW_CANVAS command with pixel data reference
+        PaintCommand cmd;
+        cmd.type = PaintCommand::Type::DRAW_CANVAS;
+        cmd.rect = {bx, by, bw, bh};
+        cmd.color = Color::WHITE;
+        cmd.canvas_data = canvas->pixels();
+        cmd.canvas_data_w = canvas->width();
+        cmd.canvas_data_h = canvas->height();
+        list.push(cmd);
     }
 
     void Painter::paint_outline(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {

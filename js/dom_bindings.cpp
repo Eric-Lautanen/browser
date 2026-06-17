@@ -5,6 +5,8 @@
 
 namespace browser::js {
 
+ElementExtender DOMBindings::element_extender_ = nullptr;
+
 DOMBindings::DOMBindings() = default;
 
 DOMBindings::~DOMBindings() {
@@ -30,6 +32,9 @@ void DOMBindings::set_up_element_methods(JSObject* obj, html::Element* el, VM* v
     obj->set("appendChild", JSValue::function(vm->create_native_fn(native_append_child, false, ctx)));
     obj->set("querySelector", JSValue::function(vm->create_native_fn(native_query_selector, false, ctx)));
     obj->set("addEventListener", JSValue::function(vm->create_native_fn(native_add_event_listener, false, ctx)));
+
+    if (element_extender_)
+        element_extender_(this, vm, el);
 }
 
 void DOMBindings::set_up_document_methods(JSObject* obj, html::Element* el, VM* vm) {

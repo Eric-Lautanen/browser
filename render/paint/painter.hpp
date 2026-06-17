@@ -30,6 +30,7 @@ namespace browser::render {
         void paint_border(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const;
         void paint_text(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const;
         void paint_image(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const;
+        void paint_canvas(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const;
         void paint_shadow(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const;
         void paint_outline(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const;
         Color resolve_color(const css::ComputedStyle &style, const std::string &prop, const Color &fallback) const;

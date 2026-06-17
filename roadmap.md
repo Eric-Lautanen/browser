@@ -1207,11 +1207,11 @@ Each phase followed a strict 10-step process:
 | New: `render/video_element.cpp` | `<video>` element: same API as `<audio>` plus a render target. Display video frames as textured quads in the page. Format support: none initially (beyond raw RGB frames). This is a placeholder for future codec integration. |
 
 ### Phase 13 Checklist
-- [ ] Canvas 2D context: `fillRect`, `strokeRect`, `fillText`, paths, arcs, `save`/`restore`, transforms, `getImageData`/`putImageData`, `toDataURL` all work.
-- [ ] `HTMLCanvasElement.getContext('2d')` returns a working rendering context from JS.
-- [ ] Audio: `<audio>` with WAV source plays via `waveOutOpen`/`waveOutWrite`. `play()`/`pause()`/`currentTime`/`volume` work.
-- [ ] Video: `<video>` element renders (placeholder for codec integration).
-- [ ] All pre-existing tests still pass
+- [x] Canvas 2D context: `fillRect`, `strokeRect`, `fillText`, paths, arcs, `save`/`restore`, transforms, `getImageData`/`putImageData`, `toDataURL` all work.
+- [x] `HTMLCanvasElement.getContext('2d')` returns a working rendering context from JS.
+- [x] Audio: `<audio>` with WAV source plays via `waveOutOpen`/`waveOutWrite`. `play()`/`pause()`/`currentTime`/`volume` work.
+- [x] Video: `<video>` element renders (placeholder for codec integration).
+- [x] All pre-existing tests still pass
 
 ---
 
@@ -1331,7 +1331,7 @@ Phase 11: Chrome Completeness (downloads, find, zoom, devtools)                 
     ↓
 Phase 12: Final Standards Compliance                                                     ← NOT STARTED
     ↓
-Phase 13: Media (canvas, audio, video)                                                   ← NOT STARTED
+Phase 13: Media (canvas, audio, video)                                                   ← COMPLETE
 ```
 
 **Phases 0–2** are pure infrastructure — the user sees no new features but the browser stops freezing.  
