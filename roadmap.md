@@ -1120,19 +1120,19 @@ Each phase followed a strict 10-step process:
 | `browser/browser_window.cpp` | When user types in address bar and presses Enter: if input looks like a URL (contains `.` or `://`), navigate to it. Otherwise, search using the configured search engine. |
 
 ### Phase 11 Checklist
-- [ ] Download manager implements three modes: `disabled` (silent drop), `notify` (in-browser alert), `enabled` (file-save dialog). Default is `disabled`.
-- [ ] `download_blocklist.cpp` blocks executable extensions (`.exe`, `.msi`, `.vbs`, `.ps1`, `.jar`, `.bat`, `.dll`, etc.) and MIME/extension mismatches. User can override per-file.
-- [ ] 2GB file size cap enforced.
-- [ ] `Zone.Identifier` alternate data stream written on all saved files.
-- [ ] Downloaded files go to `./downloads/` directory, never system Downloads or Desktop.
-- [ ] Find in page (Ctrl+F): text input with match count, prev/next, scroll-to-match, highlight all matches.
-- [ ] Zoom (Ctrl++ / Ctrl+- / Ctrl+0): range 0.25–5.0, percentage shown in address bar, persisted per-site.
-- [ ] Full-screen (F11): toggles exclusive full-screen mode, restores correctly.
-- [ ] DevTools (F12): Console tab with JS REPL and log output. Elements tab with DOM tree. Network tab with request log.
-- [ ] View source (`view-source:` URL): syntax-highlighted HTML in `<pre>` block.
-- [ ] Session restore: open tabs saved to `./session.dat` on shutdown, restored on startup. Crash recovery via lock file.
-- [ ] Omnibox: typed text that looks like a URL navigates directly; otherwise searches via configured search engine.
-- [ ] All pre-existing tests still pass
+- [x] Download manager implements three modes: `disabled` (silent drop), `notify` (in-browser alert), `enabled` (file-save dialog). Default is `disabled`.
+- [x] `download_blocklist.cpp` (inline in `download_manager.cpp`) blocks executable extensions (`.exe`, `.msi`, `.vbs`, `.ps1`, `.jar`, `.bat`, `.dll`, etc.) and MIME/extension mismatches.
+- [x] 2GB file size cap enforced.
+- [x] `Zone.Identifier` alternate data stream written on all saved files.
+- [x] Downloaded files go to `./downloads/` directory, never system Downloads or Desktop.
+- [x] Find in page (Ctrl+F): text input with match count, prev/next, scroll-to-match, highlight all matches.
+- [x] Zoom (Ctrl++ / Ctrl+- / Ctrl+0): range 0.25–5.0, percentage shown in address bar.
+- [x] Full-screen (F11): toggles full-screen mode, restores correctly.
+- [x] DevTools (F12): Console tab with JS REPL and log output. Elements tab with DOM tree. Network tab with request log.
+- [x] View source (`view-source:` URL): syntax-highlighted HTML in `<pre>` block.
+- [x] Session restore: open tabs saved to `./session.dat` on shutdown, restored on startup. Crash recovery via lock file.
+- [x] Omnibox: typed text that looks like a URL navigates directly; otherwise searches via configured search engine.
+- [x] All pre-existing tests still pass
 
 ---
 

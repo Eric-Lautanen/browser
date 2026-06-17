@@ -16,6 +16,9 @@ public:
     void* get_native_handle() const override { return (void*)hwnd_; }
     ~Win32Window() override;
 
+    void set_fullscreen(bool fullscreen);
+    bool is_fullscreen() const { return fullscreen_; }
+
 public:
     std::function<LRESULT(i32, i32)> nchittest_callback_;
     bool is_active() const override { return GetActiveWindow() == hwnd_; }
@@ -25,6 +28,9 @@ private:
     HDC hdc_ = nullptr;
     HGLRC hglrc_ = nullptr;
     Extent extent_{800, 600};
+    bool fullscreen_ = false;
+    RECT saved_rect_{};
+    LONG saved_style_ = 0;
 
     static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
     void register_window_class();

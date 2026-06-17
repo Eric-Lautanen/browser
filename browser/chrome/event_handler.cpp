@@ -1,6 +1,7 @@
 #include "../../html/form_state.hpp"
 #include "../../html/form_submission.hpp"
 #include "../../html/hit_test.hpp"
+#include "../../platform/window_win32.hpp"
 #include "../bookmarks.hpp"
 #include "../settings.hpp"
 #include "window.hpp"
@@ -154,16 +155,16 @@ namespace browser {
                         "click: mx=%d my=%d chrome_h=%.0f show_settings=%d show_menu=%d address_focused=%d\n",
                         mx,
                         my,
-                        ChromeUI::CHROME_H,
+                        chrome_height(),
                         (int)chrome_.show_settings,
                         (int)chrome_.show_menu,
                         (int)chrome_.address_focused);
                 fflush(f);
             }
         }
-        if (my > ChromeUI::CHROME_H) {
+        if (my > chrome_height()) {
             if (chrome_.show_settings) {
-                f32 ox = 40, oy = ChromeUI::CHROME_H + 20;
+                f32 ox = 40, oy = chrome_height() + 20;
                 if (is_in_rect(mx, my, {ox + 155, oy + 46, 80, 22})) {
                     Theme::toggle();
                     set_theme(Theme::current);
@@ -186,7 +187,7 @@ namespace browser {
 
             // Hit test against page content
             if (current_page_.has_value() && current_page_->layout) {
-                f32 py = static_cast<f32>(my) - ChromeUI::CHROME_H + static_cast<f32>(chrome_.scroll_y);
+                f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
                 auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
                 if (ht.element) {
                     html::g_form_state.hovered_element = ht.element;
@@ -298,6 +299,11 @@ namespace browser {
             return;
         }
 
+        if (is_in_rect(mx, my, r.download)) {
+            chrome_.show_downloads = !chrome_.show_downloads;
+            return;
+        }
+
         if (is_in_rect(mx, my, r.bookmark)) {
             handle_bookmark_click();
             return;
@@ -309,7 +315,7 @@ namespace browser {
         }
 
         if (chrome_.show_menu) {
-            f32 mx2 = r.menu.x - 80, my2 = ChromeUI::CHROME_H;
+            f32 mx2 = r.menu.x - 80, my2 = chrome_height();
             f32 my_off = my - my2;
             if (mx >= mx2 && mx <= mx2 + 160 && my_off >= 0 && my_off <= 70) {
                 if (my_off < 22)
@@ -342,6 +348,16 @@ namespace browser {
             refresh();
             return;
         }
+        if (e.key == platform::KeyCode::F && chrome_.ctrl_down && !chrome_.shift_down) {
+            chrome_.find_state.show();
+            return;
+        }
+        if (e.key == platform::KeyCode::G && chrome_.ctrl_down) {
+            if (chrome_.find_state.visible && !chrome_.find_state.query.empty()) {
+                chrome_.find_state.next();
+            }
+            return;
+        }
         if (e.key == platform::KeyCode::L && chrome_.ctrl_down) {
             chrome_.address_focused = true;
             chrome_.edit_buffer = chrome_.url;
@@ -351,6 +367,18 @@ namespace browser {
             auto now = std::chrono::steady_clock::now();
             chrome_.blink_start_ms =
                 static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+            return;
+        }
+        if (e.key == platform::KeyCode::F12 && !chrome_.ctrl_down) {
+            chrome_.devtools.visible = !chrome_.devtools.visible;
+            return;
+        }
+        if (e.key == platform::KeyCode::F11 && !chrome_.ctrl_down) {
+            chrome_.fullscreen = !chrome_.fullscreen;
+            if (window_) {
+                auto *w32 = static_cast<platform::Win32Window*>(window_.get());
+                w32->set_fullscreen(chrome_.fullscreen);
+            }
             return;
         }
         if (e.key == platform::KeyCode::F6 && !chrome_.ctrl_down) {
@@ -368,6 +396,65 @@ namespace browser {
         }
         if (e.key == platform::KeyCode::RIGHT && chrome_.alt_down) {
             navigate_forward();
+            return;
+        }
+
+        if (e.key == platform::KeyCode::_0 && chrome_.ctrl_down) {
+            // Ctrl+0: reset zoom
+            if (settings_) {
+                settings_->set_zoom_level(1.0f);
+                settings_->save_to_file("./settings.txt");
+            }
+            return;
+        }
+        if (e.key == platform::KeyCode::EQUALS && chrome_.ctrl_down) {
+            // Ctrl+= (or Ctrl++) zoom in
+            if (settings_) {
+                f32 z = settings_->zoom_level() * 1.25f;
+                if (z > 5.0f) z = 5.0f;
+                settings_->set_zoom_level(z);
+                settings_->save_to_file("./settings.txt");
+            }
+            return;
+        }
+        if (e.key == platform::KeyCode::MINUS && chrome_.ctrl_down) {
+            // Ctrl+- zoom out
+            if (settings_) {
+                f32 z = settings_->zoom_level() / 1.25f;
+                if (z < 0.25f) z = 0.25f;
+                settings_->set_zoom_level(z);
+                settings_->save_to_file("./settings.txt");
+            }
+            return;
+        }
+
+        if (chrome_.find_state.visible) {
+            if (e.key == platform::KeyCode::ESCAPE) {
+                chrome_.find_state.hide();
+            } else if (e.key == platform::KeyCode::ENTER && chrome_.shift_down) {
+                if (!chrome_.find_state.query.empty()) {
+                    chrome_.find_state.previous();
+                }
+            } else if (e.key == platform::KeyCode::ENTER) {
+                if (!chrome_.find_state.query.empty()) {
+                    chrome_.find_state.next();
+                }
+            } else if (e.key == platform::KeyCode::BACKSPACE) {
+                if (!chrome_.find_state.query.empty()) {
+                    chrome_.find_state.query.pop_back();
+                    if (current_page_.has_value() && current_page_->dom) {
+                        chrome_.find_state.search(current_page_->dom.get(), chrome_.find_state.query);
+                    }
+                }
+            } else {
+                char c = keycode_to_char(e.key, chrome_.shift_down);
+                if (c) {
+                    chrome_.find_state.query += c;
+                    if (current_page_.has_value() && current_page_->dom) {
+                        chrome_.find_state.search(current_page_->dom.get(), chrome_.find_state.query);
+                    }
+                }
+            }
             return;
         }
 
@@ -588,11 +675,49 @@ namespace browser {
                 }
             }
         } else {
+            if (chrome_.devtools.visible && chrome_.devtools.active_tab == DevToolsState::CONSOLE) {
+                if (e.key == platform::KeyCode::ENTER) {
+                    std::string code = chrome_.devtools.console_input;
+                    chrome_.devtools.console_input.clear();
+                    chrome_.devtools.add_console_entry(DevToolsState::ConsoleEntry::LOG, "> " + code);
+                    chrome_.devtools.add_console_entry(DevToolsState::ConsoleEntry::LOG,
+                                                        "  <- (execution not available in this context)");
+                    return;
+                }
+                if (e.key == platform::KeyCode::ESCAPE) {
+                    chrome_.devtools.visible = false;
+                    return;
+                }
+                if (e.key == platform::KeyCode::BACKSPACE) {
+                    if (!chrome_.devtools.console_input.empty()) {
+                        chrome_.devtools.console_input.pop_back();
+                    }
+                    return;
+                }
+                char c = keycode_to_char(e.key, chrome_.shift_down);
+                if (c) {
+                    chrome_.devtools.console_input += c;
+                    return;
+                }
+            }
+
             if (e.key == platform::KeyCode::ESCAPE) {
+                if (chrome_.show_downloads) {
+                    chrome_.show_downloads = false;
+                    return;
+                }
+                if (chrome_.find_state.visible) {
+                    chrome_.find_state.hide();
+                    return;
+                }
+                if (chrome_.devtools.visible) {
+                    chrome_.devtools.visible = false;
+                    return;
+                }
                 chrome_.show_settings = false;
                 chrome_.show_menu = false;
             }
-            f32 content_h = static_cast<f32>(viewport_height_) - ChromeUI::CHROME_H;
+            f32 content_h = static_cast<f32>(viewport_height_) - chrome_height();
             i32 page_step = static_cast<i32>(content_h * 0.9f);
             if (e.key == platform::KeyCode::PAGE_DOWN ||
                 (e.key == platform::KeyCode::SPACE && !chrome_.address_focused)) {
@@ -615,7 +740,7 @@ namespace browser {
         chrome_.hovered_button = -1;
         chrome_.hovered_tab = -1;
         chrome_.hovered_close = -1;
-        if (my > ChromeUI::CHROME_H) {
+        if (my > chrome_height()) {
             update_tab_tooltip(-1, -1);
             return;
         }
@@ -650,6 +775,8 @@ namespace browser {
             chrome_.hovered_button = ChromeUI::FORWARD;
         else if (is_in_rect(mx, my, r.refresh))
             chrome_.hovered_button = ChromeUI::REFRESH;
+        else if (is_in_rect(mx, my, r.download))
+            chrome_.hovered_button = ChromeUI::BOOKMARK + 1;
         else if (is_in_rect(mx, my, r.bookmark))
             chrome_.hovered_button = ChromeUI::BOOKMARK;
         else if (is_in_rect(mx, my, r.menu))

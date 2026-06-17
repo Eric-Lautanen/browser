@@ -30,6 +30,9 @@ public:
     f32 zoom_level() const;
     void set_zoom_level(f32 level);
 
+    std::string download_behavior() const;
+    void set_download_behavior(const std::string& b);
+
     std::string render_page() const;
 
     Result<void> save_to_file(const std::string& path);
@@ -43,6 +46,7 @@ private:
     u32 cache_size_mb_ = 500;
     u32 font_size_ = 16;
     f32 zoom_level_ = 1.0f;
+    std::string download_behavior_ = "disabled";
 };
 
 }

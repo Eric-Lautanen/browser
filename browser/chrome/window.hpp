@@ -6,6 +6,10 @@
 #include "../../render/compositor.hpp"
 #include "../../render/texture.hpp"
 #include "../page_loader.hpp"
+#include "../download_manager.hpp"
+#include "../devtools.hpp"
+#include "../find_bar.hpp"
+#include "../session.hpp"
 #include "../theme.hpp"
 
 #include <chrono>
@@ -21,6 +25,8 @@ namespace browser {
     class BookmarkManager;
     class Telemetry;
     class SettingsManager;
+    class DownloadManager;
+    class SessionManager;
     namespace net {
         class TrackerBlocker;
     }
@@ -38,7 +44,7 @@ namespace browser {
             f32 x, y, w, h;
         };
         struct Rects {
-            ButtonRect back, forward, refresh, address, bookmark, menu;
+            ButtonRect back, forward, refresh, address, bookmark, menu, download;
             std::vector<ButtonRect> tab_close;
             ButtonRect new_tab;
             ButtonRect scrollbar;
@@ -78,9 +84,15 @@ namespace browser {
         bool show_settings = false;
         bool ctrl_down = false, shift_down = false, alt_down = false;
 
+        bool fullscreen = false;
+        bool show_downloads = false;
+        FindState find_state;
+        DevToolsState devtools;
+
         static constexpr f32 TITLEBAR_H = 32.0f;
         static constexpr f32 TOOLBAR_H = 36.0f;
         static constexpr f32 CHROME_H = TITLEBAR_H + TOOLBAR_H;
+        static f32 effective_chrome_h(bool fullscreen) { return fullscreen ? 0.0f : CHROME_H; }
         static constexpr f32 BTN_SIZE = 28.0f;
         static constexpr f32 TAB_W = 32.0f;
         static constexpr f32 NEW_TAB_W = 24.0f;
@@ -100,6 +112,7 @@ namespace browser {
         void refresh();
 
         static bool is_in_rect(i32 x, i32 y, const ChromeUI::ButtonRect &r);
+        f32 chrome_height() const { return chrome_.fullscreen ? 0.0f : ChromeUI::CHROME_H; }
 
     private:
         std::unique_ptr<platform::Window> window_;
@@ -119,6 +132,8 @@ namespace browser {
         std::unique_ptr<Telemetry> telemetry_;
         std::unique_ptr<SettingsManager> settings_;
         std::unique_ptr<net::TrackerBlocker> tracker_;
+        std::unique_ptr<DownloadManager> download_manager_;
+        std::unique_ptr<SessionManager> session_;
 
         void compute_layout();
         void render_chrome();
@@ -132,6 +147,10 @@ namespace browser {
         void render_menu_button();
         void render_menu();
         void render_settings();
+        void render_download_button();
+        void render_download_panel();
+        void render_find_bar();
+        void render_devtools();
         void handle_event(const platform::Event &e);
         void handle_mouse_click(i32 x, i32 y);
         void handle_key_down(const platform::Event &e);

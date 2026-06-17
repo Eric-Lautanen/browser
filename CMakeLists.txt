@@ -325,6 +325,10 @@ add_library(browser_lib STATIC
     browser/telemetry.cpp
     browser/perf_counter.cpp
     browser/settings.cpp
+    browser/download_manager.cpp
+    browser/find_bar.cpp
+    browser/devtools.cpp
+    browser/session.cpp
     browser/browser_window.hpp
     browser/history.hpp
     browser/bookmarks.hpp

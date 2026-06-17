@@ -267,6 +267,40 @@ Win32Window::~Win32Window() {
     }
 }
 
+void Win32Window::set_fullscreen(bool fullscreen) {
+    if (fullscreen == fullscreen_) return;
+    fullscreen_ = fullscreen;
+
+    if (fullscreen) {
+        // Save current state
+        GetWindowRect(hwnd_, &saved_rect_);
+        saved_style_ = GetWindowLong(hwnd_, GWL_STYLE);
+
+        // Remove titlebar and borders
+        SetWindowLong(hwnd_, GWL_STYLE, saved_style_ & ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX));
+
+        // Get monitor info
+        HMONITOR hMonitor = MonitorFromWindow(hwnd_, MONITOR_DEFAULTTOPRIMARY);
+        MONITORINFO mi = {};
+        mi.cbSize = sizeof(MONITORINFO);
+        GetMonitorInfo(hMonitor, &mi);
+
+        SetWindowPos(hwnd_, HWND_TOP,
+                     mi.rcMonitor.left, mi.rcMonitor.top,
+                     mi.rcMonitor.right - mi.rcMonitor.left,
+                     mi.rcMonitor.bottom - mi.rcMonitor.top,
+                     SWP_FRAMECHANGED | SWP_NOZORDER);
+    } else {
+        // Restore previous state
+        SetWindowLong(hwnd_, GWL_STYLE, saved_style_);
+        SetWindowPos(hwnd_, HWND_TOP,
+                     saved_rect_.left, saved_rect_.top,
+                     saved_rect_.right - saved_rect_.left,
+                     saved_rect_.bottom - saved_rect_.top,
+                     SWP_FRAMECHANGED | SWP_NOZORDER);
+    }
+}
+
 void Win32Window::register_window_class() {
     static bool registered = false;
     if (registered) return;

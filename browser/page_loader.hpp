@@ -50,11 +50,15 @@ namespace browser {
 
     class PageLoader {
     public:
+        using DownloadCheckCallback = std::function<bool(const std::string& url, const std::string& content_disposition, const std::string& mime_type, u64 content_length)>;
+
         PageLoader(Telemetry *telemetry,
                    SettingsManager *settings,
                    net::TrackerBlocker *tracker,
                    render::FontManager *fm,
                    render::TextRenderer *text_renderer);
+
+        void set_download_callback(DownloadCheckCallback cb) { download_callback_ = std::move(cb); }
 
         void start_load(const std::string &url_str);
         void cancel();
@@ -93,6 +97,7 @@ namespace browser {
         async::task<bool> load_and_decode_images(const std::string &);
         static u64 elapsed_ms(std::chrono::steady_clock::time_point start);
         std::unordered_map<std::string, std::shared_ptr<image::Image>> loaded_images_;
+        DownloadCheckCallback download_callback_;
 
     public:
         const net::CSPPolicy &csp_policy() const { return current_csp_; }

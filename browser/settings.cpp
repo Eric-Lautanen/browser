@@ -31,6 +31,9 @@ void SettingsManager::set_font_size(u32 size) { font_size_ = size; }
 f32 SettingsManager::zoom_level() const { return zoom_level_; }
 void SettingsManager::set_zoom_level(f32 level) { zoom_level_ = level; }
 
+std::string SettingsManager::download_behavior() const { return download_behavior_; }
+void SettingsManager::set_download_behavior(const std::string& b) { download_behavior_ = b; }
+
 std::string SettingsManager::render_page() const {
     std::string html = "<!DOCTYPE html><html><head><style>"
         "body{font-family:sans-serif;margin:20px;background:#f5f5f5}"
@@ -67,6 +70,10 @@ std::string SettingsManager::render_page() const {
         "<a href=\"about:settings?zoom=1.0\" ZOOM_100_CLS>100%</a>"
         "<a href=\"about:settings?zoom=1.25\">125%</a>"
         "<a href=\"about:settings?zoom=1.5\">150%</a><br><br>"
+        "<label>Download Behavior</label><br>"
+        "<a href=\"about:settings?download=disabled\" DL_DISABLED_CLS>Disabled</a>"
+        "<a href=\"about:settings?download=notify\" DL_NOTIFY_CLS>Notify</a>"
+        "<a href=\"about:settings?download=enabled\" DL_ENABLED_CLS>Enabled</a><br><br>"
         "<p class=\"current\">Changes applied immediately</p>"
         "</body></html>";
 
@@ -90,6 +97,9 @@ std::string SettingsManager::render_page() const {
     replace("FONT_SIZE_16_CLS", font_size_ == 16 ? "class=\"sel\"" : "");
     replace("ZOOM_VAL", std::to_string(static_cast<int>(zoom_level_ * 100.0f)));
     replace("ZOOM_100_CLS", zoom_level_ == 1.0f ? "class=\"sel\"" : "");
+    replace("DL_DISABLED_CLS", download_behavior_ == "disabled" ? "class=\"sel\"" : "");
+    replace("DL_NOTIFY_CLS", download_behavior_ == "notify" ? "class=\"sel\"" : "");
+    replace("DL_ENABLED_CLS", download_behavior_ == "enabled" ? "class=\"sel\"" : "");
 
     return html;
 }
@@ -146,6 +156,7 @@ Result<void> SettingsManager::save_to_file(const std::string& path) {
     fields.emplace_back("cache_size_mb", std::to_string(cache_size_mb_));
     fields.emplace_back("font_size", std::to_string(font_size_));
     fields.emplace_back("zoom_level", std::to_string(zoom_level_));
+    fields.emplace_back("download_behavior", download_behavior_);
 
     u32 field_count = static_cast<u32>(fields.size());
     f.write(reinterpret_cast<const char*>(&field_count), sizeof(field_count));
@@ -189,6 +200,8 @@ Result<void> SettingsManager::load_from_file(const std::string& path) {
                 font_size_ = static_cast<u32>(std::stoul(value));
             } else if (name == "zoom_level") {
                 zoom_level_ = std::stof(value);
+            } else if (name == "download_behavior") {
+                download_behavior_ = value;
             }
         }
         return {};

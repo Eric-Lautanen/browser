@@ -1,4 +1,5 @@
 #include "../../render/icons.hpp"
+#include "../settings.hpp"
 #include "window.hpp"
 
 namespace browser {
@@ -41,6 +42,17 @@ namespace browser {
                                chrome_.address_focused ? 2.0f : 1.0f);
         renderer_->fill_rect(r.x, r.y, r.w, r.h, chrome_.address_focused ? t.surface : t.surface_hover);
 
+    // Zoom indicator (right side of address bar)
+    f32 zoom = settings_ ? settings_->zoom_level() : 1.0f;
+    if (zoom != 1.0f) {
+        char zoom_text[16];
+        snprintf(zoom_text, sizeof(zoom_text), "%d%%", static_cast<int>(zoom * 100.0f));
+        f32 zw = text_renderer_->measure_text(zoom_text, 11);
+        f32 zx = r.x + r.w - zw - 6;
+        f32 zy = r.y + 5;
+        text_renderer_->render_text(renderer_.get(), zoom_text, zx, zy, t.accent, 11);
+    }
+
     std::string text = chrome_.address_focused ? chrome_.edit_buffer : chrome_.url;
     f32 tx = r.x + 6;
     f32 ty = r.y + 4;
@@ -74,6 +86,29 @@ namespace browser {
         }
     }
 
+    void BrowserWindow::render_download_button() {
+        auto &t = theme_;
+        auto &r = chrome_.rects.download;
+
+        // Only visible when downloads are active or mode is enabled
+        if (download_manager_->behavior() != DownloadBehavior::ENABLED) {
+            if (download_manager_->items().empty()) return;
+        }
+        if (download_manager_->items().empty()) return;
+
+        if (chrome_.hovered_button == ChromeUI::BOOKMARK + 1)
+            renderer_->fill_rect(r.x, r.y, r.w, r.h, t.surface_hover);
+        renderer_->draw_icon_centered(render::Icon::MENU, r.x, r.y, r.w, r.h, 14.0f, t.text);
+        // Show active download count badge
+        u32 active = download_manager_->active_count();
+        if (active > 0) {
+            renderer_->fill_rect(r.x + r.w - 10, r.y - 2, 12, 12, {0.9f, 0.2f, 0.2f, 1.0f});
+            char badge[4];
+            snprintf(badge, sizeof(badge), "%u", active);
+            text_renderer_->render_text(renderer_.get(), badge, r.x + r.w - 8, r.y - 1, {1.0f, 1.0f, 1.0f, 1.0f}, 9);
+        }
+    }
+
     void BrowserWindow::render_bookmark() {
         using render::Icon;
         auto &t = theme_;
@@ -96,7 +131,7 @@ namespace browser {
     void BrowserWindow::render_menu() {
         auto &t = theme_;
         auto &mr = chrome_.rects.menu;
-        f32 mx = mr.x - 80, my = ChromeUI::CHROME_H;
+        f32 mx = mr.x - 80, my = chrome_height();
         f32 mw = 160, mh = 70;
 
         renderer_->fill_rect(mx, my, mw, mh, t.surface);

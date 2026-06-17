@@ -21,6 +21,16 @@ namespace browser {
 
     BrowserWindow::BrowserWindow() = default;
     BrowserWindow::~BrowserWindow() {
+        if (session_) {
+            std::vector<SessionEntry> entries;
+            for (auto& tab : chrome_.tabs) {
+                SessionEntry e;
+                e.url = tab.url;
+                e.scroll_y = tab.scroll_y;
+                entries.push_back(e);
+            }
+            session_->save(entries);
+        }
         net::Storage::flush_all();
     }
 
@@ -39,6 +49,14 @@ namespace browser {
         telemetry_ = std::make_unique<Telemetry>();
         settings_ = std::make_unique<SettingsManager>();
         auto rs = settings_->load_from_file("./settings.txt");
+
+        download_manager_ = std::make_unique<DownloadManager>();
+        {
+            auto db = settings_->download_behavior();
+            if (db == "enabled") download_manager_->set_behavior(DownloadBehavior::ENABLED);
+            else if (db == "notify") download_manager_->set_behavior(DownloadBehavior::NOTIFY);
+            else download_manager_->set_behavior(DownloadBehavior::DISABLED);
+        }
 
         set_theme(settings_->theme());
 
@@ -115,6 +133,13 @@ namespace browser {
         page_loader_ = std::make_unique<PageLoader>(
             telemetry_.get(), settings_.get(), tracker_.get(), fm_.get(), text_renderer_.get());
         page_loader_->set_viewport_size(viewport_width_, viewport_height_);
+        page_loader_->set_download_callback([this](const std::string& url, const std::string& cd, const std::string& mt, u64 cl) -> bool {
+            if (download_manager_->should_download(url, cd, mt, cl)) {
+                download_manager_->start_download(url).start();
+                return true;
+            }
+            return false;
+        });
 
         compositor_ = std::make_unique<render::Compositor>();
         compositor_->set_viewport(static_cast<i32>(viewport_width_), static_cast<i32>(viewport_height_));
@@ -124,6 +149,23 @@ namespace browser {
         history_ = std::make_unique<HistoryManager>();
         bookmarks_ = std::make_unique<BookmarkManager>();
         auto rb = bookmarks_->load_from_file("./bookmarks.txt");
+
+        session_ = std::make_unique<SessionManager>();
+        {
+            auto entries = session_->load();
+            if (!entries.empty()) {
+                // Restore tabs from session
+                chrome_.tabs.clear();
+                for (auto& entry : entries) {
+                    TabInfo tab;
+                    tab.url = entry.url;
+                    tab.scroll_y = entry.scroll_y;
+                    chrome_.tabs.push_back(tab);
+                }
+                chrome_.active_tab = 0;
+                chrome_.url = chrome_.tabs[0].url;
+            }
+        }
 
         window_->set_event_callback([this](const platform::Event &e) { handle_event(e); });
 
@@ -162,7 +204,8 @@ namespace browser {
             viewport_width_ = ext.width;
             viewport_height_ = ext.height;
         }
-        {
+        // Only add default tab if session restore didn't provide tabs
+        if (chrome_.tabs.empty()) {
             TabInfo tab;
             tab.url = "about:blank";
             chrome_.tabs.push_back(tab);
@@ -197,9 +240,16 @@ namespace browser {
             update_chrome_state();
             render_chrome();
             renderer_->end_textured();
+            render_find_bar();
             render_page();
             if (chrome_.show_settings) {
                 render_settings();
+            }
+            if (chrome_.show_downloads) {
+                render_download_panel();
+            }
+            if (chrome_.devtools.visible) {
+                render_devtools();
             }
             renderer_->end_frame();
             window_->swap_buffers();
@@ -245,12 +295,32 @@ namespace browser {
                 }
             }
 
+            // Periodic session save (every 30s)
+            {
+                static auto last_session_save = std::chrono::steady_clock::now();
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_session_save).count();
+                if (elapsed >= 30 && session_) {
+                    std::vector<SessionEntry> entries;
+                    for (auto& tab : chrome_.tabs) {
+                        SessionEntry e;
+                        e.url = tab.url;
+                        e.scroll_y = tab.scroll_y;
+                        entries.push_back(e);
+                    }
+                    session_->save(entries);
+                    last_session_save = now;
+                }
+            }
+
             // 6. Render frame
             renderer_->begin_frame();
             renderer_->set_viewport(viewport_width_, viewport_height_);
             update_chrome_state();
             render_chrome();
             renderer_->end_textured();
+
+            render_find_bar();
 
             // render_page() handles both compositor and old paths internally
             render_page();
@@ -346,7 +416,8 @@ namespace browser {
 
         f32 right2 = right - ChromeUI::PADDING;
         chrome_.rects.menu = {right2 - ChromeUI::BTN_SIZE, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
-        chrome_.rects.bookmark = {right2 - ChromeUI::BTN_SIZE * 2 - 2, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
+        chrome_.rects.download = {right2 - ChromeUI::BTN_SIZE * 2 - 2, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
+        chrome_.rects.bookmark = {right2 - ChromeUI::BTN_SIZE * 3 - 4, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
         chrome_.rects.address = {nav_end, btn_y, chrome_.rects.bookmark.x - 4 - nav_end, ChromeUI::BTN_SIZE};
     }
 
@@ -361,17 +432,18 @@ namespace browser {
         render_caption_buttons();
 
         renderer_->fill_rect(0, ChromeUI::TITLEBAR_H, (f32)viewport_width_, ChromeUI::TOOLBAR_H, t.bg);
-        renderer_->draw_line(0, ChromeUI::CHROME_H, (f32)viewport_width_, ChromeUI::CHROME_H, t.border, 1.0f);
+        renderer_->draw_line(0, chrome_height(), (f32)viewport_width_, chrome_height(), t.border, 1.0f);
         for (f32 i = 1; i < 3; i++) {
             renderer_->draw_line(0,
-                                 ChromeUI::CHROME_H + i,
+                                 chrome_height() + i,
                                  (f32)viewport_width_,
-                                 ChromeUI::CHROME_H + i,
+                                 chrome_height() + i,
                                  {0.0f, 0.0f, 0.0f, t.shadow_alpha * (0.4f - i * 0.12f)});
         }
 
         render_nav_buttons();
         render_address_bar();
+        render_download_button();
         render_bookmark();
         render_menu_button();
         if (chrome_.show_menu)
@@ -416,7 +488,12 @@ namespace browser {
     }
 
     void BrowserWindow::start_load(const std::string &url) {
-        chrome_.scroll_y = 0;
+        // Only reset scroll for new navigations, not tab switches or back/forward
+        // (caller is responsible for setting scroll_y when needed)
+        auto& tab = chrome_.tabs[chrome_.active_tab];
+        if (url != tab.url || url == "about:blank") {
+            chrome_.scroll_y = 0;
+        }
         if (page_loader_) {
             page_loader_->start_load(url);
         }

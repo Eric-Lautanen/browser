@@ -69,7 +69,7 @@ namespace browser {
         ti.uId = reinterpret_cast<UINT_PTR>(hwnd);
 
         i32 tab_idx = -1;
-        if (my >= 0 && my < (i32)ChromeUI::CHROME_H) {
+        if (my >= 0 && my < (i32)chrome_height()) {
             for (u32 i = 0; i < chrome_.rects.tab_close.size(); i++) {
                 if (is_in_rect(mx, my, chrome_.rects.tab_close[i])) {
                     tab_idx = (i32)i;

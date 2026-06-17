@@ -1,18 +1,56 @@
+#include "../../html/form_submission.hpp"
+#include "../../net/url.hpp"
 #include "../history.hpp"
 #include "../page_loader.hpp"
+#include "../settings.hpp"
 #include "window.hpp"
 
 namespace browser {
 
     void BrowserWindow::navigate(const std::string &url) {
-        chrome_.url = url;
+        std::string final_url = url;
+        // Trim whitespace
+        while (!final_url.empty() && (final_url[0] == ' ' || final_url[0] == '\t'))
+            final_url.erase(final_url.begin());
+        while (!final_url.empty() && (final_url.back() == ' ' || final_url.back() == '\t'))
+            final_url.pop_back();
+
+        if (final_url.empty()) return;
+
+        // Check if it looks like a URL
+        bool looks_like_url = (final_url.find("://") != std::string::npos ||
+                               final_url.find('.') != std::string::npos ||
+                               final_url.rfind("about:", 0) == 0 ||
+                               final_url.rfind("view-source:", 0) == 0 ||
+                               final_url.rfind("file:", 0) == 0);
+
+        if (looks_like_url) {
+            // Add https:// prefix if no scheme
+            if (final_url.find("://") == std::string::npos &&
+                final_url.rfind("about:", 0) != 0 &&
+                final_url.rfind("view-source:", 0) != 0 &&
+                final_url.rfind("file:", 0) != 0) {
+                final_url = "https://" + final_url;
+            }
+        } else {
+            // Treat as search query
+            std::string search_engine_url = "https://www.google.com/search?q=";
+            if (settings_) {
+                auto se = settings_->search_engine();
+                if (se == "bing") search_engine_url = "https://www.bing.com/search?q=";
+                else if (se == "duckduckgo") search_engine_url = "https://duckduckgo.com/?q=";
+            }
+            final_url = search_engine_url + html::url_encode(final_url);
+        }
+
+        chrome_.url = final_url;
         if (!chrome_.tabs.empty()) {
-            chrome_.tabs[chrome_.active_tab].url = url;
+            chrome_.tabs[chrome_.active_tab].url = final_url;
             update_tab_placeholder(chrome_.active_tab);
         }
-        start_load(url);
+        start_load(final_url);
         if (history_)
-            history_->push(url, "");
+            history_->push(final_url, "");
     }
 
     void BrowserWindow::navigate_back() {

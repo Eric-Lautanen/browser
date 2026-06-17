@@ -48,9 +48,159 @@ namespace browser {
         return loaded_channel_.try_receive();
     }
 
+    static std::string html_escape(const std::string &s) {
+        std::string r;
+        for (char c : s) {
+            switch (c) {
+                case '<': r += "&lt;"; break;
+                case '>': r += "&gt;"; break;
+                case '&': r += "&amp;"; break;
+                case '"': r += "&quot;"; break;
+                default: r += c;
+            }
+        }
+        return r;
+    }
+
     async::task<void> PageLoader::load(std::string url_str) {
         co_await async::thread_pool_executor{};
         auto start = std::chrono::steady_clock::now();
+
+        if (url_str.rfind("view-source:", 0) == 0) {
+            std::string inner_url = url_str.substr(12);
+            // Fetch the inner URL as plain text
+            std::string normal_url = inner_url;
+            if (inner_url.find("://") == std::string::npos && inner_url.rfind("about:", 0) != 0 &&
+                inner_url.rfind("file:", 0) != 0) {
+                normal_url = "http://" + inner_url;
+            }
+            auto parsed = net::URL::parse(normal_url);
+            if (parsed.is_err()) {
+                co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()));
+                loading_ = false;
+                co_return;
+            }
+
+            net::http::Request req;
+            req.method = net::http::Method::GET;
+            req.url = parsed.unwrap();
+            {
+                std::string host_hdr = req.url.host;
+                if (req.url.port != 0 && req.url.port != req.url.default_port())
+                    host_hdr += ":" + std::to_string(req.url.port);
+                req.headers.set("Host", host_hdr);
+            }
+            req.headers.set("User-Agent", "Browser/0.1");
+            req.headers.set("Accept", "text/html,application/xhtml+xml,text/plain");
+            req.headers.set("Accept-Encoding", "gzip, deflate");
+
+            auto resp_r = co_await http_.fetch_async(req);
+            if (resp_r.is_err()) {
+                co_await load_html(error_page(url_str, resp_r.unwrap_err()));
+                loading_ = false;
+                co_return;
+            }
+            auto resp = std::move(resp_r.unwrap());
+
+            if (resp.headers.has("content-encoding")) {
+                co_await async::thread_pool_executor{};
+                std::string ce = resp.headers.get("content-encoding");
+                if (ce.find("gzip") != std::string::npos) {
+                    resp.body = net::gzip_decompress(resp.body.data(), static_cast<u32>(resp.body.size()));
+                } else if (ce.find("deflate") != std::string::npos) {
+                    resp.body = net::inflate(resp.body.data(), static_cast<u32>(resp.body.size()));
+                }
+            }
+
+            // Build syntax-highlighted HTML source
+            std::string raw_body(reinterpret_cast<const char*>(resp.body.data()), resp.body.size());
+            std::string escaped = html_escape(raw_body);
+            std::string html = "<!DOCTYPE html><html><head><style>"
+                "body{background:#1e1e1e;color:#d4d4d4;font-family:monospace;padding:16px;font-size:13px;white-space:pre}"
+                ".tag{color:#569cd6}.attr{color:#9cdcfe}.str{color:#ce9178}.cmt{color:#6a9955}"
+                "</style></head><body><pre><code>";
+            // Simple syntax highlighting: wrap tags, attributes, strings, comments
+            std::string highlighted;
+            for (size_t i = 0; i < escaped.size();) {
+                if (escaped.substr(i, 4) == "&lt;" && i + 4 < escaped.size()) {
+                    // Check for comment
+                    if (escaped.substr(i + 4, 3) == "!--") {
+                        auto end = escaped.find("--&gt;", i);
+                        if (end == std::string::npos) end = escaped.size();
+                        else end += 6;
+                        highlighted += "<span class=\"cmt\">" + escaped.substr(i, end - i) + "</span>";
+                        i = end;
+                        continue;
+                    }
+                    // Tag
+                    auto end = escaped.find("&gt;", i);
+                    if (end != std::string::npos) end += 4;
+                    else end = escaped.size();
+                    std::string tag_content = escaped.substr(i, end - i);
+                    // Highlight attributes within tag
+                    std::string colored_tag;
+                    std::string remaining = tag_content;
+                    // Remove the outer tag markers for processing
+                    colored_tag += "&lt;";
+                    remaining = remaining.substr(4);
+                    if (!remaining.empty() && remaining.back() == ';' && remaining.size() >= 4 &&
+                        remaining.substr(remaining.size() - 4) == "&gt;") {
+                        // Process tag content
+                        std::string inner = remaining.substr(0, remaining.size() - 4);
+                        // Wrap tag name in tag color
+                        auto space = inner.find(' ');
+                        if (space == std::string::npos) {
+                            colored_tag += "<span class=\"tag\">" + inner + "</span>";
+                        } else {
+                            colored_tag += "<span class=\"tag\">" + inner.substr(0, space) + "</span>";
+                            inner = inner.substr(space);
+                            // Attributes
+                            size_t pos = 0;
+                            while (pos < inner.size()) {
+                                // Skip whitespace
+                                while (pos < inner.size() && inner[pos] == ' ') {
+                                    colored_tag += ' ';
+                                    pos++;
+                                }
+                                if (pos >= inner.size()) break;
+                                auto eq = inner.find('=', pos);
+                                if (eq == std::string::npos) {
+                                    colored_tag += "<span class=\"attr\">" + inner.substr(pos) + "</span>";
+                                    break;
+                                }
+                                std::string attr_name = inner.substr(pos, eq - pos);
+                                colored_tag += "<span class=\"attr\">" + attr_name + "</span>";
+                                colored_tag += '=';
+                                pos = eq + 1;
+                                if (pos < inner.size() && (inner[pos] == '"' || inner[pos] == '\'')) {
+                                    char quote = inner[pos];
+                                    auto end_q = inner.find(quote, pos + 1);
+                                    if (end_q == std::string::npos) {
+                                        colored_tag += "<span class=\"str\">" + inner.substr(pos) + "</span>";
+                                        break;
+                                    }
+                                    colored_tag += "<span class=\"str\">" + inner.substr(pos, end_q - pos + 1) + "</span>";
+                                    pos = end_q + 1;
+                                }
+                            }
+                        }
+                        colored_tag += "&gt;";
+                    } else {
+                        colored_tag += tag_content.substr(4);
+                    }
+                    highlighted += colored_tag;
+                    i = end;
+                } else {
+                    highlighted += escaped[i];
+                    i++;
+                }
+            }
+            html += highlighted;
+            html += "</code></pre></body></html>";
+            co_await load_html(html);
+            loading_ = false;
+            co_return;
+        }
 
         if (url_str.rfind("about:", 0) == 0) {
             std::string html;
@@ -137,6 +287,22 @@ namespace browser {
             co_return;
         }
         auto resp = std::move(resp_r.unwrap());
+
+        // Check for Content-Disposition: attachment
+        {
+            std::string cd = resp.headers.get("Content-Disposition");
+            if (!cd.empty() && cd.find("attachment") != std::string::npos) {
+                std::string mime_type = resp.headers.get("Content-Type");
+                u64 content_length = 0;
+                std::string cl = resp.headers.get("Content-Length");
+                if (!cl.empty()) content_length = std::stoull(cl);
+                if (download_callback_ && download_callback_(url_str, cd, mime_type, content_length)) {
+                    // Download will be handled externally; skip page load
+                    loading_ = false;
+                    co_return;
+                }
+            }
+        }
 
         u32 redirect_count = 0;
         while ((resp.status.code == 301 || resp.status.code == 302 || resp.status.code == 303 ||
@@ -377,31 +543,16 @@ namespace browser {
             settings_->set_homepage(val);
         } else if (key == "search") {
             settings_->set_search_engine(val);
+        } else if (key == "download") {
+            settings_->set_download_behavior(val);
+        } else if (key == "cookie_policy") {
+            settings_->set_cookie_policy(val);
+        } else if (key == "font_size") {
+            settings_->set_font_size(static_cast<u32>(std::stoul(val)));
+        } else if (key == "zoom") {
+            settings_->set_zoom_level(std::stof(val));
         }
         settings_->save_to_file("./settings.txt");
-    }
-
-    static std::string html_escape(const std::string &s) {
-        std::string r;
-        for (char c : s) {
-            switch (c) {
-                case '<':
-                    r += "&lt;";
-                    break;
-                case '>':
-                    r += "&gt;";
-                    break;
-                case '&':
-                    r += "&amp;";
-                    break;
-                case '"':
-                    r += "&quot;";
-                    break;
-                default:
-                    r += c;
-            }
-        }
-        return r;
     }
 
     std::string PageLoader::error_page(const std::string &url, const std::string &msg) {
