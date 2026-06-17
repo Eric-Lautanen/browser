@@ -407,6 +407,9 @@ target_link_libraries(flex_test test_framework css html)
 add_executable(grid_test tests/main.cpp tests/grid_test.cpp)
 target_link_libraries(grid_test test_framework css html)
 
+add_executable(layout_test tests/main.cpp tests/layout_test.cpp)
+target_link_libraries(layout_test test_framework render css html)
+
 add_executable(css_animation_test tests/main.cpp tests/css_animation_test.cpp)
 target_link_libraries(css_animation_test test_framework css html)
 
