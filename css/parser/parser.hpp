@@ -13,6 +13,8 @@ namespace browser::css {
     public:
         CssParser(const std::string &input);
         StyleSheet parse();
+        std::vector<Declaration> parse_inline_declarations();
+        static std::vector<Selector> parse_selectors(const std::string &input);
 
     private:
         CssTokenizer tokenizer_;

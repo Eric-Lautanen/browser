@@ -36,38 +36,38 @@ namespace browser::css {
             if (cond == "print")
                 return false;
 
-            std::regex minw_re(R"(min-width:\s*(\d+)\s*px)");
+            std::regex minw_re(R"(min-width\s*:\s*(\d+)\s*px)");
             std::smatch m;
             if (std::regex_search(cond, m, minw_re)) {
                 f32 minw = std::stof(m[1].str());
                 return viewport_width >= minw;
             }
 
-            std::regex maxw_re(R"(max-width:\s*(\d+)\s*px)");
+            std::regex maxw_re(R"(max-width\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, maxw_re)) {
                 f32 maxw = std::stof(m[1].str());
                 return viewport_width <= maxw;
             }
 
-            std::regex minh_re(R"(min-height:\s*(\d+)\s*px)");
+            std::regex minh_re(R"(min-height\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, minh_re)) {
                 f32 minh = std::stof(m[1].str());
                 return viewport_height >= minh;
             }
 
-            std::regex maxh_re(R"(max-height:\s*(\d+)\s*px)");
+            std::regex maxh_re(R"(max-height\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, maxh_re)) {
                 f32 maxh = std::stof(m[1].str());
                 return viewport_height <= maxh;
             }
 
-            std::regex w_re(R"(width:\s*(\d+)\s*px)");
+            std::regex w_re(R"(width\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, w_re)) {
                 f32 w = std::stof(m[1].str());
                 return std::abs(viewport_width - w) < 0.5f;
             }
 
-            std::regex h_re(R"(height:\s*(\d+)\s*px)");
+            std::regex h_re(R"(height\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, h_re)) {
                 f32 h = std::stof(m[1].str());
                 return std::abs(viewport_height - h) < 0.5f;

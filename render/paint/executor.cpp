@@ -12,6 +12,21 @@ namespace pgl = browser::platform;
 PaintExecutor::PaintExecutor(Renderer* r, TextRenderer* tr)
     : renderer_(r), text_renderer_(tr) {}
 
+void PaintExecutor::set_base_clip(f32 x, f32 y, f32 w, f32 h) {
+    has_base_clip_ = true;
+    base_clip_ = {x, y, w, h};
+    apply_clip_rect(base_clip_);
+}
+
+void PaintExecutor::apply_clip_rect(const css::Rect& r) {
+    u32 win_h = renderer_->height();
+    i32 sc_y = static_cast<i32>(win_h) - static_cast<i32>(r.y + r.height);
+    pgl::glEnable(GL_SCISSOR_TEST);
+    pgl::glScissor(static_cast<i32>(r.x), sc_y,
+                   static_cast<GLsizei>(r.width > 0 ? r.width : 0),
+                   static_cast<GLsizei>(r.height > 0 ? r.height : 0));
+}
+
 bool PaintExecutor::is_identity(const css::Mat3x3& m) const {
     return m.m[0][0] == 1 && m.m[0][1] == 0 && m.m[0][2] == 0 &&
            m.m[1][0] == 0 && m.m[1][1] == 1 && m.m[1][2] == 0 &&
@@ -127,6 +142,16 @@ void PaintExecutor::execute(const DisplayList& list) {
                 f32 w = cmd.rect.width;
                 f32 h = cmd.rect.height;
 
+                // Intersect with base clip
+                if (has_base_clip_) {
+                    f32 ix = std::max(x, base_clip_.x);
+                    f32 iy = std::max(y, base_clip_.y);
+                    f32 iw = std::min(x + w, base_clip_.x + base_clip_.width) - ix;
+                    f32 ih = std::min(y + h, base_clip_.y + base_clip_.height) - iy;
+                    x = ix; y = iy; w = iw < 0 ? 0 : iw; h = ih < 0 ? 0 : ih;
+                }
+
+                // Intersect with existing clip stack top
                 if (!clip_stack_.empty()) {
                     auto& prev = clip_stack_.back();
                     f32 ix = std::max(x, prev.x);
@@ -136,12 +161,7 @@ void PaintExecutor::execute(const DisplayList& list) {
                     x = ix; y = iy; w = iw < 0 ? 0 : iw; h = ih < 0 ? 0 : ih;
                 }
 
-                u32 win_h = renderer_->height();
-                i32 sc_y = static_cast<i32>(win_h) - static_cast<i32>(y + h);
-                pgl::glEnable(GL_SCISSOR_TEST);
-                pgl::glScissor(static_cast<i32>(x), sc_y,
-                               static_cast<i32>(w > 0 ? w : 0),
-                               static_cast<i32>(h > 0 ? h : 0));
+                apply_clip_rect({x, y, w, h});
                 clip_stack_.push_back({x, y, w, h});
                 break;
             }
@@ -168,14 +188,13 @@ void PaintExecutor::execute(const DisplayList& list) {
                     clip_stack_.pop_back();
                 }
                 if (clip_stack_.empty()) {
-                    pgl::glDisable(GL_SCISSOR_TEST);
+                    if (has_base_clip_) {
+                        apply_clip_rect(base_clip_);
+                    } else {
+                        pgl::glDisable(GL_SCISSOR_TEST);
+                    }
                 } else {
-                    auto& prev = clip_stack_.back();
-                    u32 win_h = renderer_->height();
-                    i32 sy = static_cast<i32>(win_h) - static_cast<i32>(prev.y + prev.height);
-                    pgl::glScissor(static_cast<i32>(prev.x), sy,
-                                   static_cast<i32>(prev.width > 0 ? prev.width : 0),
-                                   static_cast<i32>(prev.height > 0 ? prev.height : 0));
+                    apply_clip_rect(clip_stack_.back());
                 }
                 break;
             }
@@ -343,7 +362,11 @@ void PaintExecutor::execute(const DisplayList& list) {
     }
 
     clip_stack_.clear();
-    pgl::glDisable(GL_SCISSOR_TEST);
+    if (has_base_clip_) {
+        apply_clip_rect(base_clip_);
+    } else {
+        pgl::glDisable(GL_SCISSOR_TEST);
+    }
 }
 
 }

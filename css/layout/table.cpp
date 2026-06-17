@@ -14,7 +14,11 @@ namespace browser::css {
         }
 
         bool is_table_row_tag(const std::string &tag) {
-            return tag == "tr" || tag == "thead" || tag == "tbody" || tag == "tfoot";
+            return tag == "tr";
+        }
+
+        bool is_table_row_group_tag(const std::string &tag) {
+            return tag == "thead" || tag == "tbody" || tag == "tfoot";
         }
 
     }  // namespace
@@ -80,10 +84,42 @@ namespace browser::css {
         };
         struct TableRow {
             std::vector<TableCell> cells;
+            LayoutNode *row_node = nullptr;
+            LayoutNode *group_node = nullptr;
             f32 height = 0;
         };
 
         std::vector<TableRow> rows;
+
+        auto collect_cells = [&](LayoutNode *row_node, LayoutNode *group_node) {
+            TableRow row;
+            row.row_node = row_node;
+            row.group_node = group_node;
+            for (auto &cell_child : row_node->children) {
+                if (cell_child->is_text())
+                    continue;
+                html::Node *cn = cell_child->node();
+                if (!cn || cn->type != html::NodeType::ELEMENT)
+                    continue;
+                auto *cel = static_cast<html::Element *>(cn);
+                std::string ctag = cel->tag_name;
+                for (auto &ccc : ctag) ccc = static_cast<char>(std::tolower(static_cast<unsigned char>(ccc)));
+
+                if (is_table_cell_tag(ctag)) {
+                    TableCell tc;
+                    tc.cell = cell_child.get();
+                    std::string cs = cel->get_attribute("colspan");
+                    if (!cs.empty())
+                        tc.colspan = std::max(1, static_cast<i32>(std::strtol(cs.c_str(), nullptr, 10)));
+                    std::string rs = cel->get_attribute("rowspan");
+                    if (!rs.empty())
+                        tc.rowspan = std::max(1, static_cast<i32>(std::strtol(rs.c_str(), nullptr, 10)));
+                    row.cells.push_back(tc);
+                }
+            }
+            if (!row.cells.empty())
+                rows.push_back(std::move(row));
+        };
 
         for (auto &child : node->children) {
             if (child->is_text())
@@ -96,32 +132,20 @@ namespace browser::css {
             for (auto &c : tag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
             if (is_table_row_tag(tag)) {
-                TableRow row;
-                for (auto &cell_child : child->children) {
-                    if (cell_child->is_text())
+                collect_cells(child.get(), node);
+            } else if (is_table_row_group_tag(tag)) {
+                for (auto &row_child : child->children) {
+                    if (row_child->is_text())
                         continue;
-                    html::Node *cn = cell_child->node();
-                    if (!cn || cn->type != html::NodeType::ELEMENT)
+                    html::Node *rn = row_child->node();
+                    if (!rn || rn->type != html::NodeType::ELEMENT)
                         continue;
-                    auto *cel = static_cast<html::Element *>(cn);
-                    std::string ctag = cel->tag_name;
-                    for (auto &ccc : ctag) ccc = static_cast<char>(std::tolower(static_cast<unsigned char>(ccc)));
-
-                    if (is_table_cell_tag(ctag)) {
-                        TableCell tc;
-                        tc.cell = cell_child.get();
-                        std::string cs = cel->get_attribute("colspan");
-                        if (!cs.empty())
-                            tc.colspan = std::max(1, static_cast<i32>(std::strtol(cs.c_str(), nullptr, 10)));
-                        std::string rs = cel->get_attribute("rowspan");
-                        if (!rs.empty())
-                            tc.rowspan = std::max(1, static_cast<i32>(std::strtol(rs.c_str(), nullptr, 10)));
-
-                        row.cells.push_back(tc);
+                    auto *rel = static_cast<html::Element *>(rn);
+                    std::string rtag = rel->tag_name;
+                    for (auto &rc : rtag) rc = static_cast<char>(std::tolower(static_cast<unsigned char>(rc)));
+                    if (is_table_row_tag(rtag)) {
+                        collect_cells(row_child.get(), child.get());
                     }
-                }
-                if (!row.cells.empty()) {
-                    rows.push_back(std::move(row));
                 }
             } else if (is_table_cell_tag(tag)) {
                 TableRow row;
@@ -325,7 +349,38 @@ namespace browser::css {
                 }
             }
 
+            // Set the row LayoutNode's content rect
+            if (row.row_node) {
+                row.row_node->content.x = 0;
+                row.row_node->content.y = current_y;
+                row.row_node->content.width = available_width;
+                row.row_node->content.height = row_height;
+                row.row_node->padding = {0, 0, 0, 0};
+                row.row_node->border = {0, 0, 0, 0};
+                row.row_node->margin = {0, 0, 0, 0};
+            }
+
             current_y += row_height;
+        }
+
+        // Union row-group rects from the row geometry
+        for (auto &row : rows) {
+            if (row.group_node && row.group_node != node) {
+                if (row.group_node->content.height == 0 && row.row_node) {
+                    row.group_node->content.x = 0;
+                    row.group_node->content.y = row.row_node->content.y;
+                    row.group_node->content.width = available_width;
+                    row.group_node->content.height = row.row_node->content.height;
+                    row.group_node->padding = {0, 0, 0, 0};
+                    row.group_node->border = {0, 0, 0, 0};
+                    row.group_node->margin = {0, 0, 0, 0};
+                } else if (row.row_node) {
+                    f32 old_bottom = row.group_node->content.y + row.group_node->content.height;
+                    f32 row_bottom = row.row_node->content.y + row.row_node->content.height;
+                    if (row_bottom > old_bottom)
+                        row.group_node->content.height = row_bottom - row.group_node->content.y;
+                }
+            }
         }
 
         node->content.height = current_y;

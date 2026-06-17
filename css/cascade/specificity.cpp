@@ -10,7 +10,7 @@ namespace browser::css {
             bool a_imp = a.decl->important;
             bool b_imp = b.decl->important;
             if (a_imp != b_imp)
-                return a_imp > b_imp;
+                return a_imp < b_imp;
             u8 a_prio = important_origin_priority(a.origin, a_imp);
             u8 b_prio = important_origin_priority(b.origin, b_imp);
             if (a_prio != b_prio)

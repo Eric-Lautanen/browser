@@ -20,6 +20,19 @@ Element* find_element_by_tag(Node* parent, const std::string& tag) {
     return nullptr;
 }
 
+Element* find_element_by_id(Node* parent, const std::string& id) {
+    if (!parent) return nullptr;
+    for (auto& child : parent->children) {
+        if (child->type == NodeType::ELEMENT) {
+            auto* el = static_cast<Element*>(child.get());
+            if (el->get_attribute("id") == id || el->id() == id) return el;
+            auto* found = find_element_by_id(el, id);
+            if (found) return found;
+        }
+    }
+    return nullptr;
+}
+
 Element* find_element_by_tag_shallow(Element* parent, const std::string& tag) {
     if (!parent) return nullptr;
     for (auto& child : parent->children) {

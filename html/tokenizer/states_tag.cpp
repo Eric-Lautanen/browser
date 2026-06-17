@@ -13,9 +13,11 @@ namespace browser::html {
                     create_tag(TokenType::START_TAG);
                     temporary_buffer_ = to_lower(c);
                     state_ = State::TAG_NAME;
-                } else if (c == '\0' || c == '?') {
+                } else if (c == '?' || (c == '\0' && !is_eof())) {
                     emit_char('<');
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    emit_eof();
                 } else {
                     emit_char('<');
                     state_ = State::DATA;
@@ -29,6 +31,10 @@ namespace browser::html {
                     state_ = State::TAG_NAME;
                 } else if (c == '>') {
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    emit_char('<');
+                    emit_char('/');
+                    emit_eof();
                 } else if (c == '\0') {
                     emit_char('<');
                     emit_char('/');
@@ -53,6 +59,10 @@ namespace browser::html {
                     state_ = State::DATA;
                 } else if (is_ascii_upper_alpha(c)) {
                     temporary_buffer_ += to_lower(c);
+                } else if (c == '\0' && is_eof()) {
+                    // Emit the tag as-is and reconsume EOF in DATA
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
@@ -67,6 +77,9 @@ namespace browser::html {
                 } else if (c == '>') {
                     emit_current_tag();
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     Attribute attr;
                     attr.name = static_cast<char>(0xFD);
@@ -96,6 +109,9 @@ namespace browser::html {
                     state_ = State::DATA;
                 } else if (is_ascii_upper_alpha(c)) {
                     current_tag_.attributes.back().name += to_lower(c);
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     current_tag_.attributes.back().name += static_cast<char>(0xFD);
                 } else {
@@ -112,6 +128,9 @@ namespace browser::html {
                 } else if (c == '>') {
                     emit_current_tag();
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     Attribute attr;
                     attr.name = static_cast<char>(0xFD);
@@ -140,6 +159,9 @@ namespace browser::html {
                 } else if (c == '>') {
                     emit_current_tag();
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     temporary_buffer_.clear();
                     temporary_buffer_ += static_cast<char>(0xFD);
@@ -158,6 +180,9 @@ namespace browser::html {
                 } else if (c == '&') {
                     return_state_ = State::ATTRIBUTE_VALUE_DQ;
                     state_ = State::CHARACTER_REFERENCE;
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
@@ -172,6 +197,9 @@ namespace browser::html {
                 } else if (c == '&') {
                     return_state_ = State::ATTRIBUTE_VALUE_SQ;
                     state_ = State::CHARACTER_REFERENCE;
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
@@ -190,6 +218,9 @@ namespace browser::html {
                     current_tag_.attributes.back().value = temporary_buffer_;
                     emit_current_tag();
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
@@ -204,6 +235,9 @@ namespace browser::html {
                     state_ = State::DATA;
                 } else if (c == ' ' || c == '\t' || c == '\n' || c == '\f') {
                 } else if (c == '/') {
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
                 } else {
                     state_ = State::BEFORE_ATTRIBUTE_NAME;
                 }
@@ -225,20 +259,36 @@ namespace browser::html {
                     advance();
                     advance();
                     state_ = State::CDATA_SECTION;
+                } else if (c == '\0' && is_eof()) {
+                    emit_char('<');
+                    emit_char('!');
+                    emit_eof();
                 } else if (c == '\0') {
                     emit_char('<');
                     emit_char('!');
                     state_ = State::DATA;
                 } else {
-                    CommentToken ct;
-                    emit(Token(ct));
+                    temporary_buffer_.clear();
+                    temporary_buffer_ += c;
                     state_ = State::BOGUS_COMMENT;
                 }
                 break;
 
             case State::BOGUS_COMMENT:
                 if (c == '>') {
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
+                    emit_eof();
+                } else if (c == '\0') {
+                    temporary_buffer_ += static_cast<char>(0xFD);
+                } else {
+                    temporary_buffer_ += c;
                 }
                 break;
 
@@ -250,6 +300,11 @@ namespace browser::html {
                     ct.data = temporary_buffer_;
                     emit(Token(ct));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
+                    emit_eof();
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                     state_ = State::COMMENT;
@@ -267,6 +322,11 @@ namespace browser::html {
                     ct.data = std::string("-");
                     emit(Token(ct));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    CommentToken ct;
+                    ct.data = temporary_buffer_ + "-";
+                    emit(Token(ct));
+                    emit_eof();
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                     state_ = State::COMMENT;
@@ -283,6 +343,11 @@ namespace browser::html {
                 } else if (c == '<') {
                     temporary_buffer_ += c;
                     state_ = State::COMMENT_LT;
+                } else if (c == '\0' && is_eof()) {
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
+                    emit_eof();
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
@@ -321,6 +386,12 @@ namespace browser::html {
             case State::COMMENT_END_DASH:
                 if (c == '-') {
                     state_ = State::COMMENT_END;
+                } else if (c == '\0' && is_eof()) {
+                    temporary_buffer_ += '-';
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
+                    emit_eof();
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
@@ -340,6 +411,11 @@ namespace browser::html {
                     state_ = State::COMMENT_END_BANG;
                 } else if (c == '-') {
                     temporary_buffer_ += '-';
+                } else if (c == '\0' && is_eof()) {
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
+                    emit_eof();
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                     state_ = State::COMMENT;
@@ -359,6 +435,12 @@ namespace browser::html {
                     ct.data = temporary_buffer_;
                     emit(Token(ct));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    temporary_buffer_ += "--!";
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
+                    emit_eof();
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                     state_ = State::COMMENT;
@@ -392,8 +474,16 @@ namespace browser::html {
                         emit(Token(dt));
                     }
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_ = DoctypeToken();
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
-                    state_ = State::DATA;
+                    current_doctype_ = DoctypeToken();
+                    current_doctype_.force_quirks = true;
+                    state_ = State::BOGUS_DOCTYPE;
                 } else {
                     current_doctype_ = DoctypeToken();
                     current_doctype_.force_quirks = true;
@@ -408,6 +498,11 @@ namespace browser::html {
                     DoctypeToken dt = current_doctype_;
                     emit(Token(dt));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.name = static_cast<char>(0xFD);
                     state_ = State::DOCTYPE_NAME;
@@ -428,6 +523,10 @@ namespace browser::html {
                     state_ = State::DATA;
                 } else if (is_ascii_upper_alpha(c)) {
                     current_doctype_.name += to_lower(c);
+                } else if (c == '\0' && is_eof()) {
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.name += static_cast<char>(0xFD);
                 } else {
@@ -441,6 +540,10 @@ namespace browser::html {
                     DoctypeToken dt = current_doctype_;
                     emit(Token(dt));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.force_quirks = true;
                     state_ = State::BOGUS_DOCTYPE;
@@ -464,6 +567,11 @@ namespace browser::html {
                         current_doctype_.force_quirks = true;
                         state_ = State::BOGUS_DOCTYPE;
                     }
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '"') {
                     if (temporary_buffer_ == "public") {
                         temporary_buffer_.clear();
@@ -497,6 +605,11 @@ namespace browser::html {
                 if (c == ' ' || c == '\t' || c == '\n' || c == '\f') {
                 } else if (is_ascii_alpha(c)) {
                     temporary_buffer_ += to_lower(c);
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '"') {
                     if (temporary_buffer_ == "public") {
                         temporary_buffer_.clear();
@@ -530,6 +643,11 @@ namespace browser::html {
             case State::DOCTYPE_PUBLIC_ID_DQ:
                 if (c == '"') {
                     state_ = State::AFTER_DOCTYPE_PUBLIC_ID;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.public_id += static_cast<char>(0xFD);
                 } else {
@@ -540,6 +658,11 @@ namespace browser::html {
             case State::DOCTYPE_PUBLIC_ID_SQ:
                 if (c == '\'') {
                     state_ = State::AFTER_DOCTYPE_PUBLIC_ID;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.public_id += static_cast<char>(0xFD);
                 } else {
@@ -560,6 +683,11 @@ namespace browser::html {
                     DoctypeToken dt = current_doctype_;
                     emit(Token(dt));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.force_quirks = true;
                     state_ = State::BOGUS_DOCTYPE;
@@ -577,6 +705,11 @@ namespace browser::html {
                         current_doctype_.force_quirks = true;
                         state_ = State::BOGUS_DOCTYPE;
                     }
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '"') {
                     if (temporary_buffer_ == "system") {
                         temporary_buffer_.clear();
@@ -621,6 +754,11 @@ namespace browser::html {
                     DoctypeToken dt = current_doctype_;
                     emit(Token(dt));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.force_quirks = true;
                     state_ = State::BOGUS_DOCTYPE;
@@ -633,6 +771,11 @@ namespace browser::html {
             case State::DOCTYPE_SYSTEM_ID_DQ:
                 if (c == '"') {
                     state_ = State::AFTER_DOCTYPE_SYSTEM_ID;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.system_id += static_cast<char>(0xFD);
                 } else {
@@ -643,6 +786,11 @@ namespace browser::html {
             case State::DOCTYPE_SYSTEM_ID_SQ:
                 if (c == '\'') {
                     state_ = State::AFTER_DOCTYPE_SYSTEM_ID;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.system_id += static_cast<char>(0xFD);
                 } else {
@@ -656,6 +804,11 @@ namespace browser::html {
                     DoctypeToken dt = current_doctype_;
                     emit(Token(dt));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    current_doctype_.force_quirks = true;
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.force_quirks = true;
                     state_ = State::BOGUS_DOCTYPE;
@@ -670,8 +823,11 @@ namespace browser::html {
                     DoctypeToken dt = current_doctype_;
                     emit(Token(dt));
                     state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
+                    emit_eof();
                 } else if (c == '\0') {
-                    // EOF: emit doctype before finishing
                     DoctypeToken dt = current_doctype_;
                     emit(Token(dt));
                 }

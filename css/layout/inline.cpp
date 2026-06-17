@@ -86,15 +86,28 @@ namespace browser::css {
             }
         }
 
-        if (whitespace == "normal" && !words.empty() && words.back().text == " ") {
-            words.pop_back();
-        }
-
         f32 line_x = 0;
         f32 line_y = 0;
         f32 max_line_width = 0;
 
-        for (auto &word : words) {
+        auto flush_line = [&](size_t word_start, size_t word_end) {
+            if (line_x > max_line_width) max_line_width = line_x;
+            std::string line_str;
+            for (size_t wi = word_start; wi < word_end; wi++) {
+                if (words[wi].text == " ") {
+                    if (!line_str.empty()) line_str += ' ';
+                } else {
+                    line_str += words[wi].text;
+                }
+            }
+            node->text_lines.push_back({std::move(line_str), line_y});
+            line_y += line_height;
+            line_x = 0;
+        };
+
+        size_t line_word_start = 0;
+        for (size_t wi = 0; wi < words.size(); wi++) {
+            auto &word = words[wi];
             if (word.text == " ") {
                 line_x += word.width;
                 continue;
@@ -102,20 +115,18 @@ namespace browser::css {
             if (line_x + word.width > containing_width && line_x > 0 && !nowrap) {
                 if (break_words && word.width > containing_width) {
                 }
-                if (line_x > max_line_width)
-                    max_line_width = line_x;
-                line_y += line_height;
-                line_x = 0;
+                flush_line(line_word_start, wi);
+                line_word_start = wi;
             }
             line_x += word.width;
-            if (line_x > max_line_width)
-                max_line_width = line_x;
         }
 
-        if (max_line_width > 0 && !words.empty() && words.back().text == " ") {
-            max_line_width -= words.back().width;
+        // Flush remaining words on the last line
+        if (line_word_start < words.size() || (!words.empty() && words.back().text == " ")) {
+            flush_line(line_word_start, words.size());
         }
-        f32 total_height = line_y + (line_x > 0 ? line_height : 0);
+
+        f32 total_height = line_y;
 
         node->content.width = text_align == "center"  ? containing_width
                               : text_align == "right" ? containing_width

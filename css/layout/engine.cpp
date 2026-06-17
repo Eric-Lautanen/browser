@@ -383,11 +383,8 @@ namespace browser::css {
                     }
                 }
 
-                child->content.y = current_y + collapsed_gap;
-
-                f32 child_border_bottom =
-                    child->content.y + child->content.height + child->padding.bottom + child->border.bottom;
-                current_y = child_border_bottom;
+                child->content.y = current_y + collapsed_gap + child->border.top + child->padding.top;
+                current_y = child->content.y + child->content.height + child->padding.bottom + child->border.bottom;
                 prev_margin_bottom = child->margin.bottom;
                 first = false;
             }
@@ -397,15 +394,36 @@ namespace browser::css {
             f32 cur_line_height = 0;
 
             for (auto &child : node->children) {
+                bool is_inline = false;
                 bool is_inline_block = false;
                 if (!child->is_text()) {
                     auto *dv = child->style().get("display");
+                    is_inline = dv && dv->type == CSSValue::Type::KEYWORD &&
+                                dv->keyword == "inline";
                     is_inline_block = dv && dv->type == CSSValue::Type::KEYWORD &&
                                       dv->keyword == "inline-block";
                 }
 
                 if (child->is_text()) {
                     layout_inline(child.get(), containing_width, containing_height);
+                } else if (is_inline) {
+                    // Inline element: lay out children as inline, then wrap
+                    for (auto &gc : child->children) {
+                        if (gc->is_text())
+                            layout_inline(gc.get(), containing_width, containing_height);
+                        else
+                            layout_block(gc.get(), containing_width, containing_height);
+                    }
+                    child->content.width = 0;
+                    child->content.height = 0;
+                    child->padding = {0, 0, 0, 0};
+                    child->border = {0, 0, 0, 0};
+                    child->margin = {0, 0, 0, 0};
+                    for (auto &gc : child->children) {
+                        child->content.width += gc->content.width;
+                        if (gc->content.height > child->content.height)
+                            child->content.height = gc->content.height;
+                    }
                 } else if (is_inline_block) {
                     // inline-block: layout as block, but inline-level
                     layout_block(child.get(), containing_width, containing_height);

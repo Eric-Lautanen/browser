@@ -268,7 +268,7 @@ namespace browser {
 
             // 1. Wait for any signal (messages, compositor frame, timers)
             DWORD wait = MsgWaitForMultipleObjectsEx(
-                ARRAYSIZE(wait_handles), wait_handles, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+                ARRAYSIZE(wait_handles), wait_handles, 16, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
             (void)wait;
 
             // 2. Process pending Windows messages (non-blocking drain)

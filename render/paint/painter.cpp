@@ -48,7 +48,7 @@ namespace browser::render {
         co_await async::thread_pool_executor{};
         auto list = std::make_shared<DisplayList>();
         if (root)
-            paint_node(*list, root, 0, 0, false);
+            paint_node(*list, root, root->content.x, root->content.y, false);
         co_return list;
     }
 
@@ -410,30 +410,19 @@ namespace browser::render {
         f32 font_size = resolve_font_size(node->style());
         f32 descender_pad = std::ceil(font_size * 0.25f);
 
-        auto *ts = node->style().get("text-shadow");
-        if (ts && ts->type == css::CSSValue::Type::STRING && !ts->string_value.empty() && ts->string_value != "none") {
-            std::string s = ts->string_value;
-            char *end = nullptr;
-            f32 sx = std::strtof(s.c_str(), &end);
-            if (end) {
-                while (*end == ' ') end++;
-                f32 sy = std::strtof(end, &end);
-                if (end) {
-                    Color shadow_color = {0, 0, 0, 0.5f};
-                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                                       {ox + sx, oy + sy, node->content.width, node->content.height + descender_pad},
-                                       shadow_color,
-                                       node->text(),
-                                       font_size));
-                }
+        if (!node->text_lines.empty()) {
+            for (auto &li : node->text_lines) {
+                css::Rect line_rect = {ox, oy + li.y, node->content.width, font_size + descender_pad};
+                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, line_rect, text_color, li.text, font_size));
             }
+        } else {
+            // No wrapping info — single line fallback
+            list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                               {ox, oy, node->content.width, node->content.height + descender_pad},
+                               text_color,
+                               node->text(),
+                               font_size));
         }
-
-        list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                           {ox, oy, node->content.width, node->content.height + descender_pad},
-                           text_color,
-                           node->text(),
-                           font_size));
     }
 
     void Painter::paint_image(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {

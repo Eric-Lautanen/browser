@@ -110,18 +110,14 @@ namespace browser::css {
         bool is_relative = pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "relative";
 
         if (is_relative) {
-            f32 left_val = resolve_property(node->style(), "left", cb_width, font_size);
-            f32 top_val = resolve_property(node->style(), "top", cb_height, font_size);
-            f32 right_val = resolve_property(node->style(), "right", cb_width, font_size);
-            f32 bottom_val = resolve_property(node->style(), "bottom", cb_height, font_size);
-            if (left_val != 0)
-                node->content.x += left_val;
-            else if (right_val != 0)
-                node->content.x -= right_val;
-            if (top_val != 0)
-                node->content.y += top_val;
-            else if (bottom_val != 0)
-                node->content.y -= bottom_val;
+            if (node->style().get("left"))
+                node->content.x += resolve_property(node->style(), "left", cb_width, font_size);
+            else if (node->style().get("right"))
+                node->content.x -= resolve_property(node->style(), "right", cb_width, font_size);
+            if (node->style().get("top"))
+                node->content.y += resolve_property(node->style(), "top", cb_height, font_size);
+            else if (node->style().get("bottom"))
+                node->content.y -= resolve_property(node->style(), "bottom", cb_height, font_size);
         }
 
         for (auto &child : node->children) {
@@ -182,22 +178,19 @@ namespace browser::css {
             }
 
             if (child_is_sticky) {
-                f32 sticky_top = resolve_property(child->style(), "top", viewport_height_, font_size);
-                f32 sticky_left = resolve_property(child->style(), "left", viewport_width_, font_size);
-                f32 sticky_bottom = resolve_property(child->style(), "bottom", viewport_height_, font_size);
-
                 f32 normal_x = child->content.x;
                 f32 normal_y = child->content.y;
 
-                if (sticky_top != 0) {
-                    f32 max_y = std::max(normal_y, sticky_top);
-                    child->content.y = max_y;
+                if (child->style().get("top")) {
+                    f32 sticky_top = resolve_property(child->style(), "top", viewport_height_, font_size);
+                    child->content.y = std::max(normal_y, sticky_top);
                 }
-                if (sticky_left != 0) {
-                    f32 max_x = std::max(normal_x, sticky_left);
-                    child->content.x = max_x;
+                if (child->style().get("left")) {
+                    f32 sticky_left = resolve_property(child->style(), "left", viewport_width_, font_size);
+                    child->content.x = std::max(normal_x, sticky_left);
                 }
-                if (sticky_bottom != 0 && child->parent) {
+                if (child->style().get("bottom") && child->parent) {
+                    f32 sticky_bottom = resolve_property(child->style(), "bottom", viewport_height_, font_size);
                     f32 container_bottom = child->parent->content.height;
                     f32 element_bottom = normal_y + child->content.height + child->padding.bottom +
                                          child->border.bottom + child->margin.bottom;

@@ -1,4 +1,5 @@
 #include "tokenizer.hpp"
+#include "../utf8.hpp"
 
 namespace browser::html {
 

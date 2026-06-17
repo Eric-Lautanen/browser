@@ -1,8 +1,37 @@
 #include "parser.hpp"
 
 #include <cctype>
+#include <cstdlib>
 
 namespace browser::css {
+
+    static SimpleSelector::NthArgs parse_nth_args(const std::string &raw) {
+        SimpleSelector::NthArgs nth;
+        std::string inner = raw;
+        while (!inner.empty() && (inner.back() == ' ' || inner.back() == '\t' || inner.back() == ')'))
+            inner.pop_back();
+        while (!inner.empty() && (inner[0] == ' ' || inner[0] == '\t')) inner = inner.substr(1);
+
+        if (inner == "odd") { nth.is_odd = true; return nth; }
+        if (inner == "even") { nth.is_even = true; return nth; }
+
+        int n_pos = static_cast<int>(inner.find('n'));
+        if (n_pos != -1) {
+            std::string a_part = inner.substr(0, n_pos);
+            if (a_part.empty() || a_part == "+") nth.a = 1;
+            else if (a_part == "-") nth.a = -1;
+            else nth.a = static_cast<i32>(std::strtol(a_part.c_str(), nullptr, 10));
+            std::string b_part = inner.substr(n_pos + 1);
+            while (!b_part.empty() && b_part[0] == ' ') b_part = b_part.substr(1);
+            if (!b_part.empty()) {
+                if (b_part[0] == '+') b_part = b_part.substr(1);
+                nth.b = static_cast<i32>(std::strtol(b_part.c_str(), nullptr, 10));
+            }
+        } else {
+            nth.b = static_cast<i32>(std::strtol(inner.c_str(), nullptr, 10));
+        }
+        return nth;
+    }
 
     Selector CssParser::parse_selector() {
         Selector sel;
@@ -92,19 +121,51 @@ namespace browser::css {
                     s.name = current_.text;
                     advance();
                 } else if (current_.type == CssTokenType::FUNCTION) {
-                    s.name = current_.text;
+                    std::string func_name = current_.text;
+                    for (auto &c : func_name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    s.name = func_name;
                     advance();
+                    std::string inner;
                     u32 depth = 1;
                     while (depth > 0 && current_.type != CssTokenType::EOF_TOKEN) {
                         if (current_.type == CssTokenType::OPEN_PAREN)
                             depth++;
                         if (current_.type == CssTokenType::CLOSE_PAREN)
                             depth--;
-                        if (depth > 0)
+                        if (depth > 0) {
+                            if (current_.type == CssTokenType::WHITESPACE) {
+                                if (!inner.empty() && inner.back() != ' ') inner += ' ';
+                            } else if (current_.type == CssTokenType::DELIM) {
+                                inner += current_.text;
+                            } else if (current_.type == CssTokenType::IDENT ||
+                                       current_.type == CssTokenType::HASH) {
+                                inner += current_.text;
+                            } else if (current_.type == CssTokenType::NUMBER ||
+                                       current_.type == CssTokenType::DIMENSION ||
+                                       current_.type == CssTokenType::PERCENTAGE) {
+                                char buf[64];
+                                snprintf(buf, sizeof(buf), "%.0f", current_.numeric_value);
+                                inner += buf;
+                                if (current_.type == CssTokenType::DIMENSION)
+                                    inner += current_.text;
+                                else if (current_.type == CssTokenType::PERCENTAGE)
+                                    inner += '%';
+                            } else if (current_.type == CssTokenType::COLON) {
+                                inner += ':';
+                            } else if (current_.type == CssTokenType::COMMA) {
+                                inner += ',';
+                            }
                             advance();
+                        }
                     }
                     if (current_.type == CssTokenType::CLOSE_PAREN)
                         advance();
+
+                    if (func_name == "not" || func_name == "is" || func_name == "where") {
+                        s.argument_selectors = CssParser::parse_selectors(inner);
+                    } else if (func_name == "nth-child" || func_name == "nth-last-child") {
+                        s.nth_args = parse_nth_args(inner);
+                    }
                 }
             }
         } else if (current_.type == CssTokenType::OPEN_BRACKET) {

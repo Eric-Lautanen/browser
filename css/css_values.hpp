@@ -65,11 +65,25 @@ struct CSSValue {
     std::vector<TransformFunc> transforms;
 };
 
+struct Selector;
+
 struct SimpleSelector {
     enum class Type { TAG, CLASS, ID, UNIVERSAL, ATTRIBUTE, PSEUDO_CLASS, PSEUDO_ELEMENT };
     Type type;
     std::string name, value;
     char match_operator = 0;
+
+    // For :not(), :is(), :where() — parsed selector list
+    std::vector<Selector> argument_selectors;
+
+    // For :nth-child(), :nth-last-child()
+    struct NthArgs {
+        i32 a = 0;
+        i32 b = 0;
+        bool is_odd = false;
+        bool is_even = false;
+    };
+    NthArgs nth_args;
 };
 
 enum class Combinator { DESCENDANT, CHILD, ADJACENT_SIBLING, GENERAL_SIBLING };

@@ -14,6 +14,7 @@ void traverse_depth_first(Node* node, Fn&& callback) {
 }
 Element* find_element_by_tag(Node* parent, const std::string& tag);
 Element* find_element_by_tag_shallow(Element* parent, const std::string& tag);
+Element* find_element_by_id(Node* parent, const std::string& id);
 std::string inner_text(Element* element);
 std::string serialize_dom(Node* node);
 

@@ -15,10 +15,14 @@ body { display: block; margin: 8px; }
 div, p, h1, h2, h3, h4, h5, h6, ul, ol { display: block; }
 li { display: list-item; }
 table { display: table; }
-tr, thead, tbody, tfoot { display: table-row; }
+tr { display: table-row; }
+thead { display: table-header-group; }
+tbody { display: table-row-group; }
+tfoot { display: table-footer-group; }
 th, td { display: table-cell; }
 caption { display: table-caption; }
-pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, thead, tbody, tfoot, optgroup, option, select, button, textarea, input { display: block; }
+pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, optgroup, option, select, button, textarea, input { display: block; }
+style, script, noscript { display: none; }
 b, i, u, s, span, a, strong, em, code, mark, sub, sup, small, label, abbr, cite, dfn, kbd, q, samp, tt, var { display: inline; }
 h1 { font-size: 2em; font-weight: bold; }
 h2 { font-size: 1.5em; font-weight: bold; }
@@ -199,6 +203,10 @@ code { font-family: monospace; }
         StyleSheet ua = ua_parser.parse();
         CssParser ua_pseudo_parser(UA_STYLESHEET_PSEUDO);
         StyleSheet ua_pseudo = ua_pseudo_parser.parse();
+        // Merge pseudo-element UA rules into the main UA sheet
+        for (auto &rule : ua_pseudo.rules) {
+            ua.rules.push_back(std::move(rule));
+        }
 
         std::unordered_map<const html::Element *, std::vector<MatchedDecl>> matched;
         std::vector<std::shared_ptr<Declaration>> inline_decl_copies;
@@ -237,14 +245,12 @@ code { font-family: monospace; }
             std::string inline_style = el->get_attribute("style");
             if (!inline_style.empty()) {
                 CssParser inline_parser(inline_style);
-                StyleSheet inline_sheet = inline_parser.parse();
-                for (const auto &rule : inline_sheet.rules) {
-                    for (const auto &decl : rule.declarations) {
-                        Specificity spec;
-                        spec.bits = 0;
-                        inline_decl_copies.push_back(std::make_shared<Declaration>(decl));
-                        decls.push_back({inline_decl_copies.back().get(), spec, source_order++, 2, ""});
-                    }
+                auto inline_decls = inline_parser.parse_inline_declarations();
+                for (const auto &decl : inline_decls) {
+                    Specificity spec;
+                    spec.bits = 0;
+                    inline_decl_copies.push_back(std::make_shared<Declaration>(decl));
+                    decls.push_back({inline_decl_copies.back().get(), spec, source_order++, 2, ""});
                 }
             }
 
@@ -264,6 +270,16 @@ code { font-family: monospace; }
             auto *el = static_cast<html::Element *>(node);
 
             ComputedStyle style;
+            // Set parent pointer before var() resolution (depth-first ensures parent
+            // style is already in the map when processing children)
+            if (el->parent && el->parent->type == html::NodeType::ELEMENT) {
+                auto *parent_el = static_cast<html::Element *>(el->parent);
+                auto pit = styles.find(parent_el);
+                if (pit != styles.end()) {
+                    style.parent = &pit->second;
+                }
+            }
+
             auto &decls = matched[el];
             for (const auto &md : decls) {
                 if (!md.decl->values.empty()) {
@@ -533,7 +549,7 @@ code { font-family: monospace; }
                                 pp = end + 1;
                             }
                             auto set_side_fn = [&](const std::string &side, const std::string &pv) {
-                                if (pv.empty() || style.has(side))
+                                if (pv.empty())
                                     return;
                                 CSSValue cv;
                                 if (pv == "auto") {
@@ -587,11 +603,48 @@ code { font-family: monospace; }
                             }
                         };
 
-                        if (prop == "margin" && val.type == CSSValue::Type::STRING) {
-                            expand_four_sides("margin", val.string_value);
+                        if (prop == "margin") {
+                            if (val.type == CSSValue::Type::STRING) {
+                                expand_four_sides("margin", val.string_value);
+                            } else {
+                                // Single keyword/number value like "auto" or "0"
+                                std::string val_str;
+                                if (val.type == CSSValue::Type::KEYWORD)
+                                    val_str = val.keyword;
+                                else if (val.type == CSSValue::Type::LENGTH) {
+                                    char buf[64];
+                                    snprintf(buf, sizeof(buf), "%.0f", val.length.value);
+                                    val_str = buf;
+                                    if (val.length.unit == Length::Unit::PX) val_str += "px";
+                                    else if (val.length.unit == Length::Unit::EM) val_str += "em";
+                                    else if (val.length.unit == Length::Unit::REM) val_str += "rem";
+                                    else if (val.length.unit == Length::Unit::PERCENT) val_str += "%";
+                                } else if (val.type == CSSValue::Type::NUMBER) {
+                                    val_str = std::to_string(val.number);
+                                }
+                                if (!val_str.empty())
+                                    expand_four_sides("margin", val_str);
+                            }
                         }
-                        if (prop == "padding" && val.type == CSSValue::Type::STRING) {
-                            expand_four_sides("padding", val.string_value);
+                        if (prop == "padding") {
+                            if (val.type == CSSValue::Type::STRING) {
+                                expand_four_sides("padding", val.string_value);
+                            } else {
+                                std::string val_str;
+                                if (val.type == CSSValue::Type::KEYWORD)
+                                    val_str = val.keyword;
+                                else if (val.type == CSSValue::Type::LENGTH) {
+                                    char buf[64];
+                                    snprintf(buf, sizeof(buf), "%.0f", val.length.value);
+                                    val_str = buf;
+                                    if (val.length.unit == Length::Unit::PX) val_str += "px";
+                                    else if (val.length.unit == Length::Unit::EM) val_str += "em";
+                                    else if (val.length.unit == Length::Unit::REM) val_str += "rem";
+                                    else if (val.length.unit == Length::Unit::PERCENT) val_str += "%";
+                                }
+                                if (!val_str.empty())
+                                    expand_four_sides("padding", val_str);
+                            }
                         }
 
                         auto expand_border_side = [&](const std::string &side, const CSSValue &bval) {
@@ -772,20 +825,6 @@ code { font-family: monospace; }
             }
 
             styles[el] = std::move(style);
-        });
-
-        html::traverse_depth_first(doc_node, [&](html::Node *node) {
-            if (node->type != html::NodeType::ELEMENT)
-                return;
-            auto *el = static_cast<html::Element *>(node);
-            if (el->parent && el->parent->type == html::NodeType::ELEMENT) {
-                auto *parent_el = static_cast<html::Element *>(el->parent);
-                auto it = styles.find(parent_el);
-                auto self = styles.find(el);
-                if (it != styles.end() && self != styles.end()) {
-                    self->second.parent = &it->second;
-                }
-            }
         });
 
         co_return CascadeResult{std::move(styles)};

@@ -17,7 +17,7 @@ bool iequal(const std::string& a, const std::string& b) {
     return true;
 }
 
-bool match_simple(const SimpleSelector& ss, const html::Element* el) {
+bool match_simple(const SimpleSelector& ss, const html::Element* el, const html::Node* doc = nullptr) {
     switch (ss.type) {
         case SimpleSelector::Type::TAG:
             return iequal(ss.name, el->tag_name);
@@ -121,46 +121,22 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
             if (ss.name == "target") {
                 return el->has_attribute("id"); // simplified: matches if element has an id
             }
-            if (ss.name.substr(0, 10) == "nth-child(") {
-                std::string inner = ss.name.substr(10);
-                if (!inner.empty() && inner.back() == ')') inner.pop_back();
-                // Find element index among siblings (1-based)
+            if (ss.name == "nth-child") {
                 if (!el->parent) return false;
                 i32 idx = 0;
                 for (auto& sib : el->parent->children) {
                     if (sib.get() == el) break;
                     if (sib->type == html::NodeType::ELEMENT) idx++;
                 }
-                idx++; // 1-based
-
-                if (inner == "odd") return idx % 2 == 1;
-                if (inner == "even") return idx % 2 == 0;
-
-                // Parse an+b
-                i32 a = 0, b = 0;
-                int n_pos = inner.find('n');
-                if (n_pos != -1) {
-                    std::string a_part = inner.substr(0, n_pos);
-                    if (a_part.empty() || a_part == "+") a = 1;
-                    else if (a_part == "-") a = -1;
-                    else a = static_cast<i32>(std::strtol(a_part.c_str(), nullptr, 10));
-                    std::string b_part = inner.substr(n_pos + 1);
-                    if (!b_part.empty()) {
-                        if (b_part[0] == '+') b_part = b_part.substr(1);
-                        b = static_cast<i32>(std::strtol(b_part.c_str(), nullptr, 10));
-                    }
-                } else {
-                    b = static_cast<i32>(std::strtol(inner.c_str(), nullptr, 10));
-                }
-                if (a == 0) return idx == b;
-                if (idx < b) return false;
-                return (idx - b) % a == 0;
+                idx++;
+                if (ss.nth_args.is_odd) return idx % 2 == 1;
+                if (ss.nth_args.is_even) return idx % 2 == 0;
+                if (ss.nth_args.a == 0) return idx == ss.nth_args.b;
+                if (idx < ss.nth_args.b) return false;
+                return (idx - ss.nth_args.b) % ss.nth_args.a == 0;
             }
-            if (ss.name.substr(0, 10) == "nth-last-child(") {
-                std::string inner = ss.name.substr(14);
-                if (!inner.empty() && inner.back() == ')') inner.pop_back();
+            if (ss.name == "nth-last-child") {
                 if (!el->parent) return false;
-                // Count elements from end
                 i32 total = 0;
                 for (auto& sib : el->parent->children) {
                     if (sib->type == html::NodeType::ELEMENT) total++;
@@ -170,27 +146,12 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
                     if (sib.get() == el) break;
                     if (sib->type == html::NodeType::ELEMENT) idx++;
                 }
-                idx = total - idx; // 1-based from end
-                if (inner == "odd") return idx % 2 == 1;
-                if (inner == "even") return idx % 2 == 0;
-                i32 a = 0, b = 0;
-                int n_pos = inner.find('n');
-                if (n_pos != -1) {
-                    std::string a_part = inner.substr(0, n_pos);
-                    if (a_part.empty() || a_part == "+") a = 1;
-                    else if (a_part == "-") a = -1;
-                    else a = static_cast<i32>(std::strtol(a_part.c_str(), nullptr, 10));
-                    std::string b_part = inner.substr(n_pos + 1);
-                    if (!b_part.empty()) {
-                        if (b_part[0] == '+') b_part = b_part.substr(1);
-                        b = static_cast<i32>(std::strtol(b_part.c_str(), nullptr, 10));
-                    }
-                } else {
-                    b = static_cast<i32>(std::strtol(inner.c_str(), nullptr, 10));
-                }
-                if (a == 0) return idx == b;
-                if (idx < b) return false;
-                return (idx - b) % a == 0;
+                idx = total - idx;
+                if (ss.nth_args.is_odd) return idx % 2 == 1;
+                if (ss.nth_args.is_even) return idx % 2 == 0;
+                if (ss.nth_args.a == 0) return idx == ss.nth_args.b;
+                if (idx < ss.nth_args.b) return false;
+                return (idx - ss.nth_args.b) % ss.nth_args.a == 0;
             }
             if (ss.name.substr(0, 12) == "first-of-type") {
                 if (!el->parent) return false;
@@ -215,29 +176,19 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
                 }
                 return true;
             }
-            if (ss.name.substr(0, 5) == "not(") {
-                std::string inner = ss.name.substr(4);
-                if (!inner.empty() && inner.back() == ')') inner.pop_back();
-                while (!inner.empty() && (inner.back() == ' ' || inner.back() == '\t')) inner.pop_back();
-                while (!inner.empty() && (inner[0] == ' ' || inner[0] == '\t')) inner = inner.substr(1);
-                if (inner.empty()) return true;
-                if (inner[0] == '.') {
-                    return !match_simple({SimpleSelector::Type::CLASS, inner.substr(1), "", 0}, el);
+            if (ss.name == "not") {
+                if (ss.argument_selectors.empty()) return true;
+                for (const auto &arg_sel : ss.argument_selectors) {
+                    if (matches_selector(arg_sel, el, doc)) return false;
                 }
-                if (inner[0] == '#') {
-                    return !match_simple({SimpleSelector::Type::ID, inner.substr(1), "", 0}, el);
+                return true;
+            }
+            if (ss.name == "is" || ss.name == "where") {
+                if (ss.argument_selectors.empty()) return true;
+                for (const auto &arg_sel : ss.argument_selectors) {
+                    if (matches_selector(arg_sel, el, doc)) return true;
                 }
-                if (inner[0] == ':') {
-                    std::string pseudo = inner.substr(1);
-                    SimpleSelector ps;
-                    ps.type = SimpleSelector::Type::PSEUDO_CLASS;
-                    ps.name = pseudo;
-                    return !match_simple(ps, el);
-                }
-                SimpleSelector tag_sel;
-                tag_sel.type = SimpleSelector::Type::TAG;
-                tag_sel.name = inner;
-                return !match_simple(tag_sel, el);
+                return false;
             }
             // Dynamic pseudo-classes - evaluated later via element state
             if (ss.name == "hover" || ss.name == "focus" || ss.name == "active" ||
@@ -278,10 +229,10 @@ const html::Node* find_previous_sibling(const html::Node* node) {
 
 } // anonymous namespace
 
-bool matches_compound(const std::vector<SimpleSelector>& compound, const html::Element* el) {
+bool matches_compound(const std::vector<SimpleSelector>& compound, const html::Element* el, const html::Node* doc = nullptr) {
     if (!el) return false;
     for (const auto& ss : compound) {
-        if (!match_simple(ss, el)) return false;
+        if (!match_simple(ss, el, doc)) return false;
     }
     return true;
 }
@@ -292,7 +243,7 @@ bool matches_selector(const Selector& sel, const html::Element* el, const html::
     const html::Element* current = el;
     int c = static_cast<int>(sel.compounds.size()) - 1;
 
-    if (!matches_compound(sel.compounds[c].simples, current)) return false;
+    if (!matches_compound(sel.compounds[c].simples, current, root)) return false;
     c--;
 
     while (c >= 0 && current) {
@@ -301,7 +252,7 @@ bool matches_selector(const Selector& sel, const html::Element* el, const html::
         if (comb == Combinator::CHILD) {
             if (!current->parent || current->parent->type != html::NodeType::ELEMENT) return false;
             auto* parent = static_cast<const html::Element*>(current->parent);
-            if (!matches_compound(sel.compounds[c].simples, parent)) return false;
+            if (!matches_compound(sel.compounds[c].simples, parent, root)) return false;
             current = parent;
         } else if (comb == Combinator::DESCENDANT) {
             bool found = false;
@@ -309,7 +260,7 @@ bool matches_selector(const Selector& sel, const html::Element* el, const html::
             while (ancestor && ancestor != root) {
                 if (ancestor->type == html::NodeType::ELEMENT) {
                     auto* ae = static_cast<const html::Element*>(ancestor);
-                    if (matches_compound(sel.compounds[c].simples, ae)) {
+                    if (matches_compound(sel.compounds[c].simples, ae, root)) {
                         current = ae;
                         found = true;
                         break;
@@ -322,7 +273,7 @@ bool matches_selector(const Selector& sel, const html::Element* el, const html::
             auto* prev = find_previous_sibling(current);
             if (!prev || prev->type != html::NodeType::ELEMENT) return false;
             auto* pe = static_cast<const html::Element*>(prev);
-            if (!matches_compound(sel.compounds[c].simples, pe)) return false;
+            if (!matches_compound(sel.compounds[c].simples, pe, root)) return false;
             current = pe;
         } else if (comb == Combinator::GENERAL_SIBLING) {
             bool found = false;
@@ -333,7 +284,7 @@ bool matches_selector(const Selector& sel, const html::Element* el, const html::
                         auto* sibling = current->parent->children[j].get();
                         if (sibling->type == html::NodeType::ELEMENT) {
                             auto* se = static_cast<const html::Element*>(sibling);
-                            if (matches_compound(sel.compounds[c].simples, se)) {
+                            if (matches_compound(sel.compounds[c].simples, se, root)) {
                                 current = se;
                                 found = true;
                                 break;

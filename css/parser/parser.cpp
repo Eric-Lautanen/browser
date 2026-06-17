@@ -115,6 +115,37 @@ namespace browser::css {
         return sheet;
     }
 
+    std::vector<Selector> CssParser::parse_selectors(const std::string &input) {
+        CssParser p(input);
+        std::vector<Selector> sels;
+        while (p.current_.type != CssTokenType::EOF_TOKEN) {
+            if (p.current_.type == CssTokenType::WHITESPACE || p.current_.type == CssTokenType::COMMA) {
+                p.advance();
+                continue;
+            }
+            sels.push_back(p.parse_selector());
+            if (p.current_.type == CssTokenType::COMMA) {
+                p.advance();
+            }
+        }
+        return sels;
+    }
+
+    std::vector<Declaration> CssParser::parse_inline_declarations() {
+        std::vector<Declaration> decls;
+        while (current_.type != CssTokenType::EOF_TOKEN) {
+            if (current_.type == CssTokenType::WHITESPACE || current_.type == CssTokenType::SEMICOLON) {
+                advance();
+                continue;
+            }
+            decls.push_back(parse_declaration());
+            if (current_.type == CssTokenType::SEMICOLON) {
+                advance();
+            }
+        }
+        return decls;
+    }
+
     Rule CssParser::parse_rule() {
         Rule rule;
         while (is_simple_selector_start()) {

@@ -1,11 +1,14 @@
 #include "../../html/form_state.hpp"
 #include "../../html/form_submission.hpp"
 #include "../../html/hit_test.hpp"
+#include "../../html/traversal.hpp"
+#include "../../net/url.hpp"
 #include "../../platform/window_win32.hpp"
 #include "../bookmarks.hpp"
 #include "../settings.hpp"
 #include "window.hpp"
 
+#include <functional>
 #include <windows.h>
 
 namespace browser {
@@ -221,6 +224,49 @@ namespace browser {
                         html::g_form_state.focus(ht.element);
                     } else if (tag == "select") {
                         html::g_form_state.focus(ht.element);
+                    } else if (tag == "a") {
+                        std::string href = ht.element->get_attribute("href");
+                        if (!href.empty()) {
+                            if (href[0] == '#') {
+                                // Scroll-to-anchor: update scroll position
+                                std::string target_id = href.substr(1);
+                                // Walk layout tree to find element with matching id
+                                if (current_page_->layout) {
+                                    html::Node *found = html::find_element_by_id(current_page_->dom.get(), target_id);
+                                    if (found && found->type == html::NodeType::ELEMENT) {
+                                        auto *found_el = static_cast<html::Element *>(found);
+                                        // Find this element in the styles map and compute its Y position
+                                        // Simple approach: search layout tree for matching element
+                                        std::function<f32(html::Element*, css::LayoutNode*, f32)> find_y =
+                                            [&](html::Element *target, css::LayoutNode *node, f32 acc_y) -> f32 {
+                                            if (node->node() == target)
+                                                return acc_y + node->content.y;
+                                            for (auto &child : node->children) {
+                                                f32 found_y = find_y(target, child.get(), acc_y + node->content.y);
+                                                if (found_y >= 0) return found_y;
+                                            }
+                                            return -1;
+                                        };
+                                        f32 target_y = find_y(found_el, current_page_->layout.get(), 0);
+                                        if (target_y >= 0)
+                                            chrome_.scroll_y = static_cast<i32>(target_y);
+                                    }
+                                }
+                            } else {
+                                // Full URL or relative URL — navigate
+                                std::string resolved = href;
+                                if (href.find("://") == std::string::npos) {
+                                    // Relative URL: resolve against current page URL
+                                    auto base_parsed = net::URL::parse(chrome_.url);
+                                    if (base_parsed.is_ok()) {
+                                        auto resolved_r = base_parsed.unwrap().resolve(href);
+                                        if (resolved_r.is_ok())
+                                            resolved = resolved_r.unwrap().to_string();
+                                    }
+                                }
+                                navigate(resolved);
+                            }
+                        }
                     } else {
                         html::g_form_state.blur();
                     }

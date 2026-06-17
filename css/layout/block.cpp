@@ -73,7 +73,7 @@ namespace browser::css {
 
         if (width_auto) {
             if (border_box) {
-                node->content.width = containing_width - h_margin;
+                node->content.width = containing_width - h_margin - h_padding - h_border;
             } else {
                 node->content.width = containing_width - h_margin - h_padding - h_border;
             }
@@ -242,11 +242,26 @@ namespace browser::css {
         node->content.width = (node->content.width > marker_width)
             ? node->content.width - marker_width
             : 0;
-        // List items inside <ol> get an incrementing counter; <ul> gets a bullet
         std::string list_style = "disc";
         auto *ls = node->style().get("list-style-type");
         if (ls && ls->type == CSSValue::Type::KEYWORD) {
             list_style = ls->keyword;
+        }
+        // Build the marker glyph text
+        std::string marker_text;
+        if (list_style == "disc") marker_text = "\xE2\x80\xA2"; // •
+        else if (list_style == "circle") marker_text = "\xE2\x97\x8B"; // ○
+        else if (list_style == "square") marker_text = "\xE2\x96\xAA"; // ▪
+        else if (list_style == "decimal") marker_text = "1.";
+
+        if (!marker_text.empty()) {
+            auto marker_child = std::make_unique<LayoutNode>(marker_text, node->style());
+            marker_child->content.x = -node->padding.left;
+            marker_child->content.y = 0;
+            marker_child->content.width = marker_width;
+            marker_child->content.height = font_size;
+            // Insert before other children so it paints behind content
+            node->children.insert(node->children.begin(), std::move(marker_child));
         }
         // The marker will be rendered in the padding area
         node->padding.left += marker_width;

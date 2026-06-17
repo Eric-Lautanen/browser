@@ -3,6 +3,8 @@
 #include "../css/css_values.hpp"
 #include "../css/tokenizer.hpp"
 #include "../css/parser.hpp"
+#include "../css/cascade/engine.hpp"
+#include "../css/layout.hpp"
 
 TEST(css_color_hex, {
     using namespace browser::css;
@@ -606,4 +608,122 @@ TEST(css_parse_multi_selector_compound, {
     ASSERT_EQ(sheet.rules[0].selectors[0].compounds[1].simples[0].name, "p");
     ASSERT_EQ(sheet.rules[0].selectors[0].compounds[1].simples[1].type, SimpleSelector::Type::CLASS);
     ASSERT_EQ(sheet.rules[0].selectors[0].compounds[1].simples[1].name, "bar");
+})
+
+TEST(cascade_important_ordering, {
+    using namespace browser::css;
+    // Verify sort_matched_decls orders: UA normal < Author normal < Inline normal
+    // < Author !important < Inline !important < UA !important
+
+    Declaration decl_norm, decl_imp;
+    decl_norm.property = "color";
+    decl_norm.values.push_back({});
+    decl_norm.values[0].type = CSSValue::Type::KEYWORD;
+    decl_norm.values[0].keyword = "red";
+    decl_imp = decl_norm;
+    decl_imp.important = true;
+
+    auto make_decl = [&](browser::u8 origin, bool important,
+                         browser::u32 specificity_val, browser::u32 source_order) {
+        MatchedDecl md;
+        md.decl = important ? &decl_imp : &decl_norm;
+        md.origin = origin;
+        md.specificity.bits = specificity_val;
+        md.source_order = source_order;
+        return md;
+    };
+
+    // Build in reverse order to test sorting
+    std::vector<MatchedDecl> decls;
+    decls.push_back(make_decl(1, false, 100, 0));   // Author normal, high specificity
+    decls.push_back(make_decl(0, false, 10, 1));    // UA normal
+    decls.push_back(make_decl(1, true, 0, 2));      // Author !important
+    decls.push_back(make_decl(2, false, 0, 3));     // Inline normal
+    decls.push_back(make_decl(0, true, 0, 4));      // UA !important
+
+    sort_matched_decls(decls);
+
+    // Expected: UA norm < Author norm < Inline norm < Author !imp < UA !imp
+    ASSERT_EQ(decls[0].origin, 0u);
+    ASSERT_EQ(decls[0].decl->important, false);
+    ASSERT_EQ(decls[1].origin, 1u);
+    ASSERT_EQ(decls[1].decl->important, false);
+    ASSERT_EQ(decls[2].origin, 2u);
+    ASSERT_EQ(decls[2].decl->important, false);
+    ASSERT_EQ(decls[3].origin, 1u);
+    ASSERT_EQ(decls[3].decl->important, true);
+    ASSERT_EQ(decls[4].origin, 0u);
+    ASSERT_EQ(decls[4].decl->important, true);
+})
+
+TEST(cascade_inline_vs_author_important, {
+    using namespace browser::css;
+    // <div style="color:red"> vs div#x { color: blue !important; }
+    // Author !important should beat inline normal (later in sorted vector wins)
+
+    Declaration decl_inline, decl_author_imp;
+    decl_inline.property = "color";
+    decl_inline.values.push_back({});
+    decl_inline.values[0].type = CSSValue::Type::KEYWORD;
+    decl_inline.values[0].keyword = "red";
+    decl_author_imp = decl_inline;
+    decl_author_imp.values[0].keyword = "blue";
+    decl_author_imp.important = true;
+
+    std::vector<MatchedDecl> decls;
+    MatchedDecl md_inline;
+    md_inline.decl = &decl_inline;
+    md_inline.origin = 2;
+    md_inline.specificity.bits = 0;
+    md_inline.source_order = 0;
+
+    MatchedDecl md_author_imp;
+    md_author_imp.decl = &decl_author_imp;
+    md_author_imp.origin = 1;
+    md_author_imp.specificity.bits = 200;
+    md_author_imp.source_order = 1;
+
+    decls.push_back(md_inline);
+    decls.push_back(md_author_imp);
+
+    sort_matched_decls(decls);
+
+    // Should be: inline normal (origin 2) first, then author !important (origin 1)
+    ASSERT_EQ(decls[0].origin, 2u);
+    ASSERT_EQ(decls[0].decl->important, false);
+    ASSERT_EQ(decls[1].origin, 1u);
+    ASSERT_EQ(decls[1].decl->important, true);
+})
+
+TEST(table_row_group_ua_display, {
+    using namespace browser::css;
+    // Verify the UA stylesheet assigns correct display values to table elements
+    CssParser ua_parser(R"(
+tr { display: table-row; }
+thead { display: table-header-group; }
+tbody { display: table-row-group; }
+tfoot { display: table-footer-group; }
+)");
+    StyleSheet ua = ua_parser.parse();
+    auto find_display = [&](const std::string &tag) -> std::string {
+        for (auto &rule : ua.rules) {
+            for (auto &sel : rule.selectors) {
+                for (auto &comp : sel.compounds) {
+                    for (auto &ss : comp.simples) {
+                        if (ss.type == SimpleSelector::Type::TAG && ss.name == tag) {
+                            for (auto &d : rule.declarations) {
+                                if (d.property == "display" && !d.values.empty())
+                                    return d.values[0].keyword;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return "";
+    };
+    ASSERT_EQ(find_display("tr"), "table-row");
+    ASSERT_EQ(find_display("thead"), "table-header-group");
+    ASSERT_EQ(find_display("tbody"), "table-row-group");
+    ASSERT_EQ(find_display("tfoot"), "table-footer-group");
 })
