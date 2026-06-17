@@ -86,3 +86,7 @@ browser_out*.txt
 browser_http_err*.txt
 trace_log*.txt
 glyph_drop.txt
+
+# Build and test artifacts
+build_tidy/
+test_cache/

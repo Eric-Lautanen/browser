@@ -27,8 +27,6 @@ add_library(async INTERFACE
     async/thread_pool.hpp
     async/memory.hpp
     async/this_thread.hpp
-    async/when_all.hpp
-    async/when_any.hpp
 )
 target_include_directories(async INTERFACE .)
 
