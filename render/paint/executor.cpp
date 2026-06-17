@@ -246,22 +246,12 @@ void PaintExecutor::execute(const DisplayList& list) {
                     transform_rect(x, y, w, h);
                 }
 
-                ImageId canvas_id = reinterpret_cast<ImageId>(cmd.canvas_data);
-                auto tex_it = texture_cache_.find(canvas_id);
-                if (tex_it != texture_cache_.end()) {
+                auto tex = std::make_unique<Texture2D>();
+                auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_data);
+                if (r.is_ok()) {
                     Color c = cmd.color;
                     c.a *= current_opacity_;
-                    renderer_->draw_textured_quad(x, y, w, h, c, tex_it->second.get());
-                } else {
-                    auto tex = std::make_unique<Texture2D>();
-                    auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_data);
-                    if (r.is_ok()) {
-                        Texture2D* ptr = tex.get();
-                        texture_cache_[canvas_id] = std::move(tex);
-                        Color c = cmd.color;
-                        c.a *= current_opacity_;
-                        renderer_->draw_textured_quad(x, y, w, h, c, ptr);
-                    }
+                    renderer_->draw_textured_quad(x, y, w, h, c, tex.get());
                 }
                 break;
             }

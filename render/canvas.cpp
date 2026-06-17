@@ -1,5 +1,6 @@
 #include "canvas.hpp"
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
 #include <algorithm>
 #include <sstream>
@@ -338,14 +339,12 @@ void Canvas2D::fill() {
 void Canvas2D::stroke() {
     if (current_path_.empty() && sub_paths_.empty()) return;
     version_++;
-    std::vector<PathPt> all_pts;
-    for (auto& pt : current_path_) all_pts.push_back(pt);
-    for (auto& sp : sub_paths_)
-        for (auto& pt : sp)
-            all_pts.push_back(pt);
-
-    for (size_t i = 0; i + 1 < all_pts.size(); i++)
-        draw_line(all_pts[i].x, all_pts[i].y, all_pts[i + 1].x, all_pts[i + 1].y);
+    for (auto& sp : sub_paths_) {
+        for (size_t i = 0; i + 1 < sp.size(); i++)
+            draw_line(sp[i].x, sp[i].y, sp[i + 1].x, sp[i + 1].y);
+    }
+    for (size_t i = 0; i + 1 < current_path_.size(); i++)
+        draw_line(current_path_[i].x, current_path_[i].y, current_path_[i + 1].x, current_path_[i + 1].y);
 }
 
 void Canvas2D::clip() {

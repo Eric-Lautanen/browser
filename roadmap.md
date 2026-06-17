@@ -1213,6 +1213,19 @@ Each phase followed a strict 10-step process:
 - [x] Video: `<video>` element renders (placeholder for codec integration).
 - [x] All pre-existing tests still pass
 
+### Phase 13 Lessons Learned
+
+| Lesson | Details |
+|--------|---------|
+| **Canvas binding dependency chain** | `js` library cannot depend on `render` because `render` depends on `html` (which `js` also depends on), creating a potential cycle. Solution: put canvas bindings in the `render` library (which depends on `js`), and use a static `ElementExtender` hook in `DOMBindings` to allow `render` to register per-element methods without `js` knowing about `render`. |
+| **PaintCommand data pointer safety** | The `DRAW_CANVAS` command stores a raw `const u8*` pointer to the canvas pixel buffer. This pointer must remain valid until the display list is executed. Since the paint-execute cycle is synchronous within a single frame, and canvas modifications happen from JS which runs before the next frame, this is safe. The pixel buffer's address is stable because `std::vector` doesn't reallocate on pixel writes. |
+| **Canvas texture caching** | Canvas textures cannot be cached by pixel-buffer address because the pixel data changes while the address stays the same. Each frame must create a fresh OpenGL texture from canvas pixel data. No caching is used for `DRAW_CANVAS` textures to avoid stale renders. |
+| **sub_paths stroke boundary** | The stroke operation must draw each sub-path independently. Flattening all sub-paths into one sequence draws spurious lines between the end of one sub-path and the start of the next. Fixed by iterating each sub-path separately. |
+| **WAV duration calculation** | `num_samples_` counts all interleaved frames (e.g., 2 channels × N frames = 2N samples). Duration = num_samples_ / sample_rate_ / num_channels_. Verified correct for mono and stereo. |
+| **CanvasBindingCtx lifecycle** | `CanvasBindingCtx` objects (allocated with `new` for passing as native function context) must be tracked for cleanup. Stored in a `static vector<unique_ptr<>>` to prevent leaks when the page is unloaded. |
+| **Clip is a no-op in software renderer** | The Canvas `clip()` method is a no-op because implementing a clipping region in the scanline rasterizer is complex. This is acceptable for basic canvas usage; full clipping requires maintaining a stencil or clip region during pixel write operations. |
+| **No regressions** | All 33 pre-existing test executables pass (3 pre-existing failures unchanged: net_test, parser_test, test_framework_test). |
+
 ---
 
 ## Testing & CI Philosophy

@@ -1,0 +1,1142 @@
+[
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_framework.dir\\tests\\test_framework.cpp.obj -c C:\\github\\browser\\tests\\test_framework.cpp",
+  "file": "C:/github/browser/tests/test_framework.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_framework.dir/tests/test_framework.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\platform.dir\\platform\\window.cpp.obj -c C:\\github\\browser\\platform\\window.cpp",
+  "file": "C:/github/browser/platform/window.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/platform.dir/platform/window.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\platform.dir\\platform\\window_win32.cpp.obj -c C:\\github\\browser\\platform\\window_win32.cpp",
+  "file": "C:/github/browser/platform/window_win32.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/platform.dir/platform/window_win32.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\platform.dir\\platform\\opengl.cpp.obj -c C:\\github\\browser\\platform\\opengl.cpp",
+  "file": "C:/github/browser/platform/opengl.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/platform.dir/platform/opengl.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\socket.cpp.obj -c C:\\github\\browser\\net\\socket.cpp",
+  "file": "C:/github/browser/net/socket.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/socket.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\socket_win32.cpp.obj -c C:\\github\\browser\\net\\socket_win32.cpp",
+  "file": "C:/github/browser/net/socket_win32.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/socket_win32.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\dns.cpp.obj -c C:\\github\\browser\\net\\dns.cpp",
+  "file": "C:/github/browser/net/dns.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/dns.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\connection.cpp.obj -c C:\\github\\browser\\net\\connection.cpp",
+  "file": "C:/github/browser/net/connection.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/connection.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\url.cpp.obj -c C:\\github\\browser\\net\\url.cpp",
+  "file": "C:/github/browser/net/url.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/url.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\http.cpp.obj -c C:\\github\\browser\\net\\http.cpp",
+  "file": "C:/github/browser/net/http.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/http.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\http2\\connection.cpp.obj -c C:\\github\\browser\\net\\http2\\connection.cpp",
+  "file": "C:/github/browser/net/http2/connection.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/http2/connection.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\http2\\frames.cpp.obj -c C:\\github\\browser\\net\\http2\\frames.cpp",
+  "file": "C:/github/browser/net/http2/frames.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/http2/frames.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\http2\\hpack.cpp.obj -c C:\\github\\browser\\net\\http2\\hpack.cpp",
+  "file": "C:/github/browser/net/http2/hpack.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/http2/hpack.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\http_client.cpp.obj -c C:\\github\\browser\\net\\http_client.cpp",
+  "file": "C:/github/browser/net/http_client.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/http_client.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\tracker_blocker.cpp.obj -c C:\\github\\browser\\net\\tracker_blocker.cpp",
+  "file": "C:/github/browser/net/tracker_blocker.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/tracker_blocker.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\deflate.cpp.obj -c C:\\github\\browser\\net\\deflate.cpp",
+  "file": "C:/github/browser/net/deflate.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/deflate.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\iocp.cpp.obj -c C:\\github\\browser\\net\\iocp.cpp",
+  "file": "C:/github/browser/net/iocp.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/iocp.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\crypto\\chacha20.cpp.obj -c C:\\github\\browser\\net\\crypto\\chacha20.cpp",
+  "file": "C:/github/browser/net/crypto/chacha20.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/crypto/chacha20.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\crypto\\poly1305.cpp.obj -c C:\\github\\browser\\net\\crypto\\poly1305.cpp",
+  "file": "C:/github/browser/net/crypto/poly1305.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/crypto/poly1305.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\crypto\\aes.cpp.obj -c C:\\github\\browser\\net\\crypto\\aes.cpp",
+  "file": "C:/github/browser/net/crypto/aes.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/crypto/aes.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\crypto\\sha.cpp.obj -c C:\\github\\browser\\net\\crypto\\sha.cpp",
+  "file": "C:/github/browser/net/crypto/sha.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/crypto/sha.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\crypto\\bignum.cpp.obj -c C:\\github\\browser\\net\\crypto\\bignum.cpp",
+  "file": "C:/github/browser/net/crypto/bignum.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/crypto/bignum.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\crypto\\ecc.cpp.obj -c C:\\github\\browser\\net\\crypto\\ecc.cpp",
+  "file": "C:/github/browser/net/crypto/ecc.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/crypto/ecc.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\crypto\\x25519.cpp.obj -c C:\\github\\browser\\net\\crypto\\x25519.cpp",
+  "file": "C:/github/browser/net/crypto/x25519.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/crypto/x25519.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\tls\\connection.cpp.obj -c C:\\github\\browser\\net\\tls\\connection.cpp",
+  "file": "C:/github/browser/net/tls/connection.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/tls/connection.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\tls\\cipher.cpp.obj -c C:\\github\\browser\\net\\tls\\cipher.cpp",
+  "file": "C:/github/browser/net/tls/cipher.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/tls/cipher.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\tls\\record.cpp.obj -c C:\\github\\browser\\net\\tls\\record.cpp",
+  "file": "C:/github/browser/net/tls/record.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/tls/record.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\tls\\handshake.cpp.obj -c C:\\github\\browser\\net\\tls\\handshake.cpp",
+  "file": "C:/github/browser/net/tls/handshake.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/tls/handshake.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\websocket.cpp.obj -c C:\\github\\browser\\net\\websocket.cpp",
+  "file": "C:/github/browser/net/websocket.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/websocket.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net.dir\\net\\http_cache.cpp.obj -c C:\\github\\browser\\net\\http_cache.cpp",
+  "file": "C:/github/browser/net/http_cache.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net.dir/net/http_cache.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\image.dir\\image\\decoder.cpp.obj -c C:\\github\\browser\\image\\decoder.cpp",
+  "file": "C:/github/browser/image/decoder.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/image.dir/image/decoder.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\image.dir\\image\\decoder_bmp.cpp.obj -c C:\\github\\browser\\image\\decoder_bmp.cpp",
+  "file": "C:/github/browser/image/decoder_bmp.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/image.dir/image/decoder_bmp.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\image.dir\\image\\decoder_png.cpp.obj -c C:\\github\\browser\\image\\decoder_png.cpp",
+  "file": "C:/github/browser/image/decoder_png.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/image.dir/image/decoder_png.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\image.dir\\image\\decoder_gif.cpp.obj -c C:\\github\\browser\\image\\decoder_gif.cpp",
+  "file": "C:/github/browser/image/decoder_gif.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/image.dir/image/decoder_gif.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\image.dir\\image\\decoder_jpeg.cpp.obj -c C:\\github\\browser\\image\\decoder_jpeg.cpp",
+  "file": "C:/github/browser/image/decoder_jpeg.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/image.dir/image/decoder_jpeg.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\utf8.cpp.obj -c C:\\github\\browser\\html\\utf8.cpp",
+  "file": "C:/github/browser/html/utf8.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/utf8.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\entities.cpp.obj -c C:\\github\\browser\\html\\entities.cpp",
+  "file": "C:/github/browser/html/entities.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/entities.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\tokenizer.cpp.obj -c C:\\github\\browser\\html\\tokenizer.cpp",
+  "file": "C:/github/browser/html/tokenizer.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/tokenizer.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\dom.cpp.obj -c C:\\github\\browser\\html\\dom.cpp",
+  "file": "C:/github/browser/html/dom.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/dom.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\parser.cpp.obj -c C:\\github\\browser\\html\\parser.cpp",
+  "file": "C:/github/browser/html/parser.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/parser.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\traversal.cpp.obj -c C:\\github\\browser\\html\\traversal.cpp",
+  "file": "C:/github/browser/html/traversal.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/traversal.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\preload_scanner.cpp.obj -c C:\\github\\browser\\html\\preload_scanner.cpp",
+  "file": "C:/github/browser/html/preload_scanner.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/preload_scanner.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html.dir\\html\\resource_loader.cpp.obj -c C:\\github\\browser\\html\\resource_loader.cpp",
+  "file": "C:/github/browser/html/resource_loader.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html.dir/html/resource_loader.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\css_values.cpp.obj -c C:\\github\\browser\\css\\css_values.cpp",
+  "file": "C:/github/browser/css/css_values.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/css_values.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\tokenizer.cpp.obj -c C:\\github\\browser\\css\\tokenizer.cpp",
+  "file": "C:/github/browser/css/tokenizer.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/tokenizer.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\parser\\parser.cpp.obj -c C:\\github\\browser\\css\\parser\\parser.cpp",
+  "file": "C:/github/browser/css/parser/parser.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/parser/parser.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\parser\\selector.cpp.obj -c C:\\github\\browser\\css\\parser\\selector.cpp",
+  "file": "C:/github/browser/css/parser/selector.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/parser/selector.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\parser\\declaration.cpp.obj -c C:\\github\\browser\\css\\parser\\declaration.cpp",
+  "file": "C:/github/browser/css/parser/declaration.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/parser/declaration.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\parser\\at_rule.cpp.obj -c C:\\github\\browser\\css\\parser\\at_rule.cpp",
+  "file": "C:/github/browser/css/parser/at_rule.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/parser/at_rule.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\parser\\property.cpp.obj -c C:\\github\\browser\\css\\parser\\property.cpp",
+  "file": "C:/github/browser/css/parser/property.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/parser/property.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\selector_match.cpp.obj -c C:\\github\\browser\\css\\selector_match.cpp",
+  "file": "C:/github/browser/css/selector_match.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/selector_match.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\cascade\\engine.cpp.obj -c C:\\github\\browser\\css\\cascade\\engine.cpp",
+  "file": "C:/github/browser/css/cascade/engine.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/cascade/engine.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\cascade\\specificity.cpp.obj -c C:\\github\\browser\\css\\cascade\\specificity.cpp",
+  "file": "C:/github/browser/css/cascade/specificity.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/cascade/specificity.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\cascade\\important.cpp.obj -c C:\\github\\browser\\css\\cascade\\important.cpp",
+  "file": "C:/github/browser/css/cascade/important.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/cascade/important.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\cascade\\inheritance.cpp.obj -c C:\\github\\browser\\css\\cascade\\inheritance.cpp",
+  "file": "C:/github/browser/css/cascade/inheritance.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/cascade/inheritance.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\cascade\\media.cpp.obj -c C:\\github\\browser\\css\\cascade\\media.cpp",
+  "file": "C:/github/browser/css/cascade/media.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/cascade/media.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\engine.cpp.obj -c C:\\github\\browser\\css\\layout\\engine.cpp",
+  "file": "C:/github/browser/css/layout/engine.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/engine.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\resolve.cpp.obj -c C:\\github\\browser\\css\\layout\\resolve.cpp",
+  "file": "C:/github/browser/css/layout/resolve.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/resolve.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\type_check.cpp.obj -c C:\\github\\browser\\css\\layout\\type_check.cpp",
+  "file": "C:/github/browser/css/layout/type_check.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/type_check.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\flex.cpp.obj -c C:\\github\\browser\\css\\layout\\flex.cpp",
+  "file": "C:/github/browser/css/layout/flex.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/flex.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\grid.cpp.obj -c C:\\github\\browser\\css\\layout\\grid.cpp",
+  "file": "C:/github/browser/css/layout/grid.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/grid.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\block.cpp.obj -c C:\\github\\browser\\css\\layout\\block.cpp",
+  "file": "C:/github/browser/css/layout/block.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/block.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\inline.cpp.obj -c C:\\github\\browser\\css\\layout\\inline.cpp",
+  "file": "C:/github/browser/css/layout/inline.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/inline.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\table.cpp.obj -c C:\\github\\browser\\css\\layout\\table.cpp",
+  "file": "C:/github/browser/css/layout/table.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/table.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\layout\\positioning.cpp.obj -c C:\\github\\browser\\css\\layout\\positioning.cpp",
+  "file": "C:/github/browser/css/layout/positioning.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/layout/positioning.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\grid.cpp.obj -c C:\\github\\browser\\css\\grid.cpp",
+  "file": "C:/github/browser/css/grid.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/grid.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\animation.cpp.obj -c C:\\github\\browser\\css\\animation.cpp",
+  "file": "C:/github/browser/css/animation.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/animation.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css.dir\\css\\transition.cpp.obj -c C:\\github\\browser\\css\\transition.cpp",
+  "file": "C:/github/browser/css/transition.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css.dir/css/transition.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\lexer.cpp.obj -c C:\\github\\browser\\js\\lexer.cpp",
+  "file": "C:/github/browser/js/lexer.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/lexer.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\parser.cpp.obj -c C:\\github\\browser\\js\\parser.cpp",
+  "file": "C:/github/browser/js/parser.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/parser.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\compiler.cpp.obj -c C:\\github\\browser\\js\\compiler.cpp",
+  "file": "C:/github/browser/js/compiler.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/compiler.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\gc.cpp.obj -c C:\\github\\browser\\js\\gc.cpp",
+  "file": "C:/github/browser/js/gc.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/gc.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\vm.cpp.obj -c C:\\github\\browser\\js\\vm.cpp",
+  "file": "C:/github/browser/js/vm.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/vm.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\jit.cpp.obj -c C:\\github\\browser\\js\\jit.cpp",
+  "file": "C:/github/browser/js/jit.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/jit.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\dom_bindings.cpp.obj -c C:\\github\\browser\\js\\dom_bindings.cpp",
+  "file": "C:/github/browser/js/dom_bindings.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/dom_bindings.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\string.cpp.obj -c C:\\github\\browser\\js\\builtins\\string.cpp",
+  "file": "C:/github/browser/js/builtins/string.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/string.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\array.cpp.obj -c C:\\github\\browser\\js\\builtins\\array.cpp",
+  "file": "C:/github/browser/js/builtins/array.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/array.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\object.cpp.obj -c C:\\github\\browser\\js\\builtins\\object.cpp",
+  "file": "C:/github/browser/js/builtins/object.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/object.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\math.cpp.obj -c C:\\github\\browser\\js\\builtins\\math.cpp",
+  "file": "C:/github/browser/js/builtins/math.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/math.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\number.cpp.obj -c C:\\github\\browser\\js\\builtins\\number.cpp",
+  "file": "C:/github/browser/js/builtins/number.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/number.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\symbol.cpp.obj -c C:\\github\\browser\\js\\builtins\\symbol.cpp",
+  "file": "C:/github/browser/js/builtins/symbol.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/symbol.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\json.cpp.obj -c C:\\github\\browser\\js\\builtins\\json.cpp",
+  "file": "C:/github/browser/js/builtins/json.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/json.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\date.cpp.obj -c C:\\github\\browser\\js\\builtins\\date.cpp",
+  "file": "C:/github/browser/js/builtins/date.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/date.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\regexp.cpp.obj -c C:\\github\\browser\\js\\builtins\\regexp.cpp",
+  "file": "C:/github/browser/js/builtins/regexp.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/regexp.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\error.cpp.obj -c C:\\github\\browser\\js\\builtins\\error.cpp",
+  "file": "C:/github/browser/js/builtins/error.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/error.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\console.cpp.obj -c C:\\github\\browser\\js\\builtins\\console.cpp",
+  "file": "C:/github/browser/js/builtins/console.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/console.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\timers.cpp.obj -c C:\\github\\browser\\js\\builtins\\timers.cpp",
+  "file": "C:/github/browser/js/builtins/timers.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/timers.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\promise.cpp.obj -c C:\\github\\browser\\js\\builtins\\promise.cpp",
+  "file": "C:/github/browser/js/builtins/promise.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/promise.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\builtins\\performance.cpp.obj -c C:\\github\\browser\\js\\builtins\\performance.cpp",
+  "file": "C:/github/browser/js/builtins/performance.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/builtins/performance.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\script_runner.cpp.obj -c C:\\github\\browser\\js\\script_runner.cpp",
+  "file": "C:/github/browser/js/script_runner.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/script_runner.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js.dir\\js\\module_loader.cpp.obj -c C:\\github\\browser\\js\\module_loader.cpp",
+  "file": "C:/github/browser/js/module_loader.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js.dir/js/module_loader.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\shader_program.cpp.obj -c C:\\github\\browser\\render\\shader_program.cpp",
+  "file": "C:/github/browser/render/shader_program.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/shader_program.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\mesh.cpp.obj -c C:\\github\\browser\\render\\mesh.cpp",
+  "file": "C:/github/browser/render/mesh.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/mesh.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\renderer.cpp.obj -c C:\\github\\browser\\render\\renderer.cpp",
+  "file": "C:/github/browser/render/renderer.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/renderer.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\texture.cpp.obj -c C:\\github\\browser\\render\\texture.cpp",
+  "file": "C:/github/browser/render/texture.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/texture.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\font.cpp.obj -c C:\\github\\browser\\render\\font.cpp",
+  "file": "C:/github/browser/render/font.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/font.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\text_renderer.cpp.obj -c C:\\github\\browser\\render\\text_renderer.cpp",
+  "file": "C:/github/browser/render/text_renderer.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/text_renderer.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\embedded_font.cpp.obj -c C:\\github\\browser\\render\\embedded_font.cpp",
+  "file": "C:/github/browser/render/embedded_font.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/embedded_font.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\paint.cpp.obj -c C:\\github\\browser\\render\\paint.cpp",
+  "file": "C:/github/browser/render/paint.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/paint.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\painter.cpp.obj -c C:\\github\\browser\\render\\painter.cpp",
+  "file": "C:/github/browser/render/painter.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/painter.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\paint_executor.cpp.obj -c C:\\github\\browser\\render\\paint_executor.cpp",
+  "file": "C:/github/browser/render/paint_executor.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/paint_executor.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\render.dir\\render\\font_loader.cpp.obj -c C:\\github\\browser\\render\\font_loader.cpp",
+  "file": "C:/github/browser/render/font_loader.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/render.dir/render/font_loader.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\chrome\\window.cpp.obj -c C:\\github\\browser\\browser\\chrome\\window.cpp",
+  "file": "C:/github/browser/browser/chrome/window.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/chrome/window.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\chrome\\navigator.cpp.obj -c C:\\github\\browser\\browser\\chrome\\navigator.cpp",
+  "file": "C:/github/browser/browser/chrome/navigator.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/chrome/navigator.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\chrome\\titlebar.cpp.obj -c C:\\github\\browser\\browser\\chrome\\titlebar.cpp",
+  "file": "C:/github/browser/browser/chrome/titlebar.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/chrome/titlebar.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\chrome\\toolbar.cpp.obj -c C:\\github\\browser\\browser\\chrome\\toolbar.cpp",
+  "file": "C:/github/browser/browser/chrome/toolbar.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/chrome/toolbar.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\chrome\\page_view.cpp.obj -c C:\\github\\browser\\browser\\chrome\\page_view.cpp",
+  "file": "C:/github/browser/browser/chrome/page_view.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/chrome/page_view.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\chrome\\event_handler.cpp.obj -c C:\\github\\browser\\browser\\chrome\\event_handler.cpp",
+  "file": "C:/github/browser/browser/chrome/event_handler.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/chrome/event_handler.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\page_loader.cpp.obj -c C:\\github\\browser\\browser\\page_loader.cpp",
+  "file": "C:/github/browser/browser/page_loader.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/page_loader.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\history.cpp.obj -c C:\\github\\browser\\browser\\history.cpp",
+  "file": "C:/github/browser/browser/history.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/history.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\bookmarks.cpp.obj -c C:\\github\\browser\\browser\\bookmarks.cpp",
+  "file": "C:/github/browser/browser/bookmarks.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/bookmarks.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\telemetry.cpp.obj -c C:\\github\\browser\\browser\\telemetry.cpp",
+  "file": "C:/github/browser/browser/telemetry.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/telemetry.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser_lib.dir\\browser\\settings.cpp.obj -c C:\\github\\browser\\browser\\settings.cpp",
+  "file": "C:/github/browser/browser/settings.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser_lib.dir/browser/settings.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_runner.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_runner.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_runner.dir\\tests\\test_framework_impl_test.cpp.obj -c C:\\github\\browser\\tests\\test_framework_impl_test.cpp",
+  "file": "C:/github/browser/tests/test_framework_impl_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_runner.dir/tests/test_framework_impl_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_runner.dir\\tests\\utility_test.cpp.obj -c C:\\github\\browser\\tests\\utility_test.cpp",
+  "file": "C:/github/browser/tests/utility_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_runner.dir/tests/utility_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_framework_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_framework_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_framework_test.dir\\tests\\test_framework_test.cpp.obj -c C:\\github\\browser\\tests\\test_framework_test.cpp",
+  "file": "C:/github/browser/tests/test_framework_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_framework_test.dir/tests/test_framework_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_framework_impl_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_framework_impl_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\test_framework_impl_test.dir\\tests\\test_framework_impl_test.cpp.obj -c C:\\github\\browser\\tests\\test_framework_impl_test.cpp",
+  "file": "C:/github/browser/tests/test_framework_impl_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/test_framework_impl_test.dir/tests/test_framework_impl_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\utility_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/utility_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\utility_test.dir\\tests\\utility_test.cpp.obj -c C:\\github\\browser\\tests\\utility_test.cpp",
+  "file": "C:/github/browser/tests/utility_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/utility_test.dir/tests/utility_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\iocp_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/iocp_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\iocp_test.dir\\tests\\iocp_test.cpp.obj -c C:\\github\\browser\\tests\\iocp_test.cpp",
+  "file": "C:/github/browser/tests/iocp_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/iocp_test.dir/tests/iocp_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\async_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/async_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\async_test.dir\\tests\\async_test.cpp.obj -c C:\\github\\browser\\tests\\async_test.cpp",
+  "file": "C:/github/browser/tests/async_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/async_test.dir/tests/async_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\channel_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/channel_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\channel_test.dir\\tests\\channel_test.cpp.obj -c C:\\github\\browser\\tests\\channel_test.cpp",
+  "file": "C:/github/browser/tests/channel_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/channel_test.dir/tests/channel_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\thread_pool_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/thread_pool_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\thread_pool_test.dir\\tests\\thread_pool_test.cpp.obj -c C:\\github\\browser\\tests\\thread_pool_test.cpp",
+  "file": "C:/github/browser/tests/thread_pool_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/thread_pool_test.dir/tests/thread_pool_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\net_test.dir\\tests\\net_test.cpp.obj -c C:\\github\\browser\\tests\\net_test.cpp",
+  "file": "C:/github/browser/tests/net_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/net_test.dir/tests/net_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\tls_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/tls_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\tls_test.dir\\tests\\tls_test.cpp.obj -c C:\\github\\browser\\tests\\tls_test.cpp",
+  "file": "C:/github/browser/tests/tls_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/tls_test.dir/tests/tls_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\tracker_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/tracker_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\tracker_test.dir\\tests\\tracker_test.cpp.obj -c C:\\github\\browser\\tests\\tracker_test.cpp",
+  "file": "C:/github/browser/tests/tracker_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/tracker_test.dir/tests/tracker_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\tracker_test.dir\\net\\tracker_blocker.cpp.obj -c C:\\github\\browser\\net\\tracker_blocker.cpp",
+  "file": "C:/github/browser/net/tracker_blocker.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/tracker_test.dir/net/tracker_blocker.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\html_test.dir\\tests\\html_test.cpp.obj -c C:\\github\\browser\\tests\\html_test.cpp",
+  "file": "C:/github/browser/tests/html_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/html_test.dir/tests/html_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css_test.dir\\tests\\css_test.cpp.obj -c C:\\github\\browser\\tests\\css_test.cpp",
+  "file": "C:/github/browser/tests/css_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css_test.dir/tests/css_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\flex_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/flex_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\flex_test.dir\\tests\\flex_test.cpp.obj -c C:\\github\\browser\\tests\\flex_test.cpp",
+  "file": "C:/github/browser/tests/flex_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/flex_test.dir/tests/flex_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\grid_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/grid_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\grid_test.dir\\tests\\grid_test.cpp.obj -c C:\\github\\browser\\tests\\grid_test.cpp",
+  "file": "C:/github/browser/tests/grid_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/grid_test.dir/tests/grid_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css_animation_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css_animation_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\css_animation_test.dir\\tests\\css_animation_test.cpp.obj -c C:\\github\\browser\\tests\\css_animation_test.cpp",
+  "file": "C:/github/browser/tests/css_animation_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/css_animation_test.dir/tests/css_animation_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\js_test.dir\\tests\\js_test.cpp.obj -c C:\\github\\browser\\tests\\js_test.cpp",
+  "file": "C:/github/browser/tests/js_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/js_test.dir/tests/js_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\parser_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/parser_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\parser_test.dir\\tests\\parser_test.cpp.obj -c C:\\github\\browser\\tests\\parser_test.cpp",
+  "file": "C:/github/browser/tests/parser_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/parser_test.dir/tests/parser_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\compiler_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/compiler_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\compiler_test.dir\\tests\\compiler_test.cpp.obj -c C:\\github\\browser\\tests\\compiler_test.cpp",
+  "file": "C:/github/browser/tests/compiler_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/compiler_test.dir/tests/compiler_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\vm_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/vm_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\vm_test.dir\\tests\\vm_test.cpp.obj -c C:\\github\\browser\\tests\\vm_test.cpp",
+  "file": "C:/github/browser/tests/vm_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/vm_test.dir/tests/vm_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\gc_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/gc_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\gc_test.dir\\tests\\gc_test.cpp.obj -c C:\\github\\browser\\tests\\gc_test.cpp",
+  "file": "C:/github/browser/tests/gc_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/gc_test.dir/tests/gc_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\jit_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/jit_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\jit_test.dir\\tests\\jit_test.cpp.obj -c C:\\github\\browser\\tests\\jit_test.cpp",
+  "file": "C:/github/browser/tests/jit_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/jit_test.dir/tests/jit_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\dom_bindings_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/dom_bindings_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\dom_bindings_test.dir\\tests\\dom_bindings_test.cpp.obj -c C:\\github\\browser\\tests\\dom_bindings_test.cpp",
+  "file": "C:/github/browser/tests/dom_bindings_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/dom_bindings_test.dir/tests/dom_bindings_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\web_api_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/web_api_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\web_api_test.dir\\tests\\web_api_test.cpp.obj -c C:\\github\\browser\\tests\\web_api_test.cpp",
+  "file": "C:/github/browser/tests/web_api_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/web_api_test.dir/tests/web_api_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\mesh_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/mesh_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\mesh_test.dir\\tests\\mesh_test.cpp.obj -c C:\\github\\browser\\tests\\mesh_test.cpp",
+  "file": "C:/github/browser/tests/mesh_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/mesh_test.dir/tests/mesh_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\font_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/font_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\font_test.dir\\tests\\font_test.cpp.obj -c C:\\github\\browser\\tests\\font_test.cpp",
+  "file": "C:/github/browser/tests/font_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/font_test.dir/tests/font_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\paint_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/paint_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\paint_test.dir\\tests\\paint_test.cpp.obj -c C:\\github\\browser\\tests\\paint_test.cpp",
+  "file": "C:/github/browser/tests/paint_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/paint_test.dir/tests/paint_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\window_smoke_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/window_smoke_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\window_smoke_test.dir\\tests\\window_smoke_test.cpp.obj -c C:\\github\\browser\\tests\\window_smoke_test.cpp",
+  "file": "C:/github/browser/tests/window_smoke_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/window_smoke_test.dir/tests/window_smoke_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\gpu_smoke_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/gpu_smoke_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\gpu_smoke_test.dir\\tests\\gpu_smoke_test.cpp.obj -c C:\\github\\browser\\tests\\gpu_smoke_test.cpp",
+  "file": "C:/github/browser/tests/gpu_smoke_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/gpu_smoke_test.dir/tests/gpu_smoke_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\image_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/image_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\image_test.dir\\tests\\image_test.cpp.obj -c C:\\github\\browser\\tests\\image_test.cpp",
+  "file": "C:/github/browser/tests/image_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/image_test.dir/tests/image_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\websocket_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/websocket_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\websocket_test.dir\\tests\\websocket_test.cpp.obj -c C:\\github\\browser\\tests\\websocket_test.cpp",
+  "file": "C:/github/browser/tests/websocket_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/websocket_test.dir/tests/websocket_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\http_cache_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/http_cache_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\http_cache_test.dir\\tests\\http_cache_test.cpp.obj -c C:\\github\\browser\\tests\\http_cache_test.cpp",
+  "file": "C:/github/browser/tests/http_cache_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/http_cache_test.dir/tests/http_cache_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\telemetry_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/telemetry_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\telemetry_test.dir\\tests\\telemetry_test.cpp.obj -c C:\\github\\browser\\tests\\telemetry_test.cpp",
+  "file": "C:/github/browser/tests/telemetry_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/telemetry_test.dir/tests/telemetry_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\settings_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/settings_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\settings_test.dir\\tests\\settings_test.cpp.obj -c C:\\github\\browser\\tests\\settings_test.cpp",
+  "file": "C:/github/browser/tests/settings_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/settings_test.dir/tests/settings_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\chrome_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/chrome_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\chrome_test.dir\\tests\\chrome_test.cpp.obj -c C:\\github\\browser\\tests\\chrome_test.cpp",
+  "file": "C:/github/browser/tests/chrome_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/chrome_test.dir/tests/chrome_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\history_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/history_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\history_test.dir\\tests\\history_test.cpp.obj -c C:\\github\\browser\\tests\\history_test.cpp",
+  "file": "C:/github/browser/tests/history_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/history_test.dir/tests/history_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\bookmark_test.dir\\tests\\main.cpp.obj -c C:\\github\\browser\\tests\\main.cpp",
+  "file": "C:/github/browser/tests/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/bookmark_test.dir/tests/main.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/tests -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\bookmark_test.dir\\tests\\bookmark_test.cpp.obj -c C:\\github\\browser\\tests\\bookmark_test.cpp",
+  "file": "C:/github/browser/tests/bookmark_test.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/bookmark_test.dir/tests/bookmark_test.cpp.obj"
+},
+{
+  "directory": "C:/github/browser/build_tidy",
+  "command": "C:\\msys64\\mingw64\\bin\\c++.exe -IC:/github/browser/.  -Wall -Wextra -Wpedantic -Werror -fno-exceptions -fcoroutines -std=gnu++20 -o CMakeFiles\\browser.dir\\src\\main.cpp.obj -c C:\\github\\browser\\src\\main.cpp",
+  "file": "C:/github/browser/src/main.cpp",
+  "output": "C:/github/browser/build_tidy/CMakeFiles/browser.dir/src/main.cpp.obj"
+}
+]

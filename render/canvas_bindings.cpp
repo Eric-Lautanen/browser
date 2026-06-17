@@ -17,6 +17,7 @@ struct CanvasBindingCtx {
 };
 
 static std::unordered_map<html::Element*, std::shared_ptr<Canvas2D>> canvas_binding_map;
+static std::vector<std::unique_ptr<CanvasBindingCtx>> canvas_binding_ctxs;
 
 static CanvasBindingCtx* get_bc(void* context) {
     return static_cast<CanvasBindingCtx*>(context);
@@ -291,6 +292,7 @@ static js::JSValue canvas_get_context_fn(const std::vector<js::JSValue>& args, v
     g_canvas_registry[el_ctx->element] = canvas2d;
 
     auto* ctx2d = new CanvasBindingCtx{el_ctx->element, el_ctx->bindings, el_ctx->vm, canvas2d};
+    canvas_binding_ctxs.push_back(std::unique_ptr<CanvasBindingCtx>(ctx2d));
 
     auto* ctx_gc = ctx2d->vm->heap()->alloc_object();
     auto* ctx_obj = &ctx_gc->obj;
@@ -333,6 +335,7 @@ void register_canvas_element_bindings(js::DOMBindings* bindings, js::VM* vm, htm
     if (element->tag_name != "canvas") return;
 
     auto* canvas_ctx = new CanvasBindingCtx{element, bindings, vm, nullptr};
+    canvas_binding_ctxs.push_back(std::unique_ptr<CanvasBindingCtx>(canvas_ctx));
     auto* gc_obj = vm->heap()->alloc_object();
     auto* obj = &gc_obj->obj;
     obj->set("getContext",
