@@ -1,6 +1,6 @@
 # browser — Web Browser from Scratch in C++20
 
-A from-scratch web browser built in modern C++20 with its own HTML5 parser, CSS engine (Flexbox + Grid), JavaScript runtime (parser → bytecode VM → x86-64 JIT), networking stack (HTTP/1.1, HTTP/2, TLS 1.3, WebSocket), and an OpenGL-rendered UI — all with zero third-party dependencies.
+A from-scratch web browser built in modern C++20 with its own HTML5 tokenizer + tree-construction parser, CSS engine (selector cascade, block/inline/Flexbox/Grid/table layout, animations), JavaScript runtime (ECMAScript lexer → recursive-descent parser → bytecode compiler → stack VM → x86-64 JIT, mark-sweep GC, 14 built-in modules including Promise, fetch, XHR), networking stack (DNS over UDP, TCP via IOCP, TLS 1.3 with X25519/AES-GCM/ChaCha20-Poly1305, HTTP/1.1, HTTP/2 with HPACK + stream multiplexing, WebSocket, deflate/gzip), image decoders (BMP/PNG/GIF/JPEG from scratch), and an OpenGL 3.3 paint engine with TrueType font rasterization — all with zero third-party dependencies.
 
 ![current_screenshot](current_screenshot.png)
 
