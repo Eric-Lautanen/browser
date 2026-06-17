@@ -1,9 +1,10 @@
 #include "window.hpp"
 
+#include "../../html/form_state.hpp"
 #include "../../net/http_client.hpp"
+#include "../../net/storage.hpp"
 #include "../../net/tracker_blocker.hpp"
 #include "../../net/url.hpp"
-#include "../../net/storage.hpp"
 #include "../../platform/opengl.hpp"
 #include "../../platform/window_win32.hpp"
 #include "../bookmarks.hpp"
@@ -208,6 +209,17 @@ namespace browser {
                 break;
 
             // 3-5. Stubbed: timers, microtasks, rAF
+
+            // Cursor blinking for form elements
+            {
+                static auto last_blink = std::chrono::steady_clock::now();
+                auto now = std::chrono::steady_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_blink).count();
+                if (elapsed >= 500) {
+                    html::g_form_state.caret_visible = !html::g_form_state.caret_visible;
+                    last_blink = now;
+                }
+            }
 
             // 6. Render frame
             renderer_->begin_frame();

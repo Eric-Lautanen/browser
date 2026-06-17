@@ -960,12 +960,12 @@ Each phase followed a strict 10-step process:
 | New: `html/hit_test.cpp`, `html/hit_test.hpp` | On mouse click in content area: walk layout tree in reverse paint order (back-to-front). For each element, test if click point is within element's bounding box. Handle `z-index`, stacking contexts, `overflow: hidden` clipping, `border-radius` clip. Return the topmost element. Fire `click`, `mousedown`, `mouseup` events on it. |
 
 ### Phase 8 Checklist
-- [ ] Form controls render: `<input>` (text, checkbox, radio), `<button>`, `<select>`, `<textarea>` all have distinct visual appearance with hover/active/focus states.
-- [ ] Form state management: input values, checkbox/radio checked, select index, textarea content all tracked. On change: fires `input`/`change`/`focus`/`blur`.
-- [ ] Form submission: `<form>` submit via button click or Enter encodes data as `urlencoded` or `multipart`, navigates to action URL.
-- [ ] Hit testing: click in content area walks layout tree in reverse paint order. Correct element under cursor is returned. Events fire on correct element.
-- [ ] Keyboard events route to focused form element (cursor blinking, text insertion, selection).
-- [ ] All pre-existing tests still pass
+- [x] Form controls render: `<input>` (text, checkbox, radio), `<button>`, `<select>`, `<textarea>` all have distinct visual appearance with hover/active/focus states.
+- [x] Form state management: input values, checkbox/radio checked, select index, textarea content all tracked. On change: fires `input`/`change`/`focus`/`blur`.
+- [x] Form submission: `<form>` submit via button click or Enter encodes data as `urlencoded` or `multipart`, navigates to action URL.
+- [x] Hit testing: click in content area walks layout tree in reverse paint order. Correct element under cursor is returned. Events fire on correct element.
+- [x] Keyboard events route to focused form element (cursor blinking, text insertion, selection).
+- [x] All pre-existing tests still pass
 
 ---
 

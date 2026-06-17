@@ -1,3 +1,6 @@
+#include "../../html/form_state.hpp"
+#include "../../html/form_submission.hpp"
+#include "../../html/hit_test.hpp"
 #include "../bookmarks.hpp"
 #include "../settings.hpp"
 #include "window.hpp"
@@ -180,6 +183,52 @@ namespace browser {
                 return;
             }
             chrome_.address_focused = false;
+
+            // Hit test against page content
+            if (current_page_.has_value() && current_page_->layout) {
+                f32 py = static_cast<f32>(my) - ChromeUI::CHROME_H + static_cast<f32>(chrome_.scroll_y);
+                auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
+                if (ht.element) {
+                    html::g_form_state.hovered_element = ht.element;
+                    std::string tag = ht.element->tag_name;
+                    std::string type = ht.element->get_attribute("type");
+
+                    if (tag == "input" && (type.empty() || type == "text")) {
+                        html::g_form_state.focus(ht.element);
+                    } else if (tag == "input" && type == "checkbox") {
+                        html::g_form_state.toggle_checkbox(ht.element);
+                        html::g_form_state.focus(ht.element);
+                    } else if (tag == "input" && type == "radio") {
+                        html::g_form_state.set_checked(ht.element, true);
+                        html::g_form_state.focus(ht.element);
+                    } else if (tag == "input" && type == "submit") {
+                        html::g_form_state.focus(ht.element);
+                        {
+                            std::string nav_url = html::handle_form_submission(ht.element);
+                            if (!nav_url.empty())
+                                start_load(nav_url);
+                        }
+                    } else if (tag == "button") {
+                        html::g_form_state.focus(ht.element);
+                        std::string bt = ht.element->get_attribute("type");
+                        if (bt.empty() || bt == "submit") {
+                            std::string nav_url = html::handle_form_submission(ht.element);
+                            if (!nav_url.empty())
+                                start_load(nav_url);
+                        }
+                    } else if (tag == "textarea") {
+                        html::g_form_state.focus(ht.element);
+                    } else if (tag == "select") {
+                        html::g_form_state.focus(ht.element);
+                    } else {
+                        html::g_form_state.blur();
+                    }
+                } else {
+                    html::g_form_state.blur();
+                }
+            } else {
+                html::g_form_state.blur();
+            }
             return;
         }
 
@@ -404,6 +453,134 @@ namespace browser {
                     }
                     chrome_.edit_buffer.insert(chrome_.cursor_pos, 1, c);
                     chrome_.cursor_pos++;
+                }
+            }
+        } else if (html::g_form_state.focused_element) {
+            // Route keyboard to focused form element
+            auto *el = html::g_form_state.focused_element;
+            std::string tag = el->tag_name;
+            std::string type = el->get_attribute("type");
+
+            if (e.key == platform::KeyCode::TAB) {
+                html::g_form_state.blur();
+                return;
+            }
+            if (e.key == platform::KeyCode::ESCAPE) {
+                html::g_form_state.blur();
+                return;
+            }
+
+            if (tag == "input" && (type.empty() || type == "text")) {
+                if (e.key == platform::KeyCode::ENTER) {
+                    {
+                        std::string nav_url = html::handle_form_submission(el);
+                        if (!nav_url.empty())
+                            start_load(nav_url);
+                    }
+                    html::g_form_state.blur();
+                } else if (e.key == platform::KeyCode::BACKSPACE) {
+                    std::string val = html::g_form_state.get_value(el);
+                    if (!val.empty() && html::g_form_state.caret_position > 0) {
+                        val.erase(val.begin() + static_cast<i64>(html::g_form_state.caret_position) - 1);
+                        html::g_form_state.caret_position--;
+                        html::g_form_state.set_value(el, val);
+                    }
+                } else if (e.key == platform::KeyCode::LEFT) {
+                    if (html::g_form_state.caret_position > 0)
+                        html::g_form_state.caret_position--;
+                } else if (e.key == platform::KeyCode::RIGHT) {
+                    std::string val = html::g_form_state.get_value(el);
+                    if (html::g_form_state.caret_position < val.size())
+                        html::g_form_state.caret_position++;
+                } else if (e.key == platform::KeyCode::HOME) {
+                    html::g_form_state.caret_position = 0;
+                } else if (e.key == platform::KeyCode::END) {
+                    std::string val = html::g_form_state.get_value(el);
+                    html::g_form_state.caret_position = static_cast<u32>(val.size());
+                } else if (e.key == platform::KeyCode::V && chrome_.ctrl_down) {
+                    std::string paste = clipboard_paste();
+                    if (!paste.empty()) {
+                        std::string val = html::g_form_state.get_value(el);
+                        val.insert(html::g_form_state.caret_position, paste);
+                        html::g_form_state.caret_position += static_cast<u32>(paste.size());
+                        html::g_form_state.set_value(el, val);
+                    }
+                } else if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
+                    std::string val = html::g_form_state.get_value(el);
+                    clipboard_copy(val);
+                } else {
+                    char c = keycode_to_char(e.key, chrome_.shift_down);
+                    if (c) {
+                        std::string val = html::g_form_state.get_value(el);
+                        val.insert(html::g_form_state.caret_position, 1, c);
+                        html::g_form_state.caret_position++;
+                        html::g_form_state.set_value(el, val);
+                    }
+                }
+            } else if (tag == "textarea") {
+                if (e.key == platform::KeyCode::ENTER) {
+                    std::string val = html::g_form_state.get_value(el);
+                    val.insert(html::g_form_state.caret_position, 1, '\n');
+                    html::g_form_state.caret_position++;
+                    html::g_form_state.set_value(el, val);
+                } else if (e.key == platform::KeyCode::BACKSPACE) {
+                    std::string val = html::g_form_state.get_value(el);
+                    if (!val.empty() && html::g_form_state.caret_position > 0) {
+                        val.erase(val.begin() + static_cast<i64>(html::g_form_state.caret_position) - 1);
+                        html::g_form_state.caret_position--;
+                        html::g_form_state.set_value(el, val);
+                    }
+                } else if (e.key == platform::KeyCode::LEFT) {
+                    if (html::g_form_state.caret_position > 0)
+                        html::g_form_state.caret_position--;
+                } else if (e.key == platform::KeyCode::RIGHT) {
+                    std::string val = html::g_form_state.get_value(el);
+                    if (html::g_form_state.caret_position < val.size())
+                        html::g_form_state.caret_position++;
+                } else if (e.key == platform::KeyCode::HOME) {
+                    html::g_form_state.caret_position = 0;
+                } else if (e.key == platform::KeyCode::END) {
+                    std::string val = html::g_form_state.get_value(el);
+                    html::g_form_state.caret_position = static_cast<u32>(val.size());
+                } else {
+                    char c = keycode_to_char(e.key, chrome_.shift_down);
+                    if (c) {
+                        std::string val = html::g_form_state.get_value(el);
+                        val.insert(html::g_form_state.caret_position, 1, c);
+                        html::g_form_state.caret_position++;
+                        html::g_form_state.set_value(el, val);
+                    }
+                }
+            } else if (tag == "input" && type == "checkbox") {
+                if (e.key == platform::KeyCode::SPACE) {
+                    html::g_form_state.toggle_checkbox(el);
+                }
+            } else if (tag == "input" && type == "submit") {
+                if (e.key == platform::KeyCode::ENTER || e.key == platform::KeyCode::SPACE) {
+                    {
+                        std::string nav_url = html::handle_form_submission(el);
+                        if (!nav_url.empty())
+                            start_load(nav_url);
+                    }
+                    html::g_form_state.blur();
+                }
+            } else if (tag == "button") {
+                if (e.key == platform::KeyCode::ENTER || e.key == platform::KeyCode::SPACE) {
+                    {
+                        std::string nav_url = html::handle_form_submission(el);
+                        if (!nav_url.empty())
+                            start_load(nav_url);
+                    }
+                    html::g_form_state.blur();
+                }
+            } else if (tag == "select") {
+                if (e.key == platform::KeyCode::DOWN || e.key == platform::KeyCode::RIGHT) {
+                    int idx = html::g_form_state.get_selected_index(el);
+                    html::g_form_state.set_selected_index(el, idx + 1);
+                } else if (e.key == platform::KeyCode::UP || e.key == platform::KeyCode::LEFT) {
+                    int idx = html::g_form_state.get_selected_index(el);
+                    if (idx > 0)
+                        html::g_form_state.set_selected_index(el, idx - 1);
                 }
             }
         } else {

@@ -1,5 +1,8 @@
 #include "painter.hpp"
 
+#include "../../html/form_state.hpp"
+#include "../form_controls.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -129,11 +132,54 @@ namespace browser::render {
                 PaintCommand::Type::PUSH_TRANSFORM, {}, Color::TRANSPARENT, "", 0, 0, {}, 0, node->transform_matrix));
         }
 
-        paint_background(list, node, ox, oy);
-        paint_shadow(list, node, ox, oy);
-        paint_border(list, node, ox, oy);
-        paint_outline(list, node, ox, oy);
-        paint_image(list, node, ox, oy);
+        // Check if this is a form control
+        bool is_form_control = false;
+        html::Element *el = nullptr;
+        if (!node->is_text()) {
+            html::Node *n = node->node();
+            if (n && n->type == html::NodeType::ELEMENT) {
+                el = static_cast<html::Element *>(n);
+                is_form_control = (el->tag_name == "input" || el->tag_name == "button" || el->tag_name == "select" ||
+                                   el->tag_name == "textarea");
+            }
+        }
+
+        if (is_form_control && el) {
+            std::string type = el->get_attribute("type");
+            std::string value = html::g_form_state.get_value(el);
+            bool focused = (html::g_form_state.focused_element == el);
+            bool hovered = (html::g_form_state.hovered_element == el);
+            u32 caret = focused ? html::g_form_state.caret_position : 0;
+            f32 fx = ox - node->padding.left - node->border.left;
+            f32 fy = oy - node->padding.top - node->border.top;
+            f32 fw =
+                node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
+            f32 fh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
+                     node->border.bottom;
+
+            if (el->tag_name == "input" && (type.empty() || type == "text")) {
+                form_controls::paint_text_input(list, fx, fy, fw, fh, value, caret, focused);
+            } else if (el->tag_name == "input" && type == "checkbox") {
+                bool checked = html::g_form_state.is_checked(el);
+                form_controls::paint_checkbox(list, fx, fy, 13, checked);
+            } else if (el->tag_name == "input" && type == "radio") {
+                bool checked = html::g_form_state.is_checked(el);
+                form_controls::paint_radio(list, fx, fy, 13, checked);
+            } else if (el->tag_name == "button" || (el->tag_name == "input" && type == "submit")) {
+                std::string label = value.empty() ? (el->tag_name == "button" ? "Button" : "Submit") : value;
+                form_controls::paint_button(list, fx, fy, fw, fh, label, hovered, focused);
+            } else if (el->tag_name == "select") {
+                form_controls::paint_select(list, fx, fy, fw, fh, value, false);
+            } else if (el->tag_name == "textarea") {
+                form_controls::paint_textarea(list, fx, fy, fw, fh, value, 0, caret, focused);
+            }
+        } else {
+            paint_background(list, node, ox, oy);
+            paint_shadow(list, node, ox, oy);
+            paint_border(list, node, ox, oy);
+            paint_outline(list, node, ox, oy);
+            paint_image(list, node, ox, oy);
+        }
 
         bool has_clip = false;
         auto *overflow = node->style().get("overflow");

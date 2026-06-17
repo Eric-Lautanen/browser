@@ -39,6 +39,7 @@ namespace browser::css {
 
         html::Node *node() const { return node_; }
         ComputedStyle &style() { return style_; }
+        const ComputedStyle &style() const { return style_; }
         bool is_text() const { return is_text_; }
         const std::string &text() const { return text_; }
         const std::string &element_key() const { return element_key_; }

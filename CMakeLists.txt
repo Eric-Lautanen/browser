@@ -149,6 +149,12 @@ add_library(html STATIC
     html/preload_scanner.cpp
     html/resource_loader.hpp
     html/resource_loader.cpp
+    html/hit_test.hpp
+    html/hit_test.cpp
+    html/form_state.hpp
+    html/form_state.cpp
+    html/form_submission.hpp
+    html/form_submission.cpp
 )
 target_include_directories(html PUBLIC .)
 target_link_libraries(html net)
@@ -288,6 +294,8 @@ add_library(render STATIC
     render/rasterizer.cpp
     render/tile_cache.hpp
     render/tile_cache.cpp
+    render/form_controls.hpp
+    render/form_controls.cpp
 )
 target_include_directories(render PUBLIC .)
 target_link_libraries(render platform css html image)

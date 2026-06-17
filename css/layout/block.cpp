@@ -1,6 +1,7 @@
 #include "../layout.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 
 namespace browser::css {
 
@@ -157,6 +158,78 @@ namespace browser::css {
                     node->content.height = mh;
             }
             return;
+        }
+
+        // Intrinsic sizing for form controls
+        {
+            html::Node *n = node->node();
+            if (n && n->type == html::NodeType::ELEMENT) {
+                auto *el = static_cast<html::Element *>(n);
+                std::string tag = el->tag_name;
+                std::string type = el->get_attribute("type");
+
+                if (tag == "input" && (type.empty() || type == "text")) {
+                    if (width_auto) {
+                        std::string size_attr = el->get_attribute("size");
+                        int size = 20;
+                        if (!size_attr.empty()) {
+                            char *end = nullptr;
+                            long s = std::strtol(size_attr.c_str(), &end, 10);
+                            if (end != size_attr.c_str() && s > 0)
+                                size = static_cast<int>(s);
+                        }
+                        node->content.width = static_cast<f32>(size) * 8.0f;
+                    }
+                    if (node->content.height == 0)
+                        node->content.height = 20.0f;
+                } else if (tag == "input" && type == "checkbox") {
+                    node->content.width = 13.0f;
+                    node->content.height = 13.0f;
+                } else if (tag == "input" && type == "radio") {
+                    node->content.width = 13.0f;
+                    node->content.height = 13.0f;
+                } else if (tag == "button" || (tag == "input" && type == "submit")) {
+                    if (width_auto) {
+                        std::string label = el->get_attribute("value");
+                        if (label.empty())
+                            label = tag;
+                        node->content.width = static_cast<f32>(label.size()) * 7.0f + 20.0f;
+                    }
+                    if (node->content.height == 0)
+                        node->content.height = font_size + 8.0f;
+                } else if (tag == "select") {
+                    if (width_auto) {
+                        std::string val = el->get_attribute("value");
+                        f32 tw = static_cast<f32>(val.size()) * 7.0f + 30.0f;
+                        node->content.width = std::max(tw, 50.0f);
+                    }
+                    if (node->content.height == 0)
+                        node->content.height = 20.0f;
+                } else if (tag == "textarea") {
+                    if (width_auto) {
+                        std::string cols_attr = el->get_attribute("cols");
+                        int cols = 20;
+                        if (!cols_attr.empty()) {
+                            char *end = nullptr;
+                            long c = std::strtol(cols_attr.c_str(), &end, 10);
+                            if (end != cols_attr.c_str() && c > 0)
+                                cols = static_cast<int>(c);
+                        }
+                        node->content.width = static_cast<f32>(cols) * 8.0f;
+                    }
+                    if (node->content.height == 0) {
+                        std::string rows_attr = el->get_attribute("rows");
+                        int rows = 2;
+                        if (!rows_attr.empty()) {
+                            char *end = nullptr;
+                            long r = std::strtol(rows_attr.c_str(), &end, 10);
+                            if (end != rows_attr.c_str() && r > 0)
+                                rows = static_cast<int>(r);
+                        }
+                        node->content.height = static_cast<f32>(rows) * font_size;
+                    }
+                }
+            }
         }
 
         auto *float_val = node->style().get("float");
