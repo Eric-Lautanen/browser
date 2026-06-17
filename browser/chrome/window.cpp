@@ -248,6 +248,9 @@ namespace browser {
             renderer_->end_textured();
             render_find_bar();
             render_page();
+            if (chrome_.show_bookmarks_dropdown) {
+                render_bookmarks_dropdown();
+            }
             if (chrome_.show_settings) {
                 render_settings();
             }
@@ -330,6 +333,9 @@ namespace browser {
 
             // render_page() handles both compositor and old paths internally
             render_page();
+            if (chrome_.show_bookmarks_dropdown) {
+                render_bookmarks_dropdown();
+            }
             if (chrome_.show_settings) {
                 render_settings();
             }
@@ -457,7 +463,6 @@ namespace browser {
         render_address_bar();
         render_download_button();
         render_bookmark();
-        render_bookmarks_dropdown();
         render_menu_button();
         if (chrome_.show_menu)
             render_menu();
