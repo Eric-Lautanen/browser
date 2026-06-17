@@ -49,6 +49,10 @@ namespace browser::js {
         u32 threshold() const { return threshold_; }
         u32 object_count() const { return (u32)objects_.size(); }
         u32 function_count() const { return (u32)functions_.size(); }
+        u32 total_collected() const { return total_collected_; }
+        u32 last_collected() const { return last_collected_; }
+        f32 last_pause_ms() const { return last_pause_ms_; }
+        u32 cycle_count() const { return cycle_count_; }
         GCJSObject *lookup_object(JSObject *obj) {
             auto it = obj_map_.find(obj);
             return it != obj_map_.end() ? it->second : nullptr;
@@ -63,6 +67,10 @@ namespace browser::js {
         std::vector<GCJSFunction *> functions_;
         u32 allocated_ = 0;
         u32 threshold_ = 1024 * 1024;
+        u32 total_collected_ = 0;
+        u32 last_collected_ = 0;
+        f32 last_pause_ms_ = 0;
+        u32 cycle_count_ = 0;
         void mark_roots(const std::vector<JSValue *> &roots);
         void sweep();
         std::unordered_map<JSObject *, GCJSObject *> obj_map_;

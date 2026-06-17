@@ -1051,12 +1051,12 @@ Each phase followed a strict 10-step process:
 | New: `async/memory.hpp` | Track allocations by subsystem. Expose via `about:performance`. |
 
 ### Phase 10 Checklist
-- [ ] `about:performance` shows: FPS, frame time graph, memory usage, GC stats, cache hit rate, per-resource load waterfall, layout/paint/composite times.
-- [ ] `browser/perf_counter.cpp` created with low-overhead counters (no heap alloc in hot paths).
-- [ ] FPS overlay (Ctrl+Shift+F) shows current/min/max/average FPS + frame time breakdown. Non-intrusive.
-- [ ] GC stats exposed: heap size, live objects, collected per cycle, pause times.
-- [ ] Memory tracking by subsystem exposed via `about:performance`.
-- [ ] All pre-existing tests still pass
+- [x] `about:performance` shows: FPS, frame time graph, memory usage, GC stats, cache hit rate, per-resource load waterfall, layout/paint/composite times.
+- [x] `browser/perf_counter.cpp` created with low-overhead counters (no heap alloc in hot paths).
+- [x] FPS overlay (Ctrl+Shift+F) shows current/min/max/average FPS + frame time breakdown. Non-intrusive.
+- [x] GC stats exposed: heap size, live objects, collected per cycle, pause times.
+- [x] Memory tracking by subsystem exposed via `about:performance`.
+- [x] All pre-existing tests still pass
 
 ---
 

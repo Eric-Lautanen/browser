@@ -326,6 +326,10 @@ namespace browser {
     }
 
     void BrowserWindow::handle_key_down(const platform::Event &e) {
+        if (e.key == platform::KeyCode::F && chrome_.ctrl_down && chrome_.shift_down) {
+            renderer_->toggle_fps_overlay();
+            return;
+        }
         if (e.key == platform::KeyCode::T && chrome_.ctrl_down) {
             new_tab();
             return;

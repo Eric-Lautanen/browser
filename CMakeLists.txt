@@ -323,6 +323,7 @@ add_library(browser_lib STATIC
     browser/history.cpp
     browser/bookmarks.cpp
     browser/telemetry.cpp
+    browser/perf_counter.cpp
     browser/settings.cpp
     browser/browser_window.hpp
     browser/history.hpp
@@ -334,7 +335,7 @@ add_library(browser_lib STATIC
     browser/chrome/window.hpp
 )
 target_include_directories(browser_lib PUBLIC .)
-target_link_libraries(browser_lib net platform render js html image)
+target_link_libraries(browser_lib net platform render js html image psapi)
 
 # --- Test Runner ---
 add_executable(test_runner

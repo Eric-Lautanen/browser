@@ -9,10 +9,12 @@
 #include "../../platform/window_win32.hpp"
 #include "../bookmarks.hpp"
 #include "../history.hpp"
+#include "../perf_counter.hpp"
 #include "../settings.hpp"
 #include "../telemetry.hpp"
 
 #include <commctrl.h>
+#include <psapi.h>
 #include <windows.h>
 
 namespace browser {
@@ -174,6 +176,20 @@ namespace browser {
     void BrowserWindow::run() {
         window_->show();
 
+        LARGE_INTEGER qpc_freq;
+        QueryPerformanceFrequency(&qpc_freq);
+        f32 qpc_to_ms = 1000.0f / (f32)qpc_freq.QuadPart;
+
+        LARGE_INTEGER frame_start, frame_end;
+        LARGE_INTEGER events_start, events_end;
+        LARGE_INTEGER gpu_start, gpu_end;
+
+        auto elapsed_qpc_ms = [&](LARGE_INTEGER start, LARGE_INTEGER end) -> f32 {
+            return (f32)(end.QuadPart - start.QuadPart) * qpc_to_ms;
+        };
+
+        QueryPerformanceCounter(&frame_start);
+
         // Initial render
         {
             renderer_->begin_frame();
@@ -189,21 +205,29 @@ namespace browser {
             window_->swap_buffers();
         }
 
+        QueryPerformanceCounter(&frame_end);
+        PerfCounters::instance().record_frame(elapsed_qpc_ms(frame_start, frame_end), 0, 0, 0, 0, 0);
+
         // Event loop: wait on compositor frame and window messages
         HANDLE wait_handles[] = {compositor_->frame_ready_event()};
 
         while (!window_->should_close()) {
+            QueryPerformanceCounter(&frame_start);
+
             // 1. Wait for any signal (messages, compositor frame, timers)
             DWORD wait = MsgWaitForMultipleObjectsEx(
                 ARRAYSIZE(wait_handles), wait_handles, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
             (void)wait;
 
             // 2. Process pending Windows messages (non-blocking drain)
+            QueryPerformanceCounter(&events_start);
             MSG msg;
             while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
                 TranslateMessage(&msg);
                 DispatchMessage(&msg);
             }
+            QueryPerformanceCounter(&events_end);
+            f32 events_ms = elapsed_qpc_ms(events_start, events_end);
 
             if (window_->should_close())
                 break;
@@ -233,8 +257,63 @@ namespace browser {
             if (chrome_.show_settings) {
                 render_settings();
             }
+
+            // Draw FPS overlay text inside the current frame (before end_frame flushes)
+            {
+                auto &pc = PerfCounters::instance();
+                if (renderer_->fps_overlay_visible()) {
+                    char fps_text[256];
+                    snprintf(fps_text,
+                             sizeof(fps_text),
+                             "FPS: %.1f | min: %.1f | max: %.1f | avg: %.1f",
+                             (double)pc.current_fps.load(),
+                             (double)pc.min_fps.load(),
+                             (double)pc.max_fps.load(),
+                             (double)pc.avg_fps.load());
+                    char breakdown_text[256];
+                    snprintf(breakdown_text,
+                             sizeof(breakdown_text),
+                             "E:%.2f L:%.2f P:%.2f C:%.2f G:%.2f ms",
+                             (double)pc.events_time_ms.load(),
+                             (double)pc.layout_time_ms.load(),
+                             (double)pc.paint_time_ms.load(),
+                             (double)pc.composite_time_ms.load(),
+                             (double)pc.gpu_time_ms.load());
+                    f32 ox = (f32)viewport_width_ - 228.0f;
+                    f32 oy = 10.0f;
+                    text_renderer_->render_text(
+                        renderer_.get(), fps_text, ox + 6, oy + 2, {1.0f, 1.0f, 1.0f, 1.0f}, 13);
+                    text_renderer_->render_text(
+                        renderer_.get(), breakdown_text, ox + 6, oy + 20, {0.8f, 0.9f, 1.0f, 1.0f}, 11);
+                }
+            }
+
+            // end_frame includes FPS overlay background draw and flush
             renderer_->end_frame();
+
+            // Record performance counters and push to renderer for next frame
+            auto &pc = PerfCounters::instance();
+            QueryPerformanceCounter(&gpu_start);
             window_->swap_buffers();
+            QueryPerformanceCounter(&gpu_end);
+
+            QueryPerformanceCounter(&frame_end);
+
+            // Measure segments
+            f32 dt_ms = elapsed_qpc_ms(frame_start, frame_end);
+            f32 gpu_ms = elapsed_qpc_ms(gpu_start, gpu_end);
+
+            pc.record_frame(dt_ms, events_ms, 0, 0, 0, gpu_ms);
+
+            renderer_->set_fps_data(pc.current_fps.load(),
+                                    pc.min_fps.load(),
+                                    pc.max_fps.load(),
+                                    pc.avg_fps.load(),
+                                    pc.events_time_ms.load(),
+                                    pc.layout_time_ms.load(),
+                                    pc.paint_time_ms.load(),
+                                    pc.composite_time_ms.load(),
+                                    pc.gpu_time_ms.load());
         }
     }
 

@@ -1,8 +1,17 @@
 #include "gc.hpp"
 
+#include <windows.h>
+
 namespace browser::js {
 
     GCHeap::GCHeap() {}
+
+    static f32 elapsed_ms_from(LARGE_INTEGER start) {
+        LARGE_INTEGER now, freq;
+        QueryPerformanceCounter(&now);
+        QueryPerformanceFrequency(&freq);
+        return (f32)((f64)(now.QuadPart - start.QuadPart) * 1000.0 / (f64)freq.QuadPart);
+    }
 
     GCHeap::~GCHeap() {
         for (auto *o : objects_) delete o;
@@ -26,10 +35,18 @@ namespace browser::js {
     }
 
     void GCHeap::collect(const std::vector<JSValue *> &roots) {
+        LARGE_INTEGER start;
+        QueryPerformanceCounter(&start);
         for (auto *obj : objects_) obj->unmark();
         for (auto *fn : functions_) fn->unmark();
         mark_roots(roots);
+        u32 pre_count = (u32)(objects_.size() + functions_.size());
         sweep();
+        u32 freed = pre_count - (u32)(objects_.size() + functions_.size());
+        cycle_count_++;
+        last_collected_ = freed;
+        total_collected_ += freed;
+        last_pause_ms_ = elapsed_ms_from(start);
     }
 
     void GCHeap::mark_roots(const std::vector<JSValue *> &roots) {
