@@ -48,8 +48,9 @@ endif()
 
 # Network Library
 add_library(net STATIC
-    net/socket.cpp
-    net/socket_win32.cpp
+    net/socket/types.cpp
+    net/socket/tcp.cpp
+    net/socket/udp.cpp
     net/dns.cpp
     net/connection.cpp
     net/url.cpp

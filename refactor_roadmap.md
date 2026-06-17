@@ -331,13 +331,14 @@ Validate that `engine.cpp` is now under ~600 lines.
 | File | Contents |
 |------|----------|
 | `net/socket/types.hpp/cpp` | `IPv4Address`, `IPv6Address` + `to_string`, `from_string`, operators. |
+| `net/socket/socket_win32.hpp` | `Win32TCPSocket`, `Win32UDPSocket` class declarations. |
 | `net/socket/tcp.cpp` | `Win32TCPSocket` — `connect`, `connect_ip`, `send`, `send_all`, `receive`, `receive_all`, `set_read_timeout`, async overlapped methods. |
 | `net/socket/udp.cpp` | `Win32UDPSocket` — `send`, `receive`, `set_read_timeout`, async overlapped methods. |
 
 ### Phase R9 Checklist
-- [ ] TCP + UDP split, no shared mutable state
-- [ ] All net_test tests pass
-- [ ] Committed and pushed
+- [x] TCP + UDP split, no shared mutable state
+- [x] All net_test tests pass
+- [x] Committed and pushed
 
 ---
 
