@@ -25,6 +25,13 @@ void Parser::handle_after_body(const Token& token) {
 }
 
 void Parser::handle_after_after_body(const Token& token) {
+    if (token.index() == 3) {
+        char32_t c = std::get<CharacterToken>(token).character;
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r') {
+            handle_in_body(token);
+            return;
+        }
+    }
     if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 1) {
         auto& tag = std::get<TagToken>(token);

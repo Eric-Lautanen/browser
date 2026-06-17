@@ -9,21 +9,21 @@
 
 ### Core Structure
 - [ ] **`index`** — Full comprehensive test page: DOCTYPE, html, head, body, meta charset, viewport, title, link favicon
-- [ ] **`html_basic_structure.html`** — Fundamental document with html/head/body
+- [x] **`html_basic_structure.html`** — Fundamental document with html/head/body
 
 ### Headings (`html_basic_structure.html` covers this, but integration test covers all h1-h6)
 - [ ] `index.html` `<h1>` through `<h6>` all six heading levels
 
 ### Text & Inline Elements
 - [ ] `index.html` `<strong>`, `<em>`, `<code>`, `<a>` inline elements
-- [ ] **`html_text_formatting.html`** — `<u>`, `<s>`, `<sub>`, `<sup>`, `<mark>` formatting
-- [ ] **`html_semantic_inline.html`** — `<abbr>`, `<kbd>`, `<var>`, `<samp>`, `<cite>`, `<time>`
+- [x] **`html_text_formatting.html`** — `<u>`, `<s>`, `<sub>`, `<sup>`, `<mark>` formatting
+- [x] **`html_semantic_inline.html`** — `<abbr>`, `<kbd>`, `<var>`, `<samp>`, `<cite>`, `<time>`
 - [ ] `index.html` HTML entities: `&amp;`, `&lt;`, `&gt;`, `&quot;`, `&copy;`, `&mdash;`, `&nbsp;`
 - [ ] `index.html` Non-breaking space `&nbsp;` rendered inline
 
 ### Media
 - [ ] `index.html` `<img>` with src, alt, width, height attributes
-- [ ] **`html_semantic_structural.html`** — `<figure>` / `<figcaption>` container
+- [x] **`html_semantic_structural.html`** — `<figure>` / `<figcaption>` container
 - [ ] `index.html` `<picture>` / `<source>` with `srcset` / `media` attributes
 - [ ] `index.html` Inline `<svg>` with `<rect>`, `<circle>`, `<polygon>`, `<text>`
 - [ ] `index.html` `<link>` with `data:` URI href
@@ -31,7 +31,7 @@
 ### Lists
 - [ ] `index.html` Nested `<ul>` / `<li>` unordered lists
 - [ ] `index.html` Nested `<ol>` / `<li>` ordered lists
-- [ ] **`html_definition_list.html`** — `<dl>`, `<dt>`, `<dd>` definition lists
+- [x] **`html_definition_list.html`** — `<dl>`, `<dt>`, `<dd>` definition lists
 
 ### Tables
 - [ ] `index.html` `<table>` with `<thead>`, `<tbody>`, `<tfoot>`
@@ -53,21 +53,21 @@
 - [ ] `index.html` `<input type="date">` with value
 - [ ] `index.html` `<input type="range">` with min/max/value
 - [ ] `index.html` `<input type="color">` with value
-- [ ] **`html_datalist_progress_meter.html`** — `<datalist>` with options
-- [ ] **`html_datalist_progress_meter.html`** — `<progress>` with value/max
-- [ ] **`html_datalist_progress_meter.html`** — `<meter>` with low/high/optimum
+- [x] **`html_datalist_progress_meter.html`** — `<datalist>` with options
+- [x] **`html_datalist_progress_meter.html`** — `<progress>` with value/max
+- [x] **`html_datalist_progress_meter.html`** — `<meter>` with low/high/optimum
 - [ ] `index.html` `<button type="submit">`, `<button type="reset">`
 - [ ] `index.html` `<label>` with `for` attribute
 - [ ] `index.html` `data-*` attributes (`data-testid`, `data-custom-attr`)
 
 ### Semantic / Structural
-- [ ] **`html_semantic_structural.html`** — `<nav>`, `<main>`, `<article>`, `<section>`, `<aside>`
+- [x] **`html_semantic_structural.html`** — `<nav>`, `<main>`, `<article>`, `<section>`, `<aside>`
 - [ ] `index.html` `<article>` with nested `<header>` and `<footer>`
 - [ ] `index.html` `<section>` element
 - [ ] `index.html` `<aside>` element
-- [ ] **`html_semantic_structural.html`** — `<figure>` / `<figcaption>`
-- [ ] **`html_details_summary.html`** — `<details>` / `<summary>` elements
-- [ ] **`html_details_summary.html`** — `<details open>` attribute
+- [x] **`html_semantic_structural.html`** — `<figure>` / `<figcaption>`
+- [x] **`html_details_summary.html`** — `<details>` / `<summary>` elements
+- [x] **`html_details_summary.html`** — `<details open>` attribute
 - [ ] `index.html` `<blockquote>` element
 - [ ] `index.html` `<figure>` / `<figcaption>` in integration context
 - [ ] `index.html` `<pre>` / `<code>` block
@@ -76,12 +76,12 @@
 ### Attributes
 - [ ] `index.html` `id` attribute on headings (e.g., `id="headings"`)
 - [ ] `index.html` `class` attribute on elements
-- [ ] **`html_tabindex_aria.html`** — `tabindex="0"` and `tabindex="-1"`
-- [ ] **`html_tabindex_aria.html`** — `role` attribute (ARIA)
-- [ ] **`html_tabindex_aria.html`** — `aria-label` attribute
-- [ ] **`html_tabindex_aria.html`** — `aria-hidden` attribute
-- [ ] **`html_tabindex_aria.html`** — `lang` attribute (`lang="fr"`, `lang="ja"`, `lang="ar"`)
-- [ ] **`html_tabindex_aria.html`** — `dir` attribute (`dir="rtl"`)
+- [x] **`html_tabindex_aria.html`** — `tabindex="0"` and `tabindex="-1"`
+- [x] **`html_tabindex_aria.html`** — `role` attribute (ARIA)
+- [x] **`html_tabindex_aria.html`** — `aria-label` attribute
+- [x] **`html_tabindex_aria.html`** — `aria-hidden` attribute
+- [x] **`html_tabindex_aria.html`** — `lang` attribute (`lang="fr"`, `lang="ja"`, `lang="ar"`)
+- [x] **`html_tabindex_aria.html`** — `dir` attribute (`dir="rtl"`)
 - [ ] `index.html` `lang="ja"` + `data-label="日本語"` on same element
 
 ### Parser Stress
@@ -165,7 +165,7 @@
 
 ### Inline Layout
 - [ ] `index.html` `<strong>` inline, `<em>` inline, `<code>` inline
-- [ ] **`html_text_formatting.html`** — `<u>` inline, `<s>` inline, `<sub>` inline, `<sup>` inline, `<mark>` inline
+- [x] **`html_text_formatting.html`** — `<u>` inline, `<s>` inline, `<sub>` inline, `<sup>` inline, `<mark>` inline
 - [ ] `index.html` `<abbr>`, `<kbd>`, `<var>`, `<samp>`, `<cite>` inline flow
 - [ ] `index.html` `<img>` inline replaced element
 - [ ] `index.html` `<br>` line break within `<p>`
@@ -173,7 +173,7 @@
 ### Lists
 - [ ] `index.html` Nested `<ul>` indentation
 - [ ] `index.html` Nested `<ol>` indentation
-- [ ] **`html_definition_list.html`** — `<dl>` block, `<dt>` block, `<dd>` indented
+- [x] **`html_definition_list.html`** — `<dl>` block, `<dt>` block, `<dd>` indented
 - [ ] `index.html` `<li>` with nested `<ul>` as child
 
 ### Tables
@@ -188,8 +188,8 @@
 - [ ] `index.html` `<textarea>` inline-block with rows/cols sizing
 - [ ] `index.html` `<select>` inline-block with options
 - [ ] `index.html` `<button>` inline-block with text
-- [ ] **`html_datalist_progress_meter.html`** — `<progress>` inline-block
-- [ ] **`html_datalist_progress_meter.html`** — `<meter>` inline-block
+- [x] **`html_datalist_progress_meter.html`** — `<progress>` inline-block
+- [x] **`html_datalist_progress_meter.html`** — `<meter>` inline-block
 
 ### Positioning
 - [ ] `index.html` `position: relative` on `.pos-container`
@@ -234,13 +234,13 @@
 - [ ] `index.html` `width: calc(100% - 4em)` resolves to container width minus 4em
 
 ### Semantic Elements Layout
-- [ ] **`html_semantic_structural.html`** — `<nav>` navigational block
-- [ ] **`html_semantic_structural.html`** — `<main>` main content block
-- [ ] **`html_semantic_structural.html`** — `<article>` self-contained content block
-- [ ] **`html_semantic_structural.html`** — `<section>` thematic grouping block
-- [ ] **`html_semantic_structural.html`** — `<aside>` sidebar block
-- [ ] **`html_semantic_structural.html`** — `<header>`/introductory block
-- [ ] **`html_semantic_structural.html`** — `<footer>` footer block
+- [x] **`html_semantic_structural.html`** — `<nav>` navigational block
+- [x] **`html_semantic_structural.html`** — `<main>` main content block
+- [x] **`html_semantic_structural.html`** — `<article>` self-contained content block
+- [x] **`html_semantic_structural.html`** — `<section>` thematic grouping block
+- [x] **`html_semantic_structural.html`** — `<aside>` sidebar block
+- [x] **`html_semantic_structural.html`** — `<header>`/introductory block
+- [x] **`html_semantic_structural.html`** — `<footer>` footer block
 - [ ] `index.html` `<details>` / `<summary>` elements
 - [ ] `index.html` Nested `<header>` inside `<article>`
 
@@ -274,8 +274,8 @@
 - [ ] `index.html` `<mark>` highlighted background
 - [ ] `index.html` `<strong>` bold text
 - [ ] `index.html` `<em>` italic text
-- [ ] **`html_text_formatting.html`** — `<u>` underline rendering
-- [ ] **`html_text_formatting.html`** — `<s>` strikethrough rendering
+- [x] **`html_text_formatting.html`** — `<u>` underline rendering
+- [x] **`html_text_formatting.html`** — `<s>` strikethrough rendering
 
 ### Color
 - [ ] `index.html` `a { color: #00e }` link color

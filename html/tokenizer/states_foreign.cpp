@@ -2,7 +2,7 @@
 
 namespace browser::html {
 
-    void Tokenizer::process_foreign_state(char c) {
+    void Tokenizer::process_foreign_state(char32_t c) {
         switch (state_) {
             case State::CDATA_SECTION:
                 if (c == ']') {
@@ -11,7 +11,7 @@ namespace browser::html {
                     emit_eof();
                     break;
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                 }
                 break;
             case State::CDATA_SECTION_BRACKET:

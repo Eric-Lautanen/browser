@@ -1,636 +1,601 @@
-{
-  "source": "tools/tests/html_table.html",
-  "encoding": "UTF-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "html_table.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Table Test",
-                  "data_normalized": "Table Test"
+                {
+                  "type": "text",
+                  "data": "Table Test",
+                  "data_normalized": "Table Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "table",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
               "children": [
-                {
-                  "type": "element",
-                  "tag": "caption",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "caption",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "\nComplex Table Tes",
-                      "data_normalized": " Complex Table Tes"
+                    {
+                      "type": "text",
+                      "data": "\nComplex Table Tes",
+                      "data_normalized": " Complex Table Tes"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "t",
-                  "data_normalized": "t"
+                {
+                  "type": "text",
+                  "data": "t",
+                  "data_normalized": "t"
                 },
-                {
-                  "type": "element",
-                  "tag": "thead",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "thead",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     },
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "th",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "th",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nHeader ",
-                              "data_normalized": " Header"
+                            {
+                              "type": "text",
+                              "data": "\nHeader ",
+                              "data_normalized": " Header"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "1",
-                          "data_normalized": "1"
+                        {
+                          "type": "text",
+                          "data": "1",
+                          "data_normalized": "1"
                         },
-                        {
-                          "type": "element",
-                          "tag": "th",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "th",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nHeader ",
-                              "data_normalized": " Header"
+                            {
+                              "type": "text",
+                              "data": "\nHeader ",
+                              "data_normalized": " Header"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                        {
+                          "type": "text",
+                          "data": "2",
+                          "data_normalized": "2"
                         },
-                        {
-                          "type": "element",
-                          "tag": "th",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "th",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nHeader ",
-                              "data_normalized": " Header"
+                            {
+                              "type": "text",
+                              "data": "\nHeader ",
+                              "data_normalized": " Header"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                        {
+                          "type": "text",
+                          "data": "3",
+                          "data_normalized": "3"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "tbody",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     },
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                            "rowspan": "2"
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {
+                            "rowspan": "2"
+                          },
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nRowspan ",
-                              "data_normalized": " Rowspan"
+                            {
+                              "type": "text",
+                              "data": "\nRowspan ",
+                              "data_normalized": " Rowspan"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                        {
+                          "type": "text",
+                          "data": "2",
+                          "data_normalized": "2"
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nCell 1,",
-                              "data_normalized": " Cell 1,"
+                            {
+                              "type": "text",
+                              "data": "\nCell 1,",
+                              "data_normalized": " Cell 1,"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                        {
+                          "type": "text",
+                          "data": "2",
+                          "data_normalized": "2"
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nCell 1,",
-                              "data_normalized": " Cell 1,"
+                            {
+                              "type": "text",
+                              "data": "\nCell 1,",
+                              "data_normalized": " Cell 1,"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                        {
+                          "type": "text",
+                          "data": "3",
+                          "data_normalized": "3"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     },
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                            "colspan": "2"
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {
+                            "colspan": "2"
+                          },
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nColspan ",
-                              "data_normalized": " Colspan"
+                            {
+                              "type": "text",
+                              "data": "\nColspan ",
+                              "data_normalized": " Colspan"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                        {
+                          "type": "text",
+                          "data": "2",
+                          "data_normalized": "2"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     },
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nCell 3,",
-                              "data_normalized": " Cell 3,"
+                            {
+                              "type": "text",
+                              "data": "\nCell 3,",
+                              "data_normalized": " Cell 3,"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "1",
-                          "data_normalized": "1"
+                        {
+                          "type": "text",
+                          "data": "1",
+                          "data_normalized": "1"
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nCell 3,",
-                              "data_normalized": " Cell 3,"
+                            {
+                              "type": "text",
+                              "data": "\nCell 3,",
+                              "data_normalized": " Cell 3,"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                        {
+                          "type": "text",
+                          "data": "2",
+                          "data_normalized": "2"
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nCell 3,",
-                              "data_normalized": " Cell 3,"
+                            {
+                              "type": "text",
+                              "data": "\nCell 3,",
+                              "data_normalized": " Cell 3,"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                        {
+                          "type": "text",
+                          "data": "3",
+                          "data_normalized": "3"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "tfoot",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "tfoot",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     },
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nFooter ",
-                              "data_normalized": " Footer"
+                            {
+                              "type": "text",
+                              "data": "\nFooter ",
+                              "data_normalized": " Footer"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "1",
-                          "data_normalized": "1"
+                        {
+                          "type": "text",
+                          "data": "1",
+                          "data_normalized": "1"
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nFooter ",
-                              "data_normalized": " Footer"
+                            {
+                              "type": "text",
+                              "data": "\nFooter ",
+                              "data_normalized": " Footer"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                        {
+                          "type": "text",
+                          "data": "2",
+                          "data_normalized": "2"
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\nFooter ",
-                              "data_normalized": " Footer"
+                            {
+                              "type": "text",
+                              "data": "\nFooter ",
+                              "data_normalized": " Footer"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                        {
+                          "type": "text",
+                          "data": "3",
+                          "data_normalized": "3"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "table",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
               "children": [
-                {
-                  "type": "element",
-                  "tag": "caption",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "caption",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "\nNested Tabl",
-                      "data_normalized": " Nested Tabl"
+                    {
+                      "type": "text",
+                      "data": "\nNested Tabl",
+                      "data_normalized": " Nested Tabl"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "e",
-                  "data_normalized": "e"
+                {
+                  "type": "text",
+                  "data": "e",
+                  "data_normalized": "e"
                 },
-                {
-                  "type": "element",
-                  "tag": "tbody",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": "\n\n",
-                              "data_normalized": ""
+                            {
+                              "type": "text",
+                              "data": "\n\n",
+                              "data_normalized": ""
                             },
-                            {
-                              "type": "element",
-                              "tag": "table",
-                              "attributes": {
-                              },
+                            {
+                              "type": "element",
+                              "tag": "table",
+                              "attributes": {},
                               "children": [
-                                {
-                                  "type": "element",
-                                  "tag": "tbody",
-                                  "attributes": {
-                                  },
+                                {
+                                  "type": "element",
+                                  "tag": "tbody",
+                                  "attributes": {},
                                   "children": [
-                                    {
-                                      "type": "element",
-                                      "tag": "tr",
-                                      "attributes": {
-                                      },
+                                    {
+                                      "type": "element",
+                                      "tag": "tr",
+                                      "attributes": {},
                                       "children": [
-                                        {
-                                          "type": "text",
-                                          "data": "\n",
-                                          "data_normalized": ""
+                                        {
+                                          "type": "text",
+                                          "data": "\n",
+                                          "data_normalized": ""
                                         },
-                                        {
-                                          "type": "element",
-                                          "tag": "td",
-                                          "attributes": {
-                                          },
+                                        {
+                                          "type": "element",
+                                          "tag": "td",
+                                          "attributes": {},
                                           "children": [
-                                            {
-                                              "type": "text",
-                                              "data": "\nNested cell ",
-                                              "data_normalized": " Nested cell"
+                                            {
+                                              "type": "text",
+                                              "data": "\nNested cell ",
+                                              "data_normalized": " Nested cell"
                                             }
-                                          ]
+                                          ]
                                         },
-                                        {
-                                          "type": "text",
-                                          "data": "1",
-                                          "data_normalized": "1"
+                                        {
+                                          "type": "text",
+                                          "data": "1",
+                                          "data_normalized": "1"
                                         },
-                                        {
-                                          "type": "element",
-                                          "tag": "td",
-                                          "attributes": {
-                                          },
+                                        {
+                                          "type": "element",
+                                          "tag": "td",
+                                          "attributes": {},
                                           "children": [
-                                            {
-                                              "type": "text",
-                                              "data": "\nNested cell ",
-                                              "data_normalized": " Nested cell"
+                                            {
+                                              "type": "text",
+                                              "data": "\nNested cell ",
+                                              "data_normalized": " Nested cell"
                                             }
-                                          ]
+                                          ]
                                         },
-                                        {
-                                          "type": "text",
-                                          "data": "2",
-                                          "data_normalized": "2"
+                                        {
+                                          "type": "text",
+                                          "data": "2",
+                                          "data_normalized": "2"
                                         }
-                                      ]
+                                      ]
                                     },
-                                    {
-                                      "type": "text",
-                                      "data": "\n",
-                                      "data_normalized": ""
+                                    {
+                                      "type": "text",
+                                      "data": "\n",
+                                      "data_normalized": ""
                                     }
-                                  ]
+                                  ]
                                 }
-                              ]
+                              ]
                             },
-                            {
-                              "type": "text",
-                              "data": "\n",
-                              "data_normalized": ""
+                            {
+                              "type": "text",
+                              "data": "\n",
+                              "data_normalized": ""
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     }
-                  ]
+                  ]
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

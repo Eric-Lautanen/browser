@@ -1,310 +1,294 @@
-{
-  "source": "tools/tests/html_media.html",
-  "encoding": "UTF-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "html_media.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Media Test",
-                  "data_normalized": "Media Test"
+                {
+                  "type": "text",
+                  "data": "Media Test",
+                  "data_normalized": "Media Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "img",
-              "attributes": {
-                "srcset": "photo-320.jpg 320w, photo-640.jpg 640w, photo-1280.jpg 1280w",
-                "sizes": "(max-width: 600px) 100vw, 640px",
-                "height": "480",
-                "width": "640",
-                "alt": "A photo",
-                "src": "photo.jpg"
-              },
+            {
+              "type": "element",
+              "tag": "img",
+              "attributes": {
+                "alt": "A photo",
+                "height": "480",
+                "sizes": "(max-width: 600px) 100vw, 640px",
+                "src": "photo.jpg",
+                "srcset": "photo-320.jpg 320w, photo-640.jpg 640w, photo-1280.jpg 1280w",
+                "width": "640"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "picture",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "picture",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "source",
-                  "attributes": {
-                    "type": "image/avif",
-                    "srcset": "image.avif"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "srcset": "image.avif",
+                    "type": "image/avif"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "source",
-                  "attributes": {
-                    "type": "image/webp",
-                    "srcset": "image.webp"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "srcset": "image.webp",
+                    "type": "image/webp"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "img",
-                  "attributes": {
-                    "alt": "Fallback image",
-                    "src": "image.jpg"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "img",
+                  "attributes": {
+                    "alt": "Fallback image",
+                    "src": "image.jpg"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "video",
-              "attributes": {
-                "height": "360",
-                "width": "640",
-                "controls": ""
-              },
+            {
+              "type": "element",
+              "tag": "video",
+              "attributes": {
+                "controls": "",
+                "height": "360",
+                "width": "640"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "source",
-                  "attributes": {
-                    "type": "video/mp4",
-                    "src": "movie.mp4"
-                  },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "movie.mp4",
+                    "type": "video/mp4"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "movie.webm",
+                    "type": "video/webm"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "track",
+                  "attributes": {
+                    "kind": "subtitles",
+                    "label": "English",
+                    "src": "subtitles_en.vtt",
+                    "srclang": "en"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "source",
-                  "attributes": {
-                    "type": "video/webm",
-                    "src": "movie.webm"
-                  },
-                  "children": [
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "track",
-                  "attributes": {
-                    "label": "English",
-                    "kind": "subtitles",
-                    "srclang": "en",
-                    "src": "subtitles_en.vtt"
-                  },
-                  "children": [
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
-                  "children": [
-                    {
-                      "type": "text",
-                      "data": "Your browser does not support video.",
-                      "data_normalized": "Your browser does not support video."
+                    {
+                      "type": "text",
+                      "data": "Your browser does not support video.",
+                      "data_normalized": "Your browser does not support video."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "audio",
-              "attributes": {
-                "controls": ""
-              },
+            {
+              "type": "element",
+              "tag": "audio",
+              "attributes": {
+                "controls": ""
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "source",
-                  "attributes": {
-                    "type": "audio/mpeg",
-                    "src": "audio.mp3"
-                  },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "audio.mp3",
+                    "type": "audio/mpeg"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "audio.ogg",
+                    "type": "audio/ogg"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "source",
-                  "attributes": {
-                    "type": "audio/ogg",
-                    "src": "audio.ogg"
-                  },
-                  "children": [
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
-                  "children": [
-                    {
-                      "type": "text",
-                      "data": "Your browser does not support audio.",
-                      "data_normalized": "Your browser does not support audio."
+                    {
+                      "type": "text",
+                      "data": "Your browser does not support audio.",
+                      "data_normalized": "Your browser does not support audio."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

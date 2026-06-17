@@ -1,238 +1,229 @@
-{
-  "source": "tools/tests/html_utf8.html",
-  "encoding": "UTF-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "html_utf8.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "meta",
-              "attributes": {
-                "charset": "UTF-8"
-              },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "UTF-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "UTF-8 Content Test",
-                  "data_normalized": "UTF-8 Content Test"
+                {
+                  "type": "text",
+                  "data": "UTF-8 Content Test",
+                  "data_normalized": "UTF-8 Content Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "lang": "ja"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "lang": "ja"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Japanese: æ¡ãè¦ã",
-                  "data_normalized": "Japanese: æ¡ãè¦ã"
+                {
+                  "type": "text",
+                  "data": "Japanese: æ¡ãè¦ã",
+                  "data_normalized": "Japanese: æ¡ãè¦ã"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "dir": "rtl",
-                "lang": "ar"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "dir": "rtl",
+                "lang": "ar"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Arabic: Ø§ÙØ³ÙØ§Ù Ø¹ÙÙÙÙ",
-                  "data_normalized": "Arabic: Ø§ÙØ³ÙØ§Ù Ø¹ÙÙÙÙ"
+                {
+                  "type": "text",
+                  "data": "Arabic: Ø§ÙØ³ÙØ§Ù Ø¹ÙÙÙÙ",
+                  "data_normalized": "Arabic: Ø§ÙØ³ÙØ§Ù Ø¹ÙÙÙÙ"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Emoji: ð ð¦ ð",
-                  "data_normalized": "Emoji: ð ð¦ ð"
+                {
+                  "type": "text",
+                  "data": "Emoji: ð ð¦ ð",
+                  "data_normalized": "Emoji: ð ð¦ ð"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "lang": "zh"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "lang": "zh"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Chinese: ä¸­ææµè¯",
-                  "data_normalized": "Chinese: ä¸­ææµè¯"
+                {
+                  "type": "text",
+                  "data": "Chinese: ä¸­ææµè¯",
+                  "data_normalized": "Chinese: ä¸­ææµè¯"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "lang": "ko"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "lang": "ko"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Korean: íêµ­ì´ íì¤í¸",
-                  "data_normalized": "Korean: íêµ­ì´ íì¤í¸"
+                {
+                  "type": "text",
+                  "data": "Korean: íêµ­ì´ íì¤í¸",
+                  "data_normalized": "Korean: íêµ­ì´ íì¤í¸"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Mathematical: âââ«â",
-                  "data_normalized": "Mathematical: âââ«â"
+                {
+                  "type": "text",
+                  "data": "Mathematical: âââ«â",
+                  "data_normalized": "Mathematical: âââ«â"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Middle dot raw UTF-8: Â·",
-                  "data_normalized": "Middle dot raw UTF-8: Â·"
+                {
+                  "type": "text",
+                  "data": "Middle dot raw UTF-8: Â·",
+                  "data_normalized": "Middle dot raw UTF-8: Â·"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Mixed: æ¡ãè¦ã Â· ð Â· ä¸­ææµè¯ Â· íêµ­ì´ íì¤í¸ Â· âââ«â",
-                  "data_normalized": "Mixed: æ¡ãè¦ã Â· ð Â· ä¸­ææµè¯ Â· íêµ­ì´ íì¤í¸ Â· âââ«â"
+                {
+                  "type": "text",
+                  "data": "Mixed: æ¡ãè¦ã Â· ð Â· ä¸­ææµè¯ Â· íêµ­ì´ íì¤í¸ Â· âââ«â",
+                  "data_normalized": "Mixed: æ¡ãè¦ã Â· ð Â· ä¸­ææµè¯ Â· íêµ­ì´ íì¤í¸ Â· âââ«â"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

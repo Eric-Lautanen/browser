@@ -142,11 +142,23 @@ namespace browser::html {
             return;
         if (reconsume_) {
             reconsume_ = false;
-            process_char(input_[pos_ - 1]);
+            unsigned char rc = static_cast<unsigned char>(input_[pos_ - 1]);
+            if (rc < 0x80) { process_char(rc); return; }
+            auto dr = decode_utf8(reinterpret_cast<const u8*>(input_.data()) + pos_ - 1,
+                                   static_cast<u32>(input_.size()) - pos_ + 1);
+            process_char(dr.codepoint);
             return;
         }
         char c = advance();
-        process_char(c);
+        unsigned char uc = static_cast<unsigned char>(c);
+        if (uc < 0x80) {
+            process_char(uc);
+        } else {
+            auto dr = decode_utf8(reinterpret_cast<const u8*>(input_.data()) + pos_ - 1,
+                                   static_cast<u32>(input_.size()) - pos_ + 1);
+            pos_ += dr.bytes_consumed - 1;
+            process_char(dr.codepoint);
+        }
     }
 
     void Tokenizer::process_next_eof() {
@@ -159,7 +171,7 @@ namespace browser::html {
         }
     }
 
-    void Tokenizer::process_char(char c) {
+    void Tokenizer::process_char(char32_t c) {
         switch (state_) {
             case State::DATA:
                 process_data_state(c);

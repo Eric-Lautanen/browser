@@ -1,184 +1,179 @@
-{
-  "source": "tools/tests/regression_008_margin_collapse_adjacent.html",
-  "encoding": "utf-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "regression_008_margin_collapse_adjacent.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-        "lang": "en"
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "meta",
-              "attributes": {
-                "charset": "utf-8"
-              },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Regression 008: Margin Collapse Adjacent",
-                  "data_normalized": "Regression 008: Margin Collapse Adjacent"
+                {
+                  "type": "text",
+                  "data": "Regression 008: Margin Collapse Adjacent",
+                  "data_normalized": "Regression 008: Margin Collapse Adjacent"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "style",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n.parent {\n  border: 2px solid #c00;\n  margin: 10px;\n  padding: 2px;\n  background: #f5f5f5;\n}\n.a {\n  margin-bottom: 30px;\n  height: 40px;\n  background: #fdc;\n  border: 1px solid #c90;\n}\n.b {\n  margin-top: 20px;\n  height: 40px;\n  background: #cfc;\n  border: 1px solid #090;\n}\n.info {\n  margin: 10px;\n  padding: 5px;\n  background: #eef;\n  border: 1px solid #99f;\n}\n",
-                  "data_normalized": " .parent { border: 2px solid #c00; margin: 10px; padding: 2px; background: #f5f5f5; } .a { margin-bottom: 30px; height: 40px; background: #fdc; border: 1px solid #c90; } .b { margin-top: 20px; height: 40px; background: #cfc; border: 1px solid #090; } .info { margin: 10px; padding: 5px; background: #eef; border: 1px solid #99f; }"
+                {
+                  "type": "text",
+                  "data": "\n.parent {\n  border: 2px solid #c00;\n  margin: 10px;\n  padding: 2px;\n  background: #f5f5f5;\n}\n.a {\n  margin-bottom: 30px;\n  height: 40px;\n  background: #fdc;\n  border: 1px solid #c90;\n}\n.b {\n  margin-top: 20px;\n  height: 40px;\n  background: #cfc;\n  border: 1px solid #090;\n}\n.info {\n  margin: 10px;\n  padding: 5px;\n  background: #eef;\n  border: 1px solid #99f;\n}\n",
+                  "data_normalized": " .parent { border: 2px solid #c00; margin: 10px; padding: 2px; background: #f5f5f5; } .a { margin-bottom: 30px; height: 40px; background: #fdc; border: 1px solid #c90; } .b { margin-top: 20px; height: 40px; background: #cfc; border: 1px solid #090; } .info { margin: 10px; padding: 5px; background: #eef; border: 1px solid #99f; }"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "parent"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "parent"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "a"
-                  },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "a"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "margin-bottom: 30px",
-                      "data_normalized": "margin-bottom: 30px"
+                    {
+                      "type": "text",
+                      "data": "margin-bottom: 30px",
+                      "data_normalized": "margin-bottom: 30px"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                    "class": "b"
-                  },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "b"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "margin-top: 20px",
-                      "data_normalized": "margin-top: 20px"
+                    {
+                      "type": "text",
+                      "data": "margin-top: 20px",
+                      "data_normalized": "margin-top: 20px"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "info"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "info"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Margins collapse: 30px wins over 20px. Gap between boxes = 30px not 50px.",
-                  "data_normalized": "Margins collapse: 30px wins over 20px. Gap between boxes = 30px not 50px."
+                {
+                  "type": "text",
+                  "data": "Margins collapse: 30px wins over 20px. Gap between boxes = 30px not 50px.",
+                  "data_normalized": "Margins collapse: 30px wins over 20px. Gap between boxes = 30px not 50px."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

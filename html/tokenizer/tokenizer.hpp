@@ -101,13 +101,13 @@ namespace browser::html {
         std::string appropriate_end_tag_;
         bool reconsume_ = false;
 
-        void process_data_state(char c);
-        void process_rcdata_state(char c);
+        void process_data_state(char32_t c);
+        void process_rcdata_state(char32_t c);
         void process_tag_state(char c);
-        void process_foreign_state(char c);
+        void process_foreign_state(char32_t c);
         void process_char_ref_state();
 
-        void process_char(char c);
+        void process_char(char32_t c);
         void emit(const Token &token);
         void create_tag(TokenType type);
         void emit_current_tag();

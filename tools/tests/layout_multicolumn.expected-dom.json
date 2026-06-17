@@ -1,327 +1,313 @@
-{
-  "source": "tools/tests/layout_multicolumn.html",
-  "encoding": "utf-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "layout_multicolumn.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-        "lang": "en"
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "meta",
-              "attributes": {
-                "charset": "utf-8"
-              },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Layout Multicolumn",
-                  "data_normalized": "Layout Multicolumn"
+                {
+                  "type": "text",
+                  "data": "Layout Multicolumn",
+                  "data_normalized": "Layout Multicolumn"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "style",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n.col2 { column-count: 2; }\n.col3 { column-count: 3; }\n.colw { column-width: 200px; }\n.gap { column-gap: 40px; }\n.rule { column-rule: 2px solid #c00; }\n.box {\n  margin: 10px;\n  border: 1px solid #999;\n  padding: 8px;\n  background: #f9f9f9;\n}\np { margin: 0 0 8px 0; }\n",
-                  "data_normalized": " .col2 { column-count: 2; } .col3 { column-count: 3; } .colw { column-width: 200px; } .gap { column-gap: 40px; } .rule { column-rule: 2px solid #c00; } .box { margin: 10px; border: 1px solid #999; padding: 8px; background: #f9f9f9; } p { margin: 0 0 8px 0; }"
+                {
+                  "type": "text",
+                  "data": "\n.col2 { column-count: 2; }\n.col3 { column-count: 3; }\n.colw { column-width: 200px; }\n.gap { column-gap: 40px; }\n.rule { column-rule: 2px solid #c00; }\n.box {\n  margin: 10px;\n  border: 1px solid #999;\n  padding: 8px;\n  background: #f9f9f9;\n}\np { margin: 0 0 8px 0; }\n",
+                  "data_normalized": " .col2 { column-count: 2; } .col3 { column-count: 3; } .colw { column-width: 200px; } .gap { column-gap: 40px; } .rule { column-rule: 2px solid #c00; } .box { margin: 10px; border: 1px solid #999; padding: 8px; background: #f9f9f9; } p { margin: 0 0 8px 0; }"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "box col2 gap rule"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box col2 gap rule"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "h3",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "h3",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "column-count: 2",
-                      "data_normalized": "column-count: 2"
+                    {
+                      "type": "text",
+                      "data": "column-count: 2",
+                      "data_normalized": "column-count: 2"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-                      "data_normalized": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+                    {
+                      "type": "text",
+                      "data": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+                      "data_normalized": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                      "data_normalized": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+                    {
+                      "type": "text",
+                      "data": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+                      "data_normalized": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "box col3 gap rule"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box col3 gap rule"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "h3",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "h3",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "column-count: 3",
-                      "data_normalized": "column-count: 3"
+                    {
+                      "type": "text",
+                      "data": "column-count: 3",
+                      "data_normalized": "column-count: 3"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-                      "data_normalized": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
+                    {
+                      "type": "text",
+                      "data": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                      "data_normalized": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-                      "data_normalized": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+                    {
+                      "type": "text",
+                      "data": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+                      "data_normalized": "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-                      "data_normalized": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."
+                    {
+                      "type": "text",
+                      "data": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+                      "data_normalized": "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "box colw gap rule"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box colw gap rule"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "h3",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "h3",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "column-width: 200px",
-                      "data_normalized": "column-width: 200px"
+                    {
+                      "type": "text",
+                      "data": "column-width: 200px",
+                      "data_normalized": "column-width: 200px"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "This creates as many 200px columns as will fit. Column count is determined automatically by available width. Content flows from one column to the next.",
-                      "data_normalized": "This creates as many 200px columns as will fit. Column count is determined automatically by available width. Content flows from one column to the next."
+                    {
+                      "type": "text",
+                      "data": "This creates as many 200px columns as will fit. Column count is determined automatically by available width. Content flows from one column to the next.",
+                      "data_normalized": "This creates as many 200px columns as will fit. Column count is determined automatically by available width. Content flows from one column to the next."
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

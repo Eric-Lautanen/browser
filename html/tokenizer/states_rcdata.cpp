@@ -2,7 +2,7 @@
 
 namespace browser::html {
 
-    void Tokenizer::process_rcdata_state(char c) {
+    void Tokenizer::process_rcdata_state(char32_t c) {
         switch (state_) {
             case State::RCDATA:
                 if (c == '&') {
@@ -17,7 +17,7 @@ namespace browser::html {
                         emit_char(kReplacementChar);
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                 }
                 break;
 
@@ -31,7 +31,7 @@ namespace browser::html {
                         emit_char(kReplacementChar);
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                 }
                 break;
 
@@ -43,7 +43,7 @@ namespace browser::html {
                         emit_char(kReplacementChar);
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                 }
                 break;
 
@@ -57,7 +57,7 @@ namespace browser::html {
                         emit_char(kReplacementChar);
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                 }
                 break;
 
@@ -242,7 +242,7 @@ namespace browser::html {
                         emit_char(kReplacementChar);
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                 }
                 break;
 
@@ -260,7 +260,7 @@ namespace browser::html {
                         state_ = State::SCRIPT_DATA_ESCAPED;
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                     state_ = State::SCRIPT_DATA_ESCAPED;
                 }
                 break;
@@ -281,7 +281,7 @@ namespace browser::html {
                         state_ = State::SCRIPT_DATA_ESCAPED;
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                     state_ = State::SCRIPT_DATA_ESCAPED;
                 }
                 break;
@@ -352,7 +352,7 @@ namespace browser::html {
                         emit_char(kReplacementChar);
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                 }
                 break;
 
@@ -370,7 +370,7 @@ namespace browser::html {
                         state_ = State::SCRIPT_DATA_DOUBLE_ESCAPED;
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                     state_ = State::SCRIPT_DATA_DOUBLE_ESCAPED;
                 }
                 break;
@@ -391,7 +391,7 @@ namespace browser::html {
                         state_ = State::SCRIPT_DATA_DOUBLE_ESCAPED;
                     }
                 } else {
-                    emit_char(static_cast<unsigned char>(c));
+                    emit_char(c);
                     state_ = State::SCRIPT_DATA_DOUBLE_ESCAPED;
                 }
                 break;

@@ -102,7 +102,7 @@ namespace json {
             data += q(k) + (indent >= 0 ? ": " : ":") + bool_str(v);
         }
         std::string done() {
-            if (indent >= 0) { nl(false); }
+            if (indent >= 0 && !first) { nl(false); }
             data += "}";
             return data;
         }
@@ -118,7 +118,7 @@ namespace json {
         void nl(bool inner = true) {
             if (indent >= 0) {
                 int level = inner ? indent + 1 : indent;
-                data += "\n" + std::string(level * 2, ' ');
+                data += "\r\n" + std::string(level * 2, ' ');
             }
         }
         void push(const std::string &v) {
@@ -128,7 +128,7 @@ namespace json {
             data += v;
         }
         std::string done() {
-            if (indent >= 0) { nl(false); }
+            if (indent >= 0 && !first) { nl(false); }
             data += "]";
             return data;
         }
@@ -156,10 +156,13 @@ static std::string dump_node(const browser::html::Node *node, int indent = -1) {
         json::Obj o(indent);
         o.kv("type", "element");
         o.kv_raw("tag", json::q(el->tag_name));
-        // attributes
+        // attributes (sorted by key for deterministic output)
         json::Obj attrs(ci);
-        for (auto &[k, v] : el->attributes) {
-            attrs.kv_raw(k, json::q(v));
+        std::vector<std::string> attr_keys;
+        for (auto &[k, v] : el->attributes) attr_keys.push_back(k);
+        std::sort(attr_keys.begin(), attr_keys.end());
+        for (auto &k : attr_keys) {
+            attrs.kv_raw(k, json::q(el->attributes.at(k)));
         }
         o.kv_raw("attributes", attrs.done());
         // children
@@ -187,6 +190,7 @@ static std::string dump_node(const browser::html::Node *node, int indent = -1) {
                 }
             }
             while (!r.empty() && r.back() == ' ') r.pop_back();
+            while (!r.empty() && r.front() == ' ') r.erase(r.begin());
             normalized = r;
         }
         o.kv_raw("data_normalized", json::q(normalized));
@@ -839,11 +843,27 @@ static int run_test_suite(const std::string &test_dir, const std::string &filter
     auto html_files = find_files(test_dir, ".html", filter_str);
     auto css_files  = find_files(test_dir, ".css",  filter_str);
 
-    auto read_file = [](const std::string &p) -> std::string {
-        std::ifstream f(p);
-        if (!f.is_open()) return "";
-        return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-    };
+        auto read_file = [](const std::string &p) -> std::string {
+            std::ifstream f(p, std::ios::binary);
+            if (!f.is_open()) return "";
+            std::string raw((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+            // Strip UTF-8 BOM if present
+            if (raw.size() >= 3 && (unsigned char)raw[0] == 0xEF && (unsigned char)raw[1] == 0xBB && (unsigned char)raw[2] == 0xBF)
+                raw = raw.substr(3);
+            // Detect UTF-16 LE BOM and convert to UTF-8
+            if (raw.size() >= 2 && (unsigned char)raw[0] == 0xFF && (unsigned char)raw[1] == 0xFE) {
+                std::string out;
+                out.reserve(raw.size() / 2);
+                for (size_t i = 2; i + 1 < raw.size(); i += 2) {
+                    char16_t cp = (unsigned char)raw[i] | ((unsigned char)raw[i+1] << 8);
+                    if (cp < 0x80) { out += (char)cp; }
+                    else if (cp < 0x800) { out += (char)(0xC0 | (cp >> 6)); out += (char)(0x80 | (cp & 0x3F)); }
+                    else { out += (char)(0xE0 | (cp >> 12)); out += (char)(0x80 | ((cp >> 6) & 0x3F)); out += (char)(0x80 | (cp & 0x3F)); }
+                }
+                return out;
+            }
+            return raw;
+        };
     auto file_exists = [](const std::string &p) -> bool {
         DWORD attr = GetFileAttributesA(p.c_str());
         return attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY);
@@ -865,15 +885,34 @@ static int run_test_suite(const std::string &test_dir, const std::string &filter
             if (doc_r.is_err()) { dom_s = "ERR"; critical_total++; }
             else {
                 auto doc = std::move(doc_r.unwrap());
-                std::string actual_str = dump_dom_document(html_file, doc.get());
+                // Use basename as source path for consistent cross-platform comparison
+                std::string actual_str = dump_dom_document(base, doc.get());
                 std::string expected_str = read_file(expected_dom_path);
                 // Normalize: strip trailing newline from expected (reference adds \n via console.log)
                 if (!expected_str.empty() && expected_str.back() == '\n')
                     expected_str.pop_back();
                 if (!expected_str.empty() && expected_str.back() == '\r')
                     expected_str.pop_back();
+                // Normalize: strip \r so CRLF vs LF vs CRCRLF differences don't cause false failures
+                auto strip_cr = [](std::string &s) {
+                    s.erase(std::remove(s.begin(), s.end(), '\r'), s.end());
+                };
+                strip_cr(actual_str);
+                strip_cr(expected_str);
                 dom_s = (actual_str == expected_str) ? "PASS" : "FAIL";
-                if (dom_s == "FAIL") critical_total++;
+                if (dom_s == "FAIL") {
+                    critical_total++;
+                    if (base.find("text_formatting") != std::string::npos) {
+                        size_t min_sz = std::min(actual_str.size(), expected_str.size());
+                        size_t diff_at = 0;
+                        for (size_t di = 0; di < min_sz; di++) {
+                            if (actual_str[di] != expected_str[di]) { diff_at = di; break; }
+                        }
+                        fprintf(stderr, "  [DBG] diff=%zu exp_len=%zu act_len=%zu\n", diff_at, expected_str.size(), actual_str.size());
+                        fprintf(stderr, "  [DBG] E: '%.80s'\n", expected_str.c_str() + diff_at);
+                        fprintf(stderr, "  [DBG] A: '%.80s'\n", actual_str.c_str() + diff_at);
+                    }
+                }
             }
         }
 

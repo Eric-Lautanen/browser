@@ -1,127 +1,119 @@
-{
-  "source": "tools/tests/html_malformed.html",
-  "encoding": "UTF-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "html_malformed.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Malformed HTML Test",
-                  "data_normalized": "Malformed HTML Test"
+                {
+                  "type": "text",
+                  "data": "Malformed HTML Test",
+                  "data_normalized": "Malformed HTML Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Unclosed paragraph\n",
-                  "data_normalized": "Unclosed paragraph"
+                {
+                  "type": "text",
+                  "data": "Unclosed paragraph\n",
+                  "data_normalized": "Unclosed paragraph"
                 }
-              ]
+              ]
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Another unclosed paragraph\n",
-                  "data_normalized": "Another unclosed paragraph"
+                {
+                  "type": "text",
+                  "data": "Another unclosed paragraph\n",
+                  "data_normalized": "Another unclosed paragraph"
                 },
-                {
-                  "type": "element",
-                  "tag": "b",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "b",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "element",
-                      "tag": "i",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "i",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "Misnested bold and italic",
-                          "data_normalized": "Misnested bold and italic"
+                        {
+                          "type": "text",
+                          "data": "Misnested bold and italic",
+                          "data_normalized": "Misnested bold and italic"
                         }
-                      ]
+                      ]
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n\n\n   \n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n\n\n   \n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

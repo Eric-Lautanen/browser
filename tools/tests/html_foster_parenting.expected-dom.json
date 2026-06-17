@@ -1,824 +1,792 @@
-{
-  "source": "tools/tests/html_foster_parenting.html",
-  "encoding": "utf-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "html_foster_parenting.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-        "lang": "en"
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "meta",
-              "attributes": {
-                "charset": "utf-8"
-              },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Foster Parenting Algorithm Test",
-                  "data_normalized": "Foster Parenting Algorithm Test"
+                {
+                  "type": "text",
+                  "data": "Foster Parenting Algorithm Test",
+                  "data_normalized": "Foster Parenting Algorithm Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "h1",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "h1",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Foster Parenting Algorithm Test",
-                  "data_normalized": "Foster Parenting Algorithm Test"
+                {
+                  "type": "text",
+                  "data": "Foster Parenting Algorithm Test",
+                  "data_normalized": "Foster Parenting Algorithm Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "h2",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Text directly inside table",
-                  "data_normalized": "Text directly inside table"
+                {
+                  "type": "text",
+                  "data": "Text directly inside table",
+                  "data_normalized": "Text directly inside table"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "T",
-              "data_normalized": "T"
+            {
+              "type": "text",
+              "data": "T",
+              "data_normalized": "T"
             },
-            {
-              "type": "text",
-              "data": "h",
-              "data_normalized": "h"
+            {
+              "type": "text",
+              "data": "h",
+              "data_normalized": "h"
             },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
+            {
+              "type": "text",
+              "data": "i",
+              "data_normalized": "i"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
+            {
+              "type": "text",
+              "data": "t",
+              "data_normalized": "t"
             },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
+            {
+              "type": "text",
+              "data": "e",
+              "data_normalized": "e"
             },
-            {
-              "type": "text",
-              "data": "x",
-              "data_normalized": "x"
+            {
+              "type": "text",
+              "data": "x",
+              "data_normalized": "x"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
+            {
+              "type": "text",
+              "data": "i",
+              "data_normalized": "i"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
+            {
+              "type": "text",
+              "data": "i",
+              "data_normalized": "i"
             },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
+            {
+              "type": "text",
+              "data": "n",
+              "data_normalized": "n"
             },
-            {
-              "type": "text",
-              "data": "s",
-              "data_normalized": "s"
+            {
+              "type": "text",
+              "data": "s",
+              "data_normalized": "s"
             },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
+            {
+              "type": "text",
+              "data": "i",
+              "data_normalized": "i"
             },
-            {
-              "type": "text",
-              "data": "d",
-              "data_normalized": "d"
+            {
+              "type": "text",
+              "data": "d",
+              "data_normalized": "d"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
+            {
+              "type": "text",
+              "data": "t",
+              "data_normalized": "t"
             },
-            {
-              "type": "text",
-              "data": "h",
-              "data_normalized": "h"
+            {
+              "type": "text",
+              "data": "h",
+              "data_normalized": "h"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
+            {
+              "type": "text",
+              "data": "t",
+              "data_normalized": "t"
             },
-            {
-              "type": "text",
-              "data": "a",
-              "data_normalized": "a"
+            {
+              "type": "text",
+              "data": "a",
+              "data_normalized": "a"
             },
-            {
-              "type": "text",
-              "data": "b",
-              "data_normalized": "b"
+            {
+              "type": "text",
+              "data": "b",
+              "data_normalized": "b"
             },
-            {
-              "type": "text",
-              "data": "l",
-              "data_normalized": "l"
+            {
+              "type": "text",
+              "data": "l",
+              "data_normalized": "l"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "b",
-              "data_normalized": "b"
+            {
+              "type": "text",
+              "data": "b",
+              "data_normalized": "b"
             },
-            {
-              "type": "text",
-              "data": "u",
-              "data_normalized": "u"
+            {
+              "type": "text",
+              "data": "u",
+              "data_normalized": "u"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
+            {
+              "type": "text",
+              "data": "n",
+              "data_normalized": "n"
             },
-            {
-              "type": "text",
-              "data": "o",
-              "data_normalized": "o"
+            {
+              "type": "text",
+              "data": "o",
+              "data_normalized": "o"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
+            {
+              "type": "text",
+              "data": "i",
+              "data_normalized": "i"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "c",
-              "data_normalized": "c"
+            {
+              "type": "text",
+              "data": "c",
+              "data_normalized": "c"
             },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
+            {
+              "type": "text",
+              "data": "e",
+              "data_normalized": "e"
             },
-            {
-              "type": "text",
-              "data": "l",
-              "data_normalized": "l"
+            {
+              "type": "text",
+              "data": "l",
+              "data_normalized": "l"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "(",
-              "data_normalized": "("
+            {
+              "type": "text",
+              "data": "(",
+              "data_normalized": "("
             },
-            {
-              "type": "text",
-              "data": "f",
-              "data_normalized": "f"
+            {
+              "type": "text",
+              "data": "f",
+              "data_normalized": "f"
             },
-            {
-              "type": "text",
-              "data": "o",
-              "data_normalized": "o"
+            {
+              "type": "text",
+              "data": "o",
+              "data_normalized": "o"
             },
-            {
-              "type": "text",
-              "data": "s",
-              "data_normalized": "s"
+            {
+              "type": "text",
+              "data": "s",
+              "data_normalized": "s"
             },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
+            {
+              "type": "text",
+              "data": "t",
+              "data_normalized": "t"
             },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
+            {
+              "type": "text",
+              "data": "e",
+              "data_normalized": "e"
             },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " ",
+              "data_normalized": ""
             },
-            {
-              "type": "text",
-              "data": "p",
-              "data_normalized": "p"
+            {
+              "type": "text",
+              "data": "p",
+              "data_normalized": "p"
             },
-            {
-              "type": "text",
-              "data": "a",
-              "data_normalized": "a"
+            {
+              "type": "text",
+              "data": "a",
+              "data_normalized": "a"
             },
-            {
-              "type": "text",
-              "data": "r",
-              "data_normalized": "r"
+            {
+              "type": "text",
+              "data": "r",
+              "data_normalized": "r"
             },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
+            {
+              "type": "text",
+              "data": "e",
+              "data_normalized": "e"
             },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
+            {
+              "type": "text",
+              "data": "n",
+              "data_normalized": "n"
             },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
+            {
+              "type": "text",
+              "data": "t",
+              "data_normalized": "t"
             },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
+            {
+              "type": "text",
+              "data": "i",
+              "data_normalized": "i"
             },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
+            {
+              "type": "text",
+              "data": "n",
+              "data_normalized": "n"
             },
-            {
-              "type": "text",
-              "data": "g",
-              "data_normalized": "g"
+            {
+              "type": "text",
+              "data": "g",
+              "data_normalized": "g"
             },
-            {
-              "type": "text",
-              "data": ")",
-              "data_normalized": ")"
+            {
+              "type": "text",
+              "data": ")",
+              "data_normalized": ")"
             },
-            {
-              "type": "element",
-              "tag": "table",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n stseeettnalr.\n ",
-                  "data_normalized": " stseeettnalr."
+                {
+                  "type": "text",
+                  "data": "\n stseeettnalr.\n ",
+                  "data_normalized": " stseeettnalr."
                 },
-                {
-                  "type": "element",
-                  "tag": "tbody",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": " \n   ",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": " \n   ",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": " Valid cel",
-                              "data_normalized": " Valid cel"
+                            {
+                              "type": "text",
+                              "data": " Valid cel",
+                              "data_normalized": " Valid cel"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "l\n ",
-                          "data_normalized": "l"
+                        {
+                          "type": "text",
+                          "data": "l\n ",
+                          "data_normalized": "l"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": " \n  More text after the row.",
-                      "data_normalized": " More text after the row."
+                    {
+                      "type": "text",
+                      "data": " \n  More text after the row.",
+                      "data_normalized": " More text after the row."
                     }
-                  ]
+                  ]
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "h2",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "TR outside TABLE",
-                  "data_normalized": "TR outside TABLE"
+                {
+                  "type": "text",
+                  "data": "TR outside TABLE",
+                  "data_normalized": "TR outside TABLE"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Before orphan row.",
-                  "data_normalized": "Before orphan row."
+                {
+                  "type": "text",
+                  "data": "Before orphan row.",
+                  "data_normalized": "Before orphan row."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "tr",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "tr",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "td",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "td",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Orphan row outside table",
-                      "data_normalized": "Orphan row outside table"
+                    {
+                      "type": "text",
+                      "data": "Orphan row outside table",
+                      "data_normalized": "Orphan row outside table"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "After orphan row.",
-                  "data_normalized": "After orphan row."
+                {
+                  "type": "text",
+                  "data": "After orphan row.",
+                  "data_normalized": "After orphan row."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "h2",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "TD outside TR",
-                  "data_normalized": "TD outside TR"
+                {
+                  "type": "text",
+                  "data": "TD outside TR",
+                  "data_normalized": "TD outside TR"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Before orphan cell.",
-                  "data_normalized": "Before orphan cell."
+                {
+                  "type": "text",
+                  "data": "Before orphan cell.",
+                  "data_normalized": "Before orphan cell."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "td",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "td",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Orphan cell outside row",
-                  "data_normalized": "Orphan cell outside row"
+                {
+                  "type": "text",
+                  "data": "Orphan cell outside row",
+                  "data_normalized": "Orphan cell outside row"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "After orphan cell.",
-                  "data_normalized": "After orphan cell."
+                {
+                  "type": "text",
+                  "data": "After orphan cell.",
+                  "data_normalized": "After orphan cell."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "h2",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Mixed foster parenting",
-                  "data_normalized": "Mixed foster parenting"
+                {
+                  "type": "text",
+                  "data": "Mixed foster parenting",
+                  "data_normalized": "Mixed foster parenting"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "table",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "tbody",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": " Cell directly in tabl",
-                              "data_normalized": " Cell directly in tabl"
+                            {
+                              "type": "text",
+                              "data": " Cell directly in tabl",
+                              "data_normalized": " Cell directly in tabl"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "e\n ",
-                          "data_normalized": "e"
+                        {
+                          "type": "text",
+                          "data": "e\n ",
+                          "data_normalized": "e"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": " \n   ",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": " \n   ",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": " Cell in ro",
-                              "data_normalized": " Cell in ro"
+                            {
+                              "type": "text",
+                              "data": " Cell in ro",
+                              "data_normalized": " Cell in ro"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "w\n ",
-                          "data_normalized": "w"
+                        {
+                          "type": "text",
+                          "data": "w\n ",
+                          "data_normalized": "w"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": " \n  ",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": " \n  ",
+                      "data_normalized": ""
                     },
-                    {
-                      "type": "element",
-                      "tag": "b",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "b",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": "Bold text in table",
-                          "data_normalized": "Bold text in table"
+                        {
+                          "type": "text",
+                          "data": "Bold text in table",
+                          "data_normalized": "Bold text in table"
                         }
-                      ]
+                      ]
                     }
-                  ]
+                  ]
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "h2",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Deep foster parenting",
-                  "data_normalized": "Deep foster parenting"
+                {
+                  "type": "text",
+                  "data": "Deep foster parenting",
+                  "data_normalized": "Deep foster parenting"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "table",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  \n   ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  \n   ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "tbody",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "element",
-                      "tag": "tr",
-                      "attributes": {
-                      },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
                       "children": [
-                        {
-                          "type": "text",
-                          "data": " \n     ",
-                          "data_normalized": ""
+                        {
+                          "type": "text",
+                          "data": " \n     ",
+                          "data_normalized": ""
                         },
-                        {
-                          "type": "element",
-                          "tag": "td",
-                          "attributes": {
-                          },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
                           "children": [
-                            {
-                              "type": "text",
-                              "data": " Nested table cel",
-                              "data_normalized": " Nested table cel"
+                            {
+                              "type": "text",
+                              "data": " Nested table cel",
+                              "data_normalized": " Nested table cel"
                             }
-                          ]
+                          ]
                         },
-                        {
-                          "type": "text",
-                          "data": "l\n   ",
-                          "data_normalized": "l"
+                        {
+                          "type": "text",
+                          "data": "l\n   ",
+                          "data_normalized": "l"
                         }
-                      ]
+                      ]
                     },
-                    {
-                      "type": "text",
-                      "data": " \n ",
-                      "data_normalized": ""
+                    {
+                      "type": "text",
+                      "data": " \n ",
+                      "data_normalized": ""
                     }
-                  ]
+                  ]
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": " \n\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": " \n\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

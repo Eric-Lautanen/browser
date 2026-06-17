@@ -177,7 +177,7 @@ namespace browser::html {
         emit_or_buffer('&');
     }
 
-    void Tokenizer::process_data_state(char c) {
+    void Tokenizer::process_data_state(char32_t c) {
         if (c == '&') {
             return_state_ = State::DATA;
             state_ = State::CHARACTER_REFERENCE;
@@ -190,7 +190,7 @@ namespace browser::html {
                 emit_char(kReplacementChar);
             }
         } else {
-            emit_char(static_cast<unsigned char>(c));
+            emit_char(c);
         }
     }
 

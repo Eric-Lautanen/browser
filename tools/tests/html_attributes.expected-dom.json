@@ -1,281 +1,269 @@
-{
-  "source": "tools/tests/html_attributes.html",
-  "encoding": "UTF-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "html_attributes.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "Attributes Test",
-                  "data_normalized": "Attributes Test"
+                {
+                  "type": "text",
+                  "data": "Attributes Test",
+                  "data_normalized": "Attributes Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "form",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "form",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "input",
-                  "attributes": {
-                    "disabled": "",
-                    "type": "text"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "input",
+                  "attributes": {
+                    "disabled": "",
+                    "type": "text"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "input",
-                  "attributes": {
-                    "checked": "",
-                    "type": "checkbox"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "input",
+                  "attributes": {
+                    "checked": "",
+                    "type": "checkbox"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "input",
-                  "attributes": {
-                    "readonly": "",
-                    "type": "text"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "input",
+                  "attributes": {
+                    "readonly": "",
+                    "type": "text"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "input",
-                  "attributes": {
-                    "required": "",
-                    "type": "text"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "input",
+                  "attributes": {
+                    "required": "",
+                    "type": "text"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "input",
-                  "attributes": {
-                    "autofocus": "",
-                    "type": "text"
-                  },
-                  "children": [
-                  ]
+                {
+                  "type": "element",
+                  "tag": "input",
+                  "attributes": {
+                    "autofocus": "",
+                    "type": "text"
+                  },
+                  "children": []
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "data-value": "special chars: <>&\\",
-                "'\"": "",
-                "data-type": "test",
-                "data-id": "12345"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "'\"": "",
+                "data-id": "12345",
+                "data-type": "test",
+                "data-value": "special chars: <>&\\"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Data attributes",
-                  "data_normalized": "Data attributes"
+                {
+                  "type": "text",
+                  "data": "Data attributes",
+                  "data_normalized": "Data attributes"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "role": "button",
-                "aria-label": "Close button"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "aria-label": "Close button",
+                "role": "button"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "ARIA button",
-                  "data_normalized": "ARIA button"
+                {
+                  "type": "text",
+                  "data": "ARIA button",
+                  "data_normalized": "ARIA button"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "aria-label": "Main navigation",
-                "role": "navigation"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "aria-label": "Main navigation",
+                "role": "navigation"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "ARIA navigation",
-                  "data_normalized": "ARIA navigation"
+                {
+                  "type": "text",
+                  "data": "ARIA navigation",
+                  "data_normalized": "ARIA navigation"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "input",
-              "attributes": {
-                "'\"": "",
-                "value": "special chars: <>&\\",
-                "type": "text"
-              },
+            {
+              "type": "element",
+              "tag": "input",
+              "attributes": {
+                "'\"": "",
+                "type": "text",
+                "value": "special chars: <>&\\"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "input",
+              "attributes": {
+                "type": "text",
+                "value": "Unicode: 桜 中文 한국어 🎉"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b",
+                "id": "duplicate"
+              },
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "input",
-              "attributes": {
-                "value": "Unicode: 桜 中文 한국어 🎉",
-                "type": "text"
-              },
-              "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "b",
-                "id": "duplicate"
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Duplicate attributes",
-                  "data_normalized": "Duplicate attributes"
+                {
+                  "type": "text",
+                  "data": "Duplicate attributes",
+                  "data_normalized": "Duplicate attributes"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

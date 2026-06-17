@@ -1,260 +1,255 @@
-{
-  "source": "tools/tests/cascade_initial_unset_revert.html",
-  "encoding": "utf-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "cascade_initial_unset_revert.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-        "lang": "en"
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "meta",
-              "attributes": {
-                "charset": "utf-8"
-              },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Cascade Initial Unset Revert",
-                  "data_normalized": "Cascade Initial Unset Revert"
+                {
+                  "type": "text",
+                  "data": "Cascade Initial Unset Revert",
+                  "data_normalized": "Cascade Initial Unset Revert"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "style",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\nbody { color: #333; font-size: 16px; margin: 10px; }\n.parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; }\n.inherited { color: inherit; }\n.initial { color: initial; }\n.unset { color: unset; }\n.revert { color: revert; }\n.non-init { border: initial; }\n.non-unset { border: unset; }\n.non-revert { border: revert; }\np { margin: 4px 0; }\n",
-                  "data_normalized": " body { color: #333; font-size: 16px; margin: 10px; } .parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; } .inherited { color: inherit; } .initial { color: initial; } .unset { color: unset; } .revert { color: revert; } .non-init { border: initial; } .non-unset { border: unset; } .non-revert { border: revert; } p { margin: 4px 0; }"
+                {
+                  "type": "text",
+                  "data": "\nbody { color: #333; font-size: 16px; margin: 10px; }\n.parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; }\n.inherited { color: inherit; }\n.initial { color: initial; }\n.unset { color: unset; }\n.revert { color: revert; }\n.non-init { border: initial; }\n.non-unset { border: unset; }\n.non-revert { border: revert; }\np { margin: 4px 0; }\n",
+                  "data_normalized": " body { color: #333; font-size: 16px; margin: 10px; } .parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; } .inherited { color: inherit; } .initial { color: initial; } .unset { color: unset; } .revert { color: revert; } .non-init { border: initial; } .non-unset { border: unset; } .non-revert { border: revert; } p { margin: 4px 0; }"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "class": "parent"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "parent"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                    "class": "inherited"
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "class": "inherited"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "inherit - red (inherits from parent)",
-                      "data_normalized": "inherit - red (inherits from parent)"
+                    {
+                      "type": "text",
+                      "data": "inherit - red (inherits from parent)",
+                      "data_normalized": "inherit - red (inherits from parent)"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                    "class": "initial"
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "class": "initial"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "initial - black (initial value for color)",
-                      "data_normalized": "initial - black (initial value for color)"
+                    {
+                      "type": "text",
+                      "data": "initial - black (initial value for color)",
+                      "data_normalized": "initial - black (initial value for color)"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                    "class": "unset"
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "class": "unset"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "unset - inherit for color (inherited property)",
-                      "data_normalized": "unset - inherit for color (inherited property)"
+                    {
+                      "type": "text",
+                      "data": "unset - inherit for color (inherited property)",
+                      "data_normalized": "unset - inherit for color (inherited property)"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                    "class": "revert"
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "class": "revert"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "revert - black (browser default)",
-                      "data_normalized": "revert - black (browser default)"
+                    {
+                      "type": "text",
+                      "data": "revert - black (browser default)",
+                      "data_normalized": "revert - black (browser default)"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                    "class": "non-init"
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "class": "non-init"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "border: initial - none",
-                      "data_normalized": "border: initial - none"
+                    {
+                      "type": "text",
+                      "data": "border: initial - none",
+                      "data_normalized": "border: initial - none"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                    "class": "non-unset"
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "class": "non-unset"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "border: unset - none (non-inherited)",
-                      "data_normalized": "border: unset - none (non-inherited)"
+                    {
+                      "type": "text",
+                      "data": "border: unset - none (non-inherited)",
+                      "data_normalized": "border: unset - none (non-inherited)"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "p",
-                  "attributes": {
-                    "class": "non-revert"
-                  },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "class": "non-revert"
+                  },
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "border: revert - browser default",
-                      "data_normalized": "border: revert - browser default"
+                    {
+                      "type": "text",
+                      "data": "border: revert - browser default",
+                      "data_normalized": "border: revert - browser default"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

@@ -478,6 +478,28 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
         return;
     }
 
+    if (t == "option") {
+        if (has_element_in_list_scope("option")) {
+            generate_implied_end_tags({"option"});
+            close_element("option");
+        }
+        auto* el = create_element_for_token(tag);
+        insert_element(el);
+        stack_.push_back(el);
+        return;
+    }
+
+    if (t == "optgroup") {
+        if (has_element_in_list_scope("optgroup")) {
+            generate_implied_end_tags({"optgroup"});
+            close_element("optgroup");
+        }
+        auto* el = create_element_for_token(tag);
+        insert_element(el);
+        stack_.push_back(el);
+        return;
+    }
+
     if (t == "select") {
         reconstruct_active_formatting_elements();
         auto* el = create_element_for_token(tag);

@@ -1,403 +1,389 @@
-{
-  "source": "tools/tests/layout_inline.html",
-  "encoding": "utf-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "layout_inline.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "meta",
-              "attributes": {
-                "charset": "utf-8"
-              },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Layout Inline Test",
-                  "data_normalized": "Layout Inline Test"
+                {
+                  "type": "text",
+                  "data": "Layout Inline Test",
+                  "data_normalized": "Layout Inline Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "style",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  body { margin: 8px; font-size: 16px; }\n  #block { background: lightblue; }\n  #block span { background: lightcoral; }\n  #line-height { line-height: 2; background: lightgreen; }\n  #line-height span { background: lightyellow; }\n  #text-align-left { text-align: left; width: 400px; border: 1px solid black; }\n  #text-align-center { text-align: center; width: 400px; border: 1px solid black; }\n  #text-align-right { text-align: right; width: 400px; border: 1px solid black; }\n  #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; }\n  #mixed { width: 400px; border: 1px solid black; background: lavender; }\n  #spaces { width: 400px; border: 1px solid black; background: mistyrose; }\n",
-                  "data_normalized": " body { margin: 8px; font-size: 16px; } #block { background: lightblue; } #block span { background: lightcoral; } #line-height { line-height: 2; background: lightgreen; } #line-height span { background: lightyellow; } #text-align-left { text-align: left; width: 400px; border: 1px solid black; } #text-align-center { text-align: center; width: 400px; border: 1px solid black; } #text-align-right { text-align: right; width: 400px; border: 1px solid black; } #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; } #mixed { width: 400px; border: 1px solid black; background: lavender; } #spaces { width: 400px; border: 1px solid black; background: mistyrose; }"
+                {
+                  "type": "text",
+                  "data": "\n  body { margin: 8px; font-size: 16px; }\n  #block { background: lightblue; }\n  #block span { background: lightcoral; }\n  #line-height { line-height: 2; background: lightgreen; }\n  #line-height span { background: lightyellow; }\n  #text-align-left { text-align: left; width: 400px; border: 1px solid black; }\n  #text-align-center { text-align: center; width: 400px; border: 1px solid black; }\n  #text-align-right { text-align: right; width: 400px; border: 1px solid black; }\n  #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; }\n  #mixed { width: 400px; border: 1px solid black; background: lavender; }\n  #spaces { width: 400px; border: 1px solid black; background: mistyrose; }\n",
+                  "data_normalized": " body { margin: 8px; font-size: 16px; } #block { background: lightblue; } #block span { background: lightcoral; } #line-height { line-height: 2; background: lightgreen; } #line-height span { background: lightyellow; } #text-align-left { text-align: left; width: 400px; border: 1px solid black; } #text-align-center { text-align: center; width: 400px; border: 1px solid black; } #text-align-right { text-align: right; width: 400px; border: 1px solid black; } #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; } #mixed { width: 400px; border: 1px solid black; background: lavender; } #spaces { width: 400px; border: 1px solid black; background: mistyrose; }"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "block"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "block"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n    ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Inline span",
-                      "data_normalized": "Inline span"
+                    {
+                      "type": "text",
+                      "data": "Inline span",
+                      "data_normalized": "Inline span"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": " inside a block. ",
-                  "data_normalized": " inside a block."
+                {
+                  "type": "text",
+                  "data": " inside a block. ",
+                  "data_normalized": " inside a block."
                 },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Another span",
-                      "data_normalized": "Another span"
+                    {
+                      "type": "text",
+                      "data": "Another span",
+                      "data_normalized": "Another span"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": " with text wrapping around.\n  ",
-                  "data_normalized": " with text wrapping around."
+                {
+                  "type": "text",
+                  "data": " with text wrapping around.\n  ",
+                  "data_normalized": " with text wrapping around."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "line-height"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "line-height"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n    ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Line-height 2",
-                      "data_normalized": "Line-height 2"
+                    {
+                      "type": "text",
+                      "data": "Line-height 2",
+                      "data_normalized": "Line-height 2"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": " ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": " ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "spans",
-                      "data_normalized": "spans"
+                    {
+                      "type": "text",
+                      "data": "spans",
+                      "data_normalized": "spans"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": " ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": " ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "with tall spacing",
-                      "data_normalized": "with tall spacing"
+                    {
+                      "type": "text",
+                      "data": "with tall spacing",
+                      "data_normalized": "with tall spacing"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "text-align-left"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "text-align-left"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Text aligned left.",
-                  "data_normalized": "Text aligned left."
+                {
+                  "type": "text",
+                  "data": "Text aligned left.",
+                  "data_normalized": "Text aligned left."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "text-align-center"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "text-align-center"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Text aligned center.",
-                  "data_normalized": "Text aligned center."
+                {
+                  "type": "text",
+                  "data": "Text aligned center.",
+                  "data_normalized": "Text aligned center."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "text-align-right"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "text-align-right"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Text aligned right.",
-                  "data_normalized": "Text aligned right."
+                {
+                  "type": "text",
+                  "data": "Text aligned right.",
+                  "data_normalized": "Text aligned right."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "text-align-justify"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "text-align-justify"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Text justified should stretch to fill the full 400px width of the containing block evenly.",
-                  "data_normalized": "Text justified should stretch to fill the full 400px width of the containing block evenly."
+                {
+                  "type": "text",
+                  "data": "Text justified should stretch to fill the full 400px width of the containing block evenly.",
+                  "data_normalized": "Text justified should stretch to fill the full 400px width of the containing block evenly."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "mixed"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "mixed"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n    ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Inline",
-                      "data_normalized": "Inline"
+                    {
+                      "type": "text",
+                      "data": "Inline",
+                      "data_normalized": "Inline"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n    ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "Block (anonymous block generation)",
-                      "data_normalized": "Block (anonymous block generation)"
+                    {
+                      "type": "text",
+                      "data": "Block (anonymous block generation)",
+                      "data_normalized": "Block (anonymous block generation)"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n    ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
                 },
-                {
-                  "type": "element",
-                  "tag": "span",
-                  "attributes": {
-                  },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {},
                   "children": [
-                    {
-                      "type": "text",
-                      "data": "More inline",
-                      "data_normalized": "More inline"
+                    {
+                      "type": "text",
+                      "data": "More inline",
+                      "data_normalized": "More inline"
                     }
-                  ]
+                  ]
                 },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "div",
-              "attributes": {
-                "id": "spaces"
-              },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "spaces"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Spaces   between   words   preserved   per   HTML   whitespace   rules.",
-                  "data_normalized": "Spaces between words preserved per HTML whitespace rules."
+                {
+                  "type": "text",
+                  "data": "Spaces   between   words   preserved   per   HTML   whitespace   rules.",
+                  "data_normalized": "Spaces between words preserved per HTML whitespace rules."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }

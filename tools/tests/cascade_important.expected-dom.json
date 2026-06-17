@@ -1,186 +1,180 @@
-{
-  "source": "tools/tests/cascade_important.html",
-  "encoding": "utf-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+{
+  "source": "cascade_important.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
     },
-    {
-      "type": "element",
-      "tag": "html",
-      "attributes": {
-      },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
       "children": [
-        {
-          "type": "element",
-          "tag": "head",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "meta",
-              "attributes": {
-                "charset": "utf-8"
-              },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
               "children": [
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "title",
-              "attributes": {
-              },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Cascade Important Test",
-                  "data_normalized": "Cascade Important Test"
+                {
+                  "type": "text",
+                  "data": "Cascade Important Test",
+                  "data_normalized": "Cascade Important Test"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "style",
-              "attributes": {
-              },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n  p { color: red !important; }\n  .special { color: blue; }\n  #unique { color: green !important; }\n  p.override { color: yellow; }\n",
-                  "data_normalized": " p { color: red !important; } .special { color: blue; } #unique { color: green !important; } p.override { color: yellow; }"
+                {
+                  "type": "text",
+                  "data": "\n  p { color: red !important; }\n  .special { color: blue; }\n  #unique { color: green !important; }\n  p.override { color: yellow; }\n",
+                  "data_normalized": " p { color: red !important; } .special { color: blue; } #unique { color: green !important; } p.override { color: yellow; }"
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
         },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {
-          },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "class": "special"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "class": "special"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Author !important (red) should beat class selector (blue).",
-                  "data_normalized": "Author !important (red) should beat class selector (blue)."
+                {
+                  "type": "text",
+                  "data": "Author !important (red) should beat class selector (blue).",
+                  "data_normalized": "Author !important (red) should beat class selector (blue)."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "class": "special",
-                "id": "unique"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "class": "special",
+                "id": "unique"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "ID !important (green) should beat class (blue). Both have !important on higher-specificity selector.",
-                  "data_normalized": "ID !important (green) should beat class (blue). Both have !important on higher-specificity selector."
+                {
+                  "type": "text",
+                  "data": "ID !important (green) should beat class (blue). Both have !important on higher-specificity selector.",
+                  "data_normalized": "ID !important (green) should beat class (blue). Both have !important on higher-specificity selector."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "style": "color: purple",
-                "class": "override"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "class": "override",
+                "style": "color: purple"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Inline style (purple) should beat author !important (red) because inline beats author.",
-                  "data_normalized": "Inline style (purple) should beat author !important (red) because inline beats author."
+                {
+                  "type": "text",
+                  "data": "Inline style (purple) should beat author !important (red) because inline beats author.",
+                  "data_normalized": "Inline style (purple) should beat author !important (red) because inline beats author."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n  ",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
             },
-            {
-              "type": "element",
-              "tag": "p",
-              "attributes": {
-                "style": "color: cyan !important",
-                "class": "override"
-              },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "class": "override",
+                "style": "color: cyan !important"
+              },
               "children": [
-                {
-                  "type": "text",
-                  "data": "Inline !important (cyan) should beat everything.",
-                  "data_normalized": "Inline !important (cyan) should beat everything."
+                {
+                  "type": "text",
+                  "data": "Inline !important (cyan) should beat everything.",
+                  "data_normalized": "Inline !important (cyan) should beat everything."
                 }
-              ]
+              ]
             },
-            {
-              "type": "text",
-              "data": "\n\n",
-              "data_normalized": ""
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
-          ]
+          ]
         }
-      ]
+      ]
     }
-  ],
-  "quirks_mode": false
+  ],
+  "quirks_mode": false
 }
