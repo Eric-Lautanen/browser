@@ -168,24 +168,49 @@ namespace browser {
         if (my > chrome_height()) {
             // Check bookmarks dropdown first (it extends below chrome)
             if (chrome_.show_bookmarks_dropdown) {
-                f32 dx = chrome_.rects.bookmark.x, dy = chrome_height();
-                f32 dw = 280.0f;
+                auto &br = chrome_.rects.bookmark;
+                f32 dw = 300.0f;
+                f32 item_h = 28.0f;
+                f32 header_h = 28.0f;
+                f32 pad = 4.0f;
                 auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
-                f32 item_h = 24.0f;
-                f32 dh = std::max(item_h * 2.0f, static_cast<f32>(all.size()) * item_h + item_h);
-                dh = std::min(dh, 400.0f);
+                f32 max_visible_items = 12.0f;
+                f32 max_list_h = max_visible_items * item_h;
+                f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
+                f32 visible_list_h = std::min(list_h, max_list_h);
+                f32 dh = header_h + visible_list_h + 8.0f;
+
+                // Position: right-edge of dropdown aligns with right-edge of bookmark button
+                f32 dx = br.x + br.w - dw;
+                if (dx < 4.0f) dx = 4.0f;
+                if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
+                    dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
+
+                f32 dy = chrome_height() + 2.0f;
+                if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
+                    dy = chrome_height() - dh - 2.0f;
+                }
+
                 if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
-                    f32 rel_y = static_cast<f32>(my) - dy - 4.0f;
+                    f32 rel_y = static_cast<f32>(my) - dy - pad - header_h;
                     if (rel_y >= 0.0f) {
-                        i32 idx = static_cast<i32>(rel_y / item_h);
+                        // Account for scroll offset
+                        f32 scrolled_y = rel_y + chrome_.bookmark_scroll_offset;
+                        i32 idx = static_cast<i32>(scrolled_y / item_h);
                         if (idx >= 0 && idx < static_cast<i32>(all.size())) {
                             navigate(all[static_cast<size_t>(idx)].url);
                             chrome_.show_bookmarks_dropdown = false;
+                            chrome_.hovered_bookmark_item = -1;
+                            chrome_.bookmark_scroll_offset = 0.0f;
                             return;
                         }
                     }
+                    // Clicked inside dropdown but not on an item — keep open
+                    return;
                 }
                 chrome_.show_bookmarks_dropdown = false;
+                chrome_.hovered_bookmark_item = -1;
+                chrome_.bookmark_scroll_offset = 0.0f;
             }
             if (chrome_.show_settings) {
                 f32 ox = 40, oy = chrome_height() + 20;
@@ -964,6 +989,46 @@ namespace browser {
         chrome_.hovered_close = -1;
         if (my > chrome_height()) {
             update_tab_tooltip(-1, -1);
+            // Track hover in bookmarks dropdown
+            if (chrome_.show_bookmarks_dropdown) {
+                auto &br = chrome_.rects.bookmark;
+                f32 dw = 300.0f;
+                f32 item_h = 28.0f;
+                f32 header_h = 28.0f;
+                f32 pad = 4.0f;
+                auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
+                f32 max_visible_items = 12.0f;
+                f32 max_list_h = max_visible_items * item_h;
+                f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
+                f32 visible_list_h = std::min(list_h, max_list_h);
+                f32 dh = header_h + visible_list_h + 8.0f;
+
+                f32 dx = br.x + br.w - dw;
+                if (dx < 4.0f) dx = 4.0f;
+                if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
+                    dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
+
+                f32 dy = chrome_height() + 2.0f;
+                if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
+                    dy = chrome_height() - dh - 2.0f;
+                }
+
+                if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
+                    f32 rel_y = static_cast<f32>(my) - dy - pad - header_h;
+                    if (rel_y >= 0.0f) {
+                        f32 scrolled_y = rel_y + chrome_.bookmark_scroll_offset;
+                        i32 idx = static_cast<i32>(scrolled_y / item_h);
+                        if (idx >= 0 && idx < static_cast<i32>(all.size()))
+                            chrome_.hovered_bookmark_item = idx;
+                        else
+                            chrome_.hovered_bookmark_item = -1;
+                    } else {
+                        chrome_.hovered_bookmark_item = -1;
+                    }
+                    return;
+                }
+            }
+            chrome_.hovered_bookmark_item = -1;
             // Set cursor based on page content under mouse
             if (current_page_.has_value() && current_page_->layout) {
                 f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
@@ -1036,6 +1101,45 @@ namespace browser {
     }
 
     void BrowserWindow::handle_scroll(i32 delta) {
+        // If bookmarks dropdown is open and mouse is over it, scroll the dropdown
+        if (chrome_.show_bookmarks_dropdown) {
+            POINT pt;
+            GetCursorPos(&pt);
+            HWND hwnd = static_cast<HWND>(window_->get_native_handle());
+            ScreenToClient(hwnd, &pt);
+            i32 mx = pt.x;
+            i32 my = pt.y;
+
+            auto &br = chrome_.rects.bookmark;
+            f32 dw = 300.0f;
+            f32 item_h = 28.0f;
+            f32 header_h = 28.0f;
+            auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
+            f32 max_visible_items = 12.0f;
+            f32 max_list_h = max_visible_items * item_h;
+            f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
+            f32 visible_list_h = std::min(list_h, max_list_h);
+            f32 dh = header_h + visible_list_h + 8.0f;
+
+            f32 dx = br.x + br.w - dw;
+            if (dx < 4.0f) dx = 4.0f;
+            if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
+                dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
+
+            f32 dy = chrome_height() + 2.0f;
+            if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
+                dy = chrome_height() - dh - 2.0f;
+            }
+
+            if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
+                f32 total_list_h = static_cast<f32>(all.size()) * item_h;
+                f32 max_scroll = std::max(0.0f, total_list_h - visible_list_h);
+                chrome_.bookmark_scroll_offset =
+                    std::max(0.0f, std::min(max_scroll, chrome_.bookmark_scroll_offset - delta * 20.0f));
+                return;
+            }
+        }
+
         if (compositor_enabled_ && compositor_) {
             f32 dy = static_cast<f32>(-delta * 30);
             compositor_->set_root_scroll_delta(dy);
