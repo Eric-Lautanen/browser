@@ -122,7 +122,17 @@ add_library(html STATIC
     html/dom.hpp
     html/dom.cpp
     html/parser.hpp
-    html/parser.cpp
+    html/parser/parser.hpp
+    html/parser/parser.cpp
+    html/parser/foster_parenting.cpp
+    html/parser/adoption_agency.cpp
+    html/parser/template.cpp
+    html/parser/initial.cpp
+    html/parser/before_html.cpp
+    html/parser/head.cpp
+    html/parser/body.cpp
+    html/parser/frameset.cpp
+    html/parser/after_body.cpp
     html/traversal.hpp
     html/traversal.cpp
     html/preload_scanner.hpp

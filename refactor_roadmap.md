@@ -315,12 +315,12 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `html/parser/template.cpp` | Template content model insertion. ~100 lines. |
 
 ### Phase R8 Checklist
-- [ ] Each insertion mode group has its own file
-- [ ] Foster parenting and adoption agency are self-contained
-- [ ] Template handling separated
-- [ ] All html_test tests pass
-- [ ] No circular includes
-- [ ] Committed and pushed
+- [x] Each insertion mode group has its own file
+- [x] Foster parenting and adoption agency are self-contained
+- [x] Template handling separated
+- [x] All html_test tests pass
+- [x] No circular includes
+- [x] Committed and pushed
 
 ---
 
