@@ -119,7 +119,12 @@ add_library(html STATIC
     html/entities.hpp
     html/entities.cpp
     html/tokenizer.hpp
-    html/tokenizer.cpp
+    html/tokenizer/tokenizer.hpp
+    html/tokenizer/tokenizer.cpp
+    html/tokenizer/states_data.cpp
+    html/tokenizer/states_tag.cpp
+    html/tokenizer/states_rcdata.cpp
+    html/tokenizer/states_foreign.cpp
     html/dom.hpp
     html/dom.cpp
     html/parser.hpp

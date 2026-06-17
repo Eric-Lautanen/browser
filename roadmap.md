@@ -10,7 +10,7 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 |-----------|-----------|
 | **Zero dependencies** | No Boost, Qt, WebKit, Chromium, libcurl, OpenSSL, zlib, Freetype, or any other third-party library. Only the C++ standard library, Win32 API (kernel32, user32, gdi32, ws2_32, bcrypt, opengl32), and OpenGL. No WIC, no COM, no system imaging components — every decoder is hand-written from scratch. |
 | **Modern C++20** | RAII, move semantics, `std::unique_ptr`/`std::shared_ptr`, `std::optional`, `std::variant`, `std::string_view`, concepts, coroutines (where appropriate), `constexpr` where possible. No exceptions (`-fno-exceptions`). |
-| **Simple & clean** | Minimal settings. No bloat. Every feature must earn its place. The current 140 `.cpp` files and ~25K lines of C++ is lean by browser standards (Chromium is ~30M lines). |
+| **Simple & clean** | Minimal settings. No bloat. Every feature must earn its place. The current 126 `.cpp` and 90 `.hpp` files (~43K lines of C++) is lean by browser standards (Chromium is ~30M lines). |
 | **Performance-first** | Async I/O via IOCP. Off-main-thread parsing/layout/paint. GPU-accelerated rendering. Smooth 60fps scrolling with a compositor. No busy-wait event loops. |
 | **Secure by default** | TLS 1.3 only. Same-origin policy. CSP enforcement. No telemetry. No tracking. No phoning home. HSTS preload. Certificate validation. |
 | **No telemetry, ever** | The existing `telemetry.cpp` generates a local `about:performance` report only. It never sends data anywhere. This is non-negotiable. |
@@ -23,7 +23,8 @@ This is a **from-scratch, zero-dependency** web browser written in **pure C++20*
 ### Current State (June 2026)
 
 - **Build**: CMake 3.20+, GCC 15.2+, Ninja, Windows (x86-64)
-- **Working**: HTML5 tokenizer/parser/DOM, CSS parser/cascade/layout (block, flexbox, grid, position, float, z-index, overflow), JS lexer/parser/bytecode-compiler/VM/GC/JIT, HTTP/1.1, HTTP/2, TLS 1.3, DNS (UDP), OpenGL renderer, TrueType fonts (refactored into modular `render/font/` sub-modules in Phase R7), custom chrome UI, CSS animations/transitions, transforms, calc(), custom properties, gradients, @media queries, pseudo-classes, box-shadow, border-radius
+- **Working**: HTML5 tokenizer/parser/DOM, CSS parser/cascade/layout (block, flexbox, grid, position, float, z-index, overflow), JS lexer/parser/bytecode-compiler/VM/GC/JIT, HTTP/1.1, HTTP/2, TLS 1.3, DNS (UDP), OpenGL renderer, TrueType fonts, custom chrome UI, CSS animations/transitions, transforms, calc(), custom properties, gradients, @media queries, pseudo-classes, box-shadow, border-radius
+- **Refactoring Complete (R1-R13)**: All 13 structural refactor phases finished. Every large file split into focused sub-modules under dedicated directories: `css/layout/`, `css/parser/`, `css/cascade/`, `net/http2/`, `net/tls/`, `browser/chrome/`, `render/font/`, `render/paint/`, `net/socket/`, `html/parser/`, `html/tokenizer/`, `js/parser/`, `js/vm/` + `js/vm/compiler/`. No single logic file exceeds ~600 lines.
 - **Not working**: images not loaded, forms inert, no cookies/storage, no hit testing, no event dispatch to page elements
 
 ---
@@ -822,6 +823,63 @@ while (!window_->should_close()) {
 
 ---
 
+## Refactor Phases R1–R13: Codebase Modularization
+
+**Goal**: No single source file exceeds ~600 lines of logic. Every subsystem is organized into focused sub-modules under dedicated directories. Pure structural change — zero behavior modifications.
+
+The original codebase had several monolithic files (CSS layout 2,448 lines, HTML parser 1,933 lines, HTTP/2 1,057 lines, JS parser 1,041 lines, TLS 987 lines, browser window 910 lines, JS VM 861 lines, CSS cascade 783 lines, etc.). These were progressively split into smaller, focused files organized by responsibility.
+
+### Completed Phases
+
+| Phase | Target | Original | Split Into | Files Created |
+|-------|--------|----------|------------|---------------|
+| **R1** | `css/layout/` | 2,448 lines | types, resolve, type_check, flex, grid, block, inline, table, positioning, engine | 11 files |
+| **R2** | `css/parser/` | 953 lines | parser, selector, declaration, at_rule, property | 5 files |
+| **R3** | `css/cascade/` | 783 lines | engine, specificity, important, inheritance, media | 5 files |
+| **R4** | `net/http2/` | 1,057 lines | connection, frames, hpack | 3 files |
+| **R5** | `net/tls/` | 987 lines | connection, handshake, record, cipher | 4 files |
+| **R6** | `browser/chrome/` | 910 lines | window, titlebar, toolbar, page_view, event_handler, navigator | 6 files |
+| **R7** | `render/font/` | 655+631 lines | font, truetype, rasterizer, atlas, embedded | 5 files |
+| **R8** | `html/parser/` | 1,933 lines | parser, initial, before_html, head, body, frameset, after_body, foster_parenting, adoption_agency, template | 11 files |
+| **R9** | `net/socket/` | 463+133 lines | types, socket_win32, tcp, udp | 4 files |
+| **R10** | `render/paint/` | 397+379 lines | commands, painter, executor, gradient, shadow | 5 files |
+| **R11** | `js/parser/` | 1,041 lines | parser, expression, statement, declaration, pattern | 5 files |
+| **R12** | `js/vm/` + `js/vm/compiler/` | 861+683 lines | vm, ops, builtins, gc, compiler, expr, stmt | 7 files |
+| **R13** | `html/tokenizer/` | 747 lines | tokenizer, states_data, states_tag, states_rcdata, states_foreign | 5 files |
+
+**Total**: 13 refactor phases, ~13,000 lines of code restructured into 76 focused files across 16 sub-directories.
+
+### Methodology
+
+Each phase followed a strict 10-step process:
+1. Read the target file top-to-bottom to understand the full subsystem
+2. Create the target sub-directory
+3. Move type declarations to a shared header
+4. Move one section at a time (one function per step minimum)
+5. Build and test after each move
+6. After all extractions, the original file is reduced to a skeleton
+7. Update CMakeLists.txt to reference new file list
+8. Run full test suite (30+ test executables)
+9. `git clang-format` + `clang-tidy`
+10. Commit with descriptive message
+
+### Key Design Decisions
+
+- **Class stays intact**: When splitting a class's method implementations across files, the class declaration stays in one header. Each sub-file defines `ClassName::method_name()` for the methods it owns.
+- **Forwarding headers**: Original headers (`css/layout.hpp`, `net/tls.hpp`, etc.) become thin forwarding headers: `#include "layout/layout.hpp"`. All existing includes continue to work.
+- **No circular dependencies**: Sub-module layering ensures lower-level files never include higher-level ones.
+- **Data tables are exempt**: Large data tables (HTML entities, embedded fonts, Huffman tables) are not split — they're data, not logic.
+
+### Verification
+
+- All 13 refactor phases pass identical test suites before and after
+- Build is clean with `-Wall -Wextra -Wpedantic -Werror`
+- `git clang-format` produces clean diffs
+- `clang-tidy` introduces no new warnings
+- No circular includes in any sub-module
+
+---
+
 ## Phase 7: Storage — Cookies, localStorage, Cache
 
 **Goal**: Persistent storage so that sessions, authentication, and preferences survive browser restarts.
@@ -1224,37 +1282,60 @@ if ($failed -gt 0) { exit 1 }
 
 ## Implementation Order Summary
 
+### Refactor Phases (Completed)
+
 ```
-Phase 0:  Async Infrastructure (IOCP, coroutines, channels, memory)
+Phase R1:  css/layout/          ← 2,448 lines → 11 files
+Phase R2:  css/parser/          ← 953 lines → 5 files
+Phase R3:  css/cascade/         ← 783 lines → 5 files
+Phase R4:  net/http2/           ← 1,057 lines → 3 files
+Phase R5:  net/tls/             ← 987 lines → 4 files
+Phase R6:  browser/chrome/      ← 910 lines → 6 files
+Phase R7:  render/font/         ← 655+631 lines → 5 files
+Phase R8:  html/parser/         ← 1,933 lines → 11 files
+Phase R9:  net/socket/          ← 463+133 lines → 4 files
+Phase R10: render/paint/        ← 397+379 lines → 5 files
+Phase R11: js/parser/           ← 1,041 lines → 5 files
+Phase R12: js/vm/               ← 861+683 lines → 7 files
+Phase R13: html/tokenizer/      ← 747 lines → 5 files
+```
+
+All 13 refactor phases complete. See the Refactor Phases R1–R13 section for full details.
+
+### Feature Phases (In Progress / Planned)
+
+```
+Phase 0:  Async Infrastructure (IOCP, coroutines, channels, memory)                     ← COMPLETE
     ↓
-Phase 1:  Async Networking (overlapped sockets, async HTTP/TLS/DNS)
+Phase 1:  Async Networking (overlapped sockets, async HTTP/TLS/DNS)                      ← COMPLETE
     ↓
-Phase 2:  Off-Main-Thread Pipeline (async parse/layout/paint)
+Phase 2:  Off-Main-Thread Pipeline (async parse/layout/paint)                            ← REWORKING
     ↓
-Phase 4:  JavaScript DOM Bindings & Builtins ← CRITICAL MASS
+Phase 4:  JavaScript DOM Bindings & Builtins ← CRITICAL MASS                             ← COMPLETE
     ↓
-Phase 5:  CSS Completeness (animations, calc, transforms, gradients)
+Phase 5:  CSS Completeness (animations, calc, transforms, gradients)                     ← COMPLETE
     ↓
-Phase 6:  Compositor (smooth 60fps scrolling, tiled rasterization)
+Phase 6:  Compositor (smooth 60fps scrolling, tiled rasterization)                       ← NOT STARTED
     ↓
-Phase 3:  Sub-Resource Loading (preload scanner, images)
+Phase 3:  Sub-Resource Loading (preload scanner, images)                                 ← ON STANDBY
     ↓
-Phase 7:  Storage (cookies, localStorage, HTTP cache)
+Phase 7:  Storage (cookies, localStorage, HTTP cache)                                    ← NOT STARTED
     ↓
-Phase 8:  Forms & Hit Testing
+Phase 8:  Forms & Hit Testing                                                            ← NOT STARTED
     ↓
-Phase 9:  Security (CSP, CORS, HSTS, SOP)
+Phase 9:  Security (CSP, CORS, HSTS, SOP)                                                ← NOT STARTED
     ↓
-Phase 10: Performance Telemetry
+Phase 10: Performance Telemetry                                                          ← NOT STARTED
     ↓
-Phase 11: Chrome Completeness (downloads, find, zoom, devtools)
+Phase 11: Chrome Completeness (downloads, find, zoom, devtools)                          ← NOT STARTED
     ↓
-Phase 12: Final Standards Compliance
+Phase 12: Final Standards Compliance                                                     ← NOT STARTED
     ↓
-Phase 13: Media (canvas, audio, video)
+Phase 13: Media (canvas, audio, video)                                                   ← NOT STARTED
 ```
 
 **Phases 0–2** are pure infrastructure — the user sees no new features but the browser stops freezing.  
 **Phase 4** is the single most important feature phase — it makes JavaScript actually work against real web pages. Without it, the browser is a document viewer.  
+**Phases R1–R13** (Refactoring) were prioritized after Phase 5 to bring the codebase under control before further feature work — every large file was split, no single logic file exceeds ~600 lines.  
 **Phases 5–9** fill the remaining gap to "daily driver" usability.  
 **Phases 10–13** are polish, compliance, and quality of life.
