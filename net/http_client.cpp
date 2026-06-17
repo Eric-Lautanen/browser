@@ -1,4 +1,8 @@
 #include "http_client.hpp"
+#include <sstream>
+#include <cctype>
+#include <cstdlib>
+#include <chrono>
 
 namespace browser::net {
 
@@ -8,6 +12,116 @@ HTTPClient::HTTPClient() = default;
 HTTPClient::~HTTPClient() = default;
 HTTPClient::HTTPClient(HTTPClient&&) noexcept = default;
 HTTPClient& HTTPClient::operator=(HTTPClient&&) noexcept = default;
+
+static std::string trim_str(const std::string& s) {
+    size_t start = 0;
+    while (start < s.size() && (s[start] == ' ' || s[start] == '\t')) start++;
+    size_t end = s.size();
+    while (end > start && (s[end - 1] == ' ' || s[end - 1] == '\t')) end--;
+    return s.substr(start, end - start);
+}
+
+static void parse_set_cookie(const std::string& header_value,
+                             const std::string& request_domain,
+                             const std::string& request_path,
+                             CookieJar& jar) {
+    std::string trimmed = trim_str(header_value);
+    if (trimmed.empty()) return;
+
+    // Split on semicolon for attributes
+    std::vector<std::string> parts;
+    size_t pos = 0;
+    while (pos < trimmed.size()) {
+        size_t next = trimmed.find(';', pos);
+        if (next == std::string::npos) next = trimmed.size();
+        parts.push_back(trim_str(trimmed.substr(pos, next - pos)));
+        pos = next + 1;
+    }
+
+    if (parts.empty()) return;
+
+    // First part: name=value
+    auto eq = parts[0].find('=');
+    if (eq == std::string::npos) return;
+
+    Cookie c;
+    c.name = trim_str(parts[0].substr(0, eq));
+    c.value = trim_str(parts[0].substr(eq + 1));
+    c.creation_time = static_cast<u64>(std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    c.last_access_time = c.creation_time;
+    c.path = "/";
+
+    for (size_t i = 1; i < parts.size(); i++) {
+        auto attr_eq = parts[i].find('=');
+        std::string attr_name, attr_value;
+        if (attr_eq != std::string::npos) {
+            attr_name = trim_str(parts[i].substr(0, attr_eq));
+            attr_value = trim_str(parts[i].substr(attr_eq + 1));
+        } else {
+            attr_name = trim_str(parts[i]);
+        }
+
+        std::string lc_name;
+        for (char ch : attr_name) lc_name += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+
+        if (lc_name == "domain") {
+            if (!attr_value.empty() && attr_value.front() == '.')
+                c.domain = attr_value;
+            else
+                c.domain = "." + attr_value;
+        } else if (lc_name == "path") {
+            if (!attr_value.empty() && attr_value.front() == '/')
+                c.path = attr_value;
+        } else if (lc_name == "secure") {
+            c.secure = true;
+        } else if (lc_name == "httponly") {
+            c.httpOnly = true;
+        } else if (lc_name == "max-age") {
+            char* end = nullptr;
+            long max_age = std::strtol(attr_value.c_str(), &end, 10);
+            if (end != attr_value.c_str()) {
+                if (max_age <= 0) return;
+                c.expires_time = c.creation_time + static_cast<u64>(max_age);
+            }
+        } else if (lc_name == "expires") {
+            // Parse HTTP date - simplified: just skip for now, max-age preferred
+        } else if (lc_name == "samesite") {
+            std::string lc_val;
+            for (char ch : attr_value) lc_val += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+            if (lc_val == "lax" || lc_val == "strict" || lc_val == "none")
+                c.sameSite = lc_val;
+        }
+    }
+
+    if (c.domain.empty()) {
+        c.domain = request_domain;
+    } else {
+        std::string req_lower;
+        for (char ch : request_domain) req_lower += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        std::string cd_lower;
+        for (char ch : c.domain) cd_lower += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+
+        // Strip leading dot for validation
+        std::string check_domain = cd_lower;
+        if (!check_domain.empty() && check_domain.front() == '.')
+            check_domain = check_domain.substr(1);
+
+        // TLD check: domain must contain a dot (unless localhost)
+        if (check_domain.find('.') == std::string::npos && check_domain != "localhost")
+            return;
+
+        // Domain must equal request domain or be a suffix
+        if (req_lower != check_domain) {
+            std::string dotted = "." + check_domain;
+            if (!(req_lower.size() > dotted.size() &&
+                  req_lower.substr(req_lower.size() - dotted.size()) == dotted))
+                return;
+        }
+    }
+
+    jar.set_cookie(request_domain, request_path, c);
+}
 
 bool HTTPClient::is_connected() const {
     if (http1_ && http1_->is_connected()) return true;
@@ -124,10 +238,47 @@ Result<http::Response> HTTPClient::fetch(const http::Request& req) {
     auto cr = connect_if_needed(req);
     if (cr.is_err()) return std::string("fetch: " + cr.unwrap_err());
 
+    bool secure = (req.url.scheme == "https");
+
+    http::Request req_with_cookies = req;
+    auto matching = cookie_jar().get_cookies(req.url.host, req.url.path, secure);
+    if (!matching.empty()) {
+        std::string cookie_str;
+        for (size_t i = 0; i < matching.size(); i++) {
+            if (i > 0) cookie_str += "; ";
+            cookie_str += matching[i].name + "=" + matching[i].value;
+        }
+        req_with_cookies.headers.set("Cookie", cookie_str);
+    }
+
     if (http2_) {
-        return http2_->execute(req);
+        auto result = http2_->execute(req_with_cookies);
+        if (result.is_ok()) {
+            auto resp = std::move(result.unwrap());
+            for (auto& [hk, hv] : resp.headers.all()) {
+                std::string lk;
+                for (char ch : hk) lk += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                if (lk == "set-cookie") {
+                    parse_set_cookie(hv, req.url.host, req.url.path, cookie_jar());
+                }
+            }
+            return resp;
+        }
+        return result;
     } else if (http1_) {
-        return http1_->execute(req);
+        auto result = http1_->execute(req_with_cookies);
+        if (result.is_ok()) {
+            auto resp = std::move(result.unwrap());
+            for (auto& [hk, hv] : resp.headers.all()) {
+                std::string lk;
+                for (char ch : hk) lk += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                if (lk == "set-cookie") {
+                    parse_set_cookie(hv, req.url.host, req.url.path, cookie_jar());
+                }
+            }
+            return resp;
+        }
+        return result;
     }
 
     return std::string("no client available");
@@ -137,11 +288,47 @@ async::task<http::Response> HTTPClient::fetch_async(const http::Request& req) {
     auto cr = co_await connect_if_needed_async(req);
     if (cr.is_err()) co_return std::string("fetch: ") + cr.unwrap_err();
 
+    bool secure = (req.url.scheme == "https");
+
+    http::Request req_with_cookies = req;
+    auto matching = cookie_jar().get_cookies(req.url.host, req.url.path, secure);
+    if (!matching.empty()) {
+        std::string cookie_str;
+        for (size_t i = 0; i < matching.size(); i++) {
+            if (i > 0) cookie_str += "; ";
+            cookie_str += matching[i].name + "=" + matching[i].value;
+        }
+        req_with_cookies.headers.set("Cookie", cookie_str);
+    }
+
     if (http2_) {
-        co_return http2_->execute(req);
+        auto result = http2_->execute(req_with_cookies);
+        if (result.is_ok()) {
+            auto resp = std::move(result.unwrap());
+            for (auto& [hk, hv] : resp.headers.all()) {
+                std::string lk;
+                for (char ch : hk) lk += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                if (lk == "set-cookie") {
+                    parse_set_cookie(hv, req.url.host, req.url.path, cookie_jar());
+                }
+            }
+            co_return resp;
+        }
+        co_return result;
     } else if (http1_) {
-        auto resp = co_await http1_->execute_async(req);
-        co_return resp;
+        auto result = co_await http1_->execute_async(req_with_cookies);
+        if (result.is_ok()) {
+            auto resp = std::move(result.unwrap());
+            for (auto& [hk, hv] : resp.headers.all()) {
+                std::string lk;
+                for (char ch : hk) lk += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                if (lk == "set-cookie") {
+                    parse_set_cookie(hv, req.url.host, req.url.path, cookie_jar());
+                }
+            }
+            co_return resp;
+        }
+        co_return result;
     }
 
     co_return std::string("no client available");

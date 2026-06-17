@@ -3,6 +3,7 @@
 #include "../../net/http_client.hpp"
 #include "../../net/tracker_blocker.hpp"
 #include "../../net/url.hpp"
+#include "../../net/storage.hpp"
 #include "../../platform/opengl.hpp"
 #include "../../platform/window_win32.hpp"
 #include "../bookmarks.hpp"
@@ -16,7 +17,9 @@
 namespace browser {
 
     BrowserWindow::BrowserWindow() = default;
-    BrowserWindow::~BrowserWindow() = default;
+    BrowserWindow::~BrowserWindow() {
+        net::Storage::flush_all();
+    }
 
     Result<void> BrowserWindow::initialize() {
         auto win = platform::Window::create_window("Browser", 1024, 768);

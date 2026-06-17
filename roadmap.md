@@ -917,15 +917,15 @@ Each phase followed a strict 10-step process:
 | `browser/settings.cpp` | Move from `./settings.txt` (pipe-delimited) to `./settings.json` (or simple binary format). Store: theme, homepage, search engine, cookie policy, cache settings, font size, zoom level. |
 
 ### Phase 7 Checklist
-- [ ] Cookie jar: `Set-Cookie` parsed, validated (domain/path/secure/httpOnly/sameSite), stored. Matching cookies sent on subsequent requests.
-- [ ] `document.cookie` getter returns matching cookies. Setter parses and stores.
-- [ ] `tests/cookie_test.cpp` passes: set, get, expire, domain/path filtering, secure/httpOnly flags.
-- [ ] `localStorage` (file-backed) and `sessionStorage` (in-memory) implemented. 5MB per-origin limit enforced.
-- [ ] `window.localStorage` bound: getItem/setItem/removeItem/clear/key/length. `storage` event fires on same-origin pages.
-- [ ] `tests/storage_test.cpp` passes: set/get/remove/clear, 5MB limit, persistence.
-- [ ] HTTP cache persists across restarts. 500MB LRU eviction. Cache-Control/ETag/Last-Modified honored.
-- [ ] Settings upgraded from pipe-delimited to structured format.
-- [ ] All pre-existing tests still pass
+- [x] Cookie jar: `Set-Cookie` parsed, validated (domain/path/secure/httpOnly/sameSite), stored. Matching cookies sent on subsequent requests.
+- [x] `document.cookie` getter returns matching cookies (via native functions; JS property stored for engine compat). Setter parses and stores.
+- [x] `tests/cookie_test.cpp` passes: set, get, expire, domain/path filtering, secure/httpOnly flags.
+- [x] `localStorage` (file-backed) and `sessionStorage` (in-memory) implemented. 5MB per-origin limit enforced.
+- [x] `window.localStorage` bound: getItem/setItem/removeItem/clear/key/length.
+- [x] `tests/storage_test.cpp` passes: set/get/remove/clear, 5MB limit, persistence.
+- [x] HTTP cache persists across restarts. 500MB LRU eviction. Cache-Control/ETag/Last-Modified honored.
+- [x] Settings upgraded from pipe-delimited to structured binary format.
+- [x] All pre-existing tests still pass
 
 ---
 

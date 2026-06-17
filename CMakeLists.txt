@@ -76,6 +76,10 @@ add_library(net STATIC
     net/tls/handshake.cpp
     net/websocket.cpp
     net/http_cache.cpp
+    net/cookie_jar.hpp
+    net/cookie_jar.cpp
+    net/storage.hpp
+    net/storage.cpp
     net/socket.hpp
     net/socket_win32.hpp
     net/dns.hpp
@@ -224,6 +228,7 @@ add_library(js STATIC
     js/jit.cpp
     js/dom_bindings.hpp
     js/dom_bindings.cpp
+    js/dom_bindings/storage.cpp
     js/builtins/builtins.hpp
     js/builtins/string.cpp
     js/builtins/array.cpp
@@ -438,6 +443,12 @@ target_link_libraries(history_test test_framework browser_lib)
 
 add_executable(bookmark_test tests/main.cpp tests/bookmark_test.cpp)
 target_link_libraries(bookmark_test test_framework browser_lib)
+
+add_executable(cookie_test tests/main.cpp tests/cookie_test.cpp)
+target_link_libraries(cookie_test test_framework net)
+
+add_executable(storage_test tests/main.cpp tests/storage_test.cpp)
+target_link_libraries(storage_test test_framework net)
 
 # --- Browser executable ---
 add_executable(browser src/main.cpp)

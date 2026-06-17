@@ -7,6 +7,7 @@
 #include "http.hpp"
 #include "http2.hpp"
 #include "tracker_blocker.hpp"
+#include "cookie_jar.hpp"
 #include <string>
 #include <memory>
 
@@ -21,6 +22,7 @@ public:
     HTTPClient(const HTTPClient&) = delete;
 
     static void set_tracker_blocker(TrackerBlocker* tb) { tracker_ = tb; }
+    static CookieJar& cookie_jar() { static CookieJar jar; return jar; }
 
     Result<http::Response> fetch(const http::Request& req);
     Result<http::Response> get(const std::string& url_str);

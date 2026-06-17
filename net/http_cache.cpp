@@ -19,7 +19,6 @@ HTTPCache::~HTTPCache() = default;
 
 std::string HTTPCache::make_key(const std::string& method, const std::string& url) {
     std::string key = method + ":" + url;
-    // Sanitize for filename
     for (auto& c : key) {
         if (c == '/' || c == '\\' || c == ':' || c == '?' || c == '&' || c == '#' || c == '<' || c == '>' || c == '"')
             c = '_';
@@ -28,7 +27,7 @@ std::string HTTPCache::make_key(const std::string& method, const std::string& ur
 }
 
 std::string HTTPCache::entry_path(const std::string& key) const {
-    return cache_dir_ + key + ".resp";
+    return responses_dir_ + key + ".resp";
 }
 
 std::string HTTPCache::index_path() const {
@@ -39,16 +38,79 @@ Result<void> HTTPCache::init(const std::string& cache_dir) {
     cache_dir_ = cache_dir;
     if (cache_dir_.back() != '/' && cache_dir_.back() != '\\')
         cache_dir_ += '/';
+    responses_dir_ = cache_dir_ + "responses/";
 
-    // Create directory if needed
     DWORD attrs = GetFileAttributesA(cache_dir_.c_str());
     if (attrs == INVALID_FILE_ATTRIBUTES) {
         if (!CreateDirectoryA(cache_dir_.c_str(), nullptr))
             return std::string("failed to create cache directory");
     }
 
-    // Load index
+    attrs = GetFileAttributesA(responses_dir_.c_str());
+    if (attrs == INVALID_FILE_ATTRIBUTES) {
+        if (!CreateDirectoryA(responses_dir_.c_str(), nullptr))
+            return std::string("failed to create responses directory");
+    }
+
     return load_index();
+}
+
+Result<void> HTTPCache::write_body_file(const std::string& key, const std::vector<u8>& body) {
+    std::ofstream file(entry_path(key), std::ios::binary);
+    if (!file) return std::string("failed to write response body");
+    u32 body_len = static_cast<u32>(body.size());
+    file.write(reinterpret_cast<const char*>(&body_len), sizeof(body_len));
+    if (body_len > 0)
+        file.write(reinterpret_cast<const char*>(body.data()), body_len);
+    if (!file.good()) return std::string("write error for response body");
+    return {};
+}
+
+Result<std::vector<u8>> HTTPCache::read_body_file(const std::string& key) const {
+    std::ifstream file(entry_path(key), std::ios::binary);
+    if (!file) return std::string("response body file not found");
+    u32 body_len = 0;
+    file.read(reinterpret_cast<char*>(&body_len), sizeof(body_len));
+    if (!file) return std::string("failed to read body length");
+    std::vector<u8> body(body_len);
+    if (body_len > 0)
+        file.read(reinterpret_cast<char*>(body.data()), body_len);
+    return body;
+}
+
+void HTTPCache::evict_lru() {
+    if (total_cache_size_ <= kMaxCacheSize) return;
+
+    std::vector<std::string> keys_by_time;
+    keys_by_time.reserve(index_.size());
+    for (auto& [k, v] : index_)
+        keys_by_time.push_back(k);
+
+    std::sort(keys_by_time.begin(), keys_by_time.end(), [this](const std::string& a, const std::string& b) {
+        return index_.at(a).stored_time < index_.at(b).stored_time;
+    });
+
+    size_t evict_count = 0;
+    for (auto& k : keys_by_time) {
+        if (total_cache_size_ <= kMaxCacheSize) break;
+        evict_count++;
+        if (evict_count > 10) break;
+
+        auto it = index_.find(k);
+        if (it == index_.end()) continue;
+
+        if (total_cache_size_ >= it->second.body.size())
+            total_cache_size_ -= it->second.body.size();
+        else
+            total_cache_size_ = 0;
+
+        std::string resp_path = entry_path(k);
+        DeleteFileA(resp_path.c_str());
+        index_.erase(it);
+    }
+
+    if (total_cache_size_ > kMaxCacheSize)
+        evict_lru();
 }
 
 Result<void> HTTPCache::save_index() {
@@ -59,21 +121,15 @@ Result<void> HTTPCache::save_index() {
     file.write(reinterpret_cast<const char*>(&count), sizeof(count));
 
     for (auto& [key, entry] : index_) {
-        // Write key
         u32 key_len = static_cast<u32>(key.size());
         file.write(reinterpret_cast<const char*>(&key_len), sizeof(key_len));
         file.write(key.data(), key_len);
 
-        // Write entry fields
         file.write(reinterpret_cast<const char*>(&entry.status_code), sizeof(entry.status_code));
 
         u32 ver_len = static_cast<u32>(entry.http_version.size());
         file.write(reinterpret_cast<const char*>(&ver_len), sizeof(ver_len));
         file.write(entry.http_version.data(), ver_len);
-
-        u32 body_len = static_cast<u32>(entry.body.size());
-        file.write(reinterpret_cast<const char*>(&body_len), sizeof(body_len));
-        file.write(reinterpret_cast<const char*>(entry.body.data()), body_len);
 
         file.write(reinterpret_cast<const char*>(&entry.stored_time), sizeof(entry.stored_time));
         file.write(reinterpret_cast<const char*>(&entry.max_age_secs), sizeof(entry.max_age_secs));
@@ -86,7 +142,6 @@ Result<void> HTTPCache::save_index() {
         file.write(reinterpret_cast<const char*>(&lm_len), sizeof(lm_len));
         file.write(entry.last_modified.data(), lm_len);
 
-        // Write headers
         u32 hdr_count = 0;
         std::string hdr_data;
         for (auto& [hk, hv] : entry.headers.all()) {
@@ -110,8 +165,9 @@ Result<void> HTTPCache::save_index() {
 
 Result<void> HTTPCache::load_index() {
     index_.clear();
+    total_cache_size_ = 0;
     std::ifstream file(index_path(), std::ios::binary);
-    if (!file) return {}; // No index yet, not an error
+    if (!file) return {};
 
     u32 count = 0;
     file.read(reinterpret_cast<char*>(&count), sizeof(count));
@@ -136,13 +192,6 @@ Result<void> HTTPCache::load_index() {
         entry.http_version.resize(ver_len);
         file.read(&entry.http_version[0], ver_len);
 
-        u32 body_len = 0;
-        file.read(reinterpret_cast<char*>(&body_len), sizeof(body_len));
-        if (!file) break;
-        entry.body.resize(body_len);
-        if (body_len > 0)
-            file.read(reinterpret_cast<char*>(entry.body.data()), body_len);
-
         file.read(reinterpret_cast<char*>(&entry.stored_time), sizeof(entry.stored_time));
         file.read(reinterpret_cast<char*>(&entry.max_age_secs), sizeof(entry.max_age_secs));
 
@@ -158,7 +207,6 @@ Result<void> HTTPCache::load_index() {
         entry.last_modified.resize(lm_len);
         file.read(&entry.last_modified[0], lm_len);
 
-        // Read headers
         u32 hdr_count = 0;
         file.read(reinterpret_cast<char*>(&hdr_count), sizeof(hdr_count));
         if (!file) break;
@@ -189,6 +237,12 @@ Result<void> HTTPCache::load_index() {
             entry.headers.set(hk, hv);
         }
 
+        auto body_r = read_body_file(key);
+        if (body_r.is_ok()) {
+            entry.body = body_r.unwrap();
+            total_cache_size_ += entry.body.size();
+        }
+
         index_[key] = std::move(entry);
     }
 
@@ -199,7 +253,15 @@ Result<CacheEntry> HTTPCache::lookup(const std::string& method, const std::strin
     auto key = make_key(method, url);
     auto it = index_.find(key);
     if (it == index_.end()) {
+        miss_count_++;
         return std::string("not in cache");
+    }
+    hit_count_++;
+    if (it->second.body.empty()) {
+        auto body_r = read_body_file(key);
+        if (body_r.is_ok()) {
+            it->second.body = body_r.unwrap();
+        }
     }
     return it->second;
 }
@@ -207,6 +269,14 @@ Result<CacheEntry> HTTPCache::lookup(const std::string& method, const std::strin
 Result<void> HTTPCache::store(const std::string& method, const std::string& url,
                                const http::Response& response) {
     auto key = make_key(method, url);
+
+    auto existing_it = index_.find(key);
+    if (existing_it != index_.end()) {
+        if (total_cache_size_ >= existing_it->second.body.size())
+            total_cache_size_ -= existing_it->second.body.size();
+        else
+            total_cache_size_ = 0;
+    }
 
     CacheEntry entry;
     entry.cache_key = key;
@@ -216,10 +286,8 @@ Result<void> HTTPCache::store(const std::string& method, const std::string& url,
     entry.body = response.body;
     entry.stored_time = now_ms();
 
-    // Extract cache control info
     std::string cc = response.headers.get("cache-control");
     if (!cc.empty()) {
-        // Parse max-age
         auto pos = cc.find("max-age=");
         if (pos != std::string::npos) {
             pos += 8;
@@ -232,14 +300,18 @@ Result<void> HTTPCache::store(const std::string& method, const std::string& url,
     entry.etag = response.headers.get("etag");
     entry.last_modified = response.headers.get("last-modified");
 
-    // Default cache time if no max-age AND no explicit Cache-Control: 10 minutes for successful responses
     if (entry.max_age_secs == 0 && !response.headers.has("cache-control") && response.status.code == 200) {
         entry.max_age_secs = 600;
     }
 
+    auto body_write = write_body_file(key, response.body);
+    if (body_write.is_err()) return body_write.unwrap_err();
+
+    total_cache_size_ += entry.body.size();
     index_[key] = std::move(entry);
 
-    // Persist index
+    evict_lru();
+
     return save_index();
 }
 
@@ -259,13 +331,11 @@ void HTTPCache::add_conditional_headers(const CacheEntry& entry, http::Request& 
 }
 
 Result<void> HTTPCache::update_from_304(CacheEntry& entry, const http::Response& response) {
-    // Update headers from 304 response
     for (auto& [k, v] : response.headers.all()) {
         entry.headers.set(k, v);
     }
     entry.stored_time = now_ms();
 
-    // Update cache control
     std::string cc = response.headers.get("cache-control");
     if (!cc.empty()) {
         auto pos = cc.find("max-age=");
@@ -285,7 +355,13 @@ Result<void> HTTPCache::update_from_304(CacheEntry& entry, const http::Response&
 }
 
 Result<void> HTTPCache::clear() {
+    // Delete all .resp files
+    for (auto& [key, entry] : index_) {
+        std::string resp_path = entry_path(key);
+        DeleteFileA(resp_path.c_str());
+    }
     index_.clear();
+    total_cache_size_ = 0;
     return save_index();
 }
 

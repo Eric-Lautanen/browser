@@ -51,15 +51,30 @@ public:
     // Clear cache
     Result<void> clear();
 
+    // Stats
+    u64 total_size() const { return total_cache_size_; }
+    u32 entry_count() const { return static_cast<u32>(index_.size()); }
+    u64 hit_count() const { return hit_count_; }
+    u64 miss_count() const { return miss_count_; }
+
 private:
     std::string cache_dir_;
+    std::string responses_dir_;
     std::unordered_map<std::string, CacheEntry> index_;
+    u64 total_cache_size_ = 0;
+    u64 hit_count_ = 0;
+    u64 miss_count_ = 0;
+
+    static constexpr u64 kMaxCacheSize = 500 * 1024 * 1024;
 
     std::string entry_path(const std::string& key) const;
     std::string index_path() const;
 
     Result<void> save_index();
     Result<void> load_index();
+    Result<void> write_body_file(const std::string& key, const std::vector<u8>& body);
+    Result<std::vector<u8>> read_body_file(const std::string& key) const;
+    void evict_lru();
 
     static std::string make_key(const std::string& method, const std::string& url);
 };
