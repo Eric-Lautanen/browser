@@ -397,8 +397,18 @@ namespace browser::css {
             f32 cur_line_height = 0;
 
             for (auto &child : node->children) {
+                bool is_inline_block = false;
+                if (!child->is_text()) {
+                    auto *dv = child->style().get("display");
+                    is_inline_block = dv && dv->type == CSSValue::Type::KEYWORD &&
+                                      dv->keyword == "inline-block";
+                }
+
                 if (child->is_text()) {
                     layout_inline(child.get(), containing_width, containing_height);
+                } else if (is_inline_block) {
+                    // inline-block: layout as block, but inline-level
+                    layout_block(child.get(), containing_width, containing_height);
                 } else {
                     layout_block(child.get(), containing_width, containing_height);
                 }
@@ -408,11 +418,33 @@ namespace browser::css {
                     line_x = 0;
                     cur_line_height = 0;
                 }
+
+                // Vertical alignment for inline-block
+                f32 child_height = child->content.height + child->padding.top + child->padding.bottom +
+                                   child->border.top + child->border.bottom + child->margin.top + child->margin.bottom;
+                if (is_inline_block) {
+                    auto *va = child->style().get("vertical-align");
+                    bool va_middle = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "middle";
+                    bool va_top = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "top";
+                    bool va_bottom = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "bottom";
+                    if (va_middle) {
+                        child->content.y = line_y + (cur_line_height - child_height) / 2.0f;
+                    } else if (va_top) {
+                        child->content.y = line_y;
+                    } else if (va_bottom) {
+                        child->content.y = line_y + cur_line_height - child_height;
+                    } else {
+                        // baseline: align bottom of inline-block with text baseline
+                        child->content.y = line_y;
+                    }
+                } else {
+                    child->content.y = line_y;
+                }
+
                 child->content.x = line_x;
-                child->content.y = line_y;
                 line_x += child->content.width;
-                if (child->content.height > cur_line_height)
-                    cur_line_height = child->content.height;
+                if (child_height > cur_line_height)
+                    cur_line_height = child_height;
             }
 
             node->content.width = containing_width;

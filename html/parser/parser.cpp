@@ -156,6 +156,30 @@ Element* Parser::create_element_for_token(const TagToken& token) {
     for (const auto& attr : token.attributes) {
         el->attributes[attr.name] = attr.value;
     }
+    if (token.tag_name == "svg" || token.tag_name == "math") {
+        if (token.tag_name == "svg") {
+            el->namespace_uri = "http://www.w3.org/2000/svg";
+        } else {
+            el->namespace_uri = "http://www.w3.org/1998/Math/MathML";
+        }
+        foreign_ = true;
+    } else if (foreign_) {
+        if (token.tag_name == "foreignobject") {
+            // <foreignObject> inside SVG switches back to HTML
+            el->namespace_uri = "http://www.w3.org/1999/xhtml";
+        } else if (token.tag_name == "annotation-xml") {
+            // <annotation-xml> in MathML can contain HTML
+            el->namespace_uri = "http://www.w3.org/1999/xhtml";
+        } else if (token.tag_name == "style" || token.tag_name == "script" || token.tag_name == "title") {
+            // These are HTML-encoded even inside SVG/MathML
+            el->namespace_uri = "http://www.w3.org/1999/xhtml";
+        } else {
+            // Default: use the parent's namespace (SVG or MathML)
+            if (!stack_.empty() && stack_.back()) {
+                el->namespace_uri = stack_.back()->namespace_uri;
+            }
+        }
+    }
     return el.release();
 }
 
@@ -670,6 +694,28 @@ void Parser::parse_generic_end_tag(const TagToken& tag) {
         t == "i" || t == "nobr" || t == "s" || t == "small" || t == "strike" ||
         t == "strong" || t == "tt" || t == "u") {
         adoption_agency_algorithm(t);
+        return;
+    }
+
+    // SVG/MathML end tags: pop up to the matching element
+    if (t == "svg" || t == "math") {
+        for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
+            if (stack_[static_cast<u32>(i)] &&
+                stack_[static_cast<u32>(i)]->tag_name == t) {
+                stack_.resize(static_cast<u32>(i));
+                break;
+            }
+        }
+        // Check if we're still inside a foreign element on the stack
+        foreign_ = false;
+        for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
+            if (stack_[static_cast<u32>(i)] &&
+                (stack_[static_cast<u32>(i)]->tag_name == "svg" ||
+                 stack_[static_cast<u32>(i)]->tag_name == "math")) {
+                foreign_ = true;
+                break;
+            }
+        }
         return;
     }
 

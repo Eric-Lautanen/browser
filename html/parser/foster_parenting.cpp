@@ -9,12 +9,14 @@ void Parser::insert_element(Element* element) {
         for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
             if (stack_[i] && stack_[i]->tag_name == "table") {
                 Node* table_parent = stack_[i]->parent;
+                if (!table_parent) break;
                 auto& siblings = table_parent->children;
                 auto it = siblings.begin();
                 for (; it != siblings.end(); ++it) {
                     if (it->get() == stack_[i]) break;
                 }
                 element->parent = table_parent;
+                // Insert BEFORE the table element
                 siblings.insert(it, std::unique_ptr<Node>(static_cast<Node*>(element)));
                 return;
             }

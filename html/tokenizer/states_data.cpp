@@ -129,6 +129,8 @@ namespace browser::html {
                 break;
         }
 
+        // WHATWG spec: consume_char_ref
+        // Try longest match first, then shorten
         while (!name_buf.empty()) {
             std::string with_semi = name_buf + ";";
             const NamedEntity *ent = lookup_entity(with_semi.c_str());
@@ -140,7 +142,23 @@ namespace browser::html {
             ent = lookup_entity(name_buf.c_str());
             if (ent) {
                 char next = current();
-                if (is_ascii_alnum(next) || next == '=') {
+                // Per spec: if entity is not terminated by ';' and next char is
+                // alphanumeric or '=', this is an "ambiguous ampersand" — emit
+                // the entity only if allowed per spec
+                if (is_ascii_alnum(next) || next == ';' || next == '=') {
+                    // The spec says: if entity is not terminated by semicolon,
+                    // and the next character is alphanumeric, it's NOT consumed
+                    // as an entity reference (ambiguous ampersand)
+                    if (next == ';') {
+                        // Entity with semicolon was not found above, so we
+                        // need to check: if name_buf + ";" doesn't exist,
+                        // but name_buf does, and next is ';', consume ';'
+                        // anyway
+                        advance();
+                        emit_or_buffer(ent->codepoint);
+                        return;
+                    }
+                    // Shorten the match — try shorter entity
                     name_buf.pop_back();
                     pos_ = saved + static_cast<u32>(name_buf.size());
                     continue;
@@ -153,6 +171,8 @@ namespace browser::html {
             pos_ = saved + static_cast<u32>(name_buf.size());
         }
 
+        // No entity matched — ambiguous ampersand
+        // Per spec: emit the '&' as text
         pos_ = saved;
         emit_or_buffer('&');
     }

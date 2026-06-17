@@ -1171,14 +1171,14 @@ Each phase followed a strict 10-step process:
 | New: `render/mathml_stub.cpp` | Minimal MathML: render as inline text with font-based math symbols. Full MathML layout is extremely complex. |
 
 ### Phase 12 Checklist
-- [ ] Adoption agency algorithm matches WHATWG spec edge cases.
-- [ ] Tokenizer correctly handles all 89 states per spec test suite.
-- [ ] SVG foreign content parsing works: `<svg>` creates SVG namespace elements. Basic shapes render.
-- [ ] MathML: inline text with font-based symbols renders correctly.
-- [ ] CSS table layout (`display: table/table-row/table-cell`) implemented. `list-item` with markers works.
-- [ ] ECMAScript `test262` subset passes: ASI, destructuring, strict mode, arrow functions, `ToPrimitive`/`ToNumber`/`ToString` coercion edge cases.
-- [ ] `!important` cascade order correct: UA < author < inline; important reverses origin priority.
-- [ ] All pre-existing tests still pass
+- [x] Adoption agency algorithm matches WHATWG spec edge cases.
+- [x] Tokenizer correctly handles all 89 states per spec test suite.
+- [x] SVG foreign content parsing works: `<svg>` creates SVG namespace elements. Basic shapes render.
+- [x] MathML: inline text with font-based symbols renders correctly.
+- [x] CSS table layout (`display: table/table-row/table-cell`) implemented. `list-item` with markers works.
+- [x] ECMAScript `test262` subset passes: ASI, destructuring, strict mode, arrow functions, `ToPrimitive`/`ToNumber`/`ToString` coercion edge cases.
+- [x] `!important` cascade order correct: UA < author < inline; important reverses origin priority.
+- [x] All pre-existing tests still pass
 
 ---
 

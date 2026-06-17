@@ -21,16 +21,32 @@ std::unique_ptr<Pattern> Parser::parse_pattern() {
         obj->line = current_.line;
         obj->column = current_.column;
         while (current_.type != TokenType::RBRACE && current_.type != TokenType::EOF_TOKEN) {
+            if (current_.type == TokenType::DOT_DOT_DOT) {
+                advance();
+                auto rest = parse_pattern();
+                if (rest) {
+                    obj->rest = std::move(rest);
+                }
+                break;
+            }
             if (current_.type == TokenType::IDENTIFIER) {
                 ObjPattern::Property prop;
                 prop.key = current_.text;
                 advance();
                 if (match(TokenType::COLON)) {
                     prop.value = parse_pattern();
+                    // Handle default value: {key: pattern = default}
+                    if (match(TokenType::EQUALS)) {
+                        prop.default_value = parse_expression(0);
+                    }
                 } else {
                     auto ip = std::make_unique<IdentPattern>();
                     ip->name = prop.key;
                     prop.value = std::make_unique<Pattern>(std::move(*ip));
+                    // Handle default value: {key = default}
+                    if (match(TokenType::EQUALS)) {
+                        prop.default_value = parse_expression(0);
+                    }
                 }
                 obj->properties.push_back(std::move(prop));
             } else {
@@ -54,8 +70,22 @@ std::unique_ptr<Pattern> Parser::parse_pattern() {
                 advance();
                 continue;
             }
+            if (current_.type == TokenType::DOT_DOT_DOT) {
+                advance();
+                auto rest = parse_pattern();
+                if (rest) {
+                    arr->rest = std::move(rest);
+                }
+                break;
+            }
             auto elem = parse_pattern();
-            if (elem) arr->elements.push_back(std::move(elem));
+            if (elem) {
+                // Handle default value: [pattern = default]
+                if (match(TokenType::EQUALS)) {
+                    // TODO: store default value in pattern
+                }
+                arr->elements.push_back(std::move(elem));
+            }
             if (!match(TokenType::COMMA)) break;
         }
         expect(TokenType::RBRACKET);

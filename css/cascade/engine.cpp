@@ -12,7 +12,8 @@ namespace browser::css {
 
     static constexpr const char *UA_STYLESHEET = R"(
 body { display: block; margin: 8px; }
-div, p, h1, h2, h3, h4, h5, h6, ul, ol, li { display: block; }
+div, p, h1, h2, h3, h4, h5, h6, ul, ol { display: block; }
+li { display: list-item; }
 table { display: table; }
 tr, thead, tbody, tfoot { display: table-row; }
 th, td { display: table-cell; }

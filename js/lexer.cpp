@@ -490,7 +490,12 @@ Token Lexer::read_punctuator() {
         case ']': return tk(TokenType::RBRACKET, txt);
         case ';': return tk(TokenType::SEMICOLON, txt);
         case ',': return tk(TokenType::COMMA, txt);
-        case '.': return tk(TokenType::DOT, txt);
+        case '.':
+            if (peek_char() == '.' && source_[pos_ + 1] == '.') {
+                txt += advance(); txt += advance();
+                return tk(TokenType::DOT_DOT_DOT, txt);
+            }
+            return tk(TokenType::DOT, txt);
         case ':': return tk(TokenType::COLON, txt);
         default:  return tk(TokenType::IDENTIFIER, txt);
     }

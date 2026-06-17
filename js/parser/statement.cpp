@@ -280,9 +280,14 @@ std::unique_ptr<Stmt> Parser::parse_return() {
     auto stmt = std::make_unique<ReturnStmt>();
     stmt->line = current_.line;
     stmt->column = current_.column;
+    u32 return_line = current_.line;
     advance(); // consume 'return'
 
-    if (current_.type != TokenType::SEMICOLON &&
+    // ASI: if next token is on a new line, insert semicolon (restricted production)
+    bool line_break = (current_.line > return_line);
+
+    if (!line_break &&
+        current_.type != TokenType::SEMICOLON &&
         current_.type != TokenType::RBRACE &&
         current_.type != TokenType::EOF_TOKEN) {
         stmt->argument = parse_expression(0);
@@ -305,17 +310,20 @@ std::unique_ptr<Stmt> Parser::parse_break() {
     auto stmt = std::make_unique<BreakStmt>();
     stmt->line = current_.line;
     stmt->column = current_.column;
+    u32 break_line = current_.line;
     advance(); // consume 'break'
 
-    if (current_.type == TokenType::IDENTIFIER) {
+    // ASI: label must be on same line
+    if (current_.type == TokenType::IDENTIFIER && current_.line == break_line) {
         stmt->label = current_.text;
         advance();
+    } else if (current_.type == TokenType::IDENTIFIER && current_.line > break_line) {
+        // Line break before identifier means ASI applies, identifier is next statement
     }
 
     if (current_.type == TokenType::SEMICOLON) {
         advance();
     } else if (current_.type != TokenType::RBRACE && current_.type != TokenType::EOF_TOKEN) {
-        synchronize();
     }
 
     return std::make_unique<Stmt>(std::move(*stmt));
@@ -329,9 +337,14 @@ std::unique_ptr<Stmt> Parser::parse_throw() {
     auto stmt = std::make_unique<ThrowStmt>();
     stmt->line = current_.line;
     stmt->column = current_.column;
+    u32 throw_line = current_.line;
     advance(); // consume 'throw'
 
-    if (current_.type != TokenType::SEMICOLON &&
+    // ASI restriction: throw must have expression on same line
+    bool line_break = (current_.line > throw_line);
+
+    if (!line_break &&
+        current_.type != TokenType::SEMICOLON &&
         current_.type != TokenType::RBRACE &&
         current_.type != TokenType::EOF_TOKEN) {
         stmt->argument = parse_expression(0);

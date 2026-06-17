@@ -37,6 +37,7 @@ private:
     bool foster_parenting_ = false;
     bool scripting_ = true;
     bool frameset_ok_ = true;
+    bool foreign_ = false;
 
     std::string pending_text_;
     std::vector<Element*> active_formatting_elements_;

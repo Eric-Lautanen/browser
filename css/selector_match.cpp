@@ -92,7 +92,19 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
                 return el->parent && el->parent->type == html::NodeType::DOCUMENT;
             }
             if (ss.name == "empty") {
-                return el->children.empty();
+                if (!el->children.empty()) {
+                    // Check if any child is an element or non-empty text
+                    for (auto& c : el->children) {
+                        if (c->type == html::NodeType::ELEMENT) return false;
+                        if (c->type == html::NodeType::TEXT) {
+                            auto* t = static_cast<html::Text*>(c.get());
+                            for (char ch : t->data) {
+                                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r') return false;
+                            }
+                        }
+                    }
+                }
+                return true;
             }
             if (ss.name == "disabled") {
                 return el->has_attribute("disabled");
@@ -144,23 +156,84 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el) {
                 if (idx < b) return false;
                 return (idx - b) % a == 0;
             }
+            if (ss.name.substr(0, 10) == "nth-last-child(") {
+                std::string inner = ss.name.substr(14);
+                if (!inner.empty() && inner.back() == ')') inner.pop_back();
+                if (!el->parent) return false;
+                // Count elements from end
+                i32 total = 0;
+                for (auto& sib : el->parent->children) {
+                    if (sib->type == html::NodeType::ELEMENT) total++;
+                }
+                i32 idx = 0;
+                for (auto& sib : el->parent->children) {
+                    if (sib.get() == el) break;
+                    if (sib->type == html::NodeType::ELEMENT) idx++;
+                }
+                idx = total - idx; // 1-based from end
+                if (inner == "odd") return idx % 2 == 1;
+                if (inner == "even") return idx % 2 == 0;
+                i32 a = 0, b = 0;
+                int n_pos = inner.find('n');
+                if (n_pos != -1) {
+                    std::string a_part = inner.substr(0, n_pos);
+                    if (a_part.empty() || a_part == "+") a = 1;
+                    else if (a_part == "-") a = -1;
+                    else a = static_cast<i32>(std::strtol(a_part.c_str(), nullptr, 10));
+                    std::string b_part = inner.substr(n_pos + 1);
+                    if (!b_part.empty()) {
+                        if (b_part[0] == '+') b_part = b_part.substr(1);
+                        b = static_cast<i32>(std::strtol(b_part.c_str(), nullptr, 10));
+                    }
+                } else {
+                    b = static_cast<i32>(std::strtol(inner.c_str(), nullptr, 10));
+                }
+                if (a == 0) return idx == b;
+                if (idx < b) return false;
+                return (idx - b) % a == 0;
+            }
+            if (ss.name.substr(0, 12) == "first-of-type") {
+                if (!el->parent) return false;
+                for (auto& sib : el->parent->children) {
+                    if (sib.get() == el) return true;
+                    if (sib->type == html::NodeType::ELEMENT) {
+                        auto* se = static_cast<html::Element*>(sib.get());
+                        if (se->tag_name == el->tag_name) return false;
+                    }
+                }
+                return true;
+            }
+            if (ss.name.substr(0, 11) == "last-of-type") {
+                if (!el->parent) return false;
+                for (i32 i = static_cast<i32>(el->parent->children.size()) - 1; i >= 0; i--) {
+                    auto& sib = el->parent->children[static_cast<u32>(i)];
+                    if (sib.get() == el) return true;
+                    if (sib->type == html::NodeType::ELEMENT) {
+                        auto* se = static_cast<html::Element*>(sib.get());
+                        if (se->tag_name == el->tag_name) return false;
+                    }
+                }
+                return true;
+            }
             if (ss.name.substr(0, 5) == "not(") {
-                // Negation pseudo-class - simplified: parse inner simple selector
                 std::string inner = ss.name.substr(4);
                 if (!inner.empty() && inner.back() == ')') inner.pop_back();
-                // Trim whitespace
                 while (!inner.empty() && (inner.back() == ' ' || inner.back() == '\t')) inner.pop_back();
                 while (!inner.empty() && (inner[0] == ' ' || inner[0] == '\t')) inner = inner.substr(1);
                 if (inner.empty()) return true;
-                // Check if this element matches the negated selector
                 if (inner[0] == '.') {
-                    // Class negation
                     return !match_simple({SimpleSelector::Type::CLASS, inner.substr(1), "", 0}, el);
                 }
                 if (inner[0] == '#') {
                     return !match_simple({SimpleSelector::Type::ID, inner.substr(1), "", 0}, el);
                 }
-                // Tag negation
+                if (inner[0] == ':') {
+                    std::string pseudo = inner.substr(1);
+                    SimpleSelector ps;
+                    ps.type = SimpleSelector::Type::PSEUDO_CLASS;
+                    ps.name = pseudo;
+                    return !match_simple(ps, el);
+                }
                 SimpleSelector tag_sel;
                 tag_sel.type = SimpleSelector::Type::TAG;
                 tag_sel.name = inner;

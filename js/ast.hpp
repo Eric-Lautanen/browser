@@ -201,12 +201,15 @@ struct ObjPattern : Node {
     struct Property {
         std::string key;
         std::unique_ptr<Pattern> value;
+        std::unique_ptr<Expr> default_value;
     };
     std::vector<Property> properties;
+    std::unique_ptr<Pattern> rest;
 };
 
 struct ArrPattern : Node {
     std::vector<std::unique_ptr<Pattern>> elements;
+    std::unique_ptr<Pattern> rest;
 };
 
 // ---------------------------------------------------------------------------

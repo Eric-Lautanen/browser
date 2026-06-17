@@ -290,10 +290,11 @@ namespace browser::html {
                 if (c == '/') {
                     temporary_buffer_.clear();
                     state_ = State::SCRIPT_DATA_ESCAPED_END_TAG_OPEN;
-                } else if (c == '!') {
+                } else if (is_ascii_alpha(c)) {
+                    temporary_buffer_ = to_lower(c);
                     state_ = State::SCRIPT_DATA_DOUBLE_ESCAPED;
                     emit_char('<');
-                    emit_char('!');
+                    emit_char(c);
                 } else {
                     emit_char('<');
                     reconsume_ = true;

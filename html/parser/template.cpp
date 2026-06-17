@@ -16,9 +16,8 @@ void Parser::handle_in_template(const Token& token) {
                 handle_in_head(token);
                 return;
             }
-            if (tag.tag_name == "caption" || tag.tag_name == "col" || tag.tag_name == "colgroup" ||
-                tag.tag_name == "tbody" || tag.tag_name == "td" || tag.tag_name == "tfoot" ||
-                tag.tag_name == "th" || tag.tag_name == "thead" || tag.tag_name == "tr") {
+            if (tag.tag_name == "caption" || tag.tag_name == "colgroup" ||
+                tag.tag_name == "tbody" || tag.tag_name == "tfoot" || tag.tag_name == "thead") {
                 template_modes_.pop_back();
                 template_modes_.push_back(InsertionMode::IN_TABLE);
                 mode_ = InsertionMode::IN_TABLE;
@@ -66,9 +65,13 @@ void Parser::handle_in_template(const Token& token) {
                 while (current_node() && current_node()->tag_name != "template") {
                     stack_.pop_back();
                 }
-                stack_.pop_back();
+                if (current_node()) stack_.pop_back();
                 template_modes_.pop_back();
-                mode_ = InsertionMode::IN_TEMPLATE;
+                if (!template_modes_.empty()) {
+                    mode_ = template_modes_.back();
+                } else {
+                    mode_ = InsertionMode::IN_BODY;
+                }
                 return;
             }
             if (tag.tag_name == "html" || tag.tag_name == "body" || tag.tag_name == "caption" ||

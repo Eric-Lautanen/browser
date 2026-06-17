@@ -232,13 +232,33 @@ namespace browser::css {
             }
         }
 
-        auto *float_val = node->style().get("float");
-        bool is_floating = float_val && float_val->type == CSSValue::Type::KEYWORD &&
-                           (float_val->keyword == "left" || float_val->keyword == "right");
-        if (is_floating) {
-            node->is_floating = true;
-            node->float_direction = float_val->keyword == "left" ? 0 : 1;
+    // Handle list-item display: generate marker content
+    auto *display_val = node->style().get("display");
+    bool is_list_item = display_val && display_val->type == CSSValue::Type::KEYWORD &&
+                        display_val->keyword == "list-item";
+    if (is_list_item) {
+        // Reserve space for the marker on the left
+        f32 marker_width = font_size * 1.5f;
+        node->content.width = (node->content.width > marker_width)
+            ? node->content.width - marker_width
+            : 0;
+        // List items inside <ol> get an incrementing counter; <ul> gets a bullet
+        std::string list_style = "disc";
+        auto *ls = node->style().get("list-style-type");
+        if (ls && ls->type == CSSValue::Type::KEYWORD) {
+            list_style = ls->keyword;
         }
+        // The marker will be rendered in the padding area
+        node->padding.left += marker_width;
+    }
+
+    auto *float_val = node->style().get("float");
+    bool is_floating = float_val && float_val->type == CSSValue::Type::KEYWORD &&
+                           (float_val->keyword == "left" || float_val->keyword == "right");
+    if (is_floating) {
+        node->is_floating = true;
+        node->float_direction = float_val->keyword == "left" ? 0 : 1;
+    }
 
         auto *overflow = node->style().get("overflow");
         if (overflow && overflow->type == CSSValue::Type::KEYWORD) {

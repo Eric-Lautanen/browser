@@ -671,6 +671,9 @@ namespace browser::html {
                     emit(Token(dt));
                     state_ = State::DATA;
                 } else if (c == '\0') {
+                    // EOF: emit doctype before finishing
+                    DoctypeToken dt = current_doctype_;
+                    emit(Token(dt));
                 }
                 break;
 

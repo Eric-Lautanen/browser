@@ -307,6 +307,10 @@ add_library(render STATIC
     render/tile_cache.cpp
     render/form_controls.hpp
     render/form_controls.cpp
+    render/svg_renderer.hpp
+    render/svg_renderer.cpp
+    render/mathml_stub.hpp
+    render/mathml_stub.cpp
 )
 target_include_directories(render PUBLIC .)
 target_link_libraries(render platform css html image)

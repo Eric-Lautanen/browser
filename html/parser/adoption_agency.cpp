@@ -15,36 +15,17 @@ void Parser::adoption_agency_algorithm(const std::string& subject) {
         return;
     }
 
-    int stack_index = -1;
-    for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
-        if (stack_[static_cast<u32>(i)] && stack_[static_cast<u32>(i)]->tag_name == subject) {
-            stack_index = i;
-            break;
-        }
-    }
-    if (stack_index < 0) return;
-
-    int fmt_index = -1;
-    for (i32 i = static_cast<i32>(active_formatting_elements_.size()) - 1; i >= 0; i--) {
-        if (active_formatting_elements_[static_cast<u32>(i)] == nullptr) break;
-        if (active_formatting_elements_[static_cast<u32>(i)] &&
-            active_formatting_elements_[static_cast<u32>(i)]->tag_name == subject) {
-            fmt_index = i;
-            break;
-        }
-    }
-    if (fmt_index < 0) {
-        for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
-            if (stack_[static_cast<u32>(i)] && stack_[static_cast<u32>(i)]->tag_name == subject) {
-                generate_implied_end_tags({subject});
-                stack_.resize(static_cast<u32>(i));
-                return;
-            }
-        }
-        return;
-    }
+    // Outer loop: max 8 iterations per spec
+    static const std::unordered_set<std::string> special_tags = {
+        "address", "blockquote", "center", "dir", "div", "dl", "fieldset",
+        "figure", "figcaption", "footer", "header", "hgroup", "main", "nav",
+        "ol", "p", "section", "ul", "pre", "listing", "form", "table",
+        "table-row", "table-cell", "table-body", "table-header", "table-footer",
+        "hr", "li", "dd", "dt", "h1", "h2", "h3", "h4", "h5", "h6"
+    };
 
     for (int outer = 0; outer < 8; outer++) {
+        // Step 1: Find the formatting element (last in list matching subject)
         Element* formatting_element = nullptr;
         int formatting_index = -1;
         for (i32 i = static_cast<i32>(active_formatting_elements_.size()) - 1; i >= 0; i--) {
@@ -56,8 +37,11 @@ void Parser::adoption_agency_algorithm(const std::string& subject) {
                 break;
             }
         }
+
+        // Step 2: If no formatting element, return
         if (!formatting_element) return;
 
+        // Step 3: Find formatting element in stack of open elements
         int formatting_stack_index = -1;
         for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
             if (stack_[static_cast<u32>(i)] == formatting_element) {
@@ -65,19 +49,21 @@ void Parser::adoption_agency_algorithm(const std::string& subject) {
                 break;
             }
         }
+
+        // Step 4: If not in stack, remove from list and return
         if (formatting_stack_index < 0) {
             active_formatting_elements_.erase(
                 active_formatting_elements_.begin() + formatting_index);
             return;
         }
 
+        // Step 5: Check if formatting element is in scope
+        if (!has_element_in_scope(subject)) {
+            return;
+        }
+
+        // Step 6: Find furthest block (first special tag after formatting element)
         int furthest_block = -1;
-        static const std::unordered_set<std::string> special_tags = {
-            "address", "blockquote", "center", "dir", "div", "dl", "fieldset",
-            "figure", "figcaption", "footer", "header", "hgroup", "main", "nav",
-            "ol", "p", "section", "ul", "pre", "listing", "form", "table",
-            "hr", "li", "dd", "dt", "h1", "h2", "h3", "h4", "h5", "h6"
-        };
         for (i32 i = formatting_stack_index + 1; i < static_cast<i32>(stack_.size()); i++) {
             if (stack_[static_cast<u32>(i)] &&
                 special_tags.find(stack_[static_cast<u32>(i)]->tag_name) != special_tags.end()) {
@@ -86,6 +72,7 @@ void Parser::adoption_agency_algorithm(const std::string& subject) {
             }
         }
 
+        // Step 7: No furthest block — pop to formatting element and remove from list
         if (furthest_block < 0) {
             generate_implied_end_tags();
             for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
@@ -99,13 +86,48 @@ void Parser::adoption_agency_algorithm(const std::string& subject) {
             return;
         }
 
-        if (formatting_stack_index >= 0) {
-            generate_implied_end_tags({subject});
-            stack_.resize(static_cast<u32>(formatting_stack_index));
+        // Steps 8-19: Simplified bookkeeping
+        // Generate implied end tags (except subject)
+        generate_implied_end_tags({subject});
+
+        // Clone the formatting element and add to stack after furthest block
+        TagToken clone_tok;
+        clone_tok.type = TokenType::START_TAG;
+        clone_tok.tag_name = formatting_element->tag_name;
+        for (const auto& [k, v] : formatting_element->attributes) {
+            Attribute attr;
+            attr.name = k;
+            attr.value = v;
+            clone_tok.attributes.push_back(attr);
         }
+        auto* formatting_clone = create_element_for_token(clone_tok);
+
+        // Remove formatting element from active list
         active_formatting_elements_.erase(
             active_formatting_elements_.begin() + formatting_index);
-        return;
+
+        // Pop stack up to and including the formatting element
+        stack_.resize(static_cast<u32>(formatting_stack_index));
+
+        // Insert the clone after the furthest block
+        Node* fb_node = stack_[static_cast<u32>(furthest_block)];
+        if (fb_node && fb_node->parent) {
+            auto& fb_siblings = fb_node->parent->children;
+            for (auto it = fb_siblings.begin(); it != fb_siblings.end(); ++it) {
+                if (it->get() == fb_node) {
+                    formatting_clone->parent = fb_node->parent;
+                    fb_siblings.insert(it + 1,
+                        std::unique_ptr<Node>(static_cast<Node*>(formatting_clone)));
+                    break;
+                }
+            }
+        }
+
+        // Add clone to stack after furthest block and to active list
+        stack_.insert(
+            stack_.begin() + furthest_block + 1,
+            formatting_clone);
+        active_formatting_elements_.push_back(formatting_clone);
     }
 }
 
