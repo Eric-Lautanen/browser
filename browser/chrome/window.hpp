@@ -103,6 +103,8 @@ namespace browser {
         };
         bool show_menu = false;
         bool show_bookmarks_dropdown = false;
+        i32 hovered_bookmark_item = -1;
+        f32 bookmark_scroll_offset = 0.0f;
         bool show_settings = false;
         bool ctrl_down = false, shift_down = false, alt_down = false;
 
@@ -128,6 +130,7 @@ namespace browser {
         ~BrowserWindow();
         Result<void> initialize();
         void run();
+        void run_with_screenshot(const std::string &path);
         void navigate(const std::string &url);
         void navigate_back();
         void navigate_forward();

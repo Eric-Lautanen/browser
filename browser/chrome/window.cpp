@@ -222,6 +222,77 @@ namespace browser {
         return {};
     }
 
+    void BrowserWindow::run_with_screenshot(const std::string &path) {
+        window_->show();
+
+        LARGE_INTEGER qpc_freq;
+        QueryPerformanceFrequency(&qpc_freq);
+
+        LARGE_INTEGER frame_start;
+        QueryPerformanceCounter(&frame_start);
+
+        // Render one frame (same initial render as run())
+        {
+            renderer_->begin_frame();
+            renderer_->set_viewport(viewport_width_, viewport_height_);
+            update_chrome_state();
+            render_chrome();
+            renderer_->end_textured();
+            render_find_bar();
+            render_page();
+            renderer_->end_frame();
+            window_->swap_buffers();
+        }
+
+        // Read pixels and save BMP
+        int sw = static_cast<int>(viewport_width_);
+        int sh = static_cast<int>(viewport_height_);
+        std::vector<u8> pixels(static_cast<size_t>(sw * sh * 4));
+        ::glReadPixels(0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+
+        auto wu32 = [](std::vector<u8> &d, u32 v) {
+            d.push_back(v & 0xFF);
+            d.push_back((v >> 8) & 0xFF);
+            d.push_back((v >> 16) & 0xFF);
+            d.push_back((v >> 24) & 0xFF);
+        };
+        auto wu16 = [](std::vector<u8> &d, u16 v) {
+            d.push_back(v & 0xFF);
+            d.push_back((v >> 8) & 0xFF);
+        };
+        std::vector<u8> bmp;
+        u32 row = ((static_cast<u32>(sw) * 24 + 31) / 32) * 4;
+        u32 ds = row * static_cast<u32>(sh);
+        bmp.push_back('B'); bmp.push_back('M');
+        wu32(bmp, 14 + 40 + ds);
+        wu32(bmp, 0);
+        wu32(bmp, 14 + 40);
+        wu32(bmp, 40);
+        wu32(bmp, static_cast<u32>(sw));
+        wu32(bmp, static_cast<u32>(sh));
+        wu16(bmp, 1); wu16(bmp, 24);
+        wu32(bmp, 0);
+        wu32(bmp, ds);
+        wu32(bmp, 2835); wu32(bmp, 2835);
+        wu32(bmp, 0); wu32(bmp, 0);
+        for (int y = sh - 1; y >= 0; y--) {
+            for (int x = 0; x < sw; x++) {
+                size_t idx = (static_cast<size_t>(y) * sw + static_cast<size_t>(x)) * 4;
+                bmp.push_back(pixels[idx + 2]);
+                bmp.push_back(pixels[idx + 1]);
+                bmp.push_back(pixels[idx + 0]);
+            }
+            for (u32 p = static_cast<u32>(sw) * 3; p < row; p++) bmp.push_back(0);
+        }
+        FILE *sf = fopen(path.c_str(), "wb");
+        if (sf) {
+            fwrite(bmp.data(), 1, bmp.size(), sf);
+            fclose(sf);
+            fprintf(stderr, "Screenshot saved: %s (%dx%d)\n", path.c_str(), sw, sh);
+        }
+        PostQuitMessage(0);
+    }
+
     void BrowserWindow::run() {
         window_->show();
 

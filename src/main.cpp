@@ -687,6 +687,18 @@ static int run_browser(const std::string &url) {
     return 0;
 }
 
+static int run_browser_screenshot(const std::string &filepath, const std::string &outpath) {
+    browser::BrowserWindow browser;
+    auto r = browser.initialize();
+    if (r.is_err()) {
+        std::cerr << "Failed to initialize: " << r.unwrap_err() << std::endl;
+        return 1;
+    }
+    browser.navigate("file:///" + filepath);
+    browser.run_with_screenshot(outpath);
+    return 0;
+}
+
 // ---------------------------------------------------------------------------
 // Main dispatch
 // ---------------------------------------------------------------------------
@@ -707,8 +719,22 @@ int main(int argc, char **argv) {
                   << "  browser --dump-cascade <file> Dump computed styles as JSON\n"
                   << "  browser --dump-layout <file>  Dump layout tree as JSON\n"
                   << "  browser --dump-display-list <file> Dump display list as JSON\n"
+                  << "  browser --screenshot <file.html> <out.bmp>  Render HTML to BMP screenshot\n"
                   << "  browser --test-suite <dir>   Run all tests in directory (single process)\n";
         return 0;
+    }
+
+    if (flag == "--screenshot") {
+        if (argc < 4) { std::cerr << "Usage: browser --screenshot <file.html> <output.bmp>\n"; return 1; }
+        SetProcessDPIAware();
+        // Resolve to absolute path for file:/// URL
+        std::string html_path = argv[2];
+        if (html_path.find('/') == std::string::npos && html_path.find('\\') == std::string::npos) {
+            // Relative path - prepend current dir
+            char cwd[MAX_PATH]; GetCurrentDirectoryA(MAX_PATH, cwd);
+            html_path = std::string(cwd) + "\\" + html_path;
+        }
+        return run_browser_screenshot("file:///" + html_path, argv[3]);
     }
 
     if (flag.rfind("--", 0) != 0) {
