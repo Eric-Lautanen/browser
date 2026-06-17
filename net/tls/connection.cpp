@@ -34,6 +34,7 @@ namespace browser::net::tls {
         client_hs_traffic_.clear();
         server_app_traffic_.clear();
         client_app_traffic_.clear();
+        peer_certs_.clear();
     }
 
     std::string TLSConnection::negotiated_alpn() const {

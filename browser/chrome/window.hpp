@@ -51,6 +51,8 @@ namespace browser {
         std::string url = "";
         bool can_go_back = false, can_go_forward = false, is_loading = false;
         bool is_bookmarked = false;
+        bool is_https = false;
+        bool has_mixed_content = false;
         std::string edit_buffer;
         u32 cursor_pos = 0;
         u32 sel_start = 0;

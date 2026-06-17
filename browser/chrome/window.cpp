@@ -314,6 +314,11 @@ namespace browser {
         }
         if (page_loader_) {
             chrome_.is_loading = page_loader_->is_loading();
+            chrome_.has_mixed_content = page_loader_->has_mixed_content();
+            auto parsed = net::URL::parse(chrome_.url);
+            if (parsed.is_ok()) {
+                chrome_.is_https = (parsed.unwrap().scheme == "https");
+            }
         }
     }
 

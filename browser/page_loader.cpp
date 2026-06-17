@@ -105,6 +105,18 @@ namespace browser {
             co_return;
         }
 
+        auto& hsts = net::HTTPClient::hsts_manager();
+        hsts.load_preload_list();
+        {
+            std::string upgraded = hsts.upgrade_url(parsed.unwrap().to_string());
+            if (upgraded != parsed.unwrap().to_string()) {
+                auto new_parsed = net::URL::parse(upgraded);
+                if (new_parsed.is_ok()) {
+                    parsed = std::move(new_parsed);
+                }
+            }
+        }
+
         net::http::Request req;
         req.method = net::http::Method::GET;
         req.url = parsed.unwrap();
@@ -148,6 +160,29 @@ namespace browser {
             if (nr.is_err())
                 break;
             resp = std::move(nr.unwrap());
+        }
+
+        page_is_https_ = (req.url.scheme == "https");
+        has_mixed_content_ = false;
+        current_csp_ = net::CSPPolicy();
+        {
+            std::string csp_val;
+            std::string hsts_val;
+            for (auto& [hk, hv] : resp.headers.all()) {
+                std::string lk;
+                for (char ch : hk) lk += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                if (lk == "content-security-policy") {
+                    csp_val = hv;
+                } else if (lk == "strict-transport-security") {
+                    hsts_val = hv;
+                }
+            }
+            if (!csp_val.empty()) {
+                current_csp_ = net::CSPParser::parse(csp_val);
+            }
+            if (!hsts_val.empty()) {
+                hsts.process_header(req.url.host, hsts_val);
+            }
         }
 
         if (resp.headers.has("content-encoding")) {
@@ -400,6 +435,11 @@ namespace browser {
                 return;
             auto *el = static_cast<html::Element *>(node);
             if (el->tag_name == "style") {
+                if (current_csp_.has_directive("style-src") || current_csp_.has_directive("default-src")) {
+                    if (!current_csp_.allows_inline_style()) {
+                        return;
+                    }
+                }
                 std::string css_text = html::inner_text(el);
                 merged_css += css_text + "\n";
             } else if (el->tag_name == "link") {
@@ -410,9 +450,21 @@ namespace browser {
                         auto url_r = base_url.resolve(href);
                         if (url_r.is_ok()) {
                             auto css_url = url_r.unwrap();
-                            // Route through ResourceLoader instead of direct fetch
+                            std::string css_url_str = css_url.to_string();
+                            if (page_is_https_) {
+                                if (css_url.scheme == "http" && css_url.scheme != "data" && css_url.scheme != "blob" && css_url.scheme != "about") {
+                                    has_mixed_content_ = true;
+                                    return;
+                                }
+                            }
+                            if (current_csp_.has_directive("style-src") || current_csp_.has_directive("default-src")) {
+                                if (!current_csp_.allows("style-src", css_url_str) &&
+                                    !current_csp_.allows("default-src", css_url_str)) {
+                                    return;
+                                }
+                            }
                             html::ResourceRequest rreq;
-                            rreq.url = css_url.to_string();
+                            rreq.url = css_url_str;
                             rreq.priority = html::ResourcePriority::CSS;
                             resource_loader_.request(rreq);
                         }
@@ -448,8 +500,22 @@ namespace browser {
                 if (!src.empty()) {
                     auto url_r = base_url.resolve(src);
                     if (url_r.is_ok()) {
+                        auto img_url = url_r.unwrap();
+                        std::string img_url_str = img_url.to_string();
+                        if (img_url.scheme != "data" && img_url.scheme != "blob" && img_url.scheme != "about") {
+                            if (page_is_https_ && img_url.scheme == "http") {
+                                has_mixed_content_ = true;
+                                return;
+                            }
+                            if (current_csp_.has_directive("img-src") || current_csp_.has_directive("default-src")) {
+                                if (!current_csp_.allows("img-src", img_url_str) &&
+                                    !current_csp_.allows("default-src", img_url_str)) {
+                                    return;
+                                }
+                            }
+                        }
                         html::ResourceRequest rreq;
-                        rreq.url = url_r.unwrap().to_string();
+                        rreq.url = img_url_str;
                         rreq.priority = html::ResourcePriority::IMAGE;
                         resource_loader_.request(rreq);
                     }

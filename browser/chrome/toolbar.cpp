@@ -41,9 +41,20 @@ namespace browser {
                                chrome_.address_focused ? 2.0f : 1.0f);
         renderer_->fill_rect(r.x, r.y, r.w, r.h, chrome_.address_focused ? t.surface : t.surface_hover);
 
-        std::string text = chrome_.address_focused ? chrome_.edit_buffer : chrome_.url;
-        f32 tx = r.x + 6;
-        f32 ty = r.y + 4;
+    std::string text = chrome_.address_focused ? chrome_.edit_buffer : chrome_.url;
+    f32 tx = r.x + 6;
+    f32 ty = r.y + 4;
+
+    // Security indicator via tint
+    if (!chrome_.address_focused && chrome_.is_https) {
+        if (chrome_.has_mixed_content) {
+            render::Color warning = {0.9f, 0.6f, 0.0f, 0.15f};
+            renderer_->fill_rect(r.x, r.y, r.w, r.h, warning);
+        } else {
+            render::Color secure = {0.0f, 0.6f, 0.2f, 0.08f};
+            renderer_->fill_rect(r.x, r.y, r.w, r.h, secure);
+        }
+    }
 
         if (chrome_.address_focused && chrome_.all_selected && !text.empty()) {
             f32 text_w = text_renderer_->measure_text(text, 13);

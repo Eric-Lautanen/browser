@@ -1,6 +1,7 @@
 #include "../crypto/sha.hpp"
 #include "../crypto/x25519.hpp"
 #include "connection.hpp"
+#include "cert_verify.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -434,12 +435,37 @@ namespace browser::net::tls {
                 } else if (phs.type == HS_CERTIFICATE) {
                     transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
                     transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    /* SECURITY: Certificate validation skipped. Not for production use. */
+                    {
+                        peer_certs_.clear();
+                        std::size_t off = 0;
+                        if (off < body.size()) {
+                            u8 ctx_len = body[off++];
+                            off += ctx_len;
+                            if (off + 3 <= body.size()) {
+                                u32 list_len = (static_cast<u32>(body[off]) << 16) |
+                                               (static_cast<u32>(body[off + 1]) << 8) |
+                                               static_cast<u32>(body[off + 2]);
+                                off += 3;
+                                std::size_t list_end = off + list_len;
+                                while (off + 3 <= list_end) {
+                                    u32 cert_len = (static_cast<u32>(body[off]) << 16) |
+                                                   (static_cast<u32>(body[off + 1]) << 8) |
+                                                   static_cast<u32>(body[off + 2]);
+                                    off += 3;
+                                    if (off + cert_len + 2 > list_end) break;
+                                    std::vector<u8> cert_der(body.begin() + off, body.begin() + off + cert_len);
+                                    peer_certs_.push_back(std::move(cert_der));
+                                    off += cert_len;
+                                    u16 ext_len = (static_cast<u16>(body[off]) << 8) | body[off + 1];
+                                    off += 2 + ext_len;
+                                }
+                            }
+                        }
+                    }
                     msgs_needed--;
                 } else if (phs.type == HS_CERTIFICATE_VERIFY) {
                     transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
                     transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    /* SECURITY: CertificateVerify signature verification skipped. */
                     msgs_needed--;
                 } else if (phs.type == HS_FINISHED) {
                     auto transcript_hash = compute_transcript_hash();
@@ -623,6 +649,33 @@ namespace browser::net::tls {
                 } else if (phs.type == HS_CERTIFICATE) {
                     transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
                     transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+                    {
+                        peer_certs_.clear();
+                        std::size_t off = 0;
+                        if (off < body.size()) {
+                            u8 ctx_len = body[off++];
+                            off += ctx_len;
+                            if (off + 3 <= body.size()) {
+                                u32 list_len = (static_cast<u32>(body[off]) << 16) |
+                                               (static_cast<u32>(body[off + 1]) << 8) |
+                                               static_cast<u32>(body[off + 2]);
+                                off += 3;
+                                std::size_t list_end = off + list_len;
+                                while (off + 3 <= list_end) {
+                                    u32 cert_len = (static_cast<u32>(body[off]) << 16) |
+                                                   (static_cast<u32>(body[off + 1]) << 8) |
+                                                   static_cast<u32>(body[off + 2]);
+                                    off += 3;
+                                    if (off + cert_len + 2 > list_end) break;
+                                    std::vector<u8> cert_der(body.begin() + off, body.begin() + off + cert_len);
+                                    peer_certs_.push_back(std::move(cert_der));
+                                    off += cert_len;
+                                    u16 ext_len = (static_cast<u16>(body[off]) << 8) | body[off + 1];
+                                    off += 2 + ext_len;
+                                }
+                            }
+                        }
+                    }
                     msgs_needed--;
                 } else if (phs.type == HS_CERTIFICATE_VERIFY) {
                     transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
@@ -664,6 +717,7 @@ namespace browser::net::tls {
 
         client_seq_ = 0;
         server_seq_ = 0;
+
         connected_ = true;
         co_return true;
     }

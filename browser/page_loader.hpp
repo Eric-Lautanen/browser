@@ -8,6 +8,7 @@
 #include "../html/resource_loader.hpp"
 #include "../image/format.hpp"
 #include "../net/http_client.hpp"
+#include "../net/csp.hpp"
 #include "../net/url.hpp"
 #include "../render/font_loader.hpp"
 #include "../render/layer_tree.hpp"
@@ -78,6 +79,9 @@ namespace browser {
         u32 viewport_height_ = 980;
         async::channel<LoadedPage> loaded_channel_;
         async::task<void> load_task_;
+        net::CSPPolicy current_csp_;
+        bool page_is_https_ = false;
+        bool has_mixed_content_ = false;
 
         async::task<void> load(std::string url_str);
         async::task<void> load_html(std::string html);
@@ -89,6 +93,10 @@ namespace browser {
         async::task<bool> load_and_decode_images(const std::string &);
         static u64 elapsed_ms(std::chrono::steady_clock::time_point start);
         std::unordered_map<std::string, std::shared_ptr<image::Image>> loaded_images_;
+
+    public:
+        const net::CSPPolicy &csp_policy() const { return current_csp_; }
+        bool has_mixed_content() const { return has_mixed_content_; }
     };
 
 }  // namespace browser

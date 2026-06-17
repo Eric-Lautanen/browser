@@ -5,6 +5,7 @@
 #include "../../html/traversal.hpp"
 #include "../../html/parser.hpp"
 #include "../../net/cookie_jar.hpp"
+#include "../../net/origin.hpp"
 #include "../../net/url.hpp"
 #include "../../net/http_client.hpp"
 #include <cctype>
@@ -52,7 +53,7 @@ static JSValue doc_create_text_node(const std::vector<JSValue>& args, void* cont
     auto txt = html::create_text(text);
     auto* txt_ptr = txt.release();
     html::append_child(ctx->element, std::unique_ptr<html::Node>(txt_ptr));
-    return ctx->bindings->wrap_element(static_cast<html::Element*>(txt_ptr), ctx->vm);
+    return ctx->bindings->wrap_element(reinterpret_cast<html::Element*>(txt_ptr), ctx->vm);
 }
 
 static JSValue doc_query_selector(const std::vector<JSValue>& args, void* context) {
@@ -68,10 +69,10 @@ static JSValue doc_write(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<DocCtx*>(context);
     for (u32 i = 1; i < args.size(); i++) {
         std::string html_str = args[i].to_string();
-        // Simple: parse HTML fragment and append to body
-        auto parsed = html::parse_fragment(html_str);
-        if (parsed) {
-            for (auto& child : parsed->children) {
+        html::Parser p;
+        auto doc = p.parse(html_str);
+        if (doc) {
+            for (auto& child : doc->children) {
                 auto* ptr = child.release();
                 html::append_child(ctx->element, std::unique_ptr<html::Node>(ptr));
             }
@@ -80,7 +81,7 @@ static JSValue doc_write(const std::vector<JSValue>& args, void* context) {
     return JSValue::undefined();
 }
 
-static JSValue doc_get_title(const std::vector<JSValue>& args, void* context) {
+static JSValue doc_get_title(const std::vector<JSValue>&, void* context) {
     auto* ctx = static_cast<DocCtx*>(context);
     auto* title_el = html::find_element_by_tag(ctx->element, "title");
     if (title_el) return JSValue::string(html::inner_text(title_el));
@@ -105,13 +106,16 @@ static JSValue doc_set_title(const std::vector<JSValue>& args, void* context) {
     return JSValue::undefined();
 }
 
-static JSValue doc_get_cookie(const std::vector<JSValue>& args, void* context) {
+static JSValue doc_get_cookie(const std::vector<JSValue>&, void* context) {
     auto* ctx = static_cast<DocCtx*>(context);
     if (ctx->page_url.empty()) return JSValue::string("");
 
     auto url_r = net::URL::parse(ctx->page_url);
     if (url_r.is_err()) return JSValue::string("");
     auto& url = url_r.unwrap();
+
+    auto origin = net::Origin::from_url(url);
+    if (origin.host.empty()) return JSValue::string("");
 
     bool secure = (url.scheme == "https");
     auto& jar = net::HTTPClient::cookie_jar();
@@ -238,7 +242,10 @@ void register_document_bindings(VM* vm, DOMBindings* bindings, html::Element* do
     doc_obj->set("write", JSValue::function(vm->create_native_fn(doc_write, false, ctx)));
     doc_obj->set("writeln", JSValue::function(vm->create_native_fn(doc_write, false, ctx)));
     doc_obj->set("title", JSValue::string(""));
-    // document.cookie getter/setter (regular property - getter/setter requires engine support)
+    doc_obj->set("getCookie", JSValue::function(vm->create_native_fn(doc_get_cookie, false, ctx)));
+    doc_obj->set("setCookie", JSValue::function(vm->create_native_fn(doc_set_cookie, false, ctx)));
+    doc_obj->set("getTitle", JSValue::function(vm->create_native_fn(doc_get_title, false, ctx)));
+    doc_obj->set("setTitle", JSValue::function(vm->create_native_fn(doc_set_title, false, ctx)));
     doc_obj->set("cookie", JSValue::string(""));
     vm->global_object()->set("document", doc_wrapper);
 }

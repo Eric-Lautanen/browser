@@ -111,6 +111,8 @@ namespace browser::net::tls {
             const u8 key[32], const u8 iv[12], u64 seq, const u8 *ciphertext, u32 ct_len, u8 &content_type);
 
         std::vector<u8> build_client_hello(const std::string &hostname);
+
+        std::vector<std::vector<u8>> peer_certs_;
     };
 
 }  // namespace browser::net::tls

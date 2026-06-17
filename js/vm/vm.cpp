@@ -89,6 +89,12 @@ namespace browser::js {
     }
 
     JSValue VM::execute(BytecodeFunction *func) {
+        if (csp_policy_.has_directive("script-src") || csp_policy_.has_directive("default-src")) {
+            if (!csp_policy_.allows_inline_script()) {
+                return JSValue::undefined();
+            }
+        }
+
         if (jit_state_.jit_entries.count(func)) {
             auto fn = (void (*)(VM *))jit_state_.jit_entries[func];
             stack_.clear();

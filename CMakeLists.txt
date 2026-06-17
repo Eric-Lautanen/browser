@@ -54,6 +54,9 @@ add_library(net STATIC
     net/dns.cpp
     net/connection.cpp
     net/url.cpp
+    net/origin.cpp
+    net/csp.cpp
+    net/hsts.cpp
     net/http.cpp
     net/http2/connection.cpp
     net/http2/frames.cpp
@@ -74,12 +77,17 @@ add_library(net STATIC
     net/tls/cipher.cpp
     net/tls/record.cpp
     net/tls/handshake.cpp
+    net/tls/cert_verify.cpp
     net/websocket.cpp
     net/http_cache.cpp
     net/cookie_jar.hpp
     net/cookie_jar.cpp
     net/storage.hpp
     net/storage.cpp
+    net/origin.hpp
+    net/csp.hpp
+    net/hsts.hpp
+    net/tls/cert_verify.hpp
     net/socket.hpp
     net/socket_win32.hpp
     net/dns.hpp
@@ -96,7 +104,7 @@ add_library(net STATIC
 )
 target_include_directories(net PUBLIC .)
 if(WIN32)
-    target_link_libraries(net ws2_32 bcrypt mswsock)
+    target_link_libraries(net ws2_32 bcrypt mswsock crypt32)
 endif()
 target_link_libraries(net platform)
 
@@ -235,6 +243,9 @@ add_library(js STATIC
     js/dom_bindings.hpp
     js/dom_bindings.cpp
     js/dom_bindings/storage.cpp
+    js/dom_bindings/document.cpp
+    js/dom_bindings/fetch.cpp
+    js/dom_bindings/xhr.cpp
     js/builtins/builtins.hpp
     js/builtins/string.cpp
     js/builtins/array.cpp

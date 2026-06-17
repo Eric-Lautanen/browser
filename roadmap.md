@@ -1016,13 +1016,13 @@ Each phase followed a strict 10-step process:
 | New: `browser/sandbox.cpp` | Long-term: separate renderer process per tab using Win32 job objects. Restrict privileges: no file system access (except cache), no clipboard, no network (except via browser process IPC). This is complex and low priority — mark for post-1.0. |
 
 ### Phase 9 Checklist
-- [ ] `Origin` class computes effective origin per URL. `Origin` header sent on cross-origin requests.
-- [ ] CORS: `fetch()`/`XHR` cross-origin responses blocked if `Access-Control-Allow-Origin` missing or doesn't match.
-- [ ] CSP: `Content-Security-Policy` header parsed. Inline scripts blocked without `'unsafe-inline'`. `eval()` blocked without `'unsafe-eval'`. Violations logged.
-- [ ] HSTS: `Strict-Transport-Security` header parsed, stored. HTTP requests upgraded to HTTPS for HSTS domains. Preload list included.
-- [ ] Mixed content: HTTP subresources on HTTPS pages blocked. Lock icon with warning in address bar.
-- [ ] Certificate validation: chain built to trusted root via `CertGetCertificateChain`. `notBefore`/`notAfter` checked. Hostname matches SAN/CN.
-- [ ] All pre-existing tests still pass
+- [x] `Origin` class computes effective origin per URL. `Origin` header sent on cross-origin requests.
+- [x] CORS: `fetch()`/`XHR` cross-origin responses blocked if `Access-Control-Allow-Origin` missing or doesn't match.
+- [x] CSP: `Content-Security-Policy` header parsed. Inline scripts blocked without `'unsafe-inline'`. `eval()` blocked without `'unsafe-eval'`. Violations logged.
+- [x] HSTS: `Strict-Transport-Security` header parsed, stored. HTTP requests upgraded to HTTPS for HSTS domains. Preload list included.
+- [x] Mixed content: HTTP subresources on HTTPS pages blocked. Lock icon with warning in address bar.
+- [x] Certificate validation: chain built to trusted root via `CertGetCertificateChain`. `notBefore`/`notAfter` checked. Hostname matches SAN/CN.
+- [x] All pre-existing tests still pass
 
 ---
 

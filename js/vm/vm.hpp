@@ -3,6 +3,7 @@
 #include "../bytecode.hpp"
 #include "../jit.hpp"
 #include "../value.hpp"
+#include "../../net/csp.hpp"
 
 #include <functional>
 #include <memory>
@@ -49,16 +50,24 @@ namespace browser::js {
         VMState save_state() const;
         void restore_state(VMState &&state);
 
-        JITState jit_state_;
+    JITState jit_state_;
+    net::CSPPolicy csp_policy_;
 
-    private:
-        std::vector<JSValue> stack_;
-        std::vector<CallFrame> frames_;
-        GCJSObject *global_ = nullptr;
-        std::unique_ptr<class GCHeap> heap_;
-        JSValue global_root_;
-        JSValue thrown_value_;
-        std::vector<std::function<std::vector<JSValue *>()>> gc_root_providers_;
+    void set_csp_policy(const net::CSPPolicy& policy) { csp_policy_ = policy; }
+    const net::CSPPolicy& csp_policy() const { return csp_policy_; }
+    bool csp_allows_eval() const {
+        if (!csp_policy_.has_directive("script-src") && !csp_policy_.has_directive("default-src")) return true;
+        return csp_policy_.allows_eval();
+    }
+
+private:
+    std::vector<JSValue> stack_;
+    std::vector<CallFrame> frames_;
+    GCJSObject *global_ = nullptr;
+    std::unique_ptr<class GCHeap> heap_;
+    JSValue global_root_;
+    JSValue thrown_value_;
+    std::vector<std::function<std::vector<JSValue *>()>> gc_root_providers_;
 
         JSValue run();
         void pop_frame();

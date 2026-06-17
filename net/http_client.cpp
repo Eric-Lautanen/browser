@@ -1,4 +1,5 @@
 #include "http_client.hpp"
+#include "origin.hpp"
 #include <sstream>
 #include <cctype>
 #include <cstdlib>
@@ -251,6 +252,16 @@ Result<http::Response> HTTPClient::fetch(const http::Request& req) {
         req_with_cookies.headers.set("Cookie", cookie_str);
     }
 
+    {
+        auto page_origin = Origin::from_url_str(page_url_);
+        auto req_origin = Origin::from_url(req_with_cookies.url);
+        bool cross_origin = !page_origin.is_same_origin(req_origin);
+        bool is_post = (req_with_cookies.method == http::Method::POST);
+        if (cross_origin || is_post) {
+            req_with_cookies.headers.set("Origin", page_origin.to_string());
+        }
+    }
+
     if (http2_) {
         auto result = http2_->execute(req_with_cookies);
         if (result.is_ok()) {
@@ -299,6 +310,16 @@ async::task<http::Response> HTTPClient::fetch_async(const http::Request& req) {
             cookie_str += matching[i].name + "=" + matching[i].value;
         }
         req_with_cookies.headers.set("Cookie", cookie_str);
+    }
+
+    {
+        auto page_origin = Origin::from_url_str(page_url_);
+        auto req_origin = Origin::from_url(req_with_cookies.url);
+        bool cross_origin = !page_origin.is_same_origin(req_origin);
+        bool is_post = (req_with_cookies.method == http::Method::POST);
+        if (cross_origin || is_post) {
+            req_with_cookies.headers.set("Origin", page_origin.to_string());
+        }
     }
 
     if (http2_) {
