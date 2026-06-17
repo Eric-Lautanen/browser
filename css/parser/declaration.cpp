@@ -715,7 +715,18 @@ namespace browser::css {
                     if (depth > 0) {
                         if (!val.string_value.empty() && val.string_value.back() != '(')
                             val.string_value += ' ';
-                        val.string_value += current_.text;
+                        if (current_.type == CssTokenType::DIMENSION || current_.type == CssTokenType::PERCENTAGE) {
+                            std::string num_str = std::to_string(current_.numeric_value);
+                            auto dot = num_str.find('.');
+                            if (dot != std::string::npos) {
+                                auto last = num_str.find_last_not_of('0');
+                                if (last > dot) num_str = num_str.substr(0, last + 1);
+                                else if (last == dot) num_str = num_str.substr(0, dot);
+                            }
+                            val.string_value += num_str + current_.text;
+                        } else {
+                            val.string_value += current_.text;
+                        }
                         advance();
                     }
                 }

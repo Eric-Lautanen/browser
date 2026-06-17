@@ -31,6 +31,20 @@ namespace browser {
         class TrackerBlocker;
     }
 
+    struct SelectionState {
+        bool active = false;
+        const css::LayoutNode *start_node = nullptr;
+        const css::LayoutNode *end_node = nullptr;
+        u32 start_offset = 0;  // character offset within text
+        u32 end_offset = 0;
+        f32 start_x = 0, start_y = 0;
+        f32 end_x = 0, end_y = 0;
+        bool dragging = false;
+
+        bool has_selection() const { return active && start_node && end_node && start_node != end_node; }
+        void clear() { active = false; start_node = end_node = nullptr; start_offset = end_offset = 0; dragging = false; }
+    };
+
     struct TabInfo {
         std::string url;
         render::Texture2D *favicon = nullptr;
@@ -168,6 +182,7 @@ namespace browser {
 
         HWND tooltip_hwnd_ = nullptr;
         std::string tooltip_text_;
+        SelectionState selection_;
     };
 
 }  // namespace browser

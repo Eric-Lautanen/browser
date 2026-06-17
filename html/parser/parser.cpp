@@ -361,6 +361,7 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
     }
 
     if (t == "script") {
+        flush_pending_text();
         auto* el = create_element_for_token(tag);
         insert_element(el);
         stack_.push_back(el);
@@ -371,6 +372,7 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
         return;
     }
     if (t == "style" || t == "xmp" || t == "iframe" || t == "noembed" || t == "noframes") {
+        flush_pending_text();
         auto* el = create_element_for_token(tag);
         insert_element(el);
         stack_.push_back(el);
@@ -381,6 +383,7 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
         return;
     }
     if (t == "title" || t == "textarea") {
+        flush_pending_text();
         auto* el = create_element_for_token(tag);
         insert_element(el);
         stack_.push_back(el);
@@ -391,6 +394,7 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
         return;
     }
     if (t == "noscript") {
+        flush_pending_text();
         auto* el = create_element_for_token(tag);
         insert_element(el);
         stack_.push_back(el);
@@ -445,6 +449,7 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
     }
 
     if (t == "textarea") {
+        flush_pending_text();
         auto* el = create_element_for_token(tag);
         insert_element(el);
         stack_.push_back(el);
@@ -485,13 +490,10 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
 
     if (t == "li") {
         frameset_ok_ = false;
-        for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
-            if (stack_[i] && stack_[i]->tag_name == "li") {
-                stack_.resize(static_cast<u32>(i));
-                break;
-            }
+        if (has_element_in_list_scope("li")) {
+            generate_implied_end_tags({"li"});
+            close_element("li");
         }
-        generate_implied_end_tags({"li"});
         auto* el = create_element_for_token(tag);
         insert_element(el);
         stack_.push_back(el);

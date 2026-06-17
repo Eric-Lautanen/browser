@@ -31,6 +31,8 @@ namespace browser::css {
             width_auto = true;
         } else if (wv->type == CSSValue::Type::LENGTH) {
             width = resolve_length(wv->length, containing_width, font_size);
+        } else if (wv->type == CSSValue::Type::FUNCTION || wv->type == CSSValue::Type::STRING) {
+            width = resolve_func_length(node->style(), wv, containing_width, font_size);
         }
 
         EdgeSizes margins;
@@ -110,13 +112,17 @@ namespace browser::css {
         bool ml_auto = !ml || (ml->type == CSSValue::Type::KEYWORD && ml->keyword == "auto");
         bool mr_auto = !mr || (mr->type == CSSValue::Type::KEYWORD && mr->keyword == "auto");
         bool has_fixed_width = wv && wv->type == CSSValue::Type::LENGTH;
-        if (ml_auto && mr_auto && (has_fixed_width || had_maxw)) {
+        if ((ml_auto || mr_auto) && (has_fixed_width || had_maxw)) {
             f32 used_w = node->content.width + h_padding + h_border;
             f32 remaining = containing_width - used_w;
-            if (remaining > 0) {
+            if (ml_auto && mr_auto && remaining > 0) {
                 f32 half = remaining / 2.0f;
                 margins.left = half;
                 margins.right = half;
+            } else if (ml_auto && !mr_auto && remaining > 0) {
+                margins.left = remaining;
+            } else if (!ml_auto && mr_auto && remaining > 0) {
+                margins.right = remaining;
             }
         }
         node->margin = margins;

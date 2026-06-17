@@ -101,6 +101,7 @@ Result<void> ShaderProgram::compile(const std::string& vertex_src, const std::st
     uniforms_.projection = pgl::glGetUniformLocation(program_id_, "uProjection");
     uniforms_.texture = pgl::glGetUniformLocation(program_id_, "uTexture");
     uniforms_.use_texture = pgl::glGetUniformLocation(program_id_, "uUseTexture");
+    uniforms_.texture_is_rgba = pgl::glGetUniformLocation(program_id_, "uTextureIsRGBA");
 
     return {};
 }
@@ -122,6 +123,7 @@ void ShaderProgram::set_uniform_i32(const std::string& name, i32 value) {
     i32 loc = -1;
     if (name == "uTexture") loc = uniforms_.texture;
     else if (name == "uUseTexture") loc = uniforms_.use_texture;
+    else if (name == "uTextureIsRGBA") loc = uniforms_.texture_is_rgba;
     else loc = get_uniform_location(name);
     if (loc >= 0) pgl::glUniform1i(loc, value);
 }

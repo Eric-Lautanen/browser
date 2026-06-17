@@ -155,7 +155,31 @@ static GridTrackDef parse_single_track(const std::string& token, f32 container_s
     return def;
 }
 
-std::vector<GridTrackDef> parse_track_list(const std::string& css_value, f32 container_size, f32 font_size) {
+std::vector<GridTrackDef> parse_track_list(std::string css_value, f32 container_size, f32 font_size) {
+    // Merge number+unit pairs (e.g., "1 fr" -> "1fr", "3 . 5 px" -> "3.5px")
+    std::string merged;
+    {
+        auto tokens = split_whitespace(css_value);
+        for (size_t i = 0; i < tokens.size(); i++) {
+            if (i + 1 < tokens.size()) {
+                char *end = nullptr;
+                std::strtod(tokens[i].c_str(), &end);
+                if (end && *end == '\0' && !tokens[i].empty()) {
+                    const std::string &next = tokens[i + 1];
+                    if (next == "fr" || next == "px" || next == "em" || next == "rem" ||
+                        next == "%" || next == "vw" || next == "vh" || next == "deg") {
+                        merged += tokens[i] + tokens[i + 1];
+                        i++;
+                        continue;
+                    }
+                }
+            }
+            if (!merged.empty()) merged += " ";
+            merged += tokens[i];
+        }
+    }
+    css_value = std::move(merged);
+
     auto tokens = split_whitespace(css_value);
     std::vector<GridTrackDef> tracks;
     for (const auto& tok : tokens) {

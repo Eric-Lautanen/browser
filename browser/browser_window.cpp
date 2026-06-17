@@ -499,6 +499,14 @@ void BrowserWindow::render_page() {
     render::PaintExecutor executor(renderer_.get(), text_renderer_.get());
     executor.set_offset(0, ChromeUI::CHROME_H - static_cast<f32>(chrome_.scroll_y));
     if (page.display_list) executor.execute(*page.display_list);
+
+    // Draw text selection highlight (after page content, on top)
+    if (selection_.active) {
+        renderer_->flush();
+        render::Color sel_color = {0.2f, 0.4f, 0.9f, 0.4f};
+        renderer_->fill_rect(0, ChromeUI::CHROME_H, static_cast<f32>(viewport_width_), content_h, sel_color);
+    }
+
     // Re-apply outer scissor — executor may have disabled it at end of display list
     pgl::glEnable(GL_SCISSOR_TEST);
     pgl::glScissor(0, 0, static_cast<GLsizei>(viewport_width_),

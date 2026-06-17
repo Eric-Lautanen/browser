@@ -42,6 +42,7 @@ void Parser::handle_text(const Token& token) {
     if (token.index() == 1) {
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::END_TAG) {
+            flush_pending_text();
             stack_.pop_back();
             mode_ = original_mode_;
             return;

@@ -168,7 +168,7 @@ namespace browser::render {
 
     std::unique_ptr<Texture2D> Rasterizer::upload_tile(const RasterizedTile &tile) {
         auto tex = std::make_unique<Texture2D>();
-        auto r = tex->create(tile.width, tile.height, tile.rgba_pixels.data());
+        auto r = tex->create(tile.width, tile.height, tile.rgba_pixels.data(), true);
         if (r.is_err())
             return nullptr;
         return tex;

@@ -70,7 +70,7 @@ Texture2D* PaintExecutor::get_or_create_texture(const image::Image& img) {
     if (img.rgba_pixels.empty() || img.width == 0 || img.height == 0) return nullptr;
 
     auto tex = std::make_unique<Texture2D>();
-    auto r = tex->create(img.width, img.height, img.rgba_pixels.data());
+    auto r = tex->create(img.width, img.height, img.rgba_pixels.data(), true);
     if (r.is_err()) return nullptr;
 
     Texture2D* ptr = tex.get();
@@ -102,7 +102,7 @@ Texture2D* PaintExecutor::get_or_create_gradient_texture(const css::CSSGradient&
     }
 
     auto tex = std::make_unique<Texture2D>();
-    auto r = tex->create(pw, ph, rgba.data());
+    auto r = tex->create(pw, ph, rgba.data(), true);
     if (r.is_err()) return nullptr;
 
     Texture2D* ptr = tex.get();
@@ -266,7 +266,7 @@ void PaintExecutor::execute(const DisplayList& list) {
                 }
 
                 auto tex = std::make_unique<Texture2D>();
-                auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_data);
+                auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_data, true);
                 if (r.is_ok()) {
                     Color c = cmd.color;
                     c.a *= current_opacity_;

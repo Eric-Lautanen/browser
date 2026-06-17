@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Browser Parser Test Page</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root { --color-primary: #005fcc; --color-accent: #e63946; --color-bg-subtle: #f0f0f0; --spacing-md: 1em; --radius: 4px; }
+  body { font-family: serif; margin: 2em auto; max-width: 800px; color: #111; background: #fff; }
+  h1 { font-size: 2em; }
+  h2 { font-size: 1.5em; margin-top: 1.5em; border-bottom: 1px solid #ccc; }
+  h3 { font-size: 1.2em; }
+  p { line-height: 1.6; }
+  a { color: #00e; }
+  a:visited { color: #551a8b; }
+  code { background: #f0f0f0; padding: 0.1em 0.3em; font-family: monospace; }
+  pre { background: #f0f0f0; padding: 1em; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 1em; color: #555; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: 0.5em 1em; text-align: left; }
+  th { background: #f0f0f0; }
+  ul, ol { line-height: 1.8; }
+  hr { border: none; border-top: 1px solid #ccc; margin: 2em 0; }
+  .box { border: 1px solid #aaa; padding: 1em; margin: 1em 0; }
+  a:hover { color: var(--color-accent); }
+  a:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-primary); }
+  .pseudo-list li:first-child { font-weight: bold; }
+  .pseudo-list li:last-child { font-style: italic; }
+  .pseudo-list li:nth-child(even) { background: var(--color-bg-subtle); }
+  .pseudo-list li:not(.excluded) { color: #111; }
+  .pseudo-list li.excluded { color: #aaa; text-decoration: line-through; }
+  .pseudo-before::before { content: "\2192 "; color: var(--color-accent); }
+  .pseudo-after::after { content: " \2190"; color: var(--color-accent); }
+  .display-inline-block { display: inline-block; width: 80px; height: 40px; background: #cde; border: 1px solid #99b; vertical-align: middle; }
+  .display-none { display: none; }
+  .overflow-hidden { overflow: hidden; max-height: 3em; background: #ffd; padding: 0.5em; }
+  .overflow-scroll { overflow: scroll; max-height: 3em; background: #dff; padding: 0.5em; }
+  .overflow-auto { overflow: auto; max-height: 3em; background: #fdf; padding: 0.5em; }
+  .pos-container { position: relative; height: 80px; border: 1px dashed #aaa; margin: 0.5em 0; }
+  .pos-absolute { position: absolute; top: 8px; right: 8px; background: #fdd; padding: 0.25em 0.5em; }
+  .flex-container { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; background: #f5f5f5; padding: 0.5em; }
+  .flex-item { flex: 1 1 80px; background: var(--color-primary); color: #fff; padding: 0.5em; text-align: center; border-radius: var(--radius); }
+  .flex-item.grow2 { flex-grow: 2; background: var(--color-accent); }
+  .flex-col { display: flex; flex-direction: column; gap: 0.25em; }
+  .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5em; }
+  .grid-item { background: #e8eaf6; border: 1px solid #c5cae9; padding: 0.5em; text-align: center; }
+  .grid-item.span2 { grid-column: span 2; background: #c5cae9; }
+  .calc-width { width: calc(100% - 4em); background: #efe; padding: 0.5em; }
+  .opacity-50 { opacity: 0.5; }
+  .visibility-hidden { visibility: hidden; }
+</style>
+</head>
+<body>
+<h1>Browser Parser Test Page</h1>
+<p>This page exercises common HTML elements and basic CSS.</p>
+
+<h2>Headings</h2>
+<h1>Heading Level 1</h1>
+<h2>Heading Level 2</h2>
+<h3>Heading Level 3</h3>
+
+<h2>Text &amp; Inline Elements</h2>
+<p>This is a regular paragraph with <strong>bold text</strong>, <em>italic text</em>.</p>
+<p>HTML entities: &amp; &lt; &gt; &quot; &copy; &mdash;</p>
+
+<h2>Lists</h2>
+<h3>Unordered List</h3>
+<ul>
+  <li>First item</li>
+  <li>Second item
+    <ul>
+      <li>Nested item A</li>
+      <li>Nested item B</li>
+    </ul>
+  </li>
+  <li>Third item</li>
+</ul>
+
+<h3>Ordered List</h3>
+<ol>
+  <li>Step one</li>
+  <li>Step two
+    <ol>
+      <li>Sub-step 2a</li>
+      <li>Sub-step 2b</li>
+    </ol>
+  </li>
+  <li>Step three</li>
+</ol>
+
+<h2>Table</h2>
+<table>
+  <thead>
+    <tr><th>Element</th><th>Tag</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Paragraph</td><td>&lt;p&gt;</td><td>Block-level text container</td></tr>
+    <tr><td>Anchor</td><td>&lt;a&gt;</td><td>Hyperlink</td></tr>
+    <tr><td>Division</td><td>&lt;div&gt;</td><td>Generic block container</td></tr>
+  </tbody>
+</table>
+
+<h2>Form Elements</h2>
+<form>
+  <p>Text input: <input type="text" value="hello"></p>
+  <p>Checkboxes:
+    <label><input type="checkbox"> Option A</label>
+    <label><input type="checkbox"> Option B</label>
+  </p>
+  <p>Select: <select><option>Alpha</option><option>Beta</option></select></p>
+  <p><input type="submit" value="Submit"></p>
+</form>
+
+<h2>Flexbox</h2>
+<div class="flex-container">
+  <div class="flex-item">flex 1</div>
+  <div class="flex-item grow2">flex-grow 2</div>
+  <div class="flex-item">flex 1</div>
+</div>
+
+<div class="flex-col">
+  <div style="background:#e8eaf6;padding:0.5em;">Row A</div>
+  <div style="background:#dcedc8;padding:0.5em;">Row B</div>
+</div>
+
+<h2>CSS Grid</h2>
+<div class="grid-container">
+  <div class="grid-item">1</div>
+  <div class="grid-item">2</div>
+  <div class="grid-item">3</div>
+  <div class="grid-item span2">4 (span 2)</div>
+  <div class="grid-item">5</div>
+</div>
+
+<h2>CSS Misc</h2>
+
+<h3>Opacity</h3>
+<p>Normal &rarr; <span class="opacity-50">opacity 0.5</span> &rarr; Normal</p>
+
+<h3>calc()</h3>
+<div class="calc-width">Width is calc(100% - 4em).</div>
+
+<h3>Overflow</h3>
+<div class="overflow-hidden">Line 1<br>Line 2<br>Line 3<br>Line 4 (clipped)</div>
+
+<h3>Positioning</h3>
+<div class="pos-container">
+  relative container
+  <div class="pos-absolute">absolute</div>
+</div>
+
+<h3>Inline-block</h3>
+<p>Text <span class="display-inline-block">box</span> text.</p>
+
+<h3>display: none</h3>
+<p class="display-none">This should be invisible.</p>
+
+<p>End of test page.</p>
+</body>
+</html>

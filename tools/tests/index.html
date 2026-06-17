@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Browser Parser Test Page</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;}
+:root{--color-primary:#005fcc;--color-accent:#e63946;}
+body{font-family:serif;margin:2em auto;max-width:800px;color:#111;background:#fff;}
+h1{font-size:2em;}h2{font-size:1.5em;}h3{font-size:1.2em;}
+p{line-height:1.6;}
+table{border-collapse:collapse;width:100%;}
+th,td{border:1px solid #ccc;padding:0.5em 1em;text-align:left;}
+th{background:#f0f0f0;}
+.flex-container{display:flex;gap:0.5em;flex-wrap:wrap;background:#f5f5f5;padding:0.5em;}
+.flex-item{flex:1 1 80px;background:var(--color-primary);color:#fff;padding:0.5em;text-align:center;}
+.flex-item.grow2{flex-grow:2;background:var(--color-accent);}
+.flex-col{display:flex;flex-direction:column;gap:0.25em;}
+.grid-container{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5em;}
+.grid-item{background:#e8eaf6;border:1px solid #c5cae9;padding:0.5em;text-align:center;}
+.grid-item.span2{grid-column:span 2;background:#c5cae9;}
+.calc-width{width:calc(100% - 4em);background:#efe;padding:0.5em;}
+.opacity-50{opacity:0.5;}
+.display-none{display:none;}
+.overflow-hidden{overflow:hidden;max-height:3em;background:#ffd;padding:0.5em;}
+.pos-container{position:relative;height:80px;border:1px dashed #aaa;margin:0.5em 0;}
+.pos-absolute{position:absolute;top:8px;right:8px;background:#fdd;padding:0.25em 0.5em;}
+</style>
+</head>
+<body>
+<h1>Browser Parser Test Page</h1>
+<p>Testing HTML elements and CSS.</p>
+
+<h2>Headings</h2>
+<h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3>
+<h4>Heading 4</h4><h5>Heading 5</h5><h6>Heading 6</h6>
+
+<h2>Text</h2>
+<p><strong>Bold</strong> <em>Italic</em> <code>Code</code> <a href="#">Link</a></p>
+<p>HTML entities: &amp; &lt; &gt; &quot; &copy; &mdash;</p>
+<blockquote><p>Blockquote text.</p></blockquote>
+<pre><code>int main() { return 0; }</code></pre>
+
+<h2>Lists</h2>
+<ul>
+  <li>One</li>
+  <li>Two<ul><li>Nested A</li><li>Nested B</li></ul></li>
+  <li>Three</li>
+</ul>
+<ol>
+  <li>First</li>
+  <li>Second<ol><li>Sub 1</li><li>Sub 2</li></ol></li>
+  <li>Third</li>
+</ol>
+
+<h2>Table</h2>
+<table>
+  <thead><tr><th>Name</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Alpha</td><td>100</td></tr>
+    <tr><td>Beta</td><td>200</td></tr>
+  </tbody>
+</table>
+
+<h2>Forms</h2>
+<form>
+  <p>Text: <input type="text" value="hello"></p>
+  <p>Checkbox: <input type="checkbox" checked></p>
+  <p>Select: <select><option>A</option><option>B</option></select></p>
+  <p><button>Submit</button></p>
+</form>
+
+<h2>Flexbox</h2>
+<div class="flex-container">
+  <div class="flex-item">1</div>
+  <div class="flex-item grow2">2 (grow)</div>
+  <div class="flex-item">3</div>
+</div>
+
+<h2>CSS Grid</h2>
+<div class="grid-container">
+  <div class="grid-item">1</div>
+  <div class="grid-item">2</div>
+  <div class="grid-item">3</div>
+  <div class="grid-item span2">4 span2</div>
+  <div class="grid-item">5</div>
+</div>
+
+<h2>Misc</h2>
+<p class="calc-width">calc(100% - 4em) width</p>
+<p>Normal <span class="opacity-50">faded</span> normal</p>
+<p class="display-none">Hidden</p>
+<div class="overflow-hidden">Overflow test<br>Line 2<br>Line 3</div>
+<div class="pos-container">Relative<div class="pos-absolute">Absolute</div></div>
+
+<p>End.</p>
+</body>
+</html>

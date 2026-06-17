@@ -187,6 +187,7 @@ namespace browser {
                 return;
             }
             chrome_.address_focused = false;
+            selection_.active = false;
 
             // Hit test against page content
             if (current_page_.has_value() && current_page_->layout) {
@@ -382,6 +383,55 @@ namespace browser {
             renderer_->toggle_fps_overlay();
             return;
         }
+        // Ctrl+Shift+S: save viewport screenshot
+        if (e.key == platform::KeyCode::S && chrome_.ctrl_down && chrome_.shift_down) {
+            int sw = static_cast<int>(viewport_width_);
+            int sh = static_cast<int>(viewport_height_);
+            std::vector<u8> pixels(static_cast<size_t>(sw * sh * 4));
+            ::glReadPixels(0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+            auto wu32 = [](std::vector<u8> &d, u32 v) { d.push_back(v&0xFF); d.push_back((v>>8)&0xFF); d.push_back((v>>16)&0xFF); d.push_back((v>>24)&0xFF); };
+            auto wu16 = [](std::vector<u8> &d, u16 v) { d.push_back(v&0xFF); d.push_back((v>>8)&0xFF); };
+            std::vector<u8> bmp;
+            u32 row = ((sw * 24 + 31) / 32) * 4;
+            u32 ds = row * sh;
+            bmp.push_back('B'); bmp.push_back('M');
+            wu32(bmp, 14 + 40 + ds); wu32(bmp, 0); wu32(bmp, 14 + 40);
+            wu32(bmp, 40); wu32(bmp, sw); wu32(bmp, sh);
+            wu16(bmp, 1); wu16(bmp, 24); wu32(bmp, 0); wu32(bmp, ds);
+            wu32(bmp, 2835); wu32(bmp, 2835); wu32(bmp, 0); wu32(bmp, 0);
+            for (int y = sh - 1; y >= 0; y--) {
+                for (int x = 0; x < sw; x++) {
+                    size_t idx = (static_cast<size_t>(y) * sw + static_cast<size_t>(x)) * 4;
+                    bmp.push_back(pixels[idx + 2]); bmp.push_back(pixels[idx + 1]); bmp.push_back(pixels[idx + 0]);
+                }
+                for (u32 p = sw * 3; p < row; p++) bmp.push_back(0);
+            }
+            FILE *sf = fopen("viewport_screenshot.bmp", "wb");
+            if (sf) { fwrite(bmp.data(), 1, bmp.size(), sf); fclose(sf); }
+            return;
+        }
+        // Ctrl+Shift+X: copy all page text to clipboard
+        if (e.key == platform::KeyCode::X && chrome_.ctrl_down && chrome_.shift_down) {
+            if (current_page_.has_value() && current_page_->dom) {
+                std::string all_text;
+                html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
+                    if (n->type == html::NodeType::TEXT) {
+                        auto *tx = static_cast<html::Text *>(n);
+                        if (!tx->data.empty()) all_text += tx->data + "\n";
+                    }
+                });
+                if (!all_text.empty()) {
+                    HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
+                    if (hglb) {
+                        char *buf = (char *)GlobalLock(hglb);
+                        if (buf) { memcpy(buf, all_text.data(), all_text.size()); buf[all_text.size()] = 0; }
+                        GlobalUnlock(hglb);
+                        if (OpenClipboard(nullptr)) { EmptyClipboard(); SetClipboardData(CF_TEXT, hglb); CloseClipboard(); }
+                    }
+                }
+            }
+            return;
+        }
         if (e.key == platform::KeyCode::T && chrome_.ctrl_down) {
             new_tab();
             return;
@@ -401,6 +451,52 @@ namespace browser {
         if (e.key == platform::KeyCode::G && chrome_.ctrl_down) {
             if (chrome_.find_state.visible && !chrome_.find_state.query.empty()) {
                 chrome_.find_state.next();
+            }
+            return;
+        }
+        // Ctrl+A: select all text (works globally)
+        if (e.key == platform::KeyCode::A && chrome_.ctrl_down) {
+            selection_.active = true;
+            if (current_page_.has_value() && current_page_->dom) {
+                std::string all_text;
+                html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
+                    if (n->type == html::NodeType::TEXT) {
+                        auto *tx = static_cast<html::Text *>(n);
+                        if (!tx->data.empty()) all_text += tx->data;
+                    }
+                });
+                if (!all_text.empty()) {
+                    HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
+                    if (hglb) {
+                        char *buf = (char *)GlobalLock(hglb);
+                        if (buf) { memcpy(buf, all_text.data(), all_text.size()); buf[all_text.size()] = 0; }
+                        GlobalUnlock(hglb);
+                        if (OpenClipboard(nullptr)) { EmptyClipboard(); SetClipboardData(CF_TEXT, hglb); CloseClipboard(); }
+                    }
+                }
+            }
+            renderer_->set_needs_redraw();
+            return;
+        }
+        // Ctrl+C: copy selected text (works globally)
+        if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
+            if (selection_.active && current_page_.has_value() && current_page_->dom) {
+                std::string all_text;
+                html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
+                    if (n->type == html::NodeType::TEXT) {
+                        auto *tx = static_cast<html::Text *>(n);
+                        if (!tx->data.empty()) all_text += tx->data;
+                    }
+                });
+                if (!all_text.empty()) {
+                    HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
+                    if (hglb) {
+                        char *buf = (char *)GlobalLock(hglb);
+                        if (buf) { memcpy(buf, all_text.data(), all_text.size()); buf[all_text.size()] = 0; }
+                        GlobalUnlock(hglb);
+                        if (OpenClipboard(nullptr)) { EmptyClipboard(); SetClipboardData(CF_TEXT, hglb); CloseClipboard(); }
+                    }
+                }
             }
             return;
         }
@@ -788,6 +884,25 @@ namespace browser {
         chrome_.hovered_close = -1;
         if (my > chrome_height()) {
             update_tab_tooltip(-1, -1);
+            // Set cursor based on page content under mouse
+            if (current_page_.has_value() && current_page_->layout) {
+                f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
+                if (ht.element) {
+                    std::string tag = ht.element->tag_name;
+                    if (tag == "a") SetCursor(LoadCursor(nullptr, IDC_HAND));
+                    else if (tag == "input" || tag == "textarea") SetCursor(LoadCursor(nullptr, IDC_IBEAM));
+                    else {
+                        // Check if element contains text
+                        bool has_text = false;
+                        for (auto &ch : ht.element->children)
+                            if (ch->type == html::NodeType::TEXT) { has_text = true; break; }
+                        SetCursor(LoadCursor(nullptr, has_text ? IDC_IBEAM : IDC_ARROW));
+                    }
+                } else {
+                    SetCursor(LoadCursor(nullptr, IDC_ARROW));
+                }
+            }
             return;
         }
         update_tab_tooltip(mx, my);

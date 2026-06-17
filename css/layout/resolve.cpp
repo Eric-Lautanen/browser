@@ -290,6 +290,9 @@ namespace browser::css {
             (v->keyword == "clamp" || v->keyword == "min" || v->keyword == "max")) {
             return resolve_clamp_func(v->string_value, parent_value, font_size);
         }
+        if (v->type == CSSValue::Type::FUNCTION && v->keyword == "calc") {
+            return resolve_calc_string(v->string_value, parent_value, font_size);
+        }
         if (v->type == CSSValue::Type::STRING && !v->string_value.empty()) {
             std::string s = v->string_value;
             if (s.substr(0, 5) == "calc(" || s.find("calc(") != std::string::npos) {
@@ -319,6 +322,9 @@ namespace browser::css {
         if (v->type == CSSValue::Type::STRING && v->string_value.find("calc(") != std::string::npos) {
             return resolve_calc_string(v->string_value, containing, font_size);
         }
+        if (v->type == CSSValue::Type::FUNCTION && v->keyword == "calc") {
+            return resolve_calc_string(v->string_value, containing, font_size);
+        }
         return 0.0f;
     }
 
@@ -334,6 +340,9 @@ namespace browser::css {
         }
         if (v->type == CSSValue::Type::STRING && !v->string_value.empty() &&
             v->string_value.find("calc(") != std::string::npos) {
+            return resolve_calc_string(v->string_value, containing, font_size);
+        }
+        if (v->type == CSSValue::Type::FUNCTION && v->keyword == "calc") {
             return resolve_calc_string(v->string_value, containing, font_size);
         }
         return 0.0f;

@@ -18,11 +18,13 @@ constexpr const char* BASIC_FRAGMENT_SHADER = R"(
 in vec4 vColor;
 in vec2 vTexCoord;
 uniform sampler2D uTexture;
-uniform bool uUseTexture;
+uniform int uUseTexture;
+uniform int uTextureIsRGBA;
 out vec4 FragColor;
 void main() {
-    if (uUseTexture) { float a = texture(uTexture, vTexCoord).r; FragColor = vec4(vColor.rgb, vColor.a * a); }
-    else { FragColor = vColor; }
+    if (uUseTexture == 0) { FragColor = vColor; }
+    else if (uTextureIsRGBA == 1) { vec4 t = texture(uTexture, vTexCoord); FragColor = vec4(vColor.rgb * t.rgb, vColor.a * t.a); }
+    else { float a = texture(uTexture, vTexCoord).r; FragColor = vec4(vColor.rgb, vColor.a * a); }
 }
 )";
 

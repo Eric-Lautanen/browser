@@ -46,6 +46,7 @@ void Parser::handle_in_head(const Token& token) {
     if (token.index() == 1) {
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
+            flush_pending_text();
             if (tag.tag_name == "html") {
                 handle_in_body(token);
                 return;
@@ -59,6 +60,7 @@ void Parser::handle_in_head(const Token& token) {
                 return;
             }
             if (tag.tag_name == "title") {
+                flush_pending_text();
                 auto* el = create_element_for_token(tag);
                 insert_element(el);
                 stack_.push_back(el);
@@ -69,6 +71,7 @@ void Parser::handle_in_head(const Token& token) {
                 return;
             }
             if (tag.tag_name == "style" || tag.tag_name == "noframes") {
+                flush_pending_text();
                 auto* el = create_element_for_token(tag);
                 insert_element(el);
                 stack_.push_back(el);
@@ -79,6 +82,7 @@ void Parser::handle_in_head(const Token& token) {
                 return;
             }
             if (tag.tag_name == "noscript") {
+                flush_pending_text();
                 auto* el = create_element_for_token(tag);
                 insert_element(el);
                 stack_.push_back(el);
@@ -89,6 +93,7 @@ void Parser::handle_in_head(const Token& token) {
                 return;
             }
             if (tag.tag_name == "script") {
+                flush_pending_text();
                 auto* el = create_element_for_token(tag);
                 insert_element(el);
                 stack_.push_back(el);
@@ -104,12 +109,14 @@ void Parser::handle_in_head(const Token& token) {
         }
         if (tag.type == TokenType::END_TAG) {
             if (tag.tag_name == "head") {
+                flush_pending_text();
                 if (!stack_.empty()) stack_.pop_back();
                 head_element_pointer_ = nullptr;
                 mode_ = InsertionMode::AFTER_HEAD;
                 return;
             }
             if (tag.tag_name == "body" || tag.tag_name == "html" || tag.tag_name == "br") {
+                flush_pending_text();
                 if (!stack_.empty()) stack_.pop_back();
                 head_element_pointer_ = nullptr;
                 mode_ = InsertionMode::AFTER_HEAD;
@@ -140,6 +147,7 @@ void Parser::handle_after_head(const Token& token) {
                 return;
             }
             if (tag.tag_name == "body") {
+                flush_pending_text();
                 auto* body = create_element_for_token(tag);
                 insert_element(body);
                 stack_.push_back(body);
@@ -148,6 +156,7 @@ void Parser::handle_after_head(const Token& token) {
                 return;
             }
             if (tag.tag_name == "frameset") {
+                flush_pending_text();
                 auto* fs = create_element_for_token(tag);
                 insert_element(fs);
                 stack_.push_back(fs);
@@ -158,6 +167,7 @@ void Parser::handle_after_head(const Token& token) {
                 tag.tag_name == "link" || tag.tag_name == "meta" || tag.tag_name == "noframes" ||
                 tag.tag_name == "script" || tag.tag_name == "style" || tag.tag_name == "title" ||
                 tag.tag_name == "noscript") {
+                flush_pending_text();
                 TagToken head_implied;
                 head_implied.type = TokenType::START_TAG;
                 head_implied.tag_name = "head";
@@ -177,6 +187,7 @@ void Parser::handle_after_head(const Token& token) {
             return;
         }
     }
+    flush_pending_text();
     TagToken implied;
     implied.type = TokenType::START_TAG;
     implied.tag_name = "body";

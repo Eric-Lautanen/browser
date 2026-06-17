@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <algorithm>
 
 #include "../html/parser.hpp"
 #include "../html/traversal.hpp"
@@ -532,6 +533,8 @@ static std::string collect_css_from_dom(browser::html::Node *node) {
 // ---------------------------------------------------------------------------
 // Normal browser mode
 // ---------------------------------------------------------------------------
+static int run_test_suite(const std::string &test_dir, const std::string &filter_str);
+
 static int run_browser(const std::string &url) {
     browser::BrowserWindow browser;
     auto r = browser.initialize();
@@ -549,21 +552,33 @@ static int run_browser(const std::string &url) {
 // ---------------------------------------------------------------------------
 int main(int argc, char **argv) {
     if (argc < 2) {
-        std::cerr << "Usage:\n"
-                  << "  browser --dump-dom <file.html>\n"
-                  << "  browser --dump-css <file.css>\n"
-                  << "  browser --dump-cascade <file.html>\n"
-                  << "  browser --dump-layout <file.html>\n"
-                  << "  browser --dump-display-list <file.html>\n"
-                  << "  browser <url>\n";
-        return 1;
+        SetProcessDPIAware();
+        return run_browser("about:blank");
     }
 
     std::string flag = argv[1];
 
+    if (flag == "--help" || flag == "-h") {
+        std::cerr << "Usage:\n"
+                  << "  browser                       Open about:blank\n"
+                  << "  browser <url>                 Open a URL or file\n"
+                  << "  browser --dump-dom <file>     Dump DOM tree as JSON\n"
+                  << "  browser --dump-css <file>     Dump CSS AST as JSON\n"
+                  << "  browser --dump-cascade <file> Dump computed styles as JSON\n"
+                  << "  browser --dump-layout <file>  Dump layout tree as JSON\n"
+                  << "  browser --dump-display-list <file> Dump display list as JSON\n"
+                  << "  browser --test-suite <dir>   Run all tests in directory (single process)\n";
+        return 0;
+    }
+
     if (flag.rfind("--", 0) != 0) {
         SetProcessDPIAware();
         return run_browser(flag);
+    }
+
+    if (flag == "--test-suite") {
+        if (argc < 3) { std::cerr << "Missing directory argument\n"; return 1; }
+        return run_test_suite(argv[2], (argc > 3) ? argv[3] : "");
     }
 
     if (argc < 3) {
@@ -658,6 +673,242 @@ int main(int argc, char **argv) {
         return 0;
     }
 
+    // --test-suite handling moved above file-reading section
     std::cerr << "Unknown flag: " << flag << std::endl;
     return 1;
+}
+
+// ---------------------------------------------------------------------------
+// --test-suite: runs all tests in a directory in a single process
+// ---------------------------------------------------------------------------
+static int run_test_suite(const std::string &test_dir, const std::string &filter_str) {
+    SetProcessDPIAware();
+    int total = 0, passed_total = 0, failed_total = 0, critical_total = 0;
+
+    // Use Win32 FindFirstFile/FindNextFile (no exceptions in this project)
+    auto find_files = [](const std::string &dir, const std::string &ext, const std::string &flt) -> std::vector<std::string> {
+        // Split filter on '|' for OR matching
+        std::vector<std::string> filters;
+        if (!flt.empty()) {
+            size_t start = 0, pos;
+            do {
+                pos = flt.find('|', start);
+                filters.push_back(flt.substr(start, pos - start));
+                start = pos + 1;
+            } while (pos != std::string::npos);
+        }
+        auto matches = [&](const std::string &name) -> bool {
+            if (filters.empty()) return true;
+            for (auto &f : filters) {
+                if (name.find(f) != std::string::npos) return true;
+            }
+            return false;
+        };
+        std::vector<std::string> out;
+        std::string pattern = dir + "\\*" + ext;
+        WIN32_FIND_DATAA ffd;
+        HANDLE h = FindFirstFileA(pattern.c_str(), &ffd);
+        if (h == INVALID_HANDLE_VALUE) return out;
+        do {
+            if (!(ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                std::string name = ffd.cFileName;
+                if (matches(name)) out.push_back(dir + "\\" + name);
+            }
+        } while (FindNextFileA(h, &ffd));
+        FindClose(h);
+        std::sort(out.begin(), out.end());
+        return out;
+    };
+
+    auto html_files = find_files(test_dir, ".html", filter_str);
+    auto css_files  = find_files(test_dir, ".css",  filter_str);
+
+    auto read_file = [](const std::string &p) -> std::string {
+        std::ifstream f(p);
+        if (!f.is_open()) return "";
+        return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    };
+    auto file_exists = [](const std::string &p) -> bool {
+        DWORD attr = GetFileAttributesA(p.c_str());
+        return attr != INVALID_FILE_ATTRIBUTES && !(attr & FILE_ATTRIBUTE_DIRECTORY);
+    };
+    auto strip_path = [](const std::string &p) -> std::string {
+        auto pos = p.find_last_of("/\\");
+        return (pos != std::string::npos) ? p.substr(pos+1) : p;
+    };
+    auto dump_css_full = [](const browser::css::StyleSheet &sheet) -> std::string {
+        json::Arr rules;
+        for (size_t i = 0; i < sheet.rules.size(); i++) rules.push(dump_rule(sheet.rules[i], static_cast<int>(i)));
+        json::Arr atrules;
+        for (auto &at : sheet.at_rules) {
+            json::Obj a;
+            a.kv_raw("name", json::q(at.name));
+            a.kv_raw("prelude", json::q(at.prelude));
+            json::Arr nested;
+            for (auto &r : at.rules) nested.push(dump_rule(r, 0));
+            a.kv_raw("rules", nested.done());
+            json::Arr nested_at;
+            for (auto &na : at.at_rules) {
+                json::Obj nao;
+                nao.kv_raw("name", json::q(na.name));
+                nao.kv_raw("prelude", json::q(na.prelude));
+                nao.kv_raw("rules", json::Arr().done());
+                atrules.push(nao.done());
+            }
+            a.kv_raw("at_rules", nested_at.done());
+            if (at.name == "keyframes" || at.name == "-webkit-keyframes") {
+                json::Obj kf;
+                kf.kv_raw("name", json::q(at.keyframes.name));
+                json::Arr blks;
+                for (auto &blk : at.keyframes.blocks) {
+                    json::Obj b;
+                    json::Arr pos;
+                    for (auto p : blk.positions) pos.push(json::num(p));
+                    b.kv_raw("positions", pos.done());
+                    json::Arr dcl;
+                    for (auto &d : blk.declarations) dcl.push(dump_declaration(d));
+                    b.kv_raw("declarations", dcl.done());
+                    blks.push(b.done());
+                }
+                kf.kv_raw("blocks", blks.done());
+                a.kv_raw("keyframes", kf.done());
+            }
+            atrules.push(a.done());
+        }
+        json::Obj out;
+        out.kv_raw("rules", rules.done());
+        out.kv_raw("at_rules", atrules.done());
+        return out.done();
+    };
+
+    for (auto &html_file : html_files) {
+        auto base = strip_path(html_file);
+        auto stem = html_file.substr(0, html_file.size()-5);
+        std::string content = read_file(html_file);
+        if (content.empty()) { failed_total++; total++; continue; }
+
+        std::string dom_s = "SKIP";
+        std::string expected_dom_path = stem + ".expected-dom.json";
+        if (file_exists(expected_dom_path)) {
+            auto doc_r = browser::html::parse_async(content).sync_wait();
+            if (doc_r.is_err()) { dom_s = "ERR"; critical_total++; }
+            else {
+                auto doc = std::move(doc_r.unwrap());
+                json::Obj out;
+                out.kv_raw("source", json::q(html_file));
+                out.kv_raw("encoding", json::q("utf-8"));
+                json::Arr kids;
+                for (auto &ch : doc->children) kids.push(dump_node(ch.get()));
+                out.kv_raw("children", kids.done());
+                std::string actual_str = out.done();
+                std::string expected_str = read_file(expected_dom_path);
+                dom_s = (actual_str == expected_str) ? "PASS" : "FAIL";
+                if (dom_s == "FAIL") critical_total++;
+            }
+        }
+
+        std::string cascade_s = "SKIP", layout_s = "SKIP", disp_s = "SKIP";
+        auto doc_r = browser::html::parse_async(content).sync_wait();
+        if (doc_r.is_ok()) {
+            auto doc = std::move(doc_r.unwrap());
+            std::string merged_css;
+            browser::html::traverse_depth_first(doc.get(), [&](browser::html::Node *n) {
+                if (n->type == browser::html::NodeType::ELEMENT) {
+                    auto *el = static_cast<browser::html::Element *>(n);
+                    if (el->tag_name == "style") {
+                        for (auto &ch : n->children) {
+                            if (ch->type == browser::html::NodeType::TEXT)
+                                merged_css += static_cast<browser::html::Text *>(ch.get())->data + "\n";
+                        }
+                    }
+                }
+            });
+            browser::css::StyleSheet author_sheet;
+            if (!merged_css.empty()) {
+                browser::css::CssParser cp(merged_css);
+                author_sheet = cp.parse();
+            }
+            browser::css::Cascade cascader;
+            auto styles_r = cascader.compute_async(*doc, author_sheet, 800, 600).sync_wait();
+            if (styles_r.is_ok()) {
+                auto styles = std::move(styles_r.unwrap().element_styles);
+                std::string expected_cascade_path = stem + ".expected-cascade.json";
+                if (file_exists(expected_cascade_path)) {
+                    json::Arr elements;
+                    browser::html::traverse_depth_first(doc.get(), [&](browser::html::Node *n) {
+                        if (n->type != browser::html::NodeType::ELEMENT) return;
+                        auto *el = static_cast<browser::html::Element *>(n);
+                        auto it = styles.find(el);
+                        if (it != styles.end()) elements.push(dump_cascade_element(el, it->second));
+                    });
+                    json::Obj out; out.kv_raw("elements", elements.done());
+                    std::string actual_str = out.done();
+                    std::string expected_str = read_file(expected_cascade_path);
+                    cascade_s = (actual_str == expected_str) ? "PASS" : "FAIL";
+                    if (cascade_s == "FAIL") critical_total++;
+                }
+                std::string expected_layout_path = stem + ".expected-layout.json";
+                if (file_exists(expected_layout_path)) {
+                    browser::css::LayoutEngine layout_engine;
+                    layout_engine.set_text_measure(nullptr, headless_text_measure);
+                    auto layout_r = layout_engine.layout_async(doc.get(), styles, 800.0f, 600.0f).sync_wait();
+                    if (layout_r.is_ok()) {
+                        auto layout = std::move(layout_r.unwrap());
+                        std::string actual_str = dump_layout_node(layout.get());
+                        std::string expected_str = read_file(expected_layout_path);
+                        layout_s = (actual_str == expected_str) ? "PASS" : "FAIL";
+                        if (layout_s == "FAIL") critical_total++;
+                        std::string expected_disp_path = stem + ".expected-display-list.json";
+                        if (file_exists(expected_disp_path)) {
+                            browser::render::Painter painter(nullptr);
+                            auto dl_r = painter.paint_async(layout.get()).sync_wait();
+                            if (dl_r.is_ok()) {
+                                auto dl = std::move(dl_r.unwrap());
+                                json::Arr cmds;
+                                for (auto &cmd : dl->commands()) cmds.push(dump_command(cmd));
+                                std::string actual_str2 = cmds.done();
+                                std::string expected_str2 = read_file(expected_disp_path);
+                                disp_s = (actual_str2 == expected_str2) ? "PASS" : "FAIL";
+                                if (disp_s == "FAIL") critical_total++;
+                            } else { disp_s = "ERR"; critical_total++; }
+                        }
+                    } else { layout_s = "ERR"; critical_total++; }
+                }
+            } else { cascade_s = "ERR"; critical_total++; }
+        } else { cascade_s = "ERR"; critical_total++; }
+
+        bool all_pass = (dom_s != "FAIL" && dom_s != "ERR") &&
+                        (cascade_s != "FAIL" && cascade_s != "ERR") &&
+                        (layout_s != "FAIL" && layout_s != "ERR") &&
+                        (disp_s != "FAIL" && disp_s != "ERR");
+        if (all_pass) passed_total++; else failed_total++;
+        total++;
+        fprintf(stderr, "%-42s DOM=%-4s CASCADE=%-6s LAYOUT=%-6s DISP=%-6s → %s\n",
+                base.c_str(), dom_s.c_str(), cascade_s.c_str(), layout_s.c_str(), disp_s.c_str(),
+                all_pass ? "PASS" : "FAIL");
+    }
+
+    for (auto &css_file : css_files) {
+        auto base = strip_path(css_file);
+        auto stem = css_file.substr(0, css_file.size()-4);
+        std::string expected_path = stem + ".expected-css.json";
+        std::string css_s = "SKIP";
+        if (file_exists(expected_path)) {
+            std::string content = read_file(css_file);
+            browser::css::CssParser parser(content);
+            auto sheet = parser.parse();
+            std::string actual_str = dump_css_full(sheet);
+            std::string expected_str = read_file(expected_path);
+            css_s = (actual_str == expected_str) ? "PASS" : "FAIL";
+            if (css_s == "FAIL") critical_total++;
+        }
+        if (css_s == "FAIL") { failed_total++; } else { passed_total++; }
+        total++;
+        fprintf(stderr, "%-42s CSS=%s → %s\n", base.c_str(), css_s.c_str(),
+                css_s == "FAIL" ? "FAIL" : "PASS");
+    }
+
+    fprintf(stderr, "\nTotal: %d  Passed: %d  Failed: %d  Critical: %d\n",
+            total, passed_total, failed_total, critical_total);
+    return failed_total > 0 ? 1 : 0;
 }

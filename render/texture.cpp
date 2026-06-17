@@ -16,7 +16,8 @@ Texture2D::~Texture2D() {
 Texture2D::Texture2D(Texture2D&& other) noexcept
     : texture_id_(other.texture_id_)
     , width_(other.width_)
-    , height_(other.height_) {
+    , height_(other.height_)
+    , is_rgba_(other.is_rgba_) {
     other.texture_id_ = 0;
     other.width_ = 0;
     other.height_ = 0;
@@ -28,6 +29,7 @@ Texture2D& Texture2D::operator=(Texture2D&& other) noexcept {
         texture_id_ = other.texture_id_;
         width_ = other.width_;
         height_ = other.height_;
+        is_rgba_ = other.is_rgba_;
         other.texture_id_ = 0;
         other.width_ = 0;
         other.height_ = 0;
@@ -35,7 +37,7 @@ Texture2D& Texture2D::operator=(Texture2D&& other) noexcept {
     return *this;
 }
 
-Result<void> Texture2D::create(u32 width, u32 height, const u8* data) {
+Result<void> Texture2D::create(u32 width, u32 height, const u8* data, bool use_rgba) {
     if (texture_id_) {
         pgl::glDeleteTextures(1, &texture_id_);
         texture_id_ = 0;
@@ -48,8 +50,13 @@ Result<void> Texture2D::create(u32 width, u32 height, const u8* data) {
 
     pgl::glBindTexture(GL_TEXTURE_2D, texture_id_);
     pgl::glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    pgl::glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, (GLsizei)width, (GLsizei)height,
-                      0, GL_RED, GL_UNSIGNED_BYTE, data);
+    if (use_rgba) {
+        pgl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)width, (GLsizei)height,
+                          0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    } else {
+        pgl::glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, (GLsizei)width, (GLsizei)height,
+                          0, GL_RED, GL_UNSIGNED_BYTE, data);
+    }
     pgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     pgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     pgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -57,14 +64,19 @@ Result<void> Texture2D::create(u32 width, u32 height, const u8* data) {
 
     width_ = width;
     height_ = height;
+    is_rgba_ = use_rgba;
     return {};
 }
 
-void Texture2D::update_sub(u32 x, u32 y, u32 width, u32 height, const u8* data) {
+void Texture2D::update_sub(u32 x, u32 y, u32 width, u32 height, const u8* data, bool use_rgba) {
     if (!texture_id_) return;
     pgl::glBindTexture(GL_TEXTURE_2D, texture_id_);
     pgl::glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    pgl::glTexSubImage2D(GL_TEXTURE_2D, 0, (GLint)x, (GLint)y, (GLsizei)width, (GLsizei)height, GL_RED, GL_UNSIGNED_BYTE, data);
+    if (use_rgba) {
+        pgl::glTexSubImage2D(GL_TEXTURE_2D, 0, (GLint)x, (GLint)y, (GLsizei)width, (GLsizei)height, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    } else {
+        pgl::glTexSubImage2D(GL_TEXTURE_2D, 0, (GLint)x, (GLint)y, (GLsizei)width, (GLsizei)height, GL_RED, GL_UNSIGNED_BYTE, data);
+    }
 }
 
 void Texture2D::bind(u32 slot) const {

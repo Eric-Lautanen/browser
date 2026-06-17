@@ -82,6 +82,8 @@ namespace browser::render {
             pgl::glUniform1i(u.texture, 0);
         if (u.use_texture >= 0)
             pgl::glUniform1i(u.use_texture, 0);
+        if (u.texture_is_rgba >= 0)
+            pgl::glUniform1i(u.texture_is_rgba, 0);
 
         if (fps_overlay_) {
             // Semi-transparent dark background in top-right corner
@@ -160,6 +162,8 @@ namespace browser::render {
             const auto &u = shader_->uniforms();
             if (u.use_texture >= 0)
                 pgl::glUniform1i(u.use_texture, 1);
+            if (u.texture_is_rgba >= 0)
+                pgl::glUniform1i(u.texture_is_rgba, texture->is_rgba() ? 1 : 0);
             texture->bind(0);
             current_texture_id_ = tid;
             textured_mode_ = true;
@@ -173,6 +177,8 @@ namespace browser::render {
         const auto &u = shader_->uniforms();
         if (u.use_texture >= 0)
             pgl::glUniform1i(u.use_texture, 1);
+        if (u.texture_is_rgba >= 0)
+            pgl::glUniform1i(u.texture_is_rgba, texture->is_rgba() ? 1 : 0);
         texture->bind(0);
         current_texture_id_ = texture->id();
         textured_mode_ = true;
@@ -191,6 +197,8 @@ namespace browser::render {
             pgl::glUniform1i(u.texture, 0);
         if (u.use_texture >= 0)
             pgl::glUniform1i(u.use_texture, 0);
+        if (u.texture_is_rgba >= 0)
+            pgl::glUniform1i(u.texture_is_rgba, 0);
         flush();
         textured_mode_ = false;
         current_texture_id_ = 0;
@@ -220,6 +228,8 @@ namespace browser::render {
             pgl::glUniform1i(u.texture, 0);
         if (u.use_texture >= 0)
             pgl::glUniform1i(u.use_texture, 0);
+        if (u.texture_is_rgba >= 0)
+            pgl::glUniform1i(u.texture_is_rgba, 0);
     }
 
 }  // namespace browser::render

@@ -130,35 +130,33 @@ All testing is in `tools/`. **Read `tools/README.md` in full before running or m
 
 ### How It Works
 
+All tests run inside a **single** `browser.exe --test-suite` process. No per-stage process spawning. Expected fixtures (`*.expected-dom.json`, `*.expected-css.json`) are generated from `reference_html.js` (jsdom) and `reference_css.js` (postcss) on first run.
+
 ```
-test.html ──► node tools/reference_html.js   ──► *.expected-dom.json ──┐
-          └──► engine --dump-dom              ──► *.actual-dom.json   ──┴──► json_diff.py → PASS/FAIL/MINOR
+browser.exe --test-suite tests/           # single process runs ALL tests
+browser.exe --test-suite tests/ "filter"  # runs matching tests only
 ```
 
-Five pipeline stages, each independently testable:
-
-| Stage | Engine flag | Reference | Diff mode |
-|-------|------------|-----------|-----------|
-| HTML parse → DOM | `--dump-dom` | `reference_html.js` (jsdom) | `--mode dom` |
-| CSS parse → AST | `--dump-css` | `reference_css.js` (postcss) | `--mode css` |
-| Cascade → computed styles | `--dump-cascade` | engine-bootstrapped fixture | `--mode cascade` |
-| Layout → box tree | `--dump-layout` | engine-bootstrapped fixture | `--mode layout` |
-| Paint → display list | `--dump-display-list` | engine-bootstrapped fixture | `--mode display-list` |
+Five pipeline stages are tested per HTML file:
+- **DOM** — HTML parse → JSON DOM tree (compared against jsdom reference)
+- **Cascade** — Style resolution (compared against bootstrapped fixture)
+- **Layout** — Box tree (compared against bootstrapped fixture)
+- **Display List** — Paint commands (compared against bootstrapped fixture)
+- **CSS** — CSS parse → AST (compared against postcss reference, `.css` files only)
 
 ### Running Tests
 
-```bash
-# Full suite (human-readable table)
-tools/run_tests.sh
+```powershell
+# Quick test (~14 representative tests) — DEFAULT, fast, single process
+.\tools\run_tests.ps1 -quick
 
-# Full suite with machine-readable JSON output
-tools/run_tests.sh --json
-# → writes tools/results/latest_run.json
+# Full suite (all 74 tests — also single process, slower)
+.\tools\run_tests.ps1 -full
 
-# Custom binary
-BROWSER=build/browser.exe tools/run_tests.sh --json
+# Filter by name pattern (| separated for multiple)
+.\tools\run_tests.ps1 -filter "flex|grid"
 
-# Single diff (any mode)
+# Single diff (any mode, outside the harness)
 python3 tools/json_diff.py expected.json actual.json --mode dom
 python3 tools/json_diff.py expected.json actual.json --mode layout --json-out entries.json
 ```
@@ -288,6 +286,23 @@ tools/                External test harness (this section)
 
 ---
 
+## Test Harness Resource Usage
+
+The harness spawns a fresh `browser.exe` process per test per stage — that's ~300 processes for a full run. Each one initializes OpenGL, compiles shaders, and loads fonts. On a laptop this can use 4-8 GB RAM and peg the CPU if processes pile up.
+
+**Rules:**
+- Run `tools/run_tests.ps1` only when you can dedicate the machine. It is not a background task.
+- If the system feels sluggish, stop the script (`Ctrl+C`) and kill leftover `browser.exe` processes:
+  ```powershell
+  Get-Process browser -ErrorAction SilentlyContinue | Stop-Process -Force
+  ```
+- For quick iteration on a single test, run directly:
+  ```powershell
+  build\browser.exe --dump-dom tools\tests\html_basic_structure.html | python3 tools\json_diff.py tools\tests\html_basic_structure.expected-dom.json - --mode dom
+  ```
+- The harness already throttles with a 200ms sleep between stages. Do not remove this.
+- Never run two harness instances simultaneously.
+
 ## Common Pitfalls
 
 - `task<Result<T>>` is wrong — double-wraps. Use `task<T>` (its `await_resume()` already returns `Result<T>`).
@@ -299,3 +314,20 @@ tools/                External test harness (this section)
 - `GCJSFunction::mark_children` must trace `prototype_property` or the prototype is GC'd.
 - Timer callbacks that iterate `timer_queue` while potentially modifying it — collect IDs first, fire in a separate loop.
 - Canvas textures cannot be cached by pixel-buffer address — regenerate each frame.
+
+## Debug Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+Shift+F | Toggle FPS overlay |
+| Ctrl+Shift+S | Save viewport screenshot to `viewport_screenshot.bmp` |
+| Ctrl+Shift+X | Copy all page text to clipboard |
+| Ctrl+L | Focus address bar |
+| Ctrl+T | New tab |
+| Ctrl+R / F5 | Refresh |
+| F11 | Toggle fullscreen |
+| F12 | DevTools |
+| Ctrl+T | New tab |
+| Ctrl+R / F5 | Refresh |
+| F11 | Toggle fullscreen |
+| F12 | DevTools |

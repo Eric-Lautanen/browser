@@ -22,9 +22,22 @@ namespace browser::css {
             if (v->type == CSSValue::Type::KEYWORD)
                 return v->keyword;
             if (v->type == CSSValue::Type::FUNCTION) {
-                if (!v->string_value.empty())
-                    return v->string_value;
-                return v->keyword;
+                auto trim_fn = [](const std::string &s) -> std::string {
+                    size_t start = 0, end = s.size();
+                    while (start < end && (s[start] == ' ' || s[start] == '\t')) start++;
+                    while (end > start && (s[end-1] == ' ' || s[end-1] == '\t')) end--;
+                    return s.substr(start, end - start);
+                };
+                std::string result = v->keyword + "(";
+                if (!v->string_value.empty()) {
+                    std::string raw = v->string_value;
+                    if (raw.size() > v->keyword.size() && raw.substr(0, v->keyword.size()) == v->keyword)
+                        raw = raw.substr(v->keyword.size());
+                    result += trim_fn(raw);
+                }
+                result = trim_fn(result);
+                if (result.back() != ')') result += ")";
+                return result;
             }
             if (v->type == CSSValue::Type::NUMBER) {
                 return std::to_string(static_cast<i32>(v->number));
@@ -113,7 +126,7 @@ namespace browser::css {
                     total_fr += t.min_size.value;
                     break;
                 case GridTrackType::AUTO:
-                    t.resolved_size = 0;
+                    t.resolved_size = std::max(t.min_size.value, font_size);
                     break;
             }
         }
@@ -195,6 +208,7 @@ namespace browser::css {
         }
 
         node->content.width = container_width;
+
 
         std::string cols_str = get_grid_prop_raw(node->style(), "grid-template-columns");
         std::string rows_str = get_grid_prop_raw(node->style(), "grid-template-rows");
@@ -351,6 +365,13 @@ namespace browser::css {
                     state.num_columns = static_cast<i32>(state.columns.size());
                 }
 
+                // Ensure enough rows exist
+                while (cursor_row + row_span > state.num_rows) {
+                    state.rows.push_back(
+                        GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                    state.num_rows = static_cast<i32>(state.rows.size());
+                }
+
                 bool placed = false;
                 i32 safety = 0;
                 while (!placed && safety < 10000) {
@@ -382,6 +403,11 @@ namespace browser::css {
                         if (cursor_col + col_span > state.num_columns) {
                             cursor_col = 0;
                             cursor_row++;
+                            while (cursor_row + row_span > state.num_rows) {
+                                state.rows.push_back(
+                                    GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                                state.num_rows = static_cast<i32>(state.rows.size());
+                            }
                         }
                     }
                 }
