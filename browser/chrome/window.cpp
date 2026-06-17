@@ -110,6 +110,11 @@ namespace browser {
             telemetry_.get(), settings_.get(), tracker_.get(), fm_.get(), text_renderer_.get());
         page_loader_->set_viewport_size(viewport_width_, viewport_height_);
 
+        compositor_ = std::make_unique<render::Compositor>();
+        compositor_->set_viewport(static_cast<i32>(viewport_width_), static_cast<i32>(viewport_height_));
+        compositor_->start();
+        composited_texture_ = std::make_unique<render::Texture2D>();
+
         history_ = std::make_unique<HistoryManager>();
         bookmarks_ = std::make_unique<BookmarkManager>();
         auto rb = bookmarks_->load_from_file("./bookmarks.txt");
@@ -164,29 +169,51 @@ namespace browser {
 
     void BrowserWindow::run() {
         window_->show();
-        renderer_->begin_frame();
-        renderer_->set_viewport(viewport_width_, viewport_height_);
-        update_chrome_state();
-        render_chrome();
-        renderer_->end_textured();
-        render_page();
-        if (chrome_.show_settings) {
-            render_settings();
-        }
-        renderer_->end_frame();
-        window_->swap_buffers();
 
-        while (!window_->should_close()) {
-            window_->pump_events();
-            if (window_->should_close())
-                break;
-
-            renderer_->set_needs_redraw();
+        // Initial render
+        {
             renderer_->begin_frame();
             renderer_->set_viewport(viewport_width_, viewport_height_);
             update_chrome_state();
             render_chrome();
             renderer_->end_textured();
+            render_page();
+            if (chrome_.show_settings) {
+                render_settings();
+            }
+            renderer_->end_frame();
+            window_->swap_buffers();
+        }
+
+        // Event loop: wait on compositor frame and window messages
+        HANDLE wait_handles[] = {compositor_->frame_ready_event()};
+
+        while (!window_->should_close()) {
+            // 1. Wait for any signal (messages, compositor frame, timers)
+            DWORD wait = MsgWaitForMultipleObjectsEx(
+                ARRAYSIZE(wait_handles), wait_handles, INFINITE, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
+            (void)wait;
+
+            // 2. Process pending Windows messages (non-blocking drain)
+            MSG msg;
+            while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
+
+            if (window_->should_close())
+                break;
+
+            // 3-5. Stubbed: timers, microtasks, rAF
+
+            // 6. Render frame
+            renderer_->begin_frame();
+            renderer_->set_viewport(viewport_width_, viewport_height_);
+            update_chrome_state();
+            render_chrome();
+            renderer_->end_textured();
+
+            // render_page() handles both compositor and old paths internally
             render_page();
             if (chrome_.show_settings) {
                 render_settings();

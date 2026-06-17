@@ -132,6 +132,8 @@ namespace browser {
             viewport_width_ = e.width;
             viewport_height_ = e.height;
             renderer_->set_viewport(e.width, e.height);
+            if (compositor_)
+                compositor_->set_viewport(static_cast<i32>(e.width), static_cast<i32>(e.height));
             compute_layout();
             if (page_loader_)
                 page_loader_->set_viewport_size(viewport_width_, viewport_height_);
@@ -478,7 +480,13 @@ namespace browser {
     }
 
     void BrowserWindow::handle_scroll(i32 delta) {
-        chrome_.scroll_y = std::max(0, std::min(chrome_.scroll_max, static_cast<i32>(chrome_.scroll_y - delta * 30)));
+        if (compositor_enabled_ && compositor_) {
+            f32 dy = static_cast<f32>(-delta * 30);
+            compositor_->set_root_scroll_delta(dy);
+        } else {
+            chrome_.scroll_y =
+                std::max(0, std::min(chrome_.scroll_max, static_cast<i32>(chrome_.scroll_y - delta * 30)));
+        }
     }
 
     void BrowserWindow::handle_bookmark_click() {

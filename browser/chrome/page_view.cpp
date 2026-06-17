@@ -1,17 +1,24 @@
 #include "../../render/paint_executor.hpp"
+#include "../../render/rasterizer.hpp"
 #include "window.hpp"
 
 namespace browser {
 
     void BrowserWindow::render_page() {
+        // Check for loaded pages
         if (page_loader_) {
             auto loaded = page_loader_->try_get_loaded_page();
             if (loaded.has_value()) {
                 current_page_ = std::move(loaded.value());
+                if (current_page_.has_value() && current_page_->layer_tree && compositor_) {
+                    compositor_->commit_layer_tree(std::move(current_page_->layer_tree));
+                    compositor_enabled_ = true;
+                }
             }
         }
         if (!current_page_.has_value())
             return;
+
         auto &page = current_page_.value();
         f32 content_h = static_cast<f32>(viewport_height_) - ChromeUI::CHROME_H;
 
@@ -24,6 +31,34 @@ namespace browser {
         f32 sb_w = 10.0f;
         chrome_.rects.scrollbar = {static_cast<f32>(viewport_width_) - sb_w, ChromeUI::CHROME_H, sb_w, content_h};
 
+        // Try compositor path first
+        if (compositor_enabled_ && compositor_ && compositor_->has_new_frame()) {
+            auto frame = compositor_->acquire_frame();
+            if (frame.width > 0 && frame.height > 0 && !frame.rgba_pixels.empty()) {
+                namespace pgl = browser::platform;
+                pgl::glEnable(GL_SCISSOR_TEST);
+                pgl::glScissor(0, 0, static_cast<GLsizei>(viewport_width_), static_cast<GLsizei>(content_h));
+                renderer_->fill_rect(
+                    0, ChromeUI::CHROME_H, static_cast<f32>(viewport_width_), content_h, theme_.page_bg);
+                renderer_->flush();
+
+                auto r = composited_texture_->create(frame.width, frame.height, frame.rgba_pixels.data());
+                if (r.is_ok()) {
+                    renderer_->draw_textured_quad(0,
+                                                  ChromeUI::CHROME_H,
+                                                  static_cast<f32>(viewport_width_),
+                                                  content_h,
+                                                  render::Color::WHITE,
+                                                  composited_texture_.get());
+                    renderer_->flush();
+                }
+                pgl::glDisable(GL_SCISSOR_TEST);
+                render_scrollbar();
+                return;
+            }
+        }
+
+        // Fallback: old PaintExecutor path
         namespace pgl = browser::platform;
         pgl::glEnable(GL_SCISSOR_TEST);
         pgl::glScissor(0, 0, static_cast<GLsizei>(viewport_width_), static_cast<GLsizei>(content_h));

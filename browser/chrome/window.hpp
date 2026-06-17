@@ -3,6 +3,8 @@
 #include "../../render/font.hpp"
 #include "../../render/renderer.hpp"
 #include "../../render/text_renderer.hpp"
+#include "../../render/compositor.hpp"
+#include "../../render/texture.hpp"
 #include "../page_loader.hpp"
 #include "../theme.hpp"
 
@@ -102,6 +104,9 @@ namespace browser {
         std::unique_ptr<render::Renderer> renderer_;
         std::unique_ptr<render::TextRenderer> text_renderer_;
         std::unique_ptr<render::FontManager> fm_;
+        std::unique_ptr<render::Compositor> compositor_;
+        std::unique_ptr<render::Texture2D> composited_texture_;
+        bool compositor_enabled_ = false;
         std::unique_ptr<PageLoader> page_loader_;
         ChromeUI chrome_;
         Theme theme_;

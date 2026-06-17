@@ -275,6 +275,14 @@ add_library(render STATIC
     render/painter.hpp
     render/paint_executor.hpp
     render/font_loader.hpp
+    render/layer_tree.hpp
+    render/layer_tree.cpp
+    render/compositor.hpp
+    render/compositor.cpp
+    render/rasterizer.hpp
+    render/rasterizer.cpp
+    render/tile_cache.hpp
+    render/tile_cache.cpp
 )
 target_include_directories(render PUBLIC .)
 target_link_libraries(render platform css html image)

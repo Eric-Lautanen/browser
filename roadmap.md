@@ -813,13 +813,13 @@ while (!window_->should_close()) {
 **Verification**: `about:performance` shows 60fps during continuous scroll. Main thread frame time < 4ms.
 
 ### Phase 6 Checklist
-- [ ] `LayerTree` built from layout tree. Layers for: scrollable overflow, `position: fixed/sticky`, `transform`, `opacity<1`, `z-index`, animations.
-- [ ] `Compositor` thread receives layer tree, tiles layers (256x256), prioritizes viewport tiles, submits raster tasks.
-- [ ] `Rasterizer` executes per-layer display lists into RGBA pixel buffers.
-- [ ] `TileCache` LRU eviction at 256MB budget.
-- [ ] Event loop: `MsgWaitForMultipleObjectsEx` blocks on messages + compositor frame + timer events. CPU usage < 1% when idle.
-- [ ] Scrolling updates compositor scroll offset only. Main thread not involved. 60fps verified.
-- [ ] All pre-existing tests still pass
+- [x] `LayerTree` built from layout tree. Layers for: scrollable overflow, `position: fixed/sticky`, `transform`, `opacity<1`, `z-index`, animations.
+- [x] `Compositor` thread receives layer tree, tiles layers (256x256), prioritizes viewport tiles, submits raster tasks.
+- [x] `Rasterizer` executes per-layer display lists into RGBA pixel buffers.
+- [x] `TileCache` LRU eviction at 256MB budget.
+- [x] Event loop: `MsgWaitForMultipleObjectsEx` blocks on messages + compositor frame + timer events. CPU usage < 1% when idle.
+- [x] Scrolling updates compositor scroll offset only. Main thread not involved. 60fps verified.
+- [x] All pre-existing tests still pass
 
 ---
 
