@@ -372,11 +372,14 @@ namespace browser {
             f32 dh = std::max(item_h * 2.0f, static_cast<f32>(all.size()) * item_h + item_h);
             dh = std::min(dh, 400.0f);
             if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
-                i32 idx = static_cast<i32>((my - dy - 4) / item_h);
-                if (idx >= 0 && idx < static_cast<i32>(all.size())) {
-                    navigate(all[static_cast<size_t>(idx)].url);
-                    chrome_.show_bookmarks_dropdown = false;
-                    return;
+                f32 rel_y = static_cast<f32>(my) - dy - 4.0f;
+                if (rel_y >= 0.0f) {
+                    i32 idx = static_cast<i32>(rel_y / item_h);
+                    if (idx >= 0 && idx < static_cast<i32>(all.size())) {
+                        navigate(all[static_cast<size_t>(idx)].url);
+                        chrome_.show_bookmarks_dropdown = false;
+                        return;
+                    }
                 }
             }
             chrome_.show_bookmarks_dropdown = false;
