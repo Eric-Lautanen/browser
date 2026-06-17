@@ -401,12 +401,12 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `js/vm/compiler/stmt.cpp` | Statement bytecode emission. ~200 lines. |
 
 ### Phase R12 Checklist
-- [ ] VM, ops, builtins all split with no circular deps
-- [ ] Compiler splits expression and statement emission
-- [ ] All VM call frame and try/catch behavior preserved
-- [ ] All builtins dispatch identically
-- [ ] All compiler_test, vm_test, js_test, gc_test tests pass
-- [ ] Committed and pushed
+- [x] VM, ops, builtins all split with no circular deps
+- [x] Compiler splits expression and statement emission
+- [x] All VM call frame and try/catch behavior preserved
+- [x] All builtins dispatch identically
+- [x] All compiler_test, vm_test, js_test, gc_test tests pass (154/154)
+- [x] Committed and pushed
 
 ---
 

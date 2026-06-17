@@ -202,12 +202,19 @@ add_library(js STATIC
     js/parser/pattern.cpp
     js/bytecode.hpp
     js/compiler.hpp
-    js/compiler.cpp
     js/value.hpp
     js/gc.hpp
-    js/gc.cpp
     js/vm.hpp
-    js/vm.cpp
+    js/vm/vm.hpp
+    js/vm/vm.cpp
+    js/vm/ops.cpp
+    js/vm/builtins.cpp
+    js/vm/gc.hpp
+    js/vm/gc.cpp
+    js/vm/compiler/compiler.hpp
+    js/vm/compiler/compiler.cpp
+    js/vm/compiler/expr.cpp
+    js/vm/compiler/stmt.cpp
     js/jit.hpp
     js/jit.cpp
     js/dom_bindings.hpp
