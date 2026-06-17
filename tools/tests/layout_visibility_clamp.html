@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Layout Visibility &amp; Clamp Test</title>
+<style>
+body { margin: 8px; }
+.visible-box { visibility: visible; background: #efe; padding: 0.5em; }
+.hidden-box { visibility: hidden; background: #eef; padding: 0.5em; }
+.clamp-text { font-size: clamp(0.85rem, 2vw, 1.25rem); background: #fef; padding: 0.5em; }
+</style>
+</head>
+<body>
+<div class="visible-box">Visibility: visible (should render).</div>
+<div class="hidden-box">Visibility: hidden (takes space, invisible).</div>
+<p class="clamp-text">Font-size uses clamp(0.85rem, 2vw, 1.25rem).</p>
+</body>
+</html>

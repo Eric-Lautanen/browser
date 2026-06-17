@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CSS @media Print Test</title>
+<style>
+  body { font-family: serif; margin: 8px; }
+  .no-print { background: #fee; padding: 0.5em; }
+  @media print {
+    .no-print { display: none; }
+    .print-only { display: block; }
+  }
+  .print-only { display: none; }
+</style>
+</head>
+<body>
+<p class="no-print">This paragraph is hidden when printing.</p>
+<p class="print-only">This paragraph only appears when printing.</p>
+<p>This paragraph is visible both on screen and in print.</p>
+</body>
+</html>

@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CSS ::first-line / ::first-letter Test</title>
+<style>
+  body { font-family: serif; margin: 8px; }
+  .first-line-demo::first-line { font-variant: small-caps; letter-spacing: 0.05em; }
+  .first-letter-demo::first-letter { font-size: 2.5em; float: left; line-height: 1; margin-right: 0.1em; color: #005fcc; }
+</style>
+</head>
+<body>
+<p class="first-line-demo">This paragraph's first line renders in small-caps with extra letter spacing via ::first-line. The rest of the paragraph is normal.</p>
+<p class="first-letter-demo">This paragraph uses ::first-letter to create a drop-cap effect. The first character is large, colored, and floated left.</p>
+</body>
+</html>

@@ -1,98 +1,463 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Browser Parser Test Page</title>
-<style>
-*,*::before,*::after{box-sizing:border-box;}
-:root{--color-primary:#005fcc;--color-accent:#e63946;}
-body{font-family:serif;margin:2em auto;max-width:800px;color:#111;background:#fff;}
-h1{font-size:2em;}h2{font-size:1.5em;}h3{font-size:1.2em;}
-p{line-height:1.6;}
-table{border-collapse:collapse;width:100%;}
-th,td{border:1px solid #ccc;padding:0.5em 1em;text-align:left;}
-th{background:#f0f0f0;}
-.flex-container{display:flex;gap:0.5em;flex-wrap:wrap;background:#f5f5f5;padding:0.5em;}
-.flex-item{flex:1 1 80px;background:var(--color-primary);color:#fff;padding:0.5em;text-align:center;}
-.flex-item.grow2{flex-grow:2;background:var(--color-accent);}
-.flex-col{display:flex;flex-direction:column;gap:0.25em;}
-.grid-container{display:grid;grid-template-columns:repeat(3,1fr);gap:0.5em;}
-.grid-item{background:#e8eaf6;border:1px solid #c5cae9;padding:0.5em;text-align:center;}
-.grid-item.span2{grid-column:span 2;background:#c5cae9;}
-.calc-width{width:calc(100% - 4em);background:#efe;padding:0.5em;}
-.opacity-50{opacity:0.5;}
-.display-none{display:none;}
-.overflow-hidden{overflow:hidden;max-height:3em;background:#ffd;padding:0.5em;}
-.pos-container{position:relative;height:80px;border:1px dashed #aaa;margin:0.5em 0;}
-.pos-absolute{position:absolute;top:8px;right:8px;background:#fdd;padding:0.25em 0.5em;}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Parser Test Page</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧪</text></svg>">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root { --color-primary: #005fcc; --color-accent: #e63946; --color-bg-subtle: #f0f0f0; --spacing-md: 1em; --radius: 4px; }
+    body { font-family: serif; margin: 2em auto; max-width: 800px; color: #111; background: #fff; }
+    h1 { font-size: 2em; } h2 { font-size: 1.5em; margin-top: 1.5em; border-bottom: 1px solid #ccc; } h3 { font-size: 1.2em; }
+    p { line-height: 1.6; }
+    a { color: #00e; } a:visited { color: #551a8b; }
+    code { background: #f0f0f0; padding: 0.1em 0.3em; font-family: monospace; }
+    pre { background: #f0f0f0; padding: 1em; overflow-x: auto; }
+    pre code { background: none; padding: 0; }
+    blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 1em; color: #555; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 0.5em 1em; text-align: left; }
+    th { background: #f0f0f0; }
+    ul, ol { line-height: 1.8; }
+    hr { border: none; border-top: 1px solid #ccc; margin: 2em 0; }
+    .box { border: 1px solid #aaa; padding: 1em; margin: 1em 0; }
+    a:hover { color: var(--color-accent); }
+    a:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+    input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-primary); }
+    .pseudo-list li:first-child { font-weight: bold; }
+    .pseudo-list li:last-child { font-style: italic; }
+    .pseudo-list li:nth-child(even) { background: var(--color-bg-subtle); }
+    .pseudo-list li:not(.excluded) { color: #111; }
+    .pseudo-list li.excluded { color: #aaa; text-decoration: line-through; }
+    .pseudo-before::before { content: "\2192 "; color: var(--color-accent); }
+    .pseudo-after::after { content: " \2190"; color: var(--color-accent); }
+    .pseudo-first-line::first-line { font-variant: small-caps; letter-spacing: 0.05em; }
+    .pseudo-first-letter::first-letter { font-size: 2.5em; float: left; line-height: 1; margin-right: 0.1em; color: var(--color-primary); }
+    .display-inline-block { display: inline-block; width: 80px; height: 40px; background: #cde; border: 1px solid #99b; vertical-align: middle; }
+    .display-none { display: none; }
+    .overflow-hidden { overflow: hidden; max-height: 3em; background: #ffd; padding: 0.5em; }
+    .overflow-scroll { overflow: scroll; max-height: 3em; background: #dff; padding: 0.5em; }
+    .overflow-auto { overflow: auto; max-height: 3em; background: #fdf; padding: 0.5em; }
+    .pos-container { position: relative; height: 80px; border: 1px dashed #aaa; margin: 0.5em 0; }
+    .pos-absolute { position: absolute; top: 8px; right: 8px; background: #fdd; padding: 0.25em 0.5em; }
+    .pos-sticky-demo { position: sticky; top: 0; background: #fffbe6; border-bottom: 1px solid #ccc; padding: 0.25em 0.5em; }
+    .z-base { position: relative; z-index: 1; background: #dde; width: 100px; height: 40px; display: inline-block; }
+    .z-on-top { position: relative; z-index: 10; background: rgba(255,100,100,0.85); width: 80px; height: 40px; display: inline-block; margin-left: -40px; vertical-align: top; }
+    .opacity-50 { opacity: 0.5; }
+    .visibility-hidden { visibility: hidden; }
+    .transition-box { display: inline-block; padding: 0.5em 1em; background: var(--color-primary); color: #fff; border-radius: var(--radius); transition: background 0.3s ease, transform 0.3s ease; cursor: pointer; }
+    .transition-box:hover { background: var(--color-accent); transform: scale(1.05); }
+    .transform-demo { display: inline-block; padding: 0.5em 1em; background: #eef; border: 1px solid #aac; transform: rotate(-2deg) translateX(8px); }
+    .calc-width { width: calc(100% - 4em); background: #efe; padding: 0.5em; }
+    .clamp-text { font-size: clamp(0.85rem, 2vw, 1.25rem); background: #fef; padding: 0.5em; }
+    .flex-container { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; background: #f5f5f5; padding: 0.5em; }
+    .flex-item { flex: 1 1 80px; background: var(--color-primary); color: #fff; padding: 0.5em; text-align: center; border-radius: var(--radius); }
+    .flex-item.grow2 { flex-grow: 2; background: var(--color-accent); }
+    .flex-col { display: flex; flex-direction: column; gap: 0.25em; }
+    .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5em; }
+    .grid-item { background: #e8eaf6; border: 1px solid #c5cae9; padding: 0.5em; text-align: center; }
+    .grid-item.span2 { grid-column: span 2; background: #c5cae9; }
+    .grid-named { display: grid; grid-template-areas: "header header" "sidebar content" "footer footer"; grid-template-columns: 1fr 2fr; gap: 0.5em; }
+    .area-header { grid-area: header; background: #b2dfdb; padding: 0.5em; text-align: center; }
+    .area-sidebar { grid-area: sidebar; background: #c8e6c9; padding: 0.5em; }
+    .area-content { grid-area: content; background: #dcedc8; padding: 0.5em; }
+    .area-footer { grid-area: footer; background: #b2dfdb; padding: 0.5em; text-align: center; }
+    @media (max-width: 600px) { .grid-container { grid-template-columns: 1fr; } .flex-item { flex-basis: 100%; } }
+    @media (prefers-color-scheme: dark) { .dark-note::after { content: " (dark mode active)"; color: #aaa; font-size: 0.85em; } }
+    @media print { .no-print { display: none; } }
+  </style>
 </head>
 <body>
-<h1>Browser Parser Test Page</h1>
-<p>Testing HTML elements and CSS.</p>
 
-<h2>Headings</h2>
-<h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3>
-<h4>Heading 4</h4><h5>Heading 5</h5><h6>Heading 6</h6>
+  <nav>
+    <a href="#headings">Headings</a> ·
+    <a href="#text">Text</a> ·
+    <a href="#lists">Lists</a> ·
+    <a href="#table">Table</a> ·
+    <a href="#forms">Forms</a> ·
+    <a href="#flex">Flexbox</a> ·
+    <a href="#grid">Grid</a> ·
+    <a href="#css-misc">CSS Misc</a> ·
+    <a href="#inline-svg">SVG</a>
+  </nav>
 
-<h2>Text</h2>
-<p><strong>Bold</strong> <em>Italic</em> <code>Code</code> <a href="#">Link</a></p>
-<p>HTML entities: &amp; &lt; &gt; &quot; &copy; &mdash;</p>
-<blockquote><p>Blockquote text.</p></blockquote>
-<pre><code>int main() { return 0; }</code></pre>
+  <main>
+  <h1>Browser Parser Test Page</h1>
+  <p>This page exercises common HTML elements and basic CSS to help test a browser's parser, layout engine, and renderer.</p>
 
-<h2>Lists</h2>
-<ul>
-  <li>One</li>
-  <li>Two<ul><li>Nested A</li><li>Nested B</li></ul></li>
-  <li>Three</li>
-</ul>
-<ol>
-  <li>First</li>
-  <li>Second<ol><li>Sub 1</li><li>Sub 2</li></ol></li>
-  <li>Third</li>
-</ol>
+  <hr>
 
-<h2>Table</h2>
-<table>
-  <thead><tr><th>Name</th><th>Value</th></tr></thead>
-  <tbody>
-    <tr><td>Alpha</td><td>100</td></tr>
-    <tr><td>Beta</td><td>200</td></tr>
-  </tbody>
-</table>
+  <!-- HEADINGS -->
+  <h2 id="headings">Headings</h2>
+  <h1>Heading Level 1</h1>
+  <h2>Heading Level 2</h2>
+  <h3>Heading Level 3</h3>
+  <h4>Heading Level 4</h4>
+  <h5>Heading Level 5</h5>
+  <h6>Heading Level 6</h6>
 
-<h2>Forms</h2>
-<form>
-  <p>Text: <input type="text" value="hello"></p>
-  <p>Checkbox: <input type="checkbox" checked></p>
-  <p>Select: <select><option>A</option><option>B</option></select></p>
-  <p><button>Submit</button></p>
-</form>
+  <hr>
 
-<h2>Flexbox</h2>
-<div class="flex-container">
-  <div class="flex-item">1</div>
-  <div class="flex-item grow2">2 (grow)</div>
-  <div class="flex-item">3</div>
-</div>
+  <!-- TEXT CONTENT -->
+  <h2 id="text">Text &amp; Inline Elements</h2>
+  <p>This is a regular paragraph with <strong>bold text</strong>, <em>italic text</em>, and <strong><em>bold italic</em></strong>. Here is some <code>inline code</code> and a <a href="https://example.com">hyperlink</a>.</p>
+  <p>Text can be <u>underlined</u>, <s>struck through</s>, <sub>subscripted</sub>, or <sup>superscripted</sup>. You can also mark <mark>highlighted text</mark>.</p>
+  <p>HTML entities: &amp; &lt; &gt; &quot; &copy; &mdash; &nbsp;(non-breaking space)&nbsp;end.</p>
+  <p>Semantic inline: <abbr title="HyperText Markup Language">HTML</abbr>, <kbd>Ctrl+S</kbd>, <var>x</var> = <var>y</var> + 2, output: <samp>Hello, world</samp>, <cite>MDN Web Docs</cite>.</p>
 
-<h2>CSS Grid</h2>
-<div class="grid-container">
-  <div class="grid-item">1</div>
-  <div class="grid-item">2</div>
-  <div class="grid-item">3</div>
-  <div class="grid-item span2">4 span2</div>
-  <div class="grid-item">5</div>
-</div>
+  <figure>
+    <img src="https://via.placeholder.com/300x120" alt="300 by 120 placeholder" width="300" height="120">
+    <figcaption>Fig. 1 — A placeholder image inside a <code>&lt;figure&gt;</code> element.</figcaption>
+  </figure>
 
-<h2>Misc</h2>
-<p class="calc-width">calc(100% - 4em) width</p>
-<p>Normal <span class="opacity-50">faded</span> normal</p>
-<p class="display-none">Hidden</p>
-<div class="overflow-hidden">Overflow test<br>Line 2<br>Line 3</div>
-<div class="pos-container">Relative<div class="pos-absolute">Absolute</div></div>
+  <blockquote>
+    <p>This is a blockquote. It should be visually indented and styled differently from normal paragraph text.</p>
+  </blockquote>
 
-<p>End.</p>
+  <hr>
+
+  <!-- LISTS -->
+  <h2 id="lists">Lists</h2>
+
+  <h3>Unordered List</h3>
+  <ul>
+    <li>First item</li>
+    <li>Second item
+      <ul>
+        <li>Nested item A</li>
+        <li>Nested item B</li>
+      </ul>
+    </li>
+    <li>Third item</li>
+  </ul>
+
+  <h3>Ordered List</h3>
+  <ol>
+    <li>Step one</li>
+    <li>Step two
+      <ol>
+        <li>Sub-step 2a</li>
+        <li>Sub-step 2b</li>
+      </ol>
+    </li>
+    <li>Step three</li>
+  </ol>
+
+  <h3>Definition List</h3>
+  <dl>
+    <dt>HTML</dt>
+    <dd>HyperText Markup Language — the structure of web pages.</dd>
+    <dt>CSS</dt>
+    <dd>Cascading Style Sheets — controls presentation and layout.</dd>
+  </dl>
+
+  <hr>
+
+  <!-- PREFORMATTED / CODE -->
+  <h2>Preformatted Text &amp; Code Block</h2>
+  <pre><code>int main() {
+    // A simple C++ snippet
+    const char* msg = "Hello, browser!";
+    return 0;
+}</code></pre>
+
+  <hr>
+
+  <!-- TABLE -->
+  <h2 id="table">Table</h2>
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2">Element</th>
+        <th>Tag</th>
+        <th>Notes</th>
+      </tr>
+      <tr>
+        <th colspan="2">Tag &amp; Notes (colspan=2 row)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Paragraph</td>
+        <td><code>&lt;p&gt;</code></td>
+        <td>Block-level text container</td>
+      </tr>
+      <tr>
+        <td>Anchor</td>
+        <td><code>&lt;a&gt;</code></td>
+        <td>Hyperlink; requires <code>href</code></td>
+      </tr>
+      <tr>
+        <td>Image</td>
+        <td><code>&lt;img&gt;</code></td>
+        <td>Void element; requires <code>src</code> and <code>alt</code></td>
+      </tr>
+      <tr>
+        <td>Division</td>
+        <td><code>&lt;div&gt;</code></td>
+        <td>Generic block container</td>
+      </tr>
+      <tr>
+        <td>Span</td>
+        <td><code>&lt;span&gt;</code></td>
+        <td>Generic inline container</td>
+      </tr>
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="3">End of table.</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <hr>
+
+  <!-- IMAGES -->
+  <h2>Image</h2>
+  <p>A placeholder image (may not load without network access, but the <code>&lt;img&gt;</code> tag should parse correctly):</p>
+  <img src="https://via.placeholder.com/400x200" alt="400 by 200 placeholder image" width="400" height="200">
+
+  <hr>
+
+  <!-- FORMS -->
+  <h2 id="forms">Form Elements</h2>
+  <form action="#" method="get">
+    <p><label for="text-input">Text input:</label><br><input type="text" id="text-input" name="text-input" placeholder="Enter text here"></p>
+    <p><label for="password-input">Password input:</label><br><input type="password" id="password-input" name="password-input"></p>
+    <p><label for="number-input">Number input:</label><br><input type="number" id="number-input" name="number-input" min="0" max="100" value="42"></p>
+    <p><label for="textarea">Textarea:</label><br><textarea id="textarea" name="textarea" rows="4" cols="40">Some default text.</textarea></p>
+    <p><label>Checkboxes:</label><br><input type="checkbox" id="chk1" name="chk1" checked><label for="chk1">Option A</label><br><input type="checkbox" id="chk2" name="chk2"><label for="chk2">Option B</label></p>
+    <p><label>Radio buttons:</label><br><input type="radio" id="r1" name="radio-group" value="one" checked><label for="r1">One</label><br><input type="radio" id="r2" name="radio-group" value="two"><label for="r2">Two</label><br><input type="radio" id="r3" name="radio-group" value="three"><label for="r3">Three</label></p>
+    <p><label for="select">Select dropdown:</label><br><select id="select" name="select"><option value="">-- choose --</option><option value="a">Alpha</option><option value="b" selected>Beta</option><option value="c">Gamma</option></select></p>
+    <p><label for="email-input">Email input:</label><br><input type="email" id="email-input" name="email-input" placeholder="user@example.com"></p>
+    <p><label for="search-input">Search input:</label><br><input type="search" id="search-input" name="search-input" placeholder="Search…"></p>
+    <p><label for="date-input">Date input:</label><br><input type="date" id="date-input" name="date-input" value="2026-06-16"></p>
+    <p><label for="range-input">Range input (0–100):</label><br><input type="range" id="range-input" name="range-input" min="0" max="100" value="40"></p>
+    <p><label for="color-input">Color input:</label><br><input type="color" id="color-input" name="color-input" value="#005fcc"></p>
+    <p><label for="datalist-input">Datalist (autocomplete):</label><br><input type="text" id="datalist-input" name="datalist-input" list="browsers-list" placeholder="Type a browser name"><datalist id="browsers-list"><option value="Chrome"><option value="Firefox"><option value="Safari"><option value="Edge"></datalist></p>
+    <p><label>Progress &amp; Meter:</label><br><progress value="65" max="100">65%</progress><meter value="0.7" low="0.3" high="0.8" optimum="1.0">0.7</meter></p>
+    <p data-testid="form-footer" data-custom-attr="example"><small>This paragraph uses <code>data-*</code> attributes: <code>data-testid</code> and <code>data-custom-attr</code>.</small></p>
+    <p><button type="submit">Submit</button><button type="reset">Reset</button></p>
+  </form>
+
+  <hr>
+
+  <!-- SEMANTIC / STRUCTURAL -->
+  <h2>Semantic Elements</h2>
+
+  <article class="box">
+    <header>
+      <h3>Article Header</h3>
+      <p><time datetime="2026-06-15">June 15, 2026</time></p>
+    </header>
+    <p>This is inside an <code>&lt;article&gt;</code> element, which represents a self-contained piece of content.</p>
+    <footer>Article footer text.</footer>
+  </article>
+
+  <aside class="box">
+    <p>This is an <code>&lt;aside&gt;</code> — tangentially related content, like a sidebar note.</p>
+  </aside>
+
+  <section class="box">
+    <h3>Section</h3>
+    <p>A <code>&lt;section&gt;</code> groups thematically related content.</p>
+  </section>
+
+  <details>
+    <summary>Click to expand details</summary>
+    <p>This content is inside a <code>&lt;details&gt;</code> element and should be hidden until the summary is clicked.</p>
+  </details>
+
+  <hr>
+
+  <!-- FLEXBOX -->
+  <h2 id="flex">Flexbox</h2>
+
+  <h3>Row (default), wrap, gap</h3>
+  <div class="flex-container">
+    <div class="flex-item">flex 1</div>
+    <div class="flex-item grow2">flex-grow 2</div>
+    <div class="flex-item">flex 1</div>
+    <div class="flex-item">flex 1</div>
+  </div>
+
+  <h3>Column direction</h3>
+  <div class="flex-col">
+    <div class="flex-item" style="flex:none;">Row A</div>
+    <div class="flex-item" style="flex:none;">Row B</div>
+    <div class="flex-item" style="flex:none;">Row C</div>
+  </div>
+
+  <h3>justify-content &amp; align-items</h3>
+  <div class="flex-container" style="justify-content:space-between; align-items:flex-end; height:60px;">
+    <div class="flex-item" style="flex:none; height:30px;">short</div>
+    <div class="flex-item" style="flex:none; height:50px;">tall</div>
+    <div class="flex-item" style="flex:none; height:40px;">mid</div>
+  </div>
+
+  <hr>
+
+  <!-- GRID -->
+  <h2 id="grid">CSS Grid</h2>
+
+  <h3>repeat(3, 1fr) with span</h3>
+  <div class="grid-container">
+    <div class="grid-item">1</div>
+    <div class="grid-item">2</div>
+    <div class="grid-item">3</div>
+    <div class="grid-item span2">4 (span 2)</div>
+    <div class="grid-item">5</div>
+  </div>
+
+  <h3>Named grid areas</h3>
+  <div class="grid-named">
+    <div class="area-header">header</div>
+    <div class="area-sidebar">sidebar</div>
+    <div class="area-content">content</div>
+    <div class="area-footer">footer</div>
+  </div>
+
+  <hr>
+
+  <!-- CSS MISC -->
+  <h2 id="css-misc">CSS: Pseudo-classes, Pseudo-elements, Positioning, etc.</h2>
+
+  <h3>Pseudo-classes</h3>
+  <ul class="pseudo-list">
+    <li>First child (bold)</li>
+    <li>Even item (grey bg)</li>
+    <li>Odd item</li>
+    <li>Even item (grey bg)</li>
+    <li class="excluded">Excluded via :not() (strikethrough)</li>
+    <li>Last child (italic)</li>
+  </ul>
+
+  <h3>Pseudo-elements (::before / ::after)</h3>
+  <p class="pseudo-before pseudo-after">This paragraph has ::before and ::after content injected.</p>
+  <p class="pseudo-first-line">This paragraph's first line is rendered in small-caps via ::first-line. Keep resizing the window to see the first line change.</p>
+  <p class="pseudo-first-letter">his paragraph uses ::first-letter to create a drop-cap effect on the leading character.</p>
+
+  <h3>display: inline-block / none</h3>
+  <p>Text <span class="display-inline-block"></span> inline-block box <span class="display-inline-block" style="background:#fcd;"></span> text.</p>
+  <p class="display-none">This paragraph has <code>display:none</code> and should be invisible.</p>
+
+  <h3>overflow</h3>
+  <p class="overflow-hidden">overflow: hidden — <br>Line 1<br>Line 2<br>Line 3<br>Line 4 (clipped)</p>
+  <p class="overflow-scroll">overflow: scroll — <br>Line 1<br>Line 2<br>Line 3<br>Line 4 (scrollable)</p>
+  <p class="overflow-auto">overflow: auto — <br>Line 1<br>Line 2<br>Line 3<br>Line 4 (auto)</p>
+
+  <h3>position: relative / absolute</h3>
+  <div class="pos-container">
+    <p style="margin:0.5em;">I am the relative container.</p>
+    <span class="pos-absolute">absolute</span>
+  </div>
+
+  <h3>position: sticky</h3>
+  <div style="height:80px; overflow:auto; border:1px solid #ccc;">
+    <div class="pos-sticky-demo">Sticky header (scroll me)</div>
+    <p>Line 1</p><p>Line 2</p><p>Line 3</p><p>Line 4</p>
+  </div>
+
+  <h3>z-index</h3>
+  <div><span class="z-base">z-index: 1</span><span class="z-on-top">z-index: 10</span></div>
+
+  <h3>opacity / visibility</h3>
+  <p>Normal → <span class="opacity-50">opacity 0.5</span> → Normal</p>
+  <p>Normal → <span class="visibility-hidden">visibility:hidden (gap)</span> → Normal</p>
+
+  <h3>transition &amp; transform</h3>
+  <p><span class="transition-box">Hover me</span> <span class="transform-demo">rotate + translateX</span></p>
+
+  <h3>calc() and clamp()</h3>
+  <p class="calc-width">Width is <code>calc(100% - 4em)</code>.</p>
+  <p class="clamp-text">Font size is <code>clamp(0.85rem, 2vw, 1.25rem)</code> — resize window to see it adapt.</p>
+
+  <h3>CSS Custom Properties (var())</h3>
+  <p style="color: var(--color-primary);">This text uses <code>var(--color-primary)</code>.</p>
+  <p style="color: var(--color-accent);">This text uses <code>var(--color-accent)</code>.</p>
+  <p style="padding: var(--spacing-md); background: var(--color-bg-subtle); border-radius: var(--radius);">This box uses <code>--spacing-md</code>, <code>--color-bg-subtle</code>, and <code>--radius</code>.</p>
+
+  <h3 class="dark-note">@media queries</h3>
+  <p>The grid above collapses to 1 column on viewports ≤600 px (<code>@media (max-width: 600px)</code>). The <code>dark-note</code> heading above appends text when <code>prefers-color-scheme: dark</code> is active.</p>
+
+  <hr>
+
+  <!-- INLINE SVG -->
+  <h2 id="inline-svg">Inline SVG</h2>
+
+  <svg xmlns="http://www.w3.org/2000/svg" width="300" height="100" viewBox="0 0 300 100" role="img" aria-label="SVG test shapes">
+    <rect x="10" y="10" width="80" height="80" fill="#c5cae9" stroke="#3949ab" stroke-width="2" rx="8"/>
+    <circle cx="155" cy="50" r="40" fill="#b2dfdb" stroke="#00796b" stroke-width="2"/>
+    <polygon points="240,10 290,90 190,90" fill="#ffccbc" stroke="#bf360c" stroke-width="2"/>
+    <text x="10" y="96" font-size="11" fill="#555">rect · circle · polygon</text>
+  </svg>
+
+  <p>The shapes above are inline <code>&lt;svg&gt;</code> — no external file.</p>
+
+  <hr>
+
+  <!-- PICTURE / SRCSET -->
+  <h2>Responsive Images (<code>&lt;picture&gt;</code> / <code>srcset</code>)</h2>
+  <picture>
+    <source media="(max-width: 400px)" srcset="https://via.placeholder.com/200x80">
+    <source media="(max-width: 800px)" srcset="https://via.placeholder.com/400x120">
+    <img src="https://via.placeholder.com/600x160" alt="Responsive placeholder" width="600" height="160">
+  </picture>
+
+  <hr>
+
+  <!-- PARSER STRESS -->
+  <h2>Parser Stress Cases</h2>
+
+  <h3>Optional closing tags omitted</h3>
+  <ul>
+    <li>Item one (no closing tag)
+    <li>Item two (no closing tag)
+    <li>Item three (no closing tag)
+  </ul>
+
+  <p>Paragraph without explicit close
+  <p>Second paragraph — parser must have auto-closed the first.</p>
+
+  <h3>Mixed-case tag names</h3>
+  <P>Paragraph opened with uppercase <CODE>&lt;P&gt;</CODE>.</P>
+  <DIV style="border:1px solid #ccc; padding:0.25em 0.5em;"><SPAN>DIV and SPAN in uppercase.</SPAN></DIV>
+
+  <h3>Deeply nested elements</h3>
+  <div><div><div><div><div><p>5 levels of <code>&lt;div&gt;</code> nesting.</p></div></div></div></div></div>
+
+  <h3>Unicode in content &amp; attributes</h3>
+  <p lang="ja" data-label="日本語">日本語テスト — Japanese text.</p>
+  <p lang="ar" dir="rtl">نص عربي — Arabic RTL text.</p>
+  <p>Emoji: 🎉 🦊 🌍 ✅</p>
+
+  <h3>Comment edge cases</h3>
+  <!-- normal comment -->
+  <!---->
+  <!-- comment with -- double-dash inside using entity: &#45;&#45; -->
+  <p>The three comments above should all parse without breaking the document.</p>
+
+  <hr>
+
+  <!-- META / MISC -->
+  <h2>Miscellaneous</h2>
+  <p>Void elements (self-closing): <code>&lt;br&gt;</code>, <code>&lt;hr&gt;</code>, <code>&lt;img&gt;</code>, <code>&lt;input&gt;</code>, <code>&lt;meta&gt;</code>, <code>&lt;link&gt;</code>.</p>
+  <p>Line break test:<br>This line follows a <code>&lt;br&gt;</code> tag.</p>
+  <p>Long unbroken word test: <code>supercalifragilisticexpialidocious</code></p>
+  <p>White&nbsp;&nbsp;&nbsp;space&nbsp;&nbsp;&nbsp;collapse test (multiple spaces should collapse to one in rendered output).</p>
+
+  <hr>
+
+  <p>tabindex: <span tabindex="0" style="border:1px dashed #aaa; padding:0.1em 0.4em;">tabindex=0 (focusable span)</span> — press Tab to reach it.</p>
+
+  <hr>
+
+  </main>
+
+  <footer>
+    <p><small>End of test page. No JavaScript was used in this document.</small></p>
+  </footer>
+
 </body>
 </html>

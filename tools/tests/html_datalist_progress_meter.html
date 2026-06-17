@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Datalist / Progress / Meter Test</title>
+</head>
+<body>
+<form>
+<label for="browser">Browser:</label>
+<input type="text" id="browser" list="browsers">
+<datalist id="browsers">
+<option value="Chrome">
+<option value="Firefox">
+<option value="Safari">
+<option value="Edge">
+</datalist>
+</form>
+<p>Progress: <progress value="70" max="100">70%</progress></p>
+<p>Meter: <meter value="0.6" low="0.3" high="0.8" optimum="1.0">0.6</meter></p>
+</body>
+</html>
