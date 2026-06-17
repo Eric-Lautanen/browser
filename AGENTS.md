@@ -144,22 +144,28 @@ Five pipeline stages are tested per HTML file:
 - **Display List** — Paint commands (compared against bootstrapped fixture)
 - **CSS** — CSS parse → AST (compared against postcss reference, `.css` files only)
 
-### Running Tests
+### Running Tests — Targeted by Default
+
+**Never run the full suite during iteration.** The full run pegs CPU and can lock up the machine. Always use `-filter` to run only the tests relevant to your current work:
 
 ```powershell
-# Quick test (~14 representative tests) — DEFAULT, fast, single process
+# Run only the test(s) for what you're working on (PREFERRED — always do this)
+.\tools\run_tests.ps1 -filter "table"
+.\tools\run_tests.ps1 -filter "flex|grid"
+.\tools\run_tests.ps1 -filter "margin_collapse"
+
+# Quick test (~14 representative tests) — when no specific test matches
 .\tools\run_tests.ps1 -quick
 
-# Full suite (all 74 tests — also single process, slower)
+# Full suite — ONLY before commit, and ONLY when machine is idle
 .\tools\run_tests.ps1 -full
-
-# Filter by name pattern (| separated for multiple)
-.\tools\run_tests.ps1 -filter "flex|grid"
 
 # Single diff (any mode, outside the harness)
 python3 tools/json_diff.py expected.json actual.json --mode dom
 python3 tools/json_diff.py expected.json actual.json --mode layout --json-out entries.json
 ```
+
+**The filter matches filenames.** If you're fixing a table bug, `-filter "table"` runs `layout_table.html` and `html_table.html`. Use `|` to OR multiple patterns.
 
 ### Exit Codes
 
@@ -273,16 +279,24 @@ tools/                External test harness (this section)
 
 1. **Read `structure.md`** — understand which files are involved before writing any code
 2. **Read `tools/README.md`** — if the task touches tests or the harness
-3. **Run baseline** — `tools/run_tests.sh --json` before making changes; capture the baseline JSON
-4. **Make changes** — follow all Core Principles; no new warnings
-5. **Build** — `ninja -C build browser` must succeed with zero warnings
-6. **Run C++ tests** — `ninja -C build run_tests`; all passing tests must still pass
-7. **Run harness** — `tools/run_tests.sh --json`; compare `latest_run.json` to baseline
-8. **Check `ref_errors.log`** — must be empty
-9. **Format** — `git clang-format` on changed files
-10. **Commit** — descriptive message; reference the failing test or bug being fixed
+3. **Identify the relevant test(s)** — find the test files that cover the code you're changing (e.g., `layout_table.html`, `css_selectors.css`). If no test exists for the bug, create one first.
+4. **Run baseline** — `.\tools\run_tests.ps1 -filter "your_test_pattern"` before making changes; note the result
+5. **Make changes** — follow all Core Principles; no new warnings
+6. **Build** — `ninja -C build browser` must succeed with zero warnings
+7. **Run C++ tests** — build+run only the relevant test executable(s), not the full suite:
+   ```powershell
+   ninja -C build html_test       # just the HTML parser test
+   ninja -C build layout_test     # just the layout test
+   ninja -C build flex_test       # just the flexbox test
+   ```
+8. **Run harness** — `.\tools\run_tests.ps1 -filter "your_test_pattern"`; compare to baseline
+9. **Check `ref_errors.log`** — must be empty
+10. **Format** — `git clang-format` on changed files
+11. **Commit** — descriptive message; reference the failing test or bug being fixed
 
 **Never** break a passing test. If a test was passing before your change and fails after, stop and fix it before proceeding.
+
+**Full suite is for CI and pre-commit only.** Run `-full` and `ninja -C build run_tests` once before committing, when the machine is idle.
 
 ---
 

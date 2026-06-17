@@ -7,7 +7,7 @@ void Parser::handle_initial(const Token& token) {
         auto& dt = std::get<DoctypeToken>(token);
         insert_doctype(dt);
         if (dt.force_quirks || dt.name != "html") {
-            // quirks mode
+            document_->quirks_mode = true;
         }
         mode_ = InsertionMode::BEFORE_HTML;
         return;

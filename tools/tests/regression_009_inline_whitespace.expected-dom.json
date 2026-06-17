@@ -1,1 +1,335 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\regression_009_inline_whitespace.html",  "encoding": "utf-8",  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {        "lang": "en"      },      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "meta",              "attributes": {                "charset": "utf-8"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Regression 009: Inline Whitespace",                  "data_normalized": "Regression 009: Inline Whitespace"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "style",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n.container {\n  border: 1px solid #999;\n  margin: 10px;\n  padding: 8px;\n  font-size: 16px;\n}\nspan {\n  background: #fdc;\n  border: 1px solid #c90;\n  padding: 2px;\n}\n.wide {\n  font-size: 24px;\n}\n",                  "data_normalized": ".container { border: 1px solid #999; margin: 10px; padding: 8px; font-size: 16px; } span { background: #fdc; border: 1px solid #c90; padding: 2px; } .wide { font-size: 24px; }"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "container"              },              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Hello",                      "data_normalized": "Hello"                    }                  ]                },                {                  "type": "text",                  "data": "   ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "World",                      "data_normalized": "World"                    }                  ]                },                {                  "type": "text",                  "data": "   ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Foo",                      "data_normalized": "Foo"                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "container"              },              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "A",                      "data_normalized": "A"                    }                  ]                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "B",                      "data_normalized": "B"                    }                  ]                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "C",                      "data_normalized": "C"                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "container wide"              },              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "X",                      "data_normalized": "X"                    }                  ]                },                {                  "type": "text",                  "data": "   ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Y",                      "data_normalized": "Y"                    }                  ]                },                {                  "type": "text",                  "data": "   ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "span",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Z",                      "data_normalized": "Z"                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "First line: whitespace between spans collapses to single space. Second: no space = no gap. Third: larger font, same behavior.",                  "data_normalized": "First line: whitespace between spans collapses to single space. Second: no space = no gap. Third: larger font, same behavior."                }              ]            },            {              "type": "text",              "data": "\n\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/regression_009_inline_whitespace.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Regression 009: Inline Whitespace",
+                  "data_normalized": "Regression 009: Inline Whitespace"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.container {\n  border: 1px solid #999;\n  margin: 10px;\n  padding: 8px;\n  font-size: 16px;\n}\nspan {\n  background: #fdc;\n  border: 1px solid #c90;\n  padding: 2px;\n}\n.wide {\n  font-size: 24px;\n}\n",
+                  "data_normalized": " .container { border: 1px solid #999; margin: 10px; padding: 8px; font-size: 16px; } span { background: #fdc; border: 1px solid #c90; padding: 2px; } .wide { font-size: 24px; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "container"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Hello",
+                      "data_normalized": "Hello"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "   ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "World",
+                      "data_normalized": "World"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "   ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Foo",
+                      "data_normalized": "Foo"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "container"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "A",
+                      "data_normalized": "A"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "B",
+                      "data_normalized": "B"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "C",
+                      "data_normalized": "C"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "container wide"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "X",
+                      "data_normalized": "X"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "   ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Y",
+                      "data_normalized": "Y"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "   ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "span",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Z",
+                      "data_normalized": "Z"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "First line: whitespace between spans collapses to single space. Second: no space = no gap. Third: larger font, same behavior.",
+                  "data_normalized": "First line: whitespace between spans collapses to single space. Second: no space = no gap. Third: larger font, same behavior."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

@@ -1,14 +1,14 @@
 #pragma once
 #include "../../platform/window.hpp"
+#include "../../render/compositor.hpp"
 #include "../../render/font.hpp"
 #include "../../render/renderer.hpp"
 #include "../../render/text_renderer.hpp"
-#include "../../render/compositor.hpp"
 #include "../../render/texture.hpp"
-#include "../page_loader.hpp"
-#include "../download_manager.hpp"
 #include "../devtools.hpp"
+#include "../download_manager.hpp"
 #include "../find_bar.hpp"
+#include "../page_loader.hpp"
 #include "../session.hpp"
 #include "../theme.hpp"
 
@@ -42,7 +42,12 @@ namespace browser {
         bool dragging = false;
 
         bool has_selection() const { return active && start_node && end_node && start_node != end_node; }
-        void clear() { active = false; start_node = end_node = nullptr; start_offset = end_offset = 0; dragging = false; }
+        void clear() {
+            active = false;
+            start_node = end_node = nullptr;
+            start_offset = end_offset = 0;
+            dragging = false;
+        }
     };
 
     struct TabInfo {
@@ -58,7 +63,7 @@ namespace browser {
             f32 x, y, w, h;
         };
         struct Rects {
-            ButtonRect back, forward, refresh, address, bookmark, menu, download;
+            ButtonRect back, forward, refresh, address, bookmark, bookmark_chevron, menu, download;
             std::vector<ButtonRect> tab_close;
             ButtonRect new_tab;
             ButtonRect scrollbar;
@@ -90,11 +95,14 @@ namespace browser {
             REFRESH = 2,
             BOOKMARK = 3,
             MENU = 4,
-            MINIMIZE = 5,
-            MAXIMIZE = 6,
-            CLOSE = 7
+            DOWNLOAD = 5,
+            BOOKMARK_CHEVRON = 6,
+            MINIMIZE = 7,
+            MAXIMIZE = 8,
+            CLOSE = 9
         };
         bool show_menu = false;
+        bool show_bookmarks_dropdown = false;
         bool show_settings = false;
         bool ctrl_down = false, shift_down = false, alt_down = false;
 
@@ -158,6 +166,7 @@ namespace browser {
         void render_nav_buttons();
         void render_address_bar();
         void render_bookmark();
+        void render_bookmarks_dropdown();
         void render_menu_button();
         void render_menu();
         void render_settings();

@@ -1,1 +1,322 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\html_optional_closing_tags.html",  "encoding": null,  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {},      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Optional Closing Tags Test",                  "data_normalized": "Optional Closing Tags Test"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "ul",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "li",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "First item\n",                      "data_normalized": "First item"                    }                  ]                },                {                  "type": "element",                  "tag": "li",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Second item\n",                      "data_normalized": "Second item"                    }                  ]                },                {                  "type": "element",                  "tag": "li",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Third item\n",                      "data_normalized": "Third item"                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "First paragraph\n",                  "data_normalized": "First paragraph"                }              ]            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Second paragraph\n",                  "data_normalized": "Second paragraph"                }              ]            },            {              "type": "element",              "tag": "dl",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "dt",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Term one\n",                      "data_normalized": "Term one"                    }                  ]                },                {                  "type": "element",                  "tag": "dd",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Definition one\n",                      "data_normalized": "Definition one"                    }                  ]                },                {                  "type": "element",                  "tag": "dt",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Term two\n",                      "data_normalized": "Term two"                    }                  ]                },                {                  "type": "element",                  "tag": "dd",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Definition two\n",                      "data_normalized": "Definition two"                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "table",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "tbody",                  "attributes": {},                  "children": [                    {                      "type": "element",                      "tag": "tr",                      "attributes": {},                      "children": [                        {                          "type": "text",                          "data": "\n",                          "data_normalized": ""                        },                        {                          "type": "element",                          "tag": "td",                          "attributes": {},                          "children": [                            {                              "type": "text",                              "data": "Cell one\n",                              "data_normalized": "Cell one"                            }                          ]                        },                        {                          "type": "element",                          "tag": "td",                          "attributes": {},                          "children": [                            {                              "type": "text",                              "data": "Cell two\n",                              "data_normalized": "Cell two"                            }                          ]                        }                      ]                    },                    {                      "type": "element",                      "tag": "tr",                      "attributes": {},                      "children": [                        {                          "type": "text",                          "data": "\n",                          "data_normalized": ""                        },                        {                          "type": "element",                          "tag": "td",                          "attributes": {},                          "children": [                            {                              "type": "text",                              "data": "Cell three\n",                              "data_normalized": "Cell three"                            }                          ]                        },                        {                          "type": "element",                          "tag": "td",                          "attributes": {},                          "children": [                            {                              "type": "text",                              "data": "Cell four\n",                              "data_normalized": "Cell four"                            }                          ]                        }                      ]                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/html_optional_closing_tags.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Optional Closing Tags Test",
+                  "data_normalized": "Optional Closing Tags Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "ul",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "li",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "First item\n",
+                      "data_normalized": "First item"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "li",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Second item\n",
+                      "data_normalized": "Second item"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "li",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Third item\n",
+                      "data_normalized": "Third item"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "First paragraph\n",
+                  "data_normalized": "First paragraph"
+                }
+              ]
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Second paragraph\n",
+                  "data_normalized": "Second paragraph"
+                }
+              ]
+            },
+            {
+              "type": "element",
+              "tag": "dl",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "dt",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Term one\n",
+                      "data_normalized": "Term one"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "dd",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Definition one\n",
+                      "data_normalized": "Definition one"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "dt",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Term two\n",
+                      "data_normalized": "Term two"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "dd",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Definition two\n",
+                      "data_normalized": "Definition two"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\nCell one",
+                              "data_normalized": " Cell one"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\nCell two",
+                              "data_normalized": " Cell two"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\nCell three",
+                              "data_normalized": " Cell three"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\nCell four\n\n\n",
+                              "data_normalized": " Cell four"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

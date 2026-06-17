@@ -1,1 +1,404 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\html_adoption_agency.html",  "encoding": "utf-8",  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {        "lang": "en"      },      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "meta",              "attributes": {                "charset": "utf-8"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Adoption Agency Algorithm Test",                  "data_normalized": "Adoption Agency Algorithm Test"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h1",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Adoption Agency Algorithm Test",                  "data_normalized": "Adoption Agency Algorithm Test"                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h2",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Misnested formatting elements",                  "data_normalized": "Misnested formatting elements"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "element",                  "tag": "b",                  "attributes": {},                  "children": [                    {                      "type": "element",                      "tag": "i",                      "attributes": {},                      "children": [                        {                          "type": "text",                          "data": "text",                          "data_normalized": "text"                        }                      ]                    }                  ]                },                {                  "type": "element",                  "tag": "i",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "more",                      "data_normalized": "more"                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h2",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Inline element crossing",                  "data_normalized": "Inline element crossing"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "element",                  "tag": "a",                  "attributes": {},                  "children": [                    {                      "type": "element",                      "tag": "b",                      "attributes": {},                      "children": []                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h2",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Nested misnesting",                  "data_normalized": "Nested misnesting"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "element",                  "tag": "b",                  "attributes": {},                  "children": [                    {                      "type": "element",                      "tag": "i",                      "attributes": {},                      "children": [                        {                          "type": "element",                          "tag": "b",                          "attributes": {},                          "children": [                            {                              "type": "text",                              "data": "deep",                              "data_normalized": "deep"                            }                          ]                        },                        {                          "type": "text",                          "data": "middle",                          "data_normalized": "middle"                        }                      ]                    },                    {                      "type": "text",                      "data": "outer",                      "data_normalized": "outer"                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h2",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Multiple crossing",                  "data_normalized": "Multiple crossing"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "element",                  "tag": "em",                  "attributes": {},                  "children": [                    {                      "type": "element",                      "tag": "strong",                      "attributes": {},                      "children": [                        {                          "type": "text",                          "data": "bold and italic",                          "data_normalized": "bold and italic"                        }                      ]                    }                  ]                },                {                  "type": "element",                  "tag": "strong",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "still bold",                      "data_normalized": "still bold"                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h2",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Triple misnesting",                  "data_normalized": "Triple misnesting"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "element",                  "tag": "u",                  "attributes": {},                  "children": [                    {                      "type": "element",                      "tag": "em",                      "attributes": {},                      "children": [                        {                          "type": "element",                          "tag": "b",                          "attributes": {},                          "children": [                            {                              "type": "text",                              "data": "cross",                              "data_normalized": "cross"                            }                          ]                        }                      ]                    }                  ]                },                {                  "type": "element",                  "tag": "em",                  "attributes": {},                  "children": [                    {                      "type": "element",                      "tag": "b",                      "attributes": {},                      "children": [                        {                          "type": "text",                          "data": "boundary",                          "data_normalized": "boundary"                        }                      ]                    }                  ]                },                {                  "type": "element",                  "tag": "b",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "test",                      "data_normalized": "test"                    }                  ]                }              ]            },            {              "type": "text",              "data": "\n\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/html_adoption_agency.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Adoption Agency Algorithm Test",
+                  "data_normalized": "Adoption Agency Algorithm Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h1",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Adoption Agency Algorithm Test",
+                  "data_normalized": "Adoption Agency Algorithm Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Misnested formatting elements",
+                  "data_normalized": "Misnested formatting elements"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "b",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "i",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "text",
+                          "data_normalized": "text"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "more",
+                  "data_normalized": "more"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Inline element crossing",
+                  "data_normalized": "Inline element crossing"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "a",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "b",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Nested misnesting",
+                  "data_normalized": "Nested misnesting"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "b",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "i",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "b",
+                          "attributes": {
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "deep",
+                              "data_normalized": "deep"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "middle",
+                          "data_normalized": "middle"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "outer",
+                      "data_normalized": "outer"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Multiple crossing",
+                  "data_normalized": "Multiple crossing"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "em",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "strong",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "bold and italic",
+                          "data_normalized": "bold and italic"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "still bold",
+                  "data_normalized": "still bold"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Triple misnesting",
+                  "data_normalized": "Triple misnesting"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "u",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "em",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "b",
+                          "attributes": {
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "cross",
+                              "data_normalized": "cross"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "boundarytest",
+                  "data_normalized": "boundarytest"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

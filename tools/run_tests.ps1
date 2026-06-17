@@ -59,19 +59,42 @@ elseif ($filter_arg) { Write-Host "Mode: quick ($((($filter_arg -split '\|').Len
 Write-Host ""
 
 # Run ALL tests in ONE browser.exe process — no spawning, no accumulation
-$psi = [System.Diagnostics.ProcessStartInfo]@{
-    FileName               = $browser_bin
-    Arguments              = $test_args
-    RedirectStandardOutput = $false
-    RedirectStandardError  = $true
-    UseShellExecute        = $false
-    CreateNoWindow         = $true
+$pinfo = New-Object System.Diagnostics.ProcessStartInfo
+$pinfo.FileName = $browser_bin
+$pinfo.Arguments = $test_args
+$pinfo.RedirectStandardOutput = $false
+$pinfo.RedirectStandardError = $true
+$pinfo.UseShellExecute = $false
+$pinfo.CreateNoWindow = $true
+$p = New-Object System.Diagnostics.Process
+$p.StartInfo = $pinfo
+
+# Collect stderr into a StringBuilder
+$stderr_buf = New-Object System.Text.StringBuilder
+$stderr_evt = Register-ObjectEvent -InputObject $p -EventName ErrorDataReceived -Action {
+    $d = $EventArgs.Data
+    if ($d -ne $null) {
+        $event.MessageData.AppendLine($d) | Out-Null
+    }
+} -MessageData $stderr_buf
+
+[void]$p.Start()
+$p.BeginErrorReadLine()
+
+# Wait with 2-minute hard timeout
+$exited = $p.WaitForExit(120000)
+if (-not $exited) {
+    Write-Host "WARNING: browser.exe timed out after 120s - killing process" -ForegroundColor Yellow
+    $p.Kill()
+    $p.WaitForExit(5000)
 }
-$p = [System.Diagnostics.Process]::Start($psi)
-$stderr = $p.StandardError.ReadToEnd()
-$p.WaitForExit(120000) | Out-Null
+
+$p.CancelErrorRead()
 $ec = $p.ExitCode
 $p.Dispose()
+Unregister-Event -SourceIdentifier $stderr_evt.Name -ErrorAction SilentlyContinue
+
+$stderr = $stderr_buf.ToString().TrimEnd()
 
 # Show results
 if ($stderr) { Write-Host $stderr }

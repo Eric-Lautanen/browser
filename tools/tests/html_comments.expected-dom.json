@@ -1,1 +1,187 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\html_comments.html",  "encoding": null,  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "comment",      "data": " Comment at document start "    },    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {},      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Comments Test",                  "data_normalized": "Comments Test"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "comment",              "data": " Normal comment in head "            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "comment",              "data": " Comment between elements "            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Text before comment",                  "data_normalized": "Text before comment"                },                {                  "type": "comment",                  "data": " inline comment "                },                {                  "type": "text",                  "data": "after comment",                  "data_normalized": "after comment"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "comment",              "data": ""            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "After empty comment",                  "data_normalized": "After empty comment"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "comment",              "data": " Comment with -- inside -- -- "            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "After edge case comment",                  "data_normalized": "After edge case comment"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "comment",              "data": "\nMulti-line\ncomment\nhere\n"            },            {              "type": "text",              "data": "\n\n\n",              "data_normalized": ""            }          ]        }      ]    },    {      "type": "comment",      "data": " Comment at document end "    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/html_comments.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Comments Test",
+                  "data_normalized": "Comments Test"
+                }
+              ]
+            },
+            {
+              "type": "comment",
+              "data": "- Normal comment in head "
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "comment",
+              "data": "- Comment between elements "
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Text before comment",
+                  "data_normalized": "Text before comment"
+                },
+                {
+                  "type": "comment",
+                  "data": "- inline comment "
+                },
+                {
+                  "type": "text",
+                  "data": "after comment",
+                  "data_normalized": "after comment"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "comment",
+              "data": "-"
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "After empty comment",
+                  "data_normalized": "After empty comment"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "comment",
+              "data": "- Comment with -- inside -- -- "
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "After edge case comment",
+                  "data_normalized": "After edge case comment"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "comment",
+              "data": "-\nMulti-line\ncomment\nhere\n"
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "comment",
+              "data": "- Comment at document end "
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

@@ -154,6 +154,12 @@ namespace browser::css {
                                 inner += ':';
                             } else if (current_.type == CssTokenType::COMMA) {
                                 inner += ',';
+                            } else if (current_.type == CssTokenType::OPEN_BRACKET) {
+                                inner += '[';
+                            } else if (current_.type == CssTokenType::CLOSE_BRACKET) {
+                                inner += ']';
+                            } else if (current_.type == CssTokenType::STRING) {
+                                inner += '"' + current_.text + '"';
                             }
                             advance();
                         }

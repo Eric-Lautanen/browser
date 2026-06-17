@@ -20,6 +20,7 @@ struct Node {
 struct Document : Node {
     Document() { type = NodeType::DOCUMENT; }
     std::string url;
+    bool quirks_mode = false;
 };
 
 struct DocumentType : Node {

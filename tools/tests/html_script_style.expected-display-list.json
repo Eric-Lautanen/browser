@@ -1,1 +1,1 @@
-[]
+[{"cmd":"DRAW_TEXT","x":16,"y":8,"w":182.4,"h":20,"color":"#000000","text":"\";\n return x;\n}\n\n\n\n","font_size":16},{"cmd":"DRAW_TEXT","x":8,"y":52,"w":316.8,"h":20,"color":"#000000","text":"Content between script and style.","font_size":16}]

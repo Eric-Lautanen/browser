@@ -1,1 +1,1127 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\html_forms.html",  "encoding": null,  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {},      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Forms Test",                  "data_normalized": "Forms Test"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "form",              "attributes": {                "action": "/submit",                "method": "post",                "enctype": "multipart/form-data"              },              "children": [                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "fieldset",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "legend",                      "attributes": {},                      "children": [                        {                          "type": "text",                          "data": "Personal Information",                          "data_normalized": "Personal Information"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "name"                      },                      "children": [                        {                          "type": "text",                          "data": "Name:",                          "data_normalized": "Name:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "text",                        "id": "name",                        "name": "name",                        "placeholder": "Enter name",                        "required": ""                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "email"                      },                      "children": [                        {                          "type": "text",                          "data": "Email:",                          "data_normalized": "Email:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "email",                        "id": "email",                        "name": "email",                        "value": "test@example.com"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "pw"                      },                      "children": [                        {                          "type": "text",                          "data": "Password:",                          "data_normalized": "Password:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "password",                        "id": "pw",                        "name": "password"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "num"                      },                      "children": [                        {                          "type": "text",                          "data": "Number:",                          "data_normalized": "Number:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "number",                        "id": "num",                        "name": "number",                        "min": "0",                        "max": "100"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "color"                      },                      "children": [                        {                          "type": "text",                          "data": "Color:",                          "data_normalized": "Color:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "color",                        "id": "color",                        "name": "color"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "date"                      },                      "children": [                        {                          "type": "text",                          "data": "Date:",                          "data_normalized": "Date:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "date",                        "id": "date",                        "name": "date"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "range"                      },                      "children": [                        {                          "type": "text",                          "data": "Range:",                          "data_normalized": "Range:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "range",                        "id": "range",                        "name": "range",                        "min": "0",                        "max": "10"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "file"                      },                      "children": [                        {                          "type": "text",                          "data": "File:",                          "data_normalized": "File:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "file",                        "id": "file",                        "name": "file"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "url"                      },                      "children": [                        {                          "type": "text",                          "data": "URL:",                          "data_normalized": "URL:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "url",                        "id": "url",                        "name": "url"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "tel"                      },                      "children": [                        {                          "type": "text",                          "data": "Tel:",                          "data_normalized": "Tel:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "tel",                        "id": "tel",                        "name": "tel"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "search"                      },                      "children": [                        {                          "type": "text",                          "data": "Search:",                          "data_normalized": "Search:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "search",                        "id": "search",                        "name": "search"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "hidden",                        "name": "token",                        "value": "secret123"                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "newsletter"                      },                      "children": [                        {                          "type": "text",                          "data": "Subscribe:",                          "data_normalized": "Subscribe:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "input",                      "attributes": {                        "type": "checkbox",                        "id": "newsletter",                        "name": "newsletter",                        "checked": ""                      },                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {},                      "children": [                        {                          "type": "element",                          "tag": "input",                          "attributes": {                            "type": "radio",                            "name": "gender",                            "value": "male"                          },                          "children": []                        },                        {                          "type": "text",                          "data": " Male",                          "data_normalized": "Male"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {},                      "children": [                        {                          "type": "element",                          "tag": "input",                          "attributes": {                            "type": "radio",                            "name": "gender",                            "value": "female"                          },                          "children": []                        },                        {                          "type": "text",                          "data": " Female",                          "data_normalized": "Female"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "country"                      },                      "children": [                        {                          "type": "text",                          "data": "Country:",                          "data_normalized": "Country:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "select",                      "attributes": {                        "id": "country",                        "name": "country"                      },                      "children": [                        {                          "type": "text",                          "data": "\n",                          "data_normalized": ""                        },                        {                          "type": "element",                          "tag": "optgroup",                          "attributes": {                            "label": "Asia"                          },                          "children": [                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            },                            {                              "type": "element",                              "tag": "option",                              "attributes": {                                "value": "jp"                              },                              "children": [                                {                                  "type": "text",                                  "data": "Japan",                                  "data_normalized": "Japan"                                }                              ]                            },                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            },                            {                              "type": "element",                              "tag": "option",                              "attributes": {                                "value": "cn"                              },                              "children": [                                {                                  "type": "text",                                  "data": "China",                                  "data_normalized": "China"                                }                              ]                            },                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            },                            {                              "type": "element",                              "tag": "option",                              "attributes": {                                "value": "kr"                              },                              "children": [                                {                                  "type": "text",                                  "data": "Korea",                                  "data_normalized": "Korea"                                }                              ]                            },                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            }                          ]                        },                        {                          "type": "text",                          "data": "\n",                          "data_normalized": ""                        },                        {                          "type": "element",                          "tag": "optgroup",                          "attributes": {                            "label": "Europe"                          },                          "children": [                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            },                            {                              "type": "element",                              "tag": "option",                              "attributes": {                                "value": "uk"                              },                              "children": [                                {                                  "type": "text",                                  "data": "UK",                                  "data_normalized": "UK"                                }                              ]                            },                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            },                            {                              "type": "element",                              "tag": "option",                              "attributes": {                                "value": "fr"                              },                              "children": [                                {                                  "type": "text",                                  "data": "France",                                  "data_normalized": "France"                                }                              ]                            },                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            },                            {                              "type": "element",                              "tag": "option",                              "attributes": {                                "value": "de"                              },                              "children": [                                {                                  "type": "text",                                  "data": "Germany",                                  "data_normalized": "Germany"                                }                              ]                            },                            {                              "type": "text",                              "data": "\n",                              "data_normalized": ""                            }                          ]                        },                        {                          "type": "text",                          "data": "\n",                          "data_normalized": ""                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "label",                      "attributes": {                        "for": "bio"                      },                      "children": [                        {                          "type": "text",                          "data": "Bio:",                          "data_normalized": "Bio:"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "textarea",                      "attributes": {                        "id": "bio",                        "name": "bio",                        "rows": "4",                        "cols": "50"                      },                      "children": [                        {                          "type": "text",                          "data": "Default text here.",                          "data_normalized": "Default text here."                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "br",                      "attributes": {},                      "children": []                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "button",                      "attributes": {                        "type": "submit"                      },                      "children": [                        {                          "type": "text",                          "data": "Submit",                          "data_normalized": "Submit"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "button",                      "attributes": {                        "type": "reset"                      },                      "children": [                        {                          "type": "text",                          "data": "Reset",                          "data_normalized": "Reset"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    },                    {                      "type": "element",                      "tag": "button",                      "attributes": {                        "type": "button",                        "onclick": "alert('clicked')"                      },                      "children": [                        {                          "type": "text",                          "data": "Click Me",                          "data_normalized": "Click Me"                        }                      ]                    },                    {                      "type": "text",                      "data": "\n",                      "data_normalized": ""                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/html_forms.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Forms Test",
+                  "data_normalized": "Forms Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "form",
+              "attributes": {
+                "enctype": "multipart/form-data",
+                "method": "post",
+                "action": "/submit"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "fieldset",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "legend",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Personal Information",
+                          "data_normalized": "Personal Information"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "name"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Name:",
+                          "data_normalized": "Name:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "required": "",
+                        "placeholder": "Enter name",
+                        "id": "name",
+                        "name": "name",
+                        "type": "text"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "email"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Email:",
+                          "data_normalized": "Email:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "value": "test@example.com",
+                        "id": "email",
+                        "name": "email",
+                        "type": "email"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "pw"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Password:",
+                          "data_normalized": "Password:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "pw",
+                        "name": "password",
+                        "type": "password"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "num"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Number:",
+                          "data_normalized": "Number:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "max": "100",
+                        "min": "0",
+                        "id": "num",
+                        "name": "number",
+                        "type": "number"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "color"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Color:",
+                          "data_normalized": "Color:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "color",
+                        "name": "color",
+                        "type": "color"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "date"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Date:",
+                          "data_normalized": "Date:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "date",
+                        "name": "date",
+                        "type": "date"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "range"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Range:",
+                          "data_normalized": "Range:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "max": "10",
+                        "min": "0",
+                        "id": "range",
+                        "name": "range",
+                        "type": "range"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "file"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "File:",
+                          "data_normalized": "File:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "file",
+                        "name": "file",
+                        "type": "file"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "url"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "URL:",
+                          "data_normalized": "URL:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "url",
+                        "name": "url",
+                        "type": "url"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "tel"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Tel:",
+                          "data_normalized": "Tel:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "tel",
+                        "name": "tel",
+                        "type": "tel"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "search"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Search:",
+                          "data_normalized": "Search:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "search",
+                        "name": "search",
+                        "type": "search"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "value": "secret123",
+                        "name": "token",
+                        "type": "hidden"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "newsletter"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Subscribe:",
+                          "data_normalized": "Subscribe:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "input",
+                      "attributes": {
+                        "id": "newsletter",
+                        "checked": "",
+                        "name": "newsletter",
+                        "type": "checkbox"
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "input",
+                          "attributes": {
+                            "value": "male",
+                            "name": "gender",
+                            "type": "radio"
+                          },
+                          "children": [
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": " Male",
+                          "data_normalized": " Male"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                      },
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "input",
+                          "attributes": {
+                            "value": "female",
+                            "name": "gender",
+                            "type": "radio"
+                          },
+                          "children": [
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": " Female",
+                          "data_normalized": " Female"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "country"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Country:",
+                          "data_normalized": "Country:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "select",
+                      "attributes": {
+                        "name": "country",
+                        "id": "country"
+                      },
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "optgroup",
+                          "attributes": {
+                            "label": "Asia"
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\n",
+                              "data_normalized": ""
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {
+                                "value": "jp"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "\nJapa",
+                                  "data_normalized": " Japa"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "n",
+                              "data_normalized": "n"
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {
+                                "value": "cn"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "\nChin",
+                                  "data_normalized": " Chin"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "a",
+                              "data_normalized": "a"
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {
+                                "value": "kr"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "\nKore",
+                                  "data_normalized": " Kore"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "a",
+                              "data_normalized": "a"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "optgroup",
+                          "attributes": {
+                            "label": "Europe"
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\n",
+                              "data_normalized": ""
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {
+                                "value": "uk"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "\nU",
+                                  "data_normalized": " U"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "K",
+                              "data_normalized": "K"
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {
+                                "value": "fr"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "\nFranc",
+                                  "data_normalized": " Franc"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "e",
+                              "data_normalized": "e"
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {
+                                "value": "de"
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "\nGerman",
+                                  "data_normalized": " German"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "y",
+                              "data_normalized": "y"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {
+                        "for": "bio"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Bio:",
+                          "data_normalized": "Bio:"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "textarea",
+                      "attributes": {
+                        "cols": "50",
+                        "rows": "4",
+                        "name": "bio",
+                        "id": "bio"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Default text here.",
+                          "data_normalized": "Default text here."
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "br",
+                      "attributes": {
+                      },
+                      "children": [
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "button",
+                      "attributes": {
+                        "type": "submit"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Submit",
+                          "data_normalized": "Submit"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "button",
+                      "attributes": {
+                        "type": "reset"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Reset",
+                          "data_normalized": "Reset"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "button",
+                      "attributes": {
+                        "onclick": "alert('clicked')",
+                        "type": "button"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Click Me",
+                          "data_normalized": "Click Me"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

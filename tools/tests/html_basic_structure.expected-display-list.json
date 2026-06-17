@@ -1,1 +1,1 @@
-[]
+[{"cmd":"DRAW_TEXT","x":8,"y":16,"w":624,"h":20,"color":"#000000","text":"This is a basic HTML document for testing core structure parsing.","font_size":16}]

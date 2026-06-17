@@ -1,1 +1,203 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\display_draw_text.html",  "encoding": "utf-8",  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {        "lang": "en"      },      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "meta",              "attributes": {                "charset": "utf-8"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Display Draw Text",                  "data_normalized": "Display Draw Text"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "style",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n.text-block {\n  margin: 8px;\n  padding: 4px;\n  border: 1px solid #ccc;\n}\n.s10 { font-size: 10px; }\n.s14 { font-size: 14px; }\n.s18 { font-size: 18px; }\n.s24 { font-size: 24px; }\n.s32 { font-size: 32px; }\n.bold { font-weight: bold; }\n",                  "data_normalized": ".text-block { margin: 8px; padding: 4px; border: 1px solid #ccc; } .s10 { font-size: 10px; } .s14 { font-size: 14px; } .s18 { font-size: 18px; } .s24 { font-size: 24px; } .s32 { font-size: 32px; } .bold { font-weight: bold; }"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "text-block s10"              },              "children": [                {                  "type": "text",                  "data": "10px Text",                  "data_normalized": "10px Text"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "text-block s14"              },              "children": [                {                  "type": "text",                  "data": "14px Text",                  "data_normalized": "14px Text"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "text-block s18"              },              "children": [                {                  "type": "text",                  "data": "18px Text",                  "data_normalized": "18px Text"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "text-block s24"              },              "children": [                {                  "type": "text",                  "data": "24px Text",                  "data_normalized": "24px Text"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "text-block s32 bold"              },              "children": [                {                  "type": "text",                  "data": "32px Bold Text",                  "data_normalized": "32px Bold Text"                }              ]            },            {              "type": "text",              "data": "\n\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/display_draw_text.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Display Draw Text",
+                  "data_normalized": "Display Draw Text"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.text-block {\n  margin: 8px;\n  padding: 4px;\n  border: 1px solid #ccc;\n}\n.s10 { font-size: 10px; }\n.s14 { font-size: 14px; }\n.s18 { font-size: 18px; }\n.s24 { font-size: 24px; }\n.s32 { font-size: 32px; }\n.bold { font-weight: bold; }\n",
+                  "data_normalized": " .text-block { margin: 8px; padding: 4px; border: 1px solid #ccc; } .s10 { font-size: 10px; } .s14 { font-size: 14px; } .s18 { font-size: 18px; } .s24 { font-size: 24px; } .s32 { font-size: 32px; } .bold { font-weight: bold; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "text-block s10"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "10px Text",
+                  "data_normalized": "10px Text"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "text-block s14"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "14px Text",
+                  "data_normalized": "14px Text"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "text-block s18"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "18px Text",
+                  "data_normalized": "18px Text"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "text-block s24"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "24px Text",
+                  "data_normalized": "24px Text"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "text-block s32 bold"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "32px Bold Text",
+                  "data_normalized": "32px Bold Text"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

@@ -1,1 +1,327 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\html_void_elements.html",  "encoding": "UTF-8",  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {},      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Void Elements Test",                  "data_normalized": "Void Elements Test"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "base",              "attributes": {                "href": "https://example.com/"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "link",              "attributes": {                "rel": "stylesheet",                "href": "style.css"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "meta",              "attributes": {                "charset": "UTF-8"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Line one",                  "data_normalized": "Line one"                },                {                  "type": "element",                  "tag": "br",                  "attributes": {},                  "children": []                },                {                  "type": "text",                  "data": "Line two",                  "data_normalized": "Line two"                },                {                  "type": "element",                  "tag": "br",                  "attributes": {},                  "children": []                },                {                  "type": "text",                  "data": "Line three",                  "data_normalized": "Line three"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "hr",              "attributes": {},              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "img",              "attributes": {                "src": "image.png",                "alt": "Test image"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "input",              "attributes": {                "type": "text",                "name": "test",                "value": "hello"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "area",              "attributes": {                "shape": "rect",                "coords": "0,0,10,10",                "href": "area.html",                "alt": "Area"              },              "children": []            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "embed",              "attributes": {                "src": "embed.swf",                "type": "application/x-shockwave-flash"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "param",              "attributes": {                "name": "quality",                "value": "high"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "source",              "attributes": {                "src": "video.mp4",                "type": "video/mp4"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "track",              "attributes": {                "src": "captions.vtt",                "kind": "captions"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "wbr",              "attributes": {},              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Content after void elements.",                  "data_normalized": "Content after void elements."                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/html_void_elements.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Void Elements Test",
+                  "data_normalized": "Void Elements Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "base",
+              "attributes": {
+                "href": "https://example.com/"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "link",
+              "attributes": {
+                "href": "style.css",
+                "rel": "stylesheet"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "UTF-8"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Line one",
+                  "data_normalized": "Line one"
+                },
+                {
+                  "type": "element",
+                  "tag": "br",
+                  "attributes": {
+                  },
+                  "children": [
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "Line two",
+                  "data_normalized": "Line two"
+                },
+                {
+                  "type": "element",
+                  "tag": "br",
+                  "attributes": {
+                  },
+                  "children": [
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "Line three",
+                  "data_normalized": "Line three"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "hr",
+              "attributes": {
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "img",
+              "attributes": {
+                "alt": "Test image",
+                "src": "image.png"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "input",
+              "attributes": {
+                "value": "hello",
+                "name": "test",
+                "type": "text"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "area",
+              "attributes": {
+                "alt": "Area",
+                "href": "area.html",
+                "coords": "0,0,10,10",
+                "shape": "rect"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "col",
+              "attributes": {
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "embed",
+              "attributes": {
+                "type": "application/x-shockwave-flash",
+                "src": "embed.swf"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "param",
+              "attributes": {
+                "value": "high",
+                "name": "quality"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "source",
+              "attributes": {
+                "type": "video/mp4",
+                "src": "video.mp4"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "track",
+              "attributes": {
+                "kind": "captions",
+                "src": "captions.vtt"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "wbr",
+              "attributes": {
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Content after void elements.",
+                  "data_normalized": "Content after void elements."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

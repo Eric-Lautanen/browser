@@ -166,6 +166,7 @@ namespace browser {
             }
         }
         if (my > chrome_height()) {
+            chrome_.show_bookmarks_dropdown = false;
             if (chrome_.show_settings) {
                 f32 ox = 40, oy = chrome_height() + 20;
                 if (is_in_rect(mx, my, {ox + 155, oy + 46, 80, 22})) {
@@ -238,13 +239,14 @@ namespace browser {
                                         auto *found_el = static_cast<html::Element *>(found);
                                         // Find this element in the styles map and compute its Y position
                                         // Simple approach: search layout tree for matching element
-                                        std::function<f32(html::Element*, css::LayoutNode*, f32)> find_y =
+                                        std::function<f32(html::Element *, css::LayoutNode *, f32)> find_y =
                                             [&](html::Element *target, css::LayoutNode *node, f32 acc_y) -> f32 {
                                             if (node->node() == target)
                                                 return acc_y + node->content.y;
                                             for (auto &child : node->children) {
                                                 f32 found_y = find_y(target, child.get(), acc_y + node->content.y);
-                                                if (found_y >= 0) return found_y;
+                                                if (found_y >= 0)
+                                                    return found_y;
                                             }
                                             return -1;
                                         };
@@ -348,6 +350,7 @@ namespace browser {
 
         if (is_in_rect(mx, my, r.download)) {
             chrome_.show_downloads = !chrome_.show_downloads;
+            chrome_.show_bookmarks_dropdown = false;
             return;
         }
 
@@ -356,8 +359,32 @@ namespace browser {
             return;
         }
 
+        if (is_in_rect(mx, my, r.bookmark_chevron)) {
+            chrome_.show_bookmarks_dropdown = !chrome_.show_bookmarks_dropdown;
+            return;
+        }
+
+        if (chrome_.show_bookmarks_dropdown) {
+            f32 dx = r.bookmark.x, dy = chrome_height();
+            f32 dw = 280.0f;
+            auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
+            f32 item_h = 24.0f;
+            f32 dh = std::max(item_h * 2.0f, static_cast<f32>(all.size()) * item_h + item_h);
+            dh = std::min(dh, 400.0f);
+            if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
+                i32 idx = static_cast<i32>((my - dy - 4) / item_h);
+                if (idx >= 0 && idx < static_cast<i32>(all.size())) {
+                    navigate(all[static_cast<size_t>(idx)].url);
+                    chrome_.show_bookmarks_dropdown = false;
+                    return;
+                }
+            }
+            chrome_.show_bookmarks_dropdown = false;
+        }
+
         if (is_in_rect(mx, my, r.menu)) {
             chrome_.show_menu = !chrome_.show_menu;
+            chrome_.show_bookmarks_dropdown = false;
             return;
         }
 
@@ -375,6 +402,7 @@ namespace browser {
             chrome_.show_menu = false;
         }
 
+        chrome_.show_bookmarks_dropdown = false;
         chrome_.address_focused = false;
     }
 
@@ -389,25 +417,49 @@ namespace browser {
             int sh = static_cast<int>(viewport_height_);
             std::vector<u8> pixels(static_cast<size_t>(sw * sh * 4));
             ::glReadPixels(0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
-            auto wu32 = [](std::vector<u8> &d, u32 v) { d.push_back(v&0xFF); d.push_back((v>>8)&0xFF); d.push_back((v>>16)&0xFF); d.push_back((v>>24)&0xFF); };
-            auto wu16 = [](std::vector<u8> &d, u16 v) { d.push_back(v&0xFF); d.push_back((v>>8)&0xFF); };
+            auto wu32 = [](std::vector<u8> &d, u32 v) {
+                d.push_back(v & 0xFF);
+                d.push_back((v >> 8) & 0xFF);
+                d.push_back((v >> 16) & 0xFF);
+                d.push_back((v >> 24) & 0xFF);
+            };
+            auto wu16 = [](std::vector<u8> &d, u16 v) {
+                d.push_back(v & 0xFF);
+                d.push_back((v >> 8) & 0xFF);
+            };
             std::vector<u8> bmp;
             u32 row = ((sw * 24 + 31) / 32) * 4;
             u32 ds = row * sh;
-            bmp.push_back('B'); bmp.push_back('M');
-            wu32(bmp, 14 + 40 + ds); wu32(bmp, 0); wu32(bmp, 14 + 40);
-            wu32(bmp, 40); wu32(bmp, sw); wu32(bmp, sh);
-            wu16(bmp, 1); wu16(bmp, 24); wu32(bmp, 0); wu32(bmp, ds);
-            wu32(bmp, 2835); wu32(bmp, 2835); wu32(bmp, 0); wu32(bmp, 0);
+            bmp.push_back('B');
+            bmp.push_back('M');
+            wu32(bmp, 14 + 40 + ds);
+            wu32(bmp, 0);
+            wu32(bmp, 14 + 40);
+            wu32(bmp, 40);
+            wu32(bmp, sw);
+            wu32(bmp, sh);
+            wu16(bmp, 1);
+            wu16(bmp, 24);
+            wu32(bmp, 0);
+            wu32(bmp, ds);
+            wu32(bmp, 2835);
+            wu32(bmp, 2835);
+            wu32(bmp, 0);
+            wu32(bmp, 0);
             for (int y = sh - 1; y >= 0; y--) {
                 for (int x = 0; x < sw; x++) {
                     size_t idx = (static_cast<size_t>(y) * sw + static_cast<size_t>(x)) * 4;
-                    bmp.push_back(pixels[idx + 2]); bmp.push_back(pixels[idx + 1]); bmp.push_back(pixels[idx + 0]);
+                    bmp.push_back(pixels[idx + 2]);
+                    bmp.push_back(pixels[idx + 1]);
+                    bmp.push_back(pixels[idx + 0]);
                 }
                 for (u32 p = sw * 3; p < row; p++) bmp.push_back(0);
             }
             FILE *sf = fopen("viewport_screenshot.bmp", "wb");
-            if (sf) { fwrite(bmp.data(), 1, bmp.size(), sf); fclose(sf); }
+            if (sf) {
+                fwrite(bmp.data(), 1, bmp.size(), sf);
+                fclose(sf);
+            }
             return;
         }
         // Ctrl+Shift+X: copy all page text to clipboard
@@ -417,16 +469,24 @@ namespace browser {
                 html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
                     if (n->type == html::NodeType::TEXT) {
                         auto *tx = static_cast<html::Text *>(n);
-                        if (!tx->data.empty()) all_text += tx->data + "\n";
+                        if (!tx->data.empty())
+                            all_text += tx->data + "\n";
                     }
                 });
                 if (!all_text.empty()) {
                     HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
                     if (hglb) {
                         char *buf = (char *)GlobalLock(hglb);
-                        if (buf) { memcpy(buf, all_text.data(), all_text.size()); buf[all_text.size()] = 0; }
+                        if (buf) {
+                            memcpy(buf, all_text.data(), all_text.size());
+                            buf[all_text.size()] = 0;
+                        }
                         GlobalUnlock(hglb);
-                        if (OpenClipboard(nullptr)) { EmptyClipboard(); SetClipboardData(CF_TEXT, hglb); CloseClipboard(); }
+                        if (OpenClipboard(nullptr)) {
+                            EmptyClipboard();
+                            SetClipboardData(CF_TEXT, hglb);
+                            CloseClipboard();
+                        }
                     }
                 }
             }
@@ -462,16 +522,24 @@ namespace browser {
                 html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
                     if (n->type == html::NodeType::TEXT) {
                         auto *tx = static_cast<html::Text *>(n);
-                        if (!tx->data.empty()) all_text += tx->data;
+                        if (!tx->data.empty())
+                            all_text += tx->data;
                     }
                 });
                 if (!all_text.empty()) {
                     HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
                     if (hglb) {
                         char *buf = (char *)GlobalLock(hglb);
-                        if (buf) { memcpy(buf, all_text.data(), all_text.size()); buf[all_text.size()] = 0; }
+                        if (buf) {
+                            memcpy(buf, all_text.data(), all_text.size());
+                            buf[all_text.size()] = 0;
+                        }
                         GlobalUnlock(hglb);
-                        if (OpenClipboard(nullptr)) { EmptyClipboard(); SetClipboardData(CF_TEXT, hglb); CloseClipboard(); }
+                        if (OpenClipboard(nullptr)) {
+                            EmptyClipboard();
+                            SetClipboardData(CF_TEXT, hglb);
+                            CloseClipboard();
+                        }
                     }
                 }
             }
@@ -485,16 +553,24 @@ namespace browser {
                 html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
                     if (n->type == html::NodeType::TEXT) {
                         auto *tx = static_cast<html::Text *>(n);
-                        if (!tx->data.empty()) all_text += tx->data;
+                        if (!tx->data.empty())
+                            all_text += tx->data;
                     }
                 });
                 if (!all_text.empty()) {
                     HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
                     if (hglb) {
                         char *buf = (char *)GlobalLock(hglb);
-                        if (buf) { memcpy(buf, all_text.data(), all_text.size()); buf[all_text.size()] = 0; }
+                        if (buf) {
+                            memcpy(buf, all_text.data(), all_text.size());
+                            buf[all_text.size()] = 0;
+                        }
                         GlobalUnlock(hglb);
-                        if (OpenClipboard(nullptr)) { EmptyClipboard(); SetClipboardData(CF_TEXT, hglb); CloseClipboard(); }
+                        if (OpenClipboard(nullptr)) {
+                            EmptyClipboard();
+                            SetClipboardData(CF_TEXT, hglb);
+                            CloseClipboard();
+                        }
                     }
                 }
             }
@@ -518,7 +594,7 @@ namespace browser {
         if (e.key == platform::KeyCode::F11 && !chrome_.ctrl_down) {
             chrome_.fullscreen = !chrome_.fullscreen;
             if (window_) {
-                auto *w32 = static_cast<platform::Win32Window*>(window_.get());
+                auto *w32 = static_cast<platform::Win32Window *>(window_.get());
                 w32->set_fullscreen(chrome_.fullscreen);
             }
             return;
@@ -553,7 +629,8 @@ namespace browser {
             // Ctrl+= (or Ctrl++) zoom in
             if (settings_) {
                 f32 z = settings_->zoom_level() * 1.25f;
-                if (z > 5.0f) z = 5.0f;
+                if (z > 5.0f)
+                    z = 5.0f;
                 settings_->set_zoom_level(z);
                 settings_->save_to_file("./settings.txt");
             }
@@ -563,7 +640,8 @@ namespace browser {
             // Ctrl+- zoom out
             if (settings_) {
                 f32 z = settings_->zoom_level() / 1.25f;
-                if (z < 0.25f) z = 0.25f;
+                if (z < 0.25f)
+                    z = 0.25f;
                 settings_->set_zoom_level(z);
                 settings_->save_to_file("./settings.txt");
             }
@@ -823,7 +901,7 @@ namespace browser {
                     chrome_.devtools.console_input.clear();
                     chrome_.devtools.add_console_entry(DevToolsState::ConsoleEntry::LOG, "> " + code);
                     chrome_.devtools.add_console_entry(DevToolsState::ConsoleEntry::LOG,
-                                                        "  <- (execution not available in this context)");
+                                                       "  <- (execution not available in this context)");
                     return;
                 }
                 if (e.key == platform::KeyCode::ESCAPE) {
@@ -890,13 +968,18 @@ namespace browser {
                 auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
                 if (ht.element) {
                     std::string tag = ht.element->tag_name;
-                    if (tag == "a") SetCursor(LoadCursor(nullptr, IDC_HAND));
-                    else if (tag == "input" || tag == "textarea") SetCursor(LoadCursor(nullptr, IDC_IBEAM));
+                    if (tag == "a")
+                        SetCursor(LoadCursor(nullptr, IDC_HAND));
+                    else if (tag == "input" || tag == "textarea")
+                        SetCursor(LoadCursor(nullptr, IDC_IBEAM));
                     else {
                         // Check if element contains text
                         bool has_text = false;
                         for (auto &ch : ht.element->children)
-                            if (ch->type == html::NodeType::TEXT) { has_text = true; break; }
+                            if (ch->type == html::NodeType::TEXT) {
+                                has_text = true;
+                                break;
+                            }
                         SetCursor(LoadCursor(nullptr, has_text ? IDC_IBEAM : IDC_ARROW));
                     }
                 } else {
@@ -937,9 +1020,11 @@ namespace browser {
         else if (is_in_rect(mx, my, r.refresh))
             chrome_.hovered_button = ChromeUI::REFRESH;
         else if (is_in_rect(mx, my, r.download))
-            chrome_.hovered_button = ChromeUI::BOOKMARK + 1;
+            chrome_.hovered_button = ChromeUI::DOWNLOAD;
         else if (is_in_rect(mx, my, r.bookmark))
             chrome_.hovered_button = ChromeUI::BOOKMARK;
+        else if (is_in_rect(mx, my, r.bookmark_chevron))
+            chrome_.hovered_button = ChromeUI::BOOKMARK_CHEVRON;
         else if (is_in_rect(mx, my, r.menu))
             chrome_.hovered_button = ChromeUI::MENU;
 
@@ -972,7 +1057,7 @@ namespace browser {
             }
             bookmarks_->add(chrome_.url, title);
         }
-        bookmarks_->save_to_file("./bookmarks.txt");
+        bookmarks_->save_to_file(BookmarkManager::default_path());
         chrome_.is_bookmarked = bookmarks_->is_bookmarked(chrome_.url);
     }
 

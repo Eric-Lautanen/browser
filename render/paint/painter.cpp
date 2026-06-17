@@ -410,10 +410,24 @@ namespace browser::render {
         f32 font_size = resolve_font_size(node->style());
         f32 descender_pad = std::ceil(font_size * 0.25f);
 
+        // Check for text-decoration
+        bool has_underline = false;
+        auto *dec_val = node->style().get("text-decoration");
+        if (dec_val && dec_val->type == css::CSSValue::Type::KEYWORD) {
+            has_underline = (dec_val->keyword.find("underline") != std::string::npos);
+        }
+
         if (!node->text_lines.empty()) {
             for (auto &li : node->text_lines) {
                 css::Rect line_rect = {ox, oy + li.y, node->content.width, font_size + descender_pad};
                 list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, line_rect, text_color, li.text, font_size));
+                if (has_underline) {
+                    f32 underline_y = oy + li.y + font_size + 1.0f;
+                    f32 thickness = std::max(1.0f, font_size / 14.0f);
+                    list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                       {ox, underline_y, node->content.width, thickness},
+                                       text_color));
+                }
             }
         } else {
             // No wrapping info — single line fallback
@@ -422,6 +436,13 @@ namespace browser::render {
                                text_color,
                                node->text(),
                                font_size));
+            if (has_underline) {
+                f32 underline_y = oy + font_size + 1.0f;
+                f32 thickness = std::max(1.0f, font_size / 14.0f);
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                   {ox, underline_y, node->content.width, thickness},
+                                   text_color));
+            }
         }
     }
 

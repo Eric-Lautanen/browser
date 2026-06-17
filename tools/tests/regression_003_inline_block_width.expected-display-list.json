@@ -1,1 +1,1 @@
-[]
+[{"cmd":"DRAW_TEXT","x":0,"y":0,"w":806.3999,"h":20,"color":"#0000ff","text":"This is an inline anchor element. Its content width should NOT equal the containing ","font_size":16},{"cmd":"DRAW_TEXT","x":0,"y":28,"w":806.3999,"h":20,"color":"#0000ff","text":"block width (800px). It should only be as wide as its text content.","font_size":16}]

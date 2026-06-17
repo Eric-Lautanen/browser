@@ -1,1 +1,330 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\layout_writing_mode.html",  "encoding": "utf-8",  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {        "lang": "en"      },      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "meta",              "attributes": {                "charset": "utf-8"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Layout Writing Mode",                  "data_normalized": "Layout Writing Mode"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "style",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n.vrl { writing-mode: vertical-rl; }\n.vlr { writing-mode: vertical-lr; }\n.rtl { direction: rtl; }\n.ltr { direction: ltr; }\n.test-box {\n  border: 1px solid #666;\n  margin: 10px;\n  padding: 8px;\n  height: 200px;\n  display: inline-block;\n  vertical-align: top;\n  background: #f0f0f0;\n}\np { margin: 4px 0; }\n",                  "data_normalized": ".vrl { writing-mode: vertical-rl; } .vlr { writing-mode: vertical-lr; } .rtl { direction: rtl; } .ltr { direction: ltr; } .test-box { border: 1px solid #666; margin: 10px; padding: 8px; height: 200px; display: inline-block; vertical-align: top; background: #f0f0f0; } p { margin: 4px 0; }"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "test-box vrl"              },              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "h3",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "vertical-rl",                      "data_normalized": "vertical-rl"                    }                  ]                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "p",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "This text flows top to bottom, right to left.",                      "data_normalized": "This text flows top to bottom, right to left."                    }                  ]                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "p",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Line 2",                      "data_normalized": "Line 2"                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "test-box vlr"              },              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "h3",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "vertical-lr",                      "data_normalized": "vertical-lr"                    }                  ]                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "p",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "This text flows top to bottom, left to right.",                      "data_normalized": "This text flows top to bottom, left to right."                    }                  ]                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "p",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "Line 2",                      "data_normalized": "Line 2"                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "class": "test-box rtl",                "style": "text-align:start"              },              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "h3",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "direction: rtl",                      "data_normalized": "direction: rtl"                    }                  ]                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "p",                  "attributes": {                    "dir": "ltr"                  },                  "children": [                    {                      "type": "text",                      "data": "LTR: ABC abc 123",                      "data_normalized": "LTR: ABC abc 123"                    }                  ]                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "p",                  "attributes": {                    "dir": "rtl"                  },                  "children": [                    {                      "type": "text",                      "data": "RTL: ABC abc 123",                      "data_normalized": "RTL: ABC abc 123"                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/layout_writing_mode.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Writing Mode",
+                  "data_normalized": "Layout Writing Mode"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.vrl { writing-mode: vertical-rl; }\n.vlr { writing-mode: vertical-lr; }\n.rtl { direction: rtl; }\n.ltr { direction: ltr; }\n.test-box {\n  border: 1px solid #666;\n  margin: 10px;\n  padding: 8px;\n  height: 200px;\n  display: inline-block;\n  vertical-align: top;\n  background: #f0f0f0;\n}\np { margin: 4px 0; }\n",
+                  "data_normalized": " .vrl { writing-mode: vertical-rl; } .vlr { writing-mode: vertical-lr; } .rtl { direction: rtl; } .ltr { direction: ltr; } .test-box { border: 1px solid #666; margin: 10px; padding: 8px; height: 200px; display: inline-block; vertical-align: top; background: #f0f0f0; } p { margin: 4px 0; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "test-box vrl"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "h3",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "vertical-rl",
+                      "data_normalized": "vertical-rl"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "This text flows top to bottom, right to left.",
+                      "data_normalized": "This text flows top to bottom, right to left."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Line 2",
+                      "data_normalized": "Line 2"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "test-box vlr"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "h3",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "vertical-lr",
+                      "data_normalized": "vertical-lr"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "This text flows top to bottom, left to right.",
+                      "data_normalized": "This text flows top to bottom, left to right."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Line 2",
+                      "data_normalized": "Line 2"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "style": "text-align:start",
+                "class": "test-box rtl"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "h3",
+                  "attributes": {
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "direction: rtl",
+                      "data_normalized": "direction: rtl"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "dir": "ltr"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "LTR: ABC abc 123",
+                      "data_normalized": "LTR: ABC abc 123"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "dir": "rtl"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "RTL: ABC abc 123",
+                      "data_normalized": "RTL: ABC abc 123"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

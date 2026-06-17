@@ -1,1 +1,1 @@
-[]
+[{"cmd":"DRAW_TEXT","x":8,"y":16,"w":182.4,"h":20,"color":"#000000","text":"Text before comment","font_size":16},{"cmd":"DRAW_TEXT","x":190.4,"y":16,"w":124.8,"h":20,"color":"#000000","text":"after comment","font_size":16},{"cmd":"DRAW_TEXT","x":8,"y":60,"w":182.4,"h":20,"color":"#000000","text":"After empty comment","font_size":16},{"cmd":"DRAW_TEXT","x":8,"y":104,"w":220.8,"h":20,"color":"#000000","text":"After edge case comment","font_size":16}]

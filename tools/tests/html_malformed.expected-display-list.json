@@ -1,1 +1,1 @@
-[]
+[{"cmd":"DRAW_TEXT","x":8,"y":16,"w":182.4,"h":20,"color":"#000000","text":"Unclosed paragraph\n","font_size":16},{"cmd":"DRAW_TEXT","x":8,"y":60,"w":259.2,"h":20,"color":"#000000","text":"Another unclosed paragraph\n","font_size":16},{"cmd":"DRAW_TEXT","x":8,"y":88,"w":240,"h":20,"color":"#000000","text":"Misnested bold and italic","font_size":16}]

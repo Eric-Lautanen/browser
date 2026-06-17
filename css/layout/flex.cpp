@@ -439,10 +439,7 @@ namespace browser::css {
 
         f32 parent_font_size = root_font_size_;
         if (node->parent) {
-            auto *pfs = node->parent->style().get("font-size");
-            if (pfs && pfs->type == CSSValue::Type::LENGTH && pfs->length.unit == Length::Unit::PX) {
-                parent_font_size = pfs->length.value;
-            }
+            parent_font_size = resolve_font_size(node->parent->style(), root_font_size_);
         }
         f32 font_size = resolve_font_size(node->style(), parent_font_size);
 

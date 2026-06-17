@@ -1,1 +1,252 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\html_noscript.html",  "encoding": "utf-8",  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {        "lang": "en"      },      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "meta",              "attributes": {                "charset": "utf-8"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Noscript Element Test",                  "data_normalized": "Noscript Element Test"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "noscript",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "link",                  "attributes": {                    "rel": "stylesheet",                    "href": "noscript.css"                  },                  "children": []                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "style",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "\n    body { background: red; }\n  ",                      "data_normalized": "body { background: red; }"                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h1",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Noscript Element Test",                  "data_normalized": "Noscript Element Test"                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "When scripts are disabled, the noscript content in the head should apply a red background and load noscript.css.",                  "data_normalized": "When scripts are disabled, the noscript content in the head should apply a red background and load noscript.css."                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h2",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Noscript in body",                  "data_normalized": "Noscript in body"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "noscript",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "p",                  "attributes": {},                  "children": [                    {                      "type": "text",                      "data": "JavaScript is disabled. This message is from a noscript element in the body.",                      "data_normalized": "JavaScript is disabled. This message is from a noscript element in the body."                    }                  ]                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "h2",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Noscript with fallback content",                  "data_normalized": "Noscript with fallback content"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "p",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Below this line, if scripts are disabled, a picture should appear.",                  "data_normalized": "Below this line, if scripts are disabled, a picture should appear."                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "noscript",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "img",                  "attributes": {                    "src": "noscript-fallback.png",                    "alt": "Fallback content"                  },                  "children": []                },                {                  "type": "text",                  "data": "\n",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "script",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "document.write('<p>JavaScript is <strong>enabled</strong>.</p>');",                  "data_normalized": "document.write('<p>JavaScript is <strong>enabled</strong>.</p>');"                }              ]            },            {              "type": "text",              "data": "\n\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/html_noscript.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Noscript Element Test",
+                  "data_normalized": "Noscript Element Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "noscript",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  <link rel=\"stylesheet\" href=\"noscript.css\">\n  <style>\n    body { background: red; }\n  </style>\n",
+                  "data_normalized": " <link rel=\"stylesheet\" href=\"noscript.css\"> <style> body { background: red; } </style>"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h1",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Noscript Element Test",
+                  "data_normalized": "Noscript Element Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "When scripts are disabled, the noscript content in the head should apply a red background and load noscript.css.",
+                  "data_normalized": "When scripts are disabled, the noscript content in the head should apply a red background and load noscript.css."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Noscript in body",
+                  "data_normalized": "Noscript in body"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "noscript",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  <p>JavaScript is disabled. This message is from a noscript element in the body.</p>\n",
+                  "data_normalized": " <p>JavaScript is disabled. This message is from a noscript element in the body.</p>"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Noscript with fallback content",
+                  "data_normalized": "Noscript with fallback content"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Below this line, if scripts are disabled, a picture should appear.",
+                  "data_normalized": "Below this line, if scripts are disabled, a picture should appear."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "noscript",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  <img src=\"noscript-fallback.png\" alt=\"Fallback content\">\n",
+                  "data_normalized": " <img src=\"noscript-fallback.png\" alt=\"Fallback content\">"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "script",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "document.write('<p>JavaScript is <strong>enabled</strong>.</p>');",
+                  "data_normalized": "document.write('<p>JavaScript is <strong>enabled</strong>.</p>');"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

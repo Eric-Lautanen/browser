@@ -11,8 +11,11 @@ namespace browser::css {
     f32 LayoutEngine::resolve_clamp_func(const std::string &expr, f32 parent_value, f32 font_size) const {
         std::string s = expr;
         size_t paren = s.find('(');
-        if (paren == std::string::npos)
+        if (paren == std::string::npos) {
+            if (s == "clamp" || s == "min" || s == "max")
+                return font_size;
             return 0;
+        }
         std::string args_str = s.substr(paren + 1);
         if (!args_str.empty() && args_str.back() == ')')
             args_str.pop_back();
@@ -118,7 +121,11 @@ namespace browser::css {
 
         if (v->type == CSSValue::Type::FUNCTION &&
             (v->keyword == "clamp" || v->keyword == "min" || v->keyword == "max")) {
-            return resolve_clamp_func(v->string_value, parent_font_size, parent_font_size);
+            if (!v->string_value.empty() && v->string_value.find('(') != std::string::npos) {
+                f32 result = resolve_clamp_func(v->string_value, parent_font_size, parent_font_size);
+                if (result > 0) return result;
+            }
+            return parent_font_size;
         }
 
         if (v->type == CSSValue::Type::KEYWORD) {
@@ -288,19 +295,35 @@ namespace browser::css {
         }
         if (v->type == CSSValue::Type::FUNCTION &&
             (v->keyword == "clamp" || v->keyword == "min" || v->keyword == "max")) {
-            return resolve_clamp_func(v->string_value, parent_value, font_size);
+            f32 result = resolve_clamp_func(v->string_value, parent_value, font_size);
+            return result > 0 ? result : parent_value;
         }
         if (v->type == CSSValue::Type::FUNCTION && v->keyword == "calc") {
             return resolve_calc_string(v->string_value, parent_value, font_size);
         }
         if (v->type == CSSValue::Type::STRING && !v->string_value.empty()) {
-            std::string s = v->string_value;
-            if (s.substr(0, 5) == "calc(" || s.find("calc(") != std::string::npos) {
-                return resolve_calc_string(s, parent_value, font_size);
+            const std::string &sv = v->string_value;
+            if (sv.substr(0, 5) == "calc(" || sv.find("calc(") != std::string::npos) {
+                return resolve_calc_string(sv, parent_value, font_size);
             }
-            if (s.substr(0, 6) == "clamp(" || s.substr(0, 4) == "min(" || s.substr(0, 4) == "max(") {
-                return resolve_clamp_func(s, parent_value, font_size);
+            if (sv.substr(0, 6) == "clamp(" || sv.substr(0, 4) == "min(" || sv.substr(0, 4) == "max(") {
+                f32 result = resolve_clamp_func(sv, parent_value, font_size);
+                return result > 0 ? result : parent_value;
             }
+            char *end = nullptr;
+            f32 num = std::strtof(sv.c_str(), &end);
+            if (end && end != sv.c_str()) {
+                std::string unit = end;
+                while (!unit.empty() && unit[0] == ' ') unit = unit.substr(1);
+                if (unit == "px") return num;
+                if (unit == "em") return num * font_size;
+                if (unit == "rem") return num * root_font_size_;
+                if (unit == "%") return num / 100.0f * parent_value;
+                if (unit == "vw") return num / 100.0f * viewport_width_;
+                if (unit == "vh") return num / 100.0f * viewport_height_;
+                if (unit.empty()) return num;
+            }
+            return 0;
         }
         return 0;
     }
@@ -319,11 +342,35 @@ namespace browser::css {
         if (v->type == CSSValue::Type::LENGTH) {
             return resolve_length(v->length, containing, font_size);
         }
-        if (v->type == CSSValue::Type::STRING && v->string_value.find("calc(") != std::string::npos) {
-            return resolve_calc_string(v->string_value, containing, font_size);
+        if (v->type == CSSValue::Type::STRING) {
+            const std::string &sv = v->string_value;
+            if (sv.find("calc(") != std::string::npos)
+                return resolve_calc_string(sv, containing, font_size);
+            if (sv.find("clamp(") != std::string::npos || sv.find("min(") != std::string::npos || sv.find("max(") != std::string::npos)
+                return resolve_clamp_func(sv, containing, font_size);
+            char *end = nullptr;
+            f32 num = std::strtof(sv.c_str(), &end);
+            if (end && end != sv.c_str()) {
+                std::string unit = end;
+                while (!unit.empty() && unit[0] == ' ') unit = unit.substr(1);
+                if (unit == "px") return num;
+                if (unit == "em") return num * font_size;
+                if (unit == "rem") return num * root_font_size_;
+                if (unit == "%") return num / 100.0f * containing;
+                if (unit == "vw") return num / 100.0f * viewport_width_;
+                if (unit == "vh") return num / 100.0f * viewport_height_;
+                if (unit.empty()) return num;
+            }
+            return 0.0f;
         }
         if (v->type == CSSValue::Type::FUNCTION && v->keyword == "calc") {
             return resolve_calc_string(v->string_value, containing, font_size);
+        }
+        if (v->type == CSSValue::Type::FUNCTION &&
+            (v->keyword == "clamp" || v->keyword == "min" || v->keyword == "max")) {
+            std::string func_str = v->string_value;
+            f32 result = resolve_clamp_func(func_str, containing, font_size);
+            return result > 0 ? result : containing;
         }
         return 0.0f;
     }
@@ -338,12 +385,37 @@ namespace browser::css {
         if (v->type == CSSValue::Type::LENGTH) {
             return resolve_length(v->length, containing, font_size);
         }
-        if (v->type == CSSValue::Type::STRING && !v->string_value.empty() &&
-            v->string_value.find("calc(") != std::string::npos) {
-            return resolve_calc_string(v->string_value, containing, font_size);
+        if (v->type == CSSValue::Type::STRING && !v->string_value.empty()) {
+            const std::string &sv = v->string_value;
+            if (sv.find("calc(") != std::string::npos)
+                return resolve_calc_string(sv, containing, font_size);
+            if (sv.find("clamp(") != std::string::npos || sv.find("min(") != std::string::npos || sv.find("max(") != std::string::npos) {
+                f32 result = resolve_clamp_func(sv, containing, font_size);
+                return result > 0 ? result : containing;
+            }
+            char *end = nullptr;
+            f32 num = std::strtof(sv.c_str(), &end);
+            if (end && end != sv.c_str()) {
+                std::string unit = end;
+                while (!unit.empty() && unit[0] == ' ') unit = unit.substr(1);
+                if (unit == "px") return num;
+                if (unit == "em") return num * font_size;
+                if (unit == "rem") return num * root_font_size_;
+                if (unit == "%") return num / 100.0f * containing;
+                if (unit == "vw") return num / 100.0f * viewport_width_;
+                if (unit == "vh") return num / 100.0f * viewport_height_;
+                if (unit.empty()) return num;
+            }
+            return 0.0f;
         }
         if (v->type == CSSValue::Type::FUNCTION && v->keyword == "calc") {
             return resolve_calc_string(v->string_value, containing, font_size);
+        }
+        if (v->type == CSSValue::Type::FUNCTION &&
+            (v->keyword == "clamp" || v->keyword == "min" || v->keyword == "max")) {
+            std::string func_str = v->string_value;
+            f32 result = resolve_clamp_func(func_str, containing, font_size);
+            return result > 0 ? result : containing;
         }
         return 0.0f;
     }

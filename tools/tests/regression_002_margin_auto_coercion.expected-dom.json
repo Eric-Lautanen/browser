@@ -1,1 +1,145 @@
-{  "source": "C:\\github\\browser\\tools\\tests\\regression_002_margin_auto_coercion.html",  "encoding": "utf-8",  "doctype": {    "name": "html",    "public_id": "",    "system_id": ""  },  "children": [    {      "type": "doctype",      "name": "html",      "public_id": "",      "system_id": ""    },    {      "type": "element",      "tag": "html",      "attributes": {},      "children": [        {          "type": "element",          "tag": "head",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "meta",              "attributes": {                "charset": "utf-8"              },              "children": []            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "title",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "Regression 002: Margin Auto Coercion",                  "data_normalized": "Regression 002: Margin Auto Coercion"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            },            {              "type": "element",              "tag": "style",              "attributes": {},              "children": [                {                  "type": "text",                  "data": "\n  body { margin: 0; }\n  #container { width: 800px; height: 200px; background: lightblue; }\n  #target { width: 100px; height: 50px; margin: 0 auto; background: lightcoral; }\n",                  "data_normalized": "body { margin: 0; } #container { width: 800px; height: 200px; background: lightblue; } #target { width: 100px; height: 50px; margin: 0 auto; background: lightcoral; }"                }              ]            },            {              "type": "text",              "data": "\n",              "data_normalized": ""            }          ]        },        {          "type": "text",          "data": "\n",          "data_normalized": ""        },        {          "type": "element",          "tag": "body",          "attributes": {},          "children": [            {              "type": "text",              "data": "\n  ",              "data_normalized": ""            },            {              "type": "element",              "tag": "div",              "attributes": {                "id": "container"              },              "children": [                {                  "type": "text",                  "data": "\n    ",                  "data_normalized": ""                },                {                  "type": "element",                  "tag": "div",                  "attributes": {                    "id": "target"                  },                  "children": [                    {                      "type": "text",                      "data": "margin: 0 auto in 800px container. margin-left and margin-right must be the keyword 'auto', not coerced to '0px'.",                      "data_normalized": "margin: 0 auto in 800px container. margin-left and margin-right must be the keyword 'auto', not coerced to '0px'."                    }                  ]                },                {                  "type": "text",                  "data": "\n  ",                  "data_normalized": ""                }              ]            },            {              "type": "text",              "data": "\n\n\n",              "data_normalized": ""            }          ]        }      ]    }  ],  "quirks_mode": false}
+{
+  "source": "tools/tests/regression_002_margin_auto_coercion.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": [
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Regression 002: Margin Auto Coercion",
+                  "data_normalized": "Regression 002: Margin Auto Coercion"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  body { margin: 0; }\n  #container { width: 800px; height: 200px; background: lightblue; }\n  #target { width: 100px; height: 50px; margin: 0 auto; background: lightcoral; }\n",
+                  "data_normalized": " body { margin: 0; } #container { width: 800px; height: 200px; background: lightblue; } #target { width: 100px; height: 50px; margin: 0 auto; background: lightcoral; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {
+          },
+          "children": [
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "container"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "id": "target"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "margin: 0 auto in 800px container. margin-left and margin-right must be the keyword 'auto', not coerced to '0px'.",
+                      "data_normalized": "margin: 0 auto in 800px container. margin-left and margin-right must be the keyword 'auto', not coerced to '0px'."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

@@ -1,13 +1,13 @@
 #include "window.hpp"
 
 #include "../../html/form_state.hpp"
-#include "../../render/canvas.hpp"
 #include "../../net/http_client.hpp"
 #include "../../net/storage.hpp"
 #include "../../net/tracker_blocker.hpp"
 #include "../../net/url.hpp"
 #include "../../platform/opengl.hpp"
 #include "../../platform/window_win32.hpp"
+#include "../../render/canvas.hpp"
 #include "../bookmarks.hpp"
 #include "../history.hpp"
 #include "../perf_counter.hpp"
@@ -24,7 +24,7 @@ namespace browser {
     BrowserWindow::~BrowserWindow() {
         if (session_) {
             std::vector<SessionEntry> entries;
-            for (auto& tab : chrome_.tabs) {
+            for (auto &tab : chrome_.tabs) {
                 SessionEntry e;
                 e.url = tab.url;
                 e.scroll_y = tab.scroll_y;
@@ -54,9 +54,12 @@ namespace browser {
         download_manager_ = std::make_unique<DownloadManager>();
         {
             auto db = settings_->download_behavior();
-            if (db == "enabled") download_manager_->set_behavior(DownloadBehavior::ENABLED);
-            else if (db == "notify") download_manager_->set_behavior(DownloadBehavior::NOTIFY);
-            else download_manager_->set_behavior(DownloadBehavior::DISABLED);
+            if (db == "enabled")
+                download_manager_->set_behavior(DownloadBehavior::ENABLED);
+            else if (db == "notify")
+                download_manager_->set_behavior(DownloadBehavior::NOTIFY);
+            else
+                download_manager_->set_behavior(DownloadBehavior::DISABLED);
         }
 
         set_theme(settings_->theme());
@@ -133,15 +136,16 @@ namespace browser {
 
         page_loader_ = std::make_unique<PageLoader>(
             telemetry_.get(), settings_.get(), tracker_.get(), fm_.get(), text_renderer_.get());
-    render::setup_canvas_bindings();
+        render::setup_canvas_bindings();
         page_loader_->set_viewport_size(viewport_width_, viewport_height_);
-        page_loader_->set_download_callback([this](const std::string& url, const std::string& cd, const std::string& mt, u64 cl) -> bool {
-            if (download_manager_->should_download(url, cd, mt, cl)) {
-                download_manager_->start_download(url).start();
-                return true;
-            }
-            return false;
-        });
+        page_loader_->set_download_callback(
+            [this](const std::string &url, const std::string &cd, const std::string &mt, u64 cl) -> bool {
+                if (download_manager_->should_download(url, cd, mt, cl)) {
+                    download_manager_->start_download(url).start();
+                    return true;
+                }
+                return false;
+            });
 
         compositor_ = std::make_unique<render::Compositor>();
         compositor_->set_viewport(static_cast<i32>(viewport_width_), static_cast<i32>(viewport_height_));
@@ -150,7 +154,7 @@ namespace browser {
 
         history_ = std::make_unique<HistoryManager>();
         bookmarks_ = std::make_unique<BookmarkManager>();
-        auto rb = bookmarks_->load_from_file("./bookmarks.txt");
+        auto rb = bookmarks_->load_from_file(BookmarkManager::default_path());
 
         session_ = std::make_unique<SessionManager>();
         {
@@ -158,7 +162,7 @@ namespace browser {
             if (!entries.empty()) {
                 // Restore tabs from session
                 chrome_.tabs.clear();
-                for (auto& entry : entries) {
+                for (auto &entry : entries) {
                     TabInfo tab;
                     tab.url = entry.url;
                     tab.scroll_y = entry.scroll_y;
@@ -304,7 +308,7 @@ namespace browser {
                 auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - last_session_save).count();
                 if (elapsed >= 30 && session_) {
                     std::vector<SessionEntry> entries;
-                    for (auto& tab : chrome_.tabs) {
+                    for (auto &tab : chrome_.tabs) {
                         SessionEntry e;
                         e.url = tab.url;
                         e.scroll_y = tab.scroll_y;
@@ -417,10 +421,16 @@ namespace browser {
         f32 nav_end = nav_x + (ChromeUI::BTN_SIZE + 2) * 3 + ChromeUI::PADDING;
 
         f32 right2 = right - ChromeUI::PADDING;
-        chrome_.rects.menu = {right2 - ChromeUI::BTN_SIZE, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
-        chrome_.rects.download = {right2 - ChromeUI::BTN_SIZE * 2 - 2, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
-        chrome_.rects.bookmark = {right2 - ChromeUI::BTN_SIZE * 3 - 4, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
-        chrome_.rects.address = {nav_end, btn_y, chrome_.rects.bookmark.x - 4 - nav_end, ChromeUI::BTN_SIZE};
+        f32 bx = right2;
+        chrome_.rects.menu = {bx - ChromeUI::BTN_SIZE, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
+        bx -= ChromeUI::BTN_SIZE + 2;
+        chrome_.rects.download = {bx - ChromeUI::BTN_SIZE, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
+        bx -= ChromeUI::BTN_SIZE + 2;
+        chrome_.rects.bookmark_chevron = {bx - 12, btn_y, 12, ChromeUI::BTN_SIZE};
+        bx -= 14;
+        chrome_.rects.bookmark = {bx - ChromeUI::BTN_SIZE, btn_y, ChromeUI::BTN_SIZE, ChromeUI::BTN_SIZE};
+        bx -= ChromeUI::BTN_SIZE + 4;
+        chrome_.rects.address = {nav_end, btn_y, bx - nav_end, ChromeUI::BTN_SIZE};
     }
 
     void BrowserWindow::render_chrome() {
@@ -447,6 +457,7 @@ namespace browser {
         render_address_bar();
         render_download_button();
         render_bookmark();
+        render_bookmarks_dropdown();
         render_menu_button();
         if (chrome_.show_menu)
             render_menu();
@@ -492,7 +503,7 @@ namespace browser {
     void BrowserWindow::start_load(const std::string &url) {
         // Only reset scroll for new navigations, not tab switches or back/forward
         // (caller is responsible for setting scroll_y when needed)
-        auto& tab = chrome_.tabs[chrome_.active_tab];
+        auto &tab = chrome_.tabs[chrome_.active_tab];
         if (url != tab.url || url == "about:blank") {
             chrome_.scroll_y = 0;
         }
