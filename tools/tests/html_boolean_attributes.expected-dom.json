@@ -1,0 +1,821 @@
+{
+  "source": "tests/html_boolean_attributes.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Boolean Attributes Test",
+                  "data_normalized": "Boolean Attributes Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h1",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Boolean Attributes Test",
+                  "data_normalized": "Boolean Attributes Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Form / Input attributes",
+                  "data_normalized": "Form / Input attributes"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "form",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Disabled: ",
+                          "data_normalized": "Disabled:"
+                        },
+                        {
+                          "type": "element",
+                          "tag": "input",
+                          "attributes": {
+                            "type": "text",
+                            "disabled": "",
+                            "value": "can't edit"
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Checked: ",
+                          "data_normalized": "Checked:"
+                        },
+                        {
+                          "type": "element",
+                          "tag": "input",
+                          "attributes": {
+                            "type": "checkbox",
+                            "checked": ""
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Readonly: ",
+                          "data_normalized": "Readonly:"
+                        },
+                        {
+                          "type": "element",
+                          "tag": "input",
+                          "attributes": {
+                            "type": "text",
+                            "readonly": "",
+                            "value": "read only"
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Required: ",
+                          "data_normalized": "Required:"
+                        },
+                        {
+                          "type": "element",
+                          "tag": "input",
+                          "attributes": {
+                            "type": "text",
+                            "required": ""
+                          },
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Multiple: ",
+                          "data_normalized": "Multiple:"
+                        },
+                        {
+                          "type": "element",
+                          "tag": "select",
+                          "attributes": {
+                            "multiple": ""
+                          },
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\n    ",
+                              "data_normalized": ""
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {},
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "Option 1",
+                                  "data_normalized": "Option 1"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "\n    ",
+                              "data_normalized": ""
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {},
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "Option 2",
+                                  "data_normalized": "Option 2"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "\n  ",
+                              "data_normalized": ""
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "label",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Selected:\n    ",
+                          "data_normalized": "Selected:"
+                        },
+                        {
+                          "type": "element",
+                          "tag": "select",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "\n      ",
+                              "data_normalized": ""
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {},
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "Not selected",
+                                  "data_normalized": "Not selected"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "\n      ",
+                              "data_normalized": ""
+                            },
+                            {
+                              "type": "element",
+                              "tag": "option",
+                              "attributes": {
+                                "selected": ""
+                              },
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "Selected",
+                                  "data_normalized": "Selected"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "text",
+                              "data": "\n    ",
+                              "data_normalized": ""
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n  ",
+                          "data_normalized": ""
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Details / Dialog",
+                  "data_normalized": "Details / Dialog"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "details",
+              "attributes": {
+                "open": ""
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "summary",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Open by default (open attribute)",
+                      "data_normalized": "Open by default (open attribute)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "This details element has the ",
+                      "data_normalized": "This details element has the"
+                    },
+                    {
+                      "type": "element",
+                      "tag": "code",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "open",
+                          "data_normalized": "open"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": " boolean attribute.",
+                      "data_normalized": "boolean attribute."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Hidden",
+                  "data_normalized": "Hidden"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "hidden": ""
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "This paragraph has the hidden attribute and should not be visible.",
+                  "data_normalized": "This paragraph has the hidden attribute and should not be visible."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "OL reversed",
+                  "data_normalized": "OL reversed"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "ol",
+              "attributes": {
+                "reversed": ""
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "li",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Third",
+                      "data_normalized": "Third"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "li",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Second",
+                      "data_normalized": "Second"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "li",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "First",
+                      "data_normalized": "First"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Media attributes",
+                  "data_normalized": "Media attributes"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "audio",
+              "attributes": {
+                "controls": "",
+                "loop": "",
+                "autoplay": "",
+                "muted": ""
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "test.mp3",
+                    "type": "audio/mpeg"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "video",
+              "attributes": {
+                "controls": "",
+                "loop": "",
+                "autoplay": "",
+                "muted": "",
+                "width": "320",
+                "height": "240"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "test.mp4",
+                    "type": "video/mp4"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Track default",
+                  "data_normalized": "Track default"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "video",
+              "attributes": {
+                "controls": "",
+                "width": "320",
+                "height": "240"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "track",
+                  "attributes": {
+                    "src": "subtitles.vtt",
+                    "kind": "subtitles",
+                    "srclang": "en",
+                    "label": "English",
+                    "default": ""
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Script attributes",
+                  "data_normalized": "Script attributes"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "script",
+              "attributes": {
+                "defer": "",
+                "src": "defer.js"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "script",
+              "attributes": {
+                "async": "",
+                "src": "async.js"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

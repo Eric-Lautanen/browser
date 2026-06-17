@@ -1,0 +1,620 @@
+{
+  "source": "tests/layout_grid.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Grid Test",
+                  "data_normalized": "Layout Grid Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  body { margin: 8px; }\n  .grid-fr { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; background: lightblue; margin-bottom: 10px; }\n  .grid-px { display: grid; grid-template-columns: 100px 200px 100px; gap: 5px; background: lightgreen; margin-bottom: 10px; }\n  .grid-pct { display: grid; grid-template-columns: 25% 50% 25%; gap: 5px; background: lightcoral; margin-bottom: 10px; }\n  .grid-repeat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: lightyellow; margin-bottom: 10px; }\n  .grid-minmax { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(50px, 200px) 1fr; gap: 10px; background: lightpink; margin-bottom: 10px; }\n  .grid-rows { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 100px 200px; gap: 10px; background: lightcyan; margin-bottom: 10px; }\n  .grid-areas { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-areas: \"header header header\" \"sidebar content content\" \"footer footer footer\"; gap: 10px; background: lavender; margin-bottom: 10px; }\n  .grid-areas .header { grid-area: header; background: lightcoral; }\n  .grid-areas .sidebar { grid-area: sidebar; background: lightgreen; }\n  .grid-areas .content { grid-area: content; background: lightblue; }\n  .grid-areas .footer { grid-area: footer; background: lightyellow; }\n  .grid-span { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: mistyrose; margin-bottom: 10px; }\n  .grid-span .span2 { grid-column: span 2; background: lightcoral; }\n  .grid-span .span3 { grid-column: span 3; background: lightgreen; }\n  .grid-span .full { grid-column: 1 / -1; background: lightblue; }\n",
+                  "data_normalized": "body { margin: 8px; } .grid-fr { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; background: lightblue; margin-bottom: 10px; } .grid-px { display: grid; grid-template-columns: 100px 200px 100px; gap: 5px; background: lightgreen; margin-bottom: 10px; } .grid-pct { display: grid; grid-template-columns: 25% 50% 25%; gap: 5px; background: lightcoral; margin-bottom: 10px; } .grid-repeat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: lightyellow; margin-bottom: 10px; } .grid-minmax { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(50px, 200px) 1fr; gap: 10px; background: lightpink; margin-bottom: 10px; } .grid-rows { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 100px 200px; gap: 10px; background: lightcyan; margin-bottom: 10px; } .grid-areas { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-areas: \"header header header\" \"sidebar content content\" \"footer footer footer\"; gap: 10px; background: lavender; margin-bottom: 10px; } .grid-areas .header { grid-area: header; background: lightcoral; } .grid-areas .sidebar { grid-area: sidebar; background: lightgreen; } .grid-areas .content { grid-area: content; background: lightblue; } .grid-areas .footer { grid-area: footer; background: lightyellow; } .grid-span { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: mistyrose; margin-bottom: 10px; } .grid-span .span2 { grid-column: span 2; background: lightcoral; } .grid-span .span3 { grid-column: span 3; background: lightgreen; } .grid-span .full { grid-column: 1 / -1; background: lightblue; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-fr"
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "A",
+                      "data_normalized": "A"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "B",
+                      "data_normalized": "B"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "C",
+                      "data_normalized": "C"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-px"
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "100px",
+                      "data_normalized": "100px"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "200px",
+                      "data_normalized": "200px"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "100px",
+                      "data_normalized": "100px"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-pct"
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "25%",
+                      "data_normalized": "25%"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "50%",
+                      "data_normalized": "50%"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "25%",
+                      "data_normalized": "25%"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-repeat"
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "1",
+                      "data_normalized": "1"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "2",
+                      "data_normalized": "2"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "3",
+                      "data_normalized": "3"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-minmax"
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Min 100px",
+                      "data_normalized": "Min 100px"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Max 200px",
+                      "data_normalized": "Max 200px"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Flex",
+                      "data_normalized": "Flex"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-rows"
+              },
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Row 100px",
+                      "data_normalized": "Row 100px"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Row 100px",
+                      "data_normalized": "Row 100px"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Row 200px",
+                      "data_normalized": "Row 200px"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Row 200px",
+                      "data_normalized": "Row 200px"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-areas"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "header"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Header",
+                      "data_normalized": "Header"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "sidebar"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Sidebar",
+                      "data_normalized": "Sidebar"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "content"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Content",
+                      "data_normalized": "Content"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "footer"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Footer",
+                      "data_normalized": "Footer"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "grid-span"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "A",
+                      "data_normalized": "A"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "span2"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Span 2 cols",
+                      "data_normalized": "Span 2 cols"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "D",
+                      "data_normalized": "D"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "span3"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Span 3 cols",
+                      "data_normalized": "Span 3 cols"
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "E",
+                      "data_normalized": "E"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "full"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Full row",
+                      "data_normalized": "Full row"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

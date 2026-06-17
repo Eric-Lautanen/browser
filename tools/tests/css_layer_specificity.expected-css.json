@@ -1,0 +1,127 @@
+{
+  "source": "tests/css_layer_specificity.css",
+  "rules": [
+    {
+      "type": "rule",
+      "selectors": [
+        ".unlayered"
+      ],
+      "declarations": [
+        {
+          "property": "background",
+          "value": "purple",
+          "source_index": 23
+        }
+      ],
+      "source_index": 0
+    }
+  ],
+  "at_rules": [
+    {
+      "type": "at-rule",
+      "name": "layer",
+      "params": "base, theme, override",
+      "rules": [],
+      "at_rules": [],
+      "declarations": []
+    },
+    {
+      "type": "at-rule",
+      "name": "layer",
+      "params": "base",
+      "rules": [
+        {
+          "type": "rule",
+          "selectors": [
+            ".box"
+          ],
+          "declarations": [
+            {
+              "property": "background",
+              "value": "red",
+              "source_index": 5
+            },
+            {
+              "property": "color",
+              "value": "white",
+              "source_index": 6
+            }
+          ],
+          "source_index": 0
+        }
+      ],
+      "at_rules": [],
+      "declarations": []
+    },
+    {
+      "type": "at-rule",
+      "name": "layer",
+      "params": "override",
+      "rules": [
+        {
+          "type": "rule",
+          "selectors": [
+            ".box"
+          ],
+          "declarations": [
+            {
+              "property": "background",
+              "value": "green",
+              "source_index": 12
+            }
+          ],
+          "source_index": 0
+        }
+      ],
+      "at_rules": [],
+      "declarations": []
+    },
+    {
+      "type": "at-rule",
+      "name": "layer",
+      "params": "theme",
+      "rules": [
+        {
+          "type": "rule",
+          "selectors": [
+            ".box"
+          ],
+          "declarations": [
+            {
+              "property": "background",
+              "value": "blue",
+              "source_index": 18
+            }
+          ],
+          "source_index": 0
+        }
+      ],
+      "at_rules": [],
+      "declarations": []
+    },
+    {
+      "type": "at-rule",
+      "name": "layer",
+      "params": "base",
+      "rules": [
+        {
+          "type": "rule",
+          "selectors": [
+            ".important-box"
+          ],
+          "declarations": [
+            {
+              "property": "background",
+              "value": "yellow",
+              "important": true,
+              "source_index": 28
+            }
+          ],
+          "source_index": 0
+        }
+      ],
+      "at_rules": [],
+      "declarations": []
+    }
+  ]
+}

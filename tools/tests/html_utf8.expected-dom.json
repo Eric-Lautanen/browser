@@ -1,0 +1,229 @@
+{
+  "source": "tests/html_utf8.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "UTF-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "UTF-8 Content Test",
+                  "data_normalized": "UTF-8 Content Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "lang": "ja"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Japanese: 桜を見る",
+                  "data_normalized": "Japanese: 桜を見る"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "lang": "ar",
+                "dir": "rtl"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Arabic: السلام عليكم",
+                  "data_normalized": "Arabic: السلام عليكم"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Emoji: 🎉 🦊 🌍",
+                  "data_normalized": "Emoji: 🎉 🦊 🌍"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "lang": "zh"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Chinese: 中文测试",
+                  "data_normalized": "Chinese: 中文测试"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "lang": "ko"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Korean: 한국어 테스트",
+                  "data_normalized": "Korean: 한국어 테스트"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Mathematical: ∑∏∫√",
+                  "data_normalized": "Mathematical: ∑∏∫√"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Middle dot raw UTF-8: ·",
+                  "data_normalized": "Middle dot raw UTF-8: ·"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Mixed: 桜を見る · 🎉 · 中文测试 · 한국어 테스트 · ∑∏∫√",
+                  "data_normalized": "Mixed: 桜を見る · 🎉 · 中文测试 · 한국어 테스트 · ∑∏∫√"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

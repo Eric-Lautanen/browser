@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Display Background Color</title>
+<style>
+.b {
+  display: inline-block;
+  width: 100px;
+  height: 80px;
+  margin: 5px;
+  padding: 4px;
+  color: #fff;
+  text-align: center;
+  line-height: 80px;
+}
+.named { background-color: tomato; }
+.hex3 { background-color: #f90; }
+.hex6 { background-color: #3498db; }
+.rgb { background-color: rgb(46, 204, 113); }
+.rgba { background-color: rgba(155, 89, 182, 0.8); }
+.hsl { background-color: hsl(210, 80%, 50%); }
+</style>
+</head>
+<body>
+<div class="b named">named</div>
+<div class="b hex3">#f90</div>
+<div class="b hex6">#3498db</div>
+<div class="b rgb">rgb</div>
+<div class="b rgba">rgba</div>
+<div class="b hsl">hsl</div>
+</body>
+</html>

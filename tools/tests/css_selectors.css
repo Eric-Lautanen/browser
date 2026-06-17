@@ -1,0 +1,157 @@
+/* Tag selector */
+div {
+  color: red;
+}
+
+/* Class selector */
+.foo {
+  color: blue;
+}
+
+/* ID selector */
+#bar {
+  color: green;
+}
+
+/* Universal selector */
+* {
+  margin: 0;
+}
+
+/* Attribute equals */
+[type="text"] {
+  border: 1px solid black;
+}
+
+/* Attribute contains word (space-separated) */
+[class~="highlight"] {
+  background: yellow;
+}
+
+/* Attribute begins with hyphen-separated value */
+[lang|="en"] {
+  font-style: italic;
+}
+
+/* Attribute starts with */
+[href^="https"] {
+  color: purple;
+}
+
+/* Attribute ends with */
+[href$=".pdf"] {
+  font-weight: bold;
+}
+
+/* Attribute contains substring */
+[title*="hello"] {
+  text-decoration: underline;
+}
+
+/* Descendant combinator */
+div p {
+  line-height: 1.5;
+}
+
+/* Child combinator */
+div > p {
+  padding: 10px;
+}
+
+/* Adjacent sibling combinator */
+h1 + p {
+  margin-top: 0;
+}
+
+/* General sibling combinator */
+h1 ~ p {
+  color: gray;
+}
+
+/* Pseudo-class: hover */
+a:hover {
+  text-decoration: none;
+}
+
+/* Pseudo-class: focus */
+input:focus {
+  outline: 2px solid blue;
+}
+
+/* Pseudo-class: active */
+button:active {
+  transform: scale(0.98);
+}
+
+/* Pseudo-class: visited */
+a:visited {
+  color: purple;
+}
+
+/* Pseudo-class: first-child */
+li:first-child {
+  font-weight: bold;
+}
+
+/* Pseudo-class: last-child */
+li:last-child {
+  border-bottom: none;
+}
+
+/* Pseudo-class: nth-child with an+b */
+li:nth-child(2n+1) {
+  background: #f5f5f5;
+}
+
+/* Pseudo-class: nth-child with odd */
+tr:nth-child(odd) {
+  background: #eee;
+}
+
+/* Pseudo-class: nth-child with even */
+tr:nth-child(even) {
+  background: #fff;
+}
+
+/* Pseudo-class: not() */
+input:not([type="submit"]) {
+  border: 1px solid #ccc;
+}
+
+/* Pseudo-class: is() */
+:is(h1, h2, h3) {
+  font-family: sans-serif;
+}
+
+/* Pseudo-class: where() */
+:where(article, section) p {
+  text-indent: 2em;
+}
+
+/* Pseudo-elements */
+p::before {
+  content: "→ ";
+}
+
+p::after {
+  content: " ←";
+}
+
+p::first-line {
+  text-transform: uppercase;
+}
+
+p::first-letter {
+  font-size: 2em;
+  float: left;
+}
+
+/* Compound selector */
+div.foo#bar {
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+/* Comma-separated group */
+h1, h2, h3 {
+  letter-spacing: 0.05em;
+}

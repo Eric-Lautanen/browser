@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Noscript Element Test</title>
+<noscript>
+  <link rel="stylesheet" href="noscript.css">
+  <style>
+    body { background: red; }
+  </style>
+</noscript>
+</head>
+<body>
+<h1>Noscript Element Test</h1>
+
+<p>When scripts are disabled, the noscript content in the head should apply a red background and load noscript.css.</p>
+
+<h2>Noscript in body</h2>
+<noscript>
+  <p>JavaScript is disabled. This message is from a noscript element in the body.</p>
+</noscript>
+
+<h2>Noscript with fallback content</h2>
+<p>Below this line, if scripts are disabled, a picture should appear.</p>
+<noscript>
+  <img src="noscript-fallback.png" alt="Fallback content">
+</noscript>
+<script>document.write('<p>JavaScript is <strong>enabled</strong>.</p>');</script>
+</body>
+</html>

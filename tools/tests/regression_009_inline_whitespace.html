@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Regression 009: Inline Whitespace</title>
+<style>
+.container {
+  border: 1px solid #999;
+  margin: 10px;
+  padding: 8px;
+  font-size: 16px;
+}
+span {
+  background: #fdc;
+  border: 1px solid #c90;
+  padding: 2px;
+}
+.wide {
+  font-size: 24px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <span>Hello</span>   <span>World</span>   <span>Foo</span>
+</div>
+<div class="container">
+  <span>A</span><span>B</span><span>C</span>
+</div>
+<div class="container wide">
+  <span>X</span>   <span>Y</span>   <span>Z</span>
+</div>
+<p>First line: whitespace between spans collapses to single space. Second: no space = no gap. Third: larger font, same behavior.</p>
+</body>
+</html>

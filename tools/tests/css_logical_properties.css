@@ -1,0 +1,28 @@
+.logical-margins {
+  margin-inline-start: 10px;
+  margin-inline-end: 20px;
+}
+
+.logical-padding {
+  padding-block-start: 15px;
+  padding-block-end: 25px;
+}
+
+.logical-border-inline {
+  border-inline: 2px solid red;
+}
+
+.logical-border-block {
+  border-block: 3px dashed blue;
+}
+
+.logical-inset {
+  position: absolute;
+  inset-inline: 5px 10px;
+  inset-block: 15px 20px;
+}
+
+.logical-sizing {
+  inline-size: 300px;
+  block-size: 200px;
+}

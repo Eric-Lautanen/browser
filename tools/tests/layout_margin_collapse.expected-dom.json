@@ -1,0 +1,310 @@
+{
+  "source": "tests/layout_margin_collapse.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Margin Collapse Test",
+                  "data_normalized": "Layout Margin Collapse Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  body { margin: 0; }\n  #adjacent-siblings { background: lightblue; }\n  #adjacent-siblings .box { width: 100px; height: 50px; margin: 20px; background: lightcoral; }\n  #parent-child { background: lightgreen; margin: 10px; }\n  #parent-child .child { margin: 20px; background: lightyellow; }\n  #parent-no-border { background: lightpink; margin: 10px; }\n  #parent-no-border .child { margin: 30px; background: lightcyan; }\n  #negative { overflow: hidden; background: lavender; }\n  #negative .pos { margin-bottom: 30px; background: lightcoral; }\n  #negative .neg { margin-top: -10px; background: lightblue; }\n",
+                  "data_normalized": "body { margin: 0; } #adjacent-siblings { background: lightblue; } #adjacent-siblings .box { width: 100px; height: 50px; margin: 20px; background: lightcoral; } #parent-child { background: lightgreen; margin: 10px; } #parent-child .child { margin: 20px; background: lightyellow; } #parent-no-border { background: lightpink; margin: 10px; } #parent-no-border .child { margin: 30px; background: lightcyan; } #negative { overflow: hidden; background: lavender; } #negative .pos { margin-bottom: 30px; background: lightcoral; } #negative .neg { margin-top: -10px; background: lightblue; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "adjacent-siblings"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Sibling 1 (margin-bottom 20px)",
+                      "data_normalized": "Sibling 1 (margin-bottom 20px)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Sibling 2 (margin-top 20px, collapsed to 20px)",
+                      "data_normalized": "Sibling 2 (margin-top 20px, collapsed to 20px)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Sibling 3 (margin-top 20px, collapsed to 20px)",
+                      "data_normalized": "Sibling 3 (margin-top 20px, collapsed to 20px)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "parent-child"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    Parent margin 10px, child margin 20px (collapses to max: 20px)\n    ",
+                  "data_normalized": "Parent margin 10px, child margin 20px (collapses to max: 20px)"
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "child"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Child with margin 20px",
+                      "data_normalized": "Child with margin 20px"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "parent-no-border"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    Parent-no-border margin 10px, child margin 30px (collapses to 30px)\n    ",
+                  "data_normalized": "Parent-no-border margin 10px, child margin 30px (collapses to 30px)"
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "child"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Child with margin 30px",
+                      "data_normalized": "Child with margin 30px"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "negative"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "pos"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Positive margin-bottom 30px",
+                      "data_normalized": "Positive margin-bottom 30px"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "neg"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Negative margin-top -10px (collapsed: 30 - 10 = 20px)",
+                      "data_normalized": "Negative margin-top -10px (collapsed: 30 - 10 = 20px)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

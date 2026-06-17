@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Attributes Test</title>
+</head>
+<body>
+<form>
+<input type="text" disabled>
+<input type="checkbox" checked>
+<input type="text" readonly>
+<input type="text" required>
+<input type="text" autofocus>
+</form>
+<div data-id="12345" data-type="test" data-value="special chars: <>&\"'">Data attributes</div>
+<div aria-label="Close button" role="button">ARIA button</div>
+<div role="navigation" aria-label="Main navigation">ARIA navigation</div>
+<input type="text" value="special chars: <>&\"'">
+<input type="text" value="Unicode: 桜 中文 한국어 🎉">
+<div id="test" id="duplicate" class="a" class="b">Duplicate attributes</div>
+</body>
+</html>

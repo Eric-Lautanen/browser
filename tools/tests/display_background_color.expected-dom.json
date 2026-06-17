@@ -1,0 +1,217 @@
+{
+  "source": "tests/display_background_color.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Display Background Color",
+                  "data_normalized": "Display Background Color"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.b {\n  display: inline-block;\n  width: 100px;\n  height: 80px;\n  margin: 5px;\n  padding: 4px;\n  color: #fff;\n  text-align: center;\n  line-height: 80px;\n}\n.named { background-color: tomato; }\n.hex3 { background-color: #f90; }\n.hex6 { background-color: #3498db; }\n.rgb { background-color: rgb(46, 204, 113); }\n.rgba { background-color: rgba(155, 89, 182, 0.8); }\n.hsl { background-color: hsl(210, 80%, 50%); }\n",
+                  "data_normalized": ".b { display: inline-block; width: 100px; height: 80px; margin: 5px; padding: 4px; color: #fff; text-align: center; line-height: 80px; } .named { background-color: tomato; } .hex3 { background-color: #f90; } .hex6 { background-color: #3498db; } .rgb { background-color: rgb(46, 204, 113); } .rgba { background-color: rgba(155, 89, 182, 0.8); } .hsl { background-color: hsl(210, 80%, 50%); }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b named"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "named",
+                  "data_normalized": "named"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b hex3"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "#f90",
+                  "data_normalized": "#f90"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b hex6"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "#3498db",
+                  "data_normalized": "#3498db"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b rgb"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "rgb",
+                  "data_normalized": "rgb"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b rgba"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "rgba",
+                  "data_normalized": "rgba"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b hsl"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "hsl",
+                  "data_normalized": "hsl"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

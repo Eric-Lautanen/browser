@@ -1,0 +1,198 @@
+{
+  "source": "tests/layout_calc_in_layout.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Calc",
+                  "data_normalized": "Layout Calc"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n:root { --spacing: 10px; }\n.parent {\n  width: 300px;\n  height: 200px;\n  border: 1px solid #999;\n  margin: 10px;\n  background: #f5f5f5;\n}\n.cw { width: calc(100% - 20px); background: #fdc; }\n.ch { height: calc(50% - 10px); background: #cfc; }\n.cm { margin: calc(1em + 5px); background: #cdf; }\n.cp { padding: calc(var(--spacing) * 2); background: #fcf; }\n.inner { border: 1px solid #666; margin-bottom: 4px; }\n",
+                  "data_normalized": ":root { --spacing: 10px; } .parent { width: 300px; height: 200px; border: 1px solid #999; margin: 10px; background: #f5f5f5; } .cw { width: calc(100% - 20px); background: #fdc; } .ch { height: calc(50% - 10px); background: #cfc; } .cm { margin: calc(1em + 5px); background: #cdf; } .cp { padding: calc(var(--spacing) * 2); background: #fcf; } .inner { border: 1px solid #666; margin-bottom: 4px; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "parent"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inner cw"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "width: calc(100% - 20px)",
+                      "data_normalized": "width: calc(100% - 20px)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inner ch"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "height: calc(50% - 10px)",
+                      "data_normalized": "height: calc(50% - 10px)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inner cm"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "margin: calc(1em + 5px)",
+                      "data_normalized": "margin: calc(1em + 5px)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "inner cp"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "padding: calc(var(--spacing) * 2)",
+                      "data_normalized": "padding: calc(var(--spacing) * 2)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

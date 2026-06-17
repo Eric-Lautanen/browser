@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Forms Test</title>
+</head>
+<body>
+<form action="/submit" method="post" enctype="multipart/form-data">
+<fieldset>
+<legend>Personal Information</legend>
+<label for="name">Name:</label>
+<input type="text" id="name" name="name" placeholder="Enter name" required>
+<br>
+<label for="email">Email:</label>
+<input type="email" id="email" name="email" value="test@example.com">
+<br>
+<label for="pw">Password:</label>
+<input type="password" id="pw" name="password">
+<br>
+<label for="num">Number:</label>
+<input type="number" id="num" name="number" min="0" max="100">
+<br>
+<label for="color">Color:</label>
+<input type="color" id="color" name="color">
+<br>
+<label for="date">Date:</label>
+<input type="date" id="date" name="date">
+<br>
+<label for="range">Range:</label>
+<input type="range" id="range" name="range" min="0" max="10">
+<br>
+<label for="file">File:</label>
+<input type="file" id="file" name="file">
+<br>
+<label for="url">URL:</label>
+<input type="url" id="url" name="url">
+<br>
+<label for="tel">Tel:</label>
+<input type="tel" id="tel" name="tel">
+<br>
+<label for="search">Search:</label>
+<input type="search" id="search" name="search">
+<br>
+<input type="hidden" name="token" value="secret123">
+<br>
+<label for="newsletter">Subscribe:</label>
+<input type="checkbox" id="newsletter" name="newsletter" checked>
+<br>
+<label><input type="radio" name="gender" value="male"> Male</label>
+<label><input type="radio" name="gender" value="female"> Female</label>
+<br>
+<label for="country">Country:</label>
+<select id="country" name="country">
+<optgroup label="Asia">
+<option value="jp">Japan</option>
+<option value="cn">China</option>
+<option value="kr">Korea</option>
+</optgroup>
+<optgroup label="Europe">
+<option value="uk">UK</option>
+<option value="fr">France</option>
+<option value="de">Germany</option>
+</optgroup>
+</select>
+<br>
+<label for="bio">Bio:</label>
+<textarea id="bio" name="bio" rows="4" cols="50">Default text here.</textarea>
+<br>
+<button type="submit">Submit</button>
+<button type="reset">Reset</button>
+<button type="button" onclick="alert('clicked')">Click Me</button>
+</fieldset>
+</form>
+</body>
+</html>

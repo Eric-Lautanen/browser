@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Inline SVG Test</title>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+<defs>
+<circle id="def-circle" cx="0" cy="0" r="10" fill="red"/>
+</defs>
+<rect x="10" y="10" width="50" height="50" fill="blue" stroke="black" stroke-width="2"/>
+<circle cx="100" cy="35" r="25" fill="green"/>
+<polygon points="150,10 190,50 170,60" fill="yellow" stroke="orange"/>
+<path d="M10 100 L50 150 L90 100 Z" fill="purple"/>
+<text x="10" y="180" font-family="Arial" font-size="14" fill="black">SVG text element</text>
+<use href="#def-circle" x="120" y="120"/>
+<g transform="translate(130, 130)">
+<circle cx="0" cy="0" r="20" fill="cyan" opacity="0.5"/>
+</g>
+</svg>
+</body>
+</html>

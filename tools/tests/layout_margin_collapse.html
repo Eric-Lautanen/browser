@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Layout Margin Collapse Test</title>
+<style>
+  body { margin: 0; }
+  #adjacent-siblings { background: lightblue; }
+  #adjacent-siblings .box { width: 100px; height: 50px; margin: 20px; background: lightcoral; }
+  #parent-child { background: lightgreen; margin: 10px; }
+  #parent-child .child { margin: 20px; background: lightyellow; }
+  #parent-no-border { background: lightpink; margin: 10px; }
+  #parent-no-border .child { margin: 30px; background: lightcyan; }
+  #negative { overflow: hidden; background: lavender; }
+  #negative .pos { margin-bottom: 30px; background: lightcoral; }
+  #negative .neg { margin-top: -10px; background: lightblue; }
+</style>
+</head>
+<body>
+  <div id="adjacent-siblings">
+    <div class="box">Sibling 1 (margin-bottom 20px)</div>
+    <div class="box">Sibling 2 (margin-top 20px, collapsed to 20px)</div>
+    <div class="box">Sibling 3 (margin-top 20px, collapsed to 20px)</div>
+  </div>
+  <div id="parent-child">
+    Parent margin 10px, child margin 20px (collapses to max: 20px)
+    <div class="child">Child with margin 20px</div>
+  </div>
+  <div id="parent-no-border">
+    Parent-no-border margin 10px, child margin 30px (collapses to 30px)
+    <div class="child">Child with margin 30px</div>
+  </div>
+  <div id="negative">
+    <div class="pos">Positive margin-bottom 30px</div>
+    <div class="neg">Negative margin-top -10px (collapsed: 30 - 10 = 20px)</div>
+  </div>
+</body>
+</html>

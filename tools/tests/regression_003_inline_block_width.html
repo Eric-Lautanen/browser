@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Regression 003: Inline Block Width</title>
+<style>
+  body { margin: 0; }
+  #container { width: 800px; background: lightblue; }
+  #container a { display: inline; background: lightcoral; }
+</style>
+</head>
+<body>
+  <div id="container">
+    <a href="#">This is an inline anchor element. Its content width should NOT equal the containing block width (800px). It should only be as wide as its text content.</a>
+  </div>
+</body>
+</html>

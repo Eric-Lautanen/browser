@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Whitespace Normalization Test</title>
+</head>
+<body>
+<h1>Whitespace Normalization Test</h1>
+
+<h2>Multiple consecutive spaces</h2>
+<p>This    text    has    multiple    spaces    between    words.</p>
+
+<h2>Tabs and newlines in text</h2>
+<p>Line 1.
+	Line 2 (tabbed).
+Line 3.
+</p>
+
+<h2>Non-breaking space</h2>
+<p>First&nbsp;&nbsp;&nbsp;Second (three non-breaking spaces between words).</p>
+
+<h2>Pre element (preserves whitespace)</h2>
+<pre>
+function    hello() {
+    console.log("  whitespace  preserved  ");
+}
+</pre>
+
+<h2>Mixed whitespace in pre</h2>
+<pre>Column1	Column2	Column3
+Value1	Value2	Value3
+  Indented    line  with   spaces.
+</pre>
+
+<h2>Whitespace around inline elements</h2>
+<p>  Leading spaces  <span>  inner  </span>  trailing spaces  </p>
+
+<h2>Empty text nodes</h2>
+<ul>
+  <li>  spaced  </li><li>tight</li>
+</ul>
+</body>
+</html>

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cascade Shorthand Expansion Test</title>
+<style>
+  #m1 { margin: auto; }
+  #m2 { margin: 2em auto; }
+  #m3 { margin: 10px 20px 30px 40px; }
+  #m4 { margin: 1em; }
+  #p1 { padding: 1em; }
+  #p2 { padding: 5px 10px; }
+  #p3 { padding: 1px 2px 3px 4px; }
+  #b1 { border: 2px solid black; }
+  #b2 { border: 3px dashed red; }
+  #box1 { width: 100px; margin: 0 auto; }
+</style>
+</head>
+<body>
+  <div id="m1">margin: auto (all four sides auto)</div>
+  <div id="m2">margin: 2em auto (top/bottom 2em, left/right auto)</div>
+  <div id="m3">margin: 10px 20px 30px 40px (top 10, right 20, bottom 30, left 40)</div>
+  <div id="m4">margin: 1em (all four sides 1em)</div>
+  <div id="p1">padding: 1em (all four sides 1em)</div>
+  <div id="p2">padding: 5px 10px (top/bottom 5px, left/right 10px)</div>
+  <div id="p3">padding: 1px 2px 3px 4px (top 1, right 2, bottom 3, left 4)</div>
+  <div id="b1">border: 2px solid black</div>
+  <div id="b2">border: 3px dashed red</div>
+  <div id="box1">margin: 0 auto in 100px wide box (auto preserved as keyword)</div>
+</body>
+</html>

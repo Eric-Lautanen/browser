@@ -1,0 +1,135 @@
+/* Custom property definitions on :root */
+:root {
+  --primary-color: #3498db;
+  --secondary-color: #2ecc71;
+  --text-color: #333;
+  --background-color: #fff;
+  --font-size-base: 16px;
+  --spacing-unit: 8px;
+}
+
+/* Inheritance through the tree */
+body {
+  color: var(--text-color);
+  font-size: var(--font-size-base);
+  background-color: var(--background-color);
+}
+
+.container {
+  padding: var(--spacing-unit);
+  border: 2px solid var(--primary-color);
+}
+
+.container .item {
+  margin: var(--spacing-unit);
+  background: var(--secondary-color);
+}
+
+/* Deep inheritance chain */
+.grandparent {
+  --brand-color: purple;
+}
+
+.parent {
+  border-color: var(--brand-color);
+}
+
+.child {
+  background-color: var(--brand-color);
+}
+
+/* var() with fallback */
+.with-fallback {
+  color: var(--undefined-color, red);
+}
+
+.with-nested-fallback {
+  background: var(--undefined-color, var(--primary-color, blue));
+}
+
+/* var() with fallback using another variable */
+.fallback-chain {
+  border-color: var(--missing-color, var(--primary-color));
+}
+
+/* var() referencing another var() */
+.ref-var {
+  --accent-color: var(--primary-color);
+  color: var(--accent-color);
+}
+
+.chained-ref {
+  --base: red;
+  --derived: var(--base);
+  --final: var(--derived);
+  color: var(--final);
+}
+
+/* Custom properties overriding on specific elements */
+:root {
+  --highlight: yellow;
+}
+
+.highlight-default {
+  background: var(--highlight);
+}
+
+.highlight-override {
+  --highlight: lime;
+  background: var(--highlight);
+}
+
+.nested-override {
+  --highlight: orange;
+}
+
+.nested-override .inner {
+  background: var(--highlight);
+}
+
+/* Override at multiple levels */
+.outer {
+  --theme: dark;
+  background: var(--theme);
+}
+
+.outer .middle {
+  --theme: light;
+  color: var(--theme);
+}
+
+.outer .middle .inner-most {
+  border-color: var(--theme);
+}
+
+/* var() in shorthand properties */
+.shorthand-var {
+  margin: var(--spacing-unit);
+  padding: var(--spacing-unit);
+}
+
+/* var() with calc() */
+.calc-var {
+  width: calc(var(--spacing-unit) * 10);
+  font-size: calc(var(--font-size-base) + 4px);
+}
+
+/* Empty custom property */
+:root {
+  --empty: ;
+}
+
+.uses-empty {
+  background: var(--empty, gray);
+}
+
+/* Custom property with unit */
+:root {
+  --gap: 12px;
+  --double-gap: calc(var(--gap) * 2);
+}
+
+.gap-demo {
+  gap: var(--gap);
+  margin: var(--double-gap);
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Foster Parenting Algorithm Test</title>
+</head>
+<body>
+<h1>Foster Parenting Algorithm Test</h1>
+
+<h2>Text directly inside table</h2>
+<table>
+  This text is inside the table but not in a cell (foster parenting).
+  <tr>
+    <td>Valid cell</td>
+  </tr>
+  More text after the row.
+</table>
+
+<h2>TR outside TABLE</h2>
+<p>Before orphan row.</p>
+<tr>
+  <td>Orphan row outside table</td>
+</tr>
+<p>After orphan row.</p>
+
+<h2>TD outside TR</h2>
+<p>Before orphan cell.</p>
+<td>Orphan cell outside row</td>
+<p>After orphan cell.</p>
+
+<h2>Mixed foster parenting</h2>
+<table>
+  <td>Cell directly in table</td>
+  <tr>
+    <td>Cell in row</td>
+  </tr>
+  <b>Bold text in table</b>
+</table>
+
+<h2>Deep foster parenting</h2>
+<table>
+  <table>
+    <tr>
+      <td>Nested table cell</td>
+    </tr>
+  </table>
+</table>
+</body>
+</html>

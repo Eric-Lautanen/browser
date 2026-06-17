@@ -77,23 +77,9 @@ namespace browser::net::http2 {
                 }
                 if (node->symbol <= 255) {
                     result += static_cast<char>(node->symbol);
-                    goto next;
+                    break;
                 }
             }
-            {
-                u64 padding_bits = total_bits - start_pos;
-                if (padding_bits > 7)
-                    return {};
-                for (u64 b = 0; b < padding_bits; b++) {
-                    u64 bo = (start_pos + b) >> 3;
-                    u8 bi = static_cast<u8>((start_pos + b) & 7);
-                    u8 val = static_cast<u8>((data[bo] >> (7 - bi)) & 1);
-                    if (val == 0)
-                        return {};
-                }
-                return result;
-            }
-        next:;
         }
         return result;
     }
@@ -270,11 +256,10 @@ namespace browser::net::http2 {
     }
 
     void HPack::evict_to_fit(u32 new_entry_size) {
-        u32 max_size = max_table_size_;
-        while (!dynamic_table_.empty() && current_table_size_ + new_entry_size > max_size) {
+        while (!dynamic_table_.empty() && current_table_size_ + new_entry_size > max_table_size_) {
             auto &last = dynamic_table_.back();
             u32 entry_size = static_cast<u32>(last.name.size() + last.value.size() + 32);
-            current_table_size_ -= entry_size < current_table_size_ ? entry_size : current_table_size_;
+            current_table_size_ -= entry_size;
             dynamic_table_.pop_back();
         }
     }
@@ -289,7 +274,7 @@ namespace browser::net::http2 {
         while (current_table_size_ > max_table_size_ && !dynamic_table_.empty()) {
             auto &last = dynamic_table_.back();
             u32 entry_size = static_cast<u32>(last.name.size() + last.value.size() + 32);
-            current_table_size_ -= entry_size < current_table_size_ ? entry_size : current_table_size_;
+            current_table_size_ -= entry_size;
             dynamic_table_.pop_back();
         }
     }

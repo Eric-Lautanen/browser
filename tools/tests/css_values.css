@@ -1,0 +1,171 @@
+/* Keywords */
+div {
+  display: block;
+  position: relative;
+  float: none;
+  visibility: visible;
+  overflow: visible;
+}
+
+/* Lengths: px */
+.box {
+  width: 100px;
+  height: 200px;
+}
+
+/* Lengths: em */
+.text-em {
+  font-size: 1.5em;
+  margin: 2em 0;
+}
+
+/* Lengths: rem */
+.text-rem {
+  font-size: 1.2rem;
+  padding: 1rem;
+}
+
+/* Lengths: percent */
+.percent {
+  width: 50%;
+  height: 80%;
+}
+
+/* Lengths: vw */
+.vw-unit {
+  font-size: 5vw;
+}
+
+/* Lengths: vh */
+.vh-unit {
+  height: 100vh;
+}
+
+/* Lengths: vmin */
+.vmin-unit {
+  width: 50vmin;
+}
+
+/* Lengths: vmax */
+.vmax-unit {
+  width: 50vmax;
+}
+
+/* Lengths: ch */
+.ch-unit {
+  width: 60ch;
+}
+
+/* Lengths: ex */
+.ex-unit {
+  height: 10ex;
+}
+
+/* Colors: named */
+.named-color {
+  color: red;
+  background-color: blue;
+}
+
+/* Colors: hex 3-digit */
+.hex-3 {
+  color: #f00;
+}
+
+/* Colors: hex 4-digit */
+.hex-4 {
+  color: #f00f;
+}
+
+/* Colors: hex 6-digit */
+.hex-6 {
+  color: #ff0000;
+}
+
+/* Colors: hex 8-digit */
+.hex-8 {
+  color: #ff000080;
+}
+
+/* Colors: rgb() */
+.rgb-color {
+  color: rgb(255, 0, 0);
+}
+
+/* Colors: rgba() */
+.rgba-color {
+  color: rgba(255, 0, 0, 0.5);
+}
+
+/* Colors: hsl() */
+.hsl-color {
+  color: hsl(0, 100%, 50%);
+}
+
+/* Colors: hsla() */
+.hsla-color {
+  color: hsla(0, 100%, 50%, 0.5);
+}
+
+/* calc() with + */
+.calc-add {
+  width: calc(100% + 20px);
+}
+
+/* calc() with - */
+.calc-sub {
+  width: calc(100% - 20px);
+}
+
+/* calc() with * */
+.calc-mul {
+  width: calc(10 * 20px);
+}
+
+/* calc() with / */
+.calc-div {
+  width: calc(100px / 2);
+}
+
+/* clamp() */
+.clamp-val {
+  font-size: clamp(1rem, 2.5vw, 2rem);
+}
+
+/* min() */
+.min-val {
+  width: min(100%, 800px);
+}
+
+/* max() */
+.max-val {
+  width: max(50%, 300px);
+}
+
+/* var() with fallback */
+.var-fallback {
+  color: var(--text-color, black);
+}
+
+/* var() without fallback */
+.var-no-fallback {
+  color: var(--primary-color);
+}
+
+/* url() */
+.url-val {
+  background-image: url("bg.png");
+}
+
+/* Quoted strings */
+.string-val {
+  content: "Hello, world!";
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Unitless zero */
+.unitless-zero {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

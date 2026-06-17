@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cascade Custom Property Cycle</title>
+<style>
+:root {
+  --a: var(--b);
+  --b: var(--c);
+  --c: var(--a);
+  --d: 10px;
+  --e: var(--d);
+}
+.cycle {
+  --x: var(--y);
+  --y: var(--x);
+  width: var(--x, 200px);
+  height: 50px;
+  margin: 10px;
+  background: var(--a, #c00);
+  border: 1px solid #999;
+  padding: 8px;
+}
+.valid {
+  width: calc(var(--e) * 10);
+  height: 50px;
+  margin: 10px;
+  background: #090;
+  border: 1px solid #999;
+  padding: 8px;
+}
+</style>
+</head>
+<body>
+<div class="cycle">Cycle (--a: var(--b), --b: var(--c), --c: var(--a)) → fallback red bg</div>
+<div class="valid">Valid chain (--e: var(--d), --d: 10px) → 100px wide</div>
+</body>
+</html>

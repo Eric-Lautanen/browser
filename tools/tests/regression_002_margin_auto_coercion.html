@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Regression 002: Margin Auto Coercion</title>
+<style>
+  body { margin: 0; }
+  #container { width: 800px; height: 200px; background: lightblue; }
+  #target { width: 100px; height: 50px; margin: 0 auto; background: lightcoral; }
+</style>
+</head>
+<body>
+  <div id="container">
+    <div id="target">margin: 0 auto in 800px container. margin-left and margin-right must be the keyword 'auto', not coerced to '0px'.</div>
+  </div>
+</body>
+</html>

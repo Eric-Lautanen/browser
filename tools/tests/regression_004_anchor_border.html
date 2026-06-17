@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Regression 004: Anchor Border</title>
+<style>
+  body { margin: 0; }
+  a { text-decoration: none; }
+  .bordered { border: 2px solid black; padding: 5px; }
+</style>
+</head>
+<body>
+  <p><a href="#">This anchor has no border CSS applied - verify no border appears in display list.</a></p>
+  <p><a href="#" class="bordered">This anchor explicitly has border - border should appear.</a></p>
+</body>
+</html>

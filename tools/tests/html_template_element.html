@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Template Element Test</title>
+</head>
+<body>
+<h1>Template Element Test</h1>
+
+<h2>Nested elements in template</h2>
+<template id="nested-template">
+  <div>
+    <p>Paragraph inside template</p>
+    <ul>
+      <li>Item 1</li>
+      <li>Item 2</li>
+    </ul>
+  </div>
+</template>
+
+<h2>Template inside a table</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <template id="row-template">
+      <tr>
+        <td class="name"></td>
+        <td class="value"></td>
+      </tr>
+    </template>
+  </tbody>
+</table>
+
+<h2>Template with script content</h2>
+<template id="script-template">
+  <script>console.log('template script executed?');</script>
+  <button onclick="alert('clicked')">Click me</button>
+</template>
+
+<h2>Content check</h2>
+<p>The following should show "false" if the template content is a DocumentFragment:</p>
+<div id="result"></div>
+
+<script>
+  var t = document.getElementById('nested-template');
+  document.getElementById('result').textContent = (t.content instanceof DocumentFragment);
+</script>
+</body>
+</html>

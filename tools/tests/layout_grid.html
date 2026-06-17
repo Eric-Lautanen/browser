@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Layout Grid Test</title>
+<style>
+  body { margin: 8px; }
+  .grid-fr { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 10px; background: lightblue; margin-bottom: 10px; }
+  .grid-px { display: grid; grid-template-columns: 100px 200px 100px; gap: 5px; background: lightgreen; margin-bottom: 10px; }
+  .grid-pct { display: grid; grid-template-columns: 25% 50% 25%; gap: 5px; background: lightcoral; margin-bottom: 10px; }
+  .grid-repeat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: lightyellow; margin-bottom: 10px; }
+  .grid-minmax { display: grid; grid-template-columns: minmax(100px, 1fr) minmax(50px, 200px) 1fr; gap: 10px; background: lightpink; margin-bottom: 10px; }
+  .grid-rows { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 100px 200px; gap: 10px; background: lightcyan; margin-bottom: 10px; }
+  .grid-areas { display: grid; grid-template-columns: 1fr 1fr 1fr; grid-template-areas: "header header header" "sidebar content content" "footer footer footer"; gap: 10px; background: lavender; margin-bottom: 10px; }
+  .grid-areas .header { grid-area: header; background: lightcoral; }
+  .grid-areas .sidebar { grid-area: sidebar; background: lightgreen; }
+  .grid-areas .content { grid-area: content; background: lightblue; }
+  .grid-areas .footer { grid-area: footer; background: lightyellow; }
+  .grid-span { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: mistyrose; margin-bottom: 10px; }
+  .grid-span .span2 { grid-column: span 2; background: lightcoral; }
+  .grid-span .span3 { grid-column: span 3; background: lightgreen; }
+  .grid-span .full { grid-column: 1 / -1; background: lightblue; }
+</style>
+</head>
+<body>
+  <div class="grid-fr"><div>A</div><div>B</div><div>C</div></div>
+  <div class="grid-px"><div>100px</div><div>200px</div><div>100px</div></div>
+  <div class="grid-pct"><div>25%</div><div>50%</div><div>25%</div></div>
+  <div class="grid-repeat"><div>1</div><div>2</div><div>3</div></div>
+  <div class="grid-minmax"><div>Min 100px</div><div>Max 200px</div><div>Flex</div></div>
+  <div class="grid-rows"><div>Row 100px</div><div>Row 100px</div><div>Row 200px</div><div>Row 200px</div></div>
+  <div class="grid-areas">
+    <div class="header">Header</div>
+    <div class="sidebar">Sidebar</div>
+    <div class="content">Content</div>
+    <div class="footer">Footer</div>
+  </div>
+  <div class="grid-span">
+    <div>A</div><div class="span2">Span 2 cols</div><div>D</div>
+    <div class="span3">Span 3 cols</div><div>E</div>
+    <div class="full">Full row</div>
+  </div>
+</body>
+</html>

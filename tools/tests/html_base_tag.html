@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<base href="https://example.com/subdir/">
+<title>Base Tag Test</title>
+</head>
+<body>
+<h1>Base Tag Test</h1>
+
+<p>The <code>&lt;base href="https://example.com/subdir/"&gt;</code> tag is set in the head.</p>
+
+<h2>Relative URLs</h2>
+<ul>
+  <li><a href="page.html">This link resolves to https://example.com/subdir/page.html</a></li>
+  <li><a href="images/pic.png">This link resolves to https://example.com/subdir/images/pic.png</a></li>
+  <li><a href="../other.html">This link resolves to https://example.com/other.html</a></li>
+</ul>
+
+<h2>Image with relative src</h2>
+<img src="logo.png" alt="Relative image (resolves via base)">
+
+<h2>Script with relative src</h2>
+<script src="app.js"></script>
+
+<h2>Form with relative action</h2>
+<form action="submit-form" method="get">
+  <button type="submit">Submit</button>
+</form>
+</body>
+</html>

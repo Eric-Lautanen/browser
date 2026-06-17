@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layout Float</title>
+<style>
+.box { width: 80px; margin: 5px; color: #fff; text-align: center; }
+.left { float: left; }
+.right { float: right; }
+.clear-left { clear: left; }
+.clear-right { clear: right; }
+.clear-both { clear: both; }
+.a { height: 60px; background: #c33; }
+.b { height: 100px; background: #393; }
+.c { height: 40px; background: #33c; }
+.d { height: 80px; background: #c93; }
+.wrapper {
+  width: 400px;
+  border: 1px solid #999;
+  padding: 5px;
+  margin: 10px;
+}
+p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="box left a">L A</div>
+  <div class="box left b">L B</div>
+  <div class="box right c">R C</div>
+  <div class="box right d">R D</div>
+  <p>Text wrapping around floats. This text should flow between the left and right floats.</p>
+  <div class="box left a" style="clear:left">CL L</div>
+  <div class="box right c" style="clear:right">CL R</div>
+  <p style="clear:both">This paragraph clears both. It starts below all floats.</p>
+</div>
+</body>
+</html>

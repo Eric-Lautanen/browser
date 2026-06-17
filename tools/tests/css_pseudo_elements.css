@@ -1,0 +1,160 @@
+/* ::before with empty string content */
+.before-empty::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+/* ::before with text string */
+.before-text::before {
+  content: "→ ";
+  color: red;
+  font-weight: bold;
+}
+
+/* ::before with attr() */
+.before-attr::before {
+  content: attr(data-label);
+  font-size: 0.8em;
+  color: #888;
+}
+
+/* ::before with counter() */
+.before-counter::before {
+  content: counter(section) ". ";
+  counter-increment: section;
+}
+
+/* ::before with none */
+.before-none::before {
+  content: none;
+}
+
+/* ::after with empty string content */
+.after-empty::after {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+}
+
+/* ::after with text string */
+.after-text::after {
+  content: " ←";
+  color: blue;
+  font-weight: bold;
+}
+
+/* ::after with attr() */
+.after-attr::after {
+  content: " (" attr(href) ")";
+  font-size: 0.85em;
+  color: #666;
+}
+
+/* ::after with counter() */
+.after-counter::after {
+  content: " [" counter(page) "]";
+  counter-increment: page;
+}
+
+/* ::after with none */
+.after-none::after {
+  content: none;
+}
+
+/* ::before and ::after combined */
+.combined-both::before {
+  content: "[";
+  font-weight: bold;
+}
+
+.combined-both::after {
+  content: "]";
+  font-weight: bold;
+}
+
+/* ::first-line with inheritable properties */
+.first-line-demo::first-line {
+  color: #e74c3c;
+  font-size: 1.2em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: none;
+}
+
+/* ::first-letter with inheritable properties */
+.first-letter-demo::first-letter {
+  color: #9b59b6;
+  font-size: 3em;
+  font-weight: bold;
+  float: left;
+  line-height: 1;
+  margin-right: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ::first-line and ::first-letter combined */
+.combined-first::first-line {
+  color: #2c3e50;
+  font-variant: small-caps;
+}
+
+.combined-first::first-letter {
+  color: #e67e22;
+  font-size: 2.5em;
+  font-weight: bold;
+}
+
+/* ::before with url content */
+.before-url::before {
+  content: url("icon.png");
+  margin-right: 4px;
+}
+
+/* ::after with open-quote */
+.after-quote::after {
+  content: close-quote;
+}
+
+/* ::before with string and attr together */
+.before-mixed::before {
+  content: "Note: " attr(data-note);
+  font-style: italic;
+}
+
+/* Chain multiple pseudo-elements on same element */
+.chain-before::before {
+  content: "start-";
+}
+
+.chain-after::after {
+  content: "-end";
+}
+
+/* Pseudo-elements on empty elements (void) */
+br::before {
+  content: "⏎ ";
+  color: #999;
+}
+
+/* ::first-line with font properties */
+.font-first-line::first-line {
+  font-family: serif;
+  font-size: 1.1em;
+  font-weight: 600;
+  font-style: italic;
+  color: #2c3e50;
+}
+
+/* ::first-letter with typographic properties */
+.typography-first-letter::first-letter {
+  font-size: 4em;
+  font-family: "Georgia", serif;
+  color: #c0392b;
+  float: left;
+  line-height: 0.8;
+  padding-right: 0.05em;
+}

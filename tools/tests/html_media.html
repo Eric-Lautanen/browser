@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Media Test</title>
+</head>
+<body>
+<img src="photo.jpg" alt="A photo" width="640" height="480" srcset="photo-320.jpg 320w, photo-640.jpg 640w, photo-1280.jpg 1280w" sizes="(max-width: 600px) 100vw, 640px">
+<picture>
+<source srcset="image.avif" type="image/avif">
+<source srcset="image.webp" type="image/webp">
+<img src="image.jpg" alt="Fallback image">
+</picture>
+<video controls width="640" height="360">
+<source src="movie.mp4" type="video/mp4">
+<source src="movie.webm" type="video/webm">
+<track src="subtitles_en.vtt" kind="subtitles" srclang="en" label="English">
+<p>Your browser does not support video.</p>
+</video>
+<audio controls>
+<source src="audio.mp3" type="audio/mpeg">
+<source src="audio.ogg" type="audio/ogg">
+<p>Your browser does not support audio.</p>
+</audio>
+</body>
+</html>

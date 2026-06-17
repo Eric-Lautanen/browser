@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cascade Initial Unset Revert</title>
+<style>
+body { color: #333; font-size: 16px; margin: 10px; }
+.parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; }
+.inherited { color: inherit; }
+.initial { color: initial; }
+.unset { color: unset; }
+.revert { color: revert; }
+.non-init { border: initial; }
+.non-unset { border: unset; }
+.non-revert { border: revert; }
+p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<div class="parent">
+  <p class="inherited">inherit - red (inherits from parent)</p>
+  <p class="initial">initial - black (initial value for color)</p>
+  <p class="unset">unset - inherit for color (inherited property)</p>
+  <p class="revert">revert - black (browser default)</p>
+  <p class="non-init">border: initial - none</p>
+  <p class="non-unset">border: unset - none (non-inherited)</p>
+  <p class="non-revert">border: revert - browser default</p>
+</div>
+</body>
+</html>

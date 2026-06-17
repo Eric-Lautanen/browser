@@ -1,0 +1,30 @@
+@layer base, theme, override;
+
+@layer base {
+  .box {
+    background: red;
+    color: white;
+  }
+}
+
+@layer override {
+  .box {
+    background: green;
+  }
+}
+
+@layer theme {
+  .box {
+    background: blue;
+  }
+}
+
+.unlayered {
+  background: purple;
+}
+
+@layer base {
+  .important-box {
+    background: yellow !important;
+  }
+}

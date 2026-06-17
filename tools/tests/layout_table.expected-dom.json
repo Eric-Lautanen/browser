@@ -1,0 +1,332 @@
+{
+  "source": "tests/layout_table.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Table",
+                  "data_normalized": "Layout Table"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.table { display: table; width: 100%; border-collapse: collapse; }\n.row { display: table-row; }\n.cell { display: table-cell; border: 1px solid #555; padding: 8px; }\n.cell.pct25 { width: 25%; }\n.cell.pct50 { width: 50%; }\n.cell.pct75 { width: 75%; }\n.cell.colspan2 { /* colspan equivalent by spanning two columns */ }\n.header { background: #ddd; font-weight: bold; }\n",
+                  "data_normalized": ".table { display: table; width: 100%; border-collapse: collapse; } .row { display: table-row; } .cell { display: table-cell; border: 1px solid #555; padding: 8px; } .cell.pct25 { width: 25%; } .cell.pct50 { width: 50%; } .cell.pct75 { width: 75%; } .cell.colspan2 { /* colspan equivalent by spanning two columns */ } .header { background: #ddd; font-weight: bold; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "table"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "row header"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct25"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Column A (25%)",
+                          "data_normalized": "Column A (25%)"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct50"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Column B (50%)",
+                          "data_normalized": "Column B (50%)"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct25"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Column C (25%)",
+                          "data_normalized": "Column C (25%)"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n  ",
+                      "data_normalized": ""
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "row"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct25"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "A1",
+                          "data_normalized": "A1"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct50"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "B1",
+                          "data_normalized": "B1"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct25"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "C1",
+                          "data_normalized": "C1"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n  ",
+                      "data_normalized": ""
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "row"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct75",
+                        "colspan": "2"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "Span A+B (75%)",
+                          "data_normalized": "Span A+B (75%)"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "div",
+                      "attributes": {
+                        "class": "cell pct25"
+                      },
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "C2",
+                          "data_normalized": "C2"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n  ",
+                      "data_normalized": ""
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

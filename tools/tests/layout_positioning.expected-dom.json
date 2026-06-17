@@ -1,0 +1,310 @@
+{
+  "source": "tests/layout_positioning.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Positioning Test",
+                  "data_normalized": "Layout Positioning Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  body { margin: 8px; }\n  #relative { position: relative; top: 20px; left: 30px; background: lightblue; width: 200px; }\n  #absolute-container { position: relative; width: 400px; height: 200px; background: lightgreen; margin-top: 40px; }\n  #absolute { position: absolute; top: 20px; right: 30px; bottom: 20px; left: 30px; background: lightcoral; }\n  #fixed { position: fixed; bottom: 10px; right: 10px; background: lightyellow; padding: 5px; }\n  #sticky-container { height: 400px; overflow: auto; background: lightpink; margin-top: 40px; }\n  #sticky { position: sticky; top: 0; background: lightcyan; padding: 10px; }\n  #zindex-container { position: relative; width: 300px; height: 200px; background: lavender; margin-top: 40px; }\n  #zindex-a { position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: red; z-index: 1; }\n  #zindex-b { position: absolute; top: 50px; left: 50px; width: 100px; height: 100px; background: blue; z-index: 2; }\n  #zindex-c { position: absolute; top: 80px; left: 80px; width: 100px; height: 100px; background: green; z-index: 0; }\n",
+                  "data_normalized": "body { margin: 8px; } #relative { position: relative; top: 20px; left: 30px; background: lightblue; width: 200px; } #absolute-container { position: relative; width: 400px; height: 200px; background: lightgreen; margin-top: 40px; } #absolute { position: absolute; top: 20px; right: 30px; bottom: 20px; left: 30px; background: lightcoral; } #fixed { position: fixed; bottom: 10px; right: 10px; background: lightyellow; padding: 5px; } #sticky-container { height: 400px; overflow: auto; background: lightpink; margin-top: 40px; } #sticky { position: sticky; top: 0; background: lightcyan; padding: 10px; } #zindex-container { position: relative; width: 300px; height: 200px; background: lavender; margin-top: 40px; } #zindex-a { position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: red; z-index: 1; } #zindex-b { position: absolute; top: 50px; left: 50px; width: 100px; height: 100px; background: blue; z-index: 2; } #zindex-c { position: absolute; top: 80px; left: 80px; width: 100px; height: 100px; background: green; z-index: 0; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "relative"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Relative: moved 20px down, 30px right from normal flow.",
+                  "data_normalized": "Relative: moved 20px down, 30px right from normal flow."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "absolute-container"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    Positioned ancestor\n    ",
+                  "data_normalized": "Positioned ancestor"
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "id": "absolute"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Absolute: positioned 20px from top, 30px from right, 20px from bottom, 30px from left within parent.",
+                      "data_normalized": "Absolute: positioned 20px from top, 30px from right, 20px from bottom, 30px from left within parent."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "fixed"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Fixed: always 10px from bottom-right of viewport.",
+                  "data_normalized": "Fixed: always 10px from bottom-right of viewport."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "sticky-container"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "id": "sticky"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Sticky: sticks to top when scrolling within container.",
+                      "data_normalized": "Sticky: sticks to top when scrolling within container."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "style": "height: 600px;"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Scroll content to see sticky effect.",
+                      "data_normalized": "Scroll content to see sticky effect."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "zindex-container"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "id": "zindex-a"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "z-index 1",
+                      "data_normalized": "z-index 1"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "id": "zindex-b"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "z-index 2 (top)",
+                      "data_normalized": "z-index 2 (top)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "id": "zindex-c"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "z-index 0 (bottom)",
+                      "data_normalized": "z-index 0 (bottom)"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

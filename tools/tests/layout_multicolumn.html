@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layout Multicolumn</title>
+<style>
+.col2 { column-count: 2; }
+.col3 { column-count: 3; }
+.colw { column-width: 200px; }
+.gap { column-gap: 40px; }
+.rule { column-rule: 2px solid #c00; }
+.box {
+  margin: 10px;
+  border: 1px solid #999;
+  padding: 8px;
+  background: #f9f9f9;
+}
+p { margin: 0 0 8px 0; }
+</style>
+</head>
+<body>
+<div class="box col2 gap rule">
+  <h3>column-count: 2</h3>
+  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p>
+</div>
+<div class="box col3 gap rule">
+  <h3>column-count: 3</h3>
+  <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+  <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+  <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+</div>
+<div class="box colw gap rule">
+  <h3>column-width: 200px</h3>
+  <p>This creates as many 200px columns as will fit. Column count is determined automatically by available width. Content flows from one column to the next.</p>
+</div>
+</body>
+</html>

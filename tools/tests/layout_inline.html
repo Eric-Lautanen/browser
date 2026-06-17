@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Layout Inline Test</title>
+<style>
+  body { margin: 8px; font-size: 16px; }
+  #block { background: lightblue; }
+  #block span { background: lightcoral; }
+  #line-height { line-height: 2; background: lightgreen; }
+  #line-height span { background: lightyellow; }
+  #text-align-left { text-align: left; width: 400px; border: 1px solid black; }
+  #text-align-center { text-align: center; width: 400px; border: 1px solid black; }
+  #text-align-right { text-align: right; width: 400px; border: 1px solid black; }
+  #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; }
+  #mixed { width: 400px; border: 1px solid black; background: lavender; }
+  #spaces { width: 400px; border: 1px solid black; background: mistyrose; }
+</style>
+</head>
+<body>
+  <div id="block">
+    <span>Inline span</span> inside a block. <span>Another span</span> with text wrapping around.
+  </div>
+  <div id="line-height">
+    <span>Line-height 2</span> <span>spans</span> <span>with tall spacing</span>
+  </div>
+  <div id="text-align-left">Text aligned left.</div>
+  <div id="text-align-center">Text aligned center.</div>
+  <div id="text-align-right">Text aligned right.</div>
+  <div id="text-align-justify">Text justified should stretch to fill the full 400px width of the containing block evenly.</div>
+  <div id="mixed">
+    <span>Inline</span>
+    <div>Block (anonymous block generation)</div>
+    <span>More inline</span>
+  </div>
+  <div id="spaces">Spaces   between   words   preserved   per   HTML   whitespace   rules.</div>
+</body>
+</html>

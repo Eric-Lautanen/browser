@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cascade Specificity Test</title>
+<style>
+  p { color: red; }
+  .special { color: blue; }
+  #unique { color: green; }
+  p.special { color: purple; }
+  #container p { color: orange; }
+</style>
+</head>
+<body>
+  <div id="container">
+    <p id="unique">ID selector (green) should beat class and tag selectors.</p>
+    <p class="special">Class selector (blue) should beat tag selector.</p>
+    <p>Tag selector only (red).</p>
+    <p class="special" id="unique" style="color: cyan">Inline style (cyan) should beat all.</p>
+    <p class="special" id="unique">ID selector (green) should beat class selector (blue).</p>
+  </div>
+</body>
+</html>

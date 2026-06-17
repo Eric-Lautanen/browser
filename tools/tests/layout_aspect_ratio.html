@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layout Aspect Ratio</title>
+<style>
+.box {
+  margin: 10px;
+  border: 1px solid #666;
+  display: inline-block;
+  vertical-align: top;
+  background: #f0f0f0;
+}
+.square { aspect-ratio: 1; width: 100px; }
+.sixteen-nine { aspect-ratio: 16 / 9; width: 160px; }
+.auto-w { aspect-ratio: auto; width: 100px; height: 80px; }
+.auto-h { aspect-ratio: auto; width: 100px; }
+.four-three { aspect-ratio: 4 / 3; width: 120px; }
+</style>
+</head>
+<body>
+<div class="box square">1:1</div>
+<div class="box sixteen-nine">16:9</div>
+<div class="box four-three">4:3</div>
+<div class="box auto-w">auto w/h</div>
+<div class="box auto-h">auto no h</div>
+</body>
+</html>

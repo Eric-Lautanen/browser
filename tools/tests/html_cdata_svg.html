@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CDATA in SVG Test</title>
+</head>
+<body>
+<h1>CDATA in SVG Test</h1>
+
+<h2>CDATA in inline SVG script</h2>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+  <rect x="10" y="10" width="180" height="180" fill="blue" />
+  <text x="100" y="100" fill="white" text-anchor="middle" dominant-baseline="central">
+    SVG Text
+  </text>
+  <script type="text/javascript">
+    <![CDATA[
+      var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('cx', 100);
+      circle.setAttribute('cy', 150);
+      circle.setAttribute('r', 30);
+      circle.setAttribute('fill', 'red');
+      document.querySelector('svg').appendChild(circle);
+    ]]>
+  </script>
+</svg>
+
+<h2>CDATA with special characters</h2>
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="100">
+  <script type="text/javascript">
+    <![CDATA[
+      var a = 1 < 2 && 3 > 1;
+      var msg = 'CDATA allows & < > without escaping';
+      var el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      el.setAttribute('x', 20);
+      el.setAttribute('y', 50);
+      el.setAttribute('fill', 'green');
+      el.appendChild(document.createTextNode(msg));
+      document.querySelector('svg:last-of-type').appendChild(el);
+    ]]>
+  </script>
+</svg>
+
+<h2>CDATA in SVG style</h2>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50">
+  <defs>
+    <style type="text/css">
+      <![CDATA[
+        .cda { fill: purple; }
+        .cda:hover { fill: orange; }
+      ]]>
+    </style>
+  </defs>
+  <rect class="cda" x="10" y="10" width="180" height="30" />
+</svg>
+</body>
+</html>

@@ -1,0 +1,168 @@
+/* Margin: 1 value */
+.margin-1 {
+  margin: 10px;
+}
+
+/* Margin: 2 values */
+.margin-2 {
+  margin: 10px 20px;
+}
+
+/* Margin: 3 values */
+.margin-3 {
+  margin: 10px 20px 30px;
+}
+
+/* Margin: 4 values */
+.margin-4 {
+  margin: 10px 20px 30px 40px;
+}
+
+/* Padding: 1 value */
+.padding-1 {
+  padding: 10px;
+}
+
+/* Padding: 2 values */
+.padding-2 {
+  padding: 10px 20px;
+}
+
+/* Padding: 3 values */
+.padding-3 {
+  padding: 10px 20px 30px;
+}
+
+/* Padding: 4 values */
+.padding-4 {
+  padding: 10px 20px 30px 40px;
+}
+
+/* Border: comprehensive */
+.border-all {
+  border: 2px solid #333;
+}
+
+/* Border-top */
+.border-top {
+  border-top: 3px dashed red;
+}
+
+/* Border-right */
+.border-right {
+  border-right: 4px dotted green;
+}
+
+/* Border-bottom */
+.border-bottom {
+  border-bottom: 5px double blue;
+}
+
+/* Border-left */
+.border-left {
+  border-left: 1px groove orange;
+}
+
+/* Border-width */
+.border-width-all {
+  border-width: 2px 4px 6px 8px;
+  border-style: solid;
+  border-color: purple;
+}
+
+/* Border-color */
+.border-color-only {
+  border-color: red green blue yellow;
+  border-width: 2px;
+  border-style: solid;
+}
+
+/* Border-style */
+.border-style-only {
+  border-style: dashed dotted solid groove;
+  border-width: 2px;
+}
+
+/* Border-radius */
+.border-radius-all {
+  border-radius: 10px;
+}
+
+.border-radius-two {
+  border-radius: 10px 20px;
+}
+
+.border-radius-three {
+  border-radius: 10px 20px 30px;
+}
+
+.border-radius-four {
+  border-radius: 10px 20px 30px 40px;
+}
+
+/* Background */
+.background-shorthand {
+  background: #fff url("bg.png") no-repeat center top / cover;
+}
+
+/* Font */
+.font-shorthand {
+  font: italic small-caps bold 16px / 1.5 "Helvetica", Arial, sans-serif;
+}
+
+/* Flex */
+.flex-shorthand {
+  flex: 1 1 auto;
+}
+
+.flex-grow {
+  flex: 1;
+}
+
+.flex-full {
+  flex: 0 0 200px;
+}
+
+/* Flex-flow */
+.flex-flow-shorthand {
+  flex-flow: row wrap;
+}
+
+/* Grid */
+.grid-shorthand {
+  grid: repeat(2, 1fr) / auto-flow 200px;
+}
+
+/* Grid-template */
+.grid-template-shorthand {
+  grid-template: "header header" 100px "sidebar main" 1fr / 200px 1fr;
+}
+
+/* List-style */
+.list-style-shorthand {
+  list-style: square outside url("marker.png");
+}
+
+/* Outline */
+.outline-shorthand {
+  outline: 3px solid red;
+}
+
+/* Transition */
+.transition-shorthand {
+  transition: opacity 0.3s ease-in-out, transform 0.2s linear;
+}
+
+/* Animation */
+.animation-shorthand {
+  animation: slide-in 0.5s ease-out 0.2s both;
+}
+
+@keyframes slide-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Layout Block Model Test</title>
+<style>
+  body { margin: 8px; }
+  #auto-width { background: lightblue; }
+  #explicit { width: 300px; background: lightgreen; }
+  #border-box { width: 300px; box-sizing: border-box; padding: 20px; border: 5px solid black; background: lightyellow; }
+  #max-width { width: 500px; max-width: 200px; background: lightcoral; }
+  #min-width { width: 50px; min-width: 150px; background: lightcyan; }
+  #margin-auto { width: 200px; margin: 0 auto; background: lightpink; }
+  #margin-asym { width: 200px; margin: 10px auto 20px 50px; background: lightsalmon; }
+  #padding-all { width: 200px; padding: 10px 20px 30px 40px; background: lavender; }
+  #border-all { width: 200px; border: 5px solid red; border-width: 1px 2px 3px 4px; background: mistyrose; }
+</style>
+</head>
+<body>
+  <div id="auto-width">width: auto (fills containing block)</div>
+  <div id="explicit">width: 300px</div>
+  <div id="border-box">width: 300px with box-sizing:border-box (content shrinks to 250px)</div>
+  <div id="max-width">width: 500px capped at max-width: 200px</div>
+  <div id="min-width">width: 50px expanded to min-width: 150px</div>
+  <div id="margin-auto">width: 200px, margin: 0 auto (centered)</div>
+  <div id="margin-asym">width: 200px, asymmetric auto margins</div>
+  <div id="padding-all">width: 200px, padding on all sides</div>
+  <div id="border-all">width: 200px, border on all sides</div>
+</body>
+</html>

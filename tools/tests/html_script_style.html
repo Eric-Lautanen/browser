@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Script and Style Test</title>
+<style>
+body { background: white; color: black; }
+p { font-size: 16px; }
+</style>
+<script>
+function test() {
+  var x = "</script>";
+  return x;
+}
+</script>
+</head>
+<body>
+<style>
+.inline-style { color: red; }
+</style>
+<script>
+var y = "hello";
+document.write("<p>Script in body</p>");
+</script>
+<p>Content between script and style.</p>
+<script src="external.js"></script>
+<link rel="stylesheet" href="external.css">
+</body>
+</html>

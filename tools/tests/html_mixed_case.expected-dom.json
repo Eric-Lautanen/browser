@@ -1,0 +1,204 @@
+{
+  "source": "tests/html_mixed_case.html",
+  "encoding": null,
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Mixed Case Tag Test",
+                  "data_normalized": "Mixed Case Tag Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "lowercase"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Lowercase attribute",
+                  "data_normalized": "Lowercase attribute"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "MIXED-CASE"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Mixed case attribute",
+                  "data_normalized": "Mixed case attribute"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "UPPERCASE"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Uppercase attribute",
+                  "data_normalized": "Uppercase attribute"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {
+                "class": "test"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Paragraph with mixed case opener.",
+                  "data_normalized": "Paragraph with mixed case opener."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "a",
+              "attributes": {
+                "href": "#test",
+                "title": "Test Link"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Uppercase attributes link",
+                  "data_normalized": "Uppercase attributes link"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "a",
+              "attributes": {
+                "href": "#test2",
+                "title": "Test Link 2"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Lowercase attributes link",
+                  "data_normalized": "Lowercase attributes link"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "End tag mixed case",
+                  "data_normalized": "End tag mixed case"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

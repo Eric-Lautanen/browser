@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layout Table</title>
+<style>
+.table { display: table; width: 100%; border-collapse: collapse; }
+.row { display: table-row; }
+.cell { display: table-cell; border: 1px solid #555; padding: 8px; }
+.cell.pct25 { width: 25%; }
+.cell.pct50 { width: 50%; }
+.cell.pct75 { width: 75%; }
+.cell.colspan2 { /* colspan equivalent by spanning two columns */ }
+.header { background: #ddd; font-weight: bold; }
+</style>
+</head>
+<body>
+<div class="table">
+  <div class="row header">
+    <div class="cell pct25">Column A (25%)</div>
+    <div class="cell pct50">Column B (50%)</div>
+    <div class="cell pct25">Column C (25%)</div>
+  </div>
+  <div class="row">
+    <div class="cell pct25">A1</div>
+    <div class="cell pct50">B1</div>
+    <div class="cell pct25">C1</div>
+  </div>
+  <div class="row">
+    <div class="cell pct75" colspan="2">Span A+B (75%)</div>
+    <div class="cell pct25">C2</div>
+  </div>
+</div>
+</body>
+</html>

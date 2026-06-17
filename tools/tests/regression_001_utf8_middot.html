@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Regression 001: UTF-8 Middle Dot</title>
+<style>
+  body { font-size: 24px; }
+  .middot { color: red; }
+</style>
+</head>
+<body>
+  <p>Middle dot as raw UTF-8: <span class="middot">·</span></p>
+  <p>The character above should appear as a single middle dot (U+00B7), not as two characters (Â·).</p>
+  <p>Encoded for reference: <span class="middot">·</span> (entity) vs raw UTF-8: <span class="middot">·</span></p>
+</body>
+</html>

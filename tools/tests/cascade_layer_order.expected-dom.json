@@ -1,0 +1,122 @@
+{
+  "source": "tests/cascade_layer_order.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Cascade Layer Order",
+                  "data_normalized": "Cascade Layer Order"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n@layer base, theme, override;\n\n@layer base {\n  .box { background: #c00; color: #fff; border: 2px solid #666; }\n}\n@layer theme {\n  .box { background: #090; color: #ff0; }\n}\n@layer override {\n  .box { background: #00c; border-color: #c00; }\n}\n.box {\n  padding: 10px;\n  margin: 10px;\n  width: 200px;\n  text-align: center;\n  font-weight: bold;\n}\n",
+                  "data_normalized": "@layer base, theme, override; @layer base { .box { background: #c00; color: #fff; border: 2px solid #666; } } @layer theme { .box { background: #090; color: #ff0; } } @layer override { .box { background: #00c; border-color: #c00; } } .box { padding: 10px; margin: 10px; width: 200px; text-align: center; font-weight: bold; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layer order: override (applied last) sets background blue",
+                  "data_normalized": "Layer order: override (applied last) sets background blue"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

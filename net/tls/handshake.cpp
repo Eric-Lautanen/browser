@@ -480,6 +480,9 @@ namespace browser::net::tls {
                     msgs_needed--;
                 } else if (phs.type == HS_CLIENT_HELLO || phs.type == HS_SERVER_HELLO) {
                     return std::string("unexpected hs type");
+                } else {
+                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
                 }
 
                 msg_off += total_len;
@@ -694,6 +697,9 @@ namespace browser::net::tls {
                     msgs_needed--;
                 } else if (phs.type == HS_CLIENT_HELLO || phs.type == HS_SERVER_HELLO) {
                     co_return std::string("unexpected hs type");
+                } else {
+                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
                 }
                 msg_off += total_len;
             }

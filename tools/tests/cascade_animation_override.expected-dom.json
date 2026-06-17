@@ -1,0 +1,122 @@
+{
+  "source": "tests/cascade_animation_override.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Cascade Animation Override",
+                  "data_normalized": "Cascade Animation Override"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n@keyframes fade-in {\n  from { opacity: 0; }\n  to { opacity: 1; }\n}\n@keyframes grow {\n  from { width: 0px; background: #c00; }\n  to { width: 200px; background: #0c0; }\n}\n@keyframes shift {\n  from { margin-left: 0px; }\n  to { margin-left: 100px; }\n}\n.anim {\n  animation: fade-in 2s ease-in, grow 2s ease-out, shift 2s ease;\n  height: 40px;\n  margin: 10px;\n  padding: 4px;\n  color: #fff;\n  font-weight: bold;\n  text-align: center;\n  line-height: 40px;\n  overflow: hidden;\n  white-space: nowrap;\n}\n",
+                  "data_normalized": "@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } } @keyframes grow { from { width: 0px; background: #c00; } to { width: 200px; background: #0c0; } } @keyframes shift { from { margin-left: 0px; } to { margin-left: 100px; } } .anim { animation: fade-in 2s ease-in, grow 2s ease-out, shift 2s ease; height: 40px; margin: 10px; padding: 4px; color: #fff; font-weight: bold; text-align: center; line-height: 40px; overflow: hidden; white-space: nowrap; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "anim"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Animated: opacity, width, margin-left",
+                  "data_normalized": "Animated: opacity, width, margin-left"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

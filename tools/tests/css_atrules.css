@@ -1,0 +1,176 @@
+/* @import */
+@import url("other.css");
+@import url("print.css") print;
+
+/* @media: screen */
+@media screen {
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+/* @media: print */
+@media print {
+  body {
+    font-size: 12pt;
+    background: none;
+  }
+}
+
+/* @media: max-width */
+@media (max-width: 768px) {
+  .sidebar {
+    display: none;
+  }
+}
+
+/* @media: prefers-color-scheme */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #111;
+    color: #eee;
+  }
+}
+
+/* @media: orientation */
+@media (orientation: landscape) {
+  .landscape-only {
+    display: block;
+  }
+}
+
+/* @media: combined with and */
+@media screen and (min-width: 768px) {
+  .container {
+    width: 750px;
+  }
+}
+
+/* @media: combined with or (comma) */
+@media screen, print {
+  .no-margin {
+    margin: 0;
+  }
+}
+
+/* @media: combined with not */
+@media not (hover: hover) {
+  .hover-only {
+    display: none;
+  }
+}
+
+/* @keyframes: from/to */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* @keyframes: percentages */
+@keyframes slide {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(25px);
+  }
+  50% {
+    transform: translateX(50px);
+  }
+  75% {
+    transform: translateX(75px);
+  }
+  100% {
+    transform: translateX(100px);
+  }
+}
+
+/* @supports */
+@supports (display: grid) {
+  .grid-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@supports not (display: grid) {
+  .grid-layout {
+    display: flex;
+  }
+}
+
+@supports (display: grid) and (gap: 10px) {
+  .grid-gap {
+    gap: 10px;
+  }
+}
+
+@supports (display: flex) or (display: grid) {
+  .flex-or-grid {
+    display: flex;
+  }
+}
+
+/* @font-face */
+@font-face {
+  font-family: "CustomFont";
+  src: url("custom.woff2") format("woff2"),
+       url("custom.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* @layer */
+@layer reset {
+  * {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+@layer base {
+  body {
+    font-family: sans-serif;
+    line-height: 1.6;
+  }
+}
+
+@layer components {
+  .button {
+    padding: 0.5em 1em;
+    border-radius: 4px;
+  }
+}
+
+@layer theme {
+  .dark {
+    background: #222;
+    color: #fff;
+  }
+}
+
+/* @layer with order */
+@layer utilities, base, components;
+
+/* Nested at-rules */
+@media screen {
+  @media (min-width: 1024px) {
+    .desktop-only {
+      display: block;
+    }
+  }
+}
+
+@supports (display: grid) {
+  @media (max-width: 600px) {
+    .grid-stack {
+      grid-template-columns: 1fr;
+    }
+  }
+}

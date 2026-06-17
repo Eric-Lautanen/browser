@@ -1,0 +1,158 @@
+{
+  "source": "tests/cascade_inheritance.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Cascade Inheritance Test",
+                  "data_normalized": "Cascade Inheritance Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  body { color: black; font-size: 16px; font-family: serif; line-height: 1.2; text-align: left; }\n  #container { color: red; font-size: 20px; font-family: sans-serif; line-height: 1.5; text-align: center; border: 2px solid black; padding: 10px; margin: 20px; width: 500px; }\n  #child1 { }\n  #child2 { border: inherit; color: initial; }\n",
+                  "data_normalized": "body { color: black; font-size: 16px; font-family: serif; line-height: 1.2; text-align: left; } #container { color: red; font-size: 20px; font-family: sans-serif; line-height: 1.5; text-align: center; border: 2px solid black; padding: 10px; margin: 20px; width: 500px; } #child1 { } #child2 { border: inherit; color: initial; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "container"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "id": "child1"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Should inherit color, font-size, font-family, line-height, text-align from parent. Should NOT inherit border, padding, margin, width.",
+                      "data_normalized": "Should inherit color, font-size, font-family, line-height, text-align from parent. Should NOT inherit border, padding, margin, width."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "id": "child2"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Should inherit border from parent via inherit keyword. Should reset color to initial (black) via initial keyword.",
+                      "data_normalized": "Should inherit border from parent via inherit keyword. Should reset color to initial (black) via initial keyword."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

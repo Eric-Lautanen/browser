@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Boolean Attributes Test</title>
+</head>
+<body>
+<h1>Boolean Attributes Test</h1>
+
+<h2>Form / Input attributes</h2>
+<form>
+  <p><label>Disabled: <input type="text" disabled value="can't edit"></label></p>
+  <p><label>Checked: <input type="checkbox" checked></label></p>
+  <p><label>Readonly: <input type="text" readonly value="read only"></label></p>
+  <p><label>Required: <input type="text" required></label></p>
+  <p><label>Multiple: <select multiple>
+    <option>Option 1</option>
+    <option>Option 2</option>
+  </select></label></p>
+  <p><label>Selected:
+    <select>
+      <option>Not selected</option>
+      <option selected>Selected</option>
+    </select>
+  </label></p>
+</form>
+
+<h2>Details / Dialog</h2>
+<details open>
+  <summary>Open by default (open attribute)</summary>
+  <p>This details element has the <code>open</code> boolean attribute.</p>
+</details>
+
+<h2>Hidden</h2>
+<p hidden>This paragraph has the hidden attribute and should not be visible.</p>
+
+<h2>OL reversed</h2>
+<ol reversed>
+  <li>Third</li>
+  <li>Second</li>
+  <li>First</li>
+</ol>
+
+<h2>Media attributes</h2>
+<audio controls loop autoplay muted>
+  <source src="test.mp3" type="audio/mpeg">
+</audio>
+
+<video controls loop autoplay muted width="320" height="240">
+  <source src="test.mp4" type="video/mp4">
+</video>
+
+<h2>Track default</h2>
+<video controls width="320" height="240">
+  <track src="subtitles.vtt" kind="subtitles" srclang="en" label="English" default>
+</video>
+
+<h2>Script attributes</h2>
+<script defer src="defer.js"></script>
+<script async src="async.js"></script>
+</body>
+</html>

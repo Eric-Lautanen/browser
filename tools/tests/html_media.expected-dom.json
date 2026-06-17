@@ -1,0 +1,294 @@
+{
+  "source": "tests/html_media.html",
+  "encoding": null,
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Media Test",
+                  "data_normalized": "Media Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "img",
+              "attributes": {
+                "src": "photo.jpg",
+                "alt": "A photo",
+                "width": "640",
+                "height": "480",
+                "srcset": "photo-320.jpg 320w, photo-640.jpg 640w, photo-1280.jpg 1280w",
+                "sizes": "(max-width: 600px) 100vw, 640px"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "picture",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "srcset": "image.avif",
+                    "type": "image/avif"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "srcset": "image.webp",
+                    "type": "image/webp"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "img",
+                  "attributes": {
+                    "src": "image.jpg",
+                    "alt": "Fallback image"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "video",
+              "attributes": {
+                "controls": "",
+                "width": "640",
+                "height": "360"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "movie.mp4",
+                    "type": "video/mp4"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "movie.webm",
+                    "type": "video/webm"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "track",
+                  "attributes": {
+                    "src": "subtitles_en.vtt",
+                    "kind": "subtitles",
+                    "srclang": "en",
+                    "label": "English"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Your browser does not support video.",
+                      "data_normalized": "Your browser does not support video."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "audio",
+              "attributes": {
+                "controls": ""
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "audio.mp3",
+                    "type": "audio/mpeg"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "source",
+                  "attributes": {
+                    "src": "audio.ogg",
+                    "type": "audio/ogg"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Your browser does not support audio.",
+                      "data_normalized": "Your browser does not support audio."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

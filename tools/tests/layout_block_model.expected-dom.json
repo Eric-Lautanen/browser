@@ -1,0 +1,272 @@
+{
+  "source": "tests/layout_block_model.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Block Model Test",
+                  "data_normalized": "Layout Block Model Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  body { margin: 8px; }\n  #auto-width { background: lightblue; }\n  #explicit { width: 300px; background: lightgreen; }\n  #border-box { width: 300px; box-sizing: border-box; padding: 20px; border: 5px solid black; background: lightyellow; }\n  #max-width { width: 500px; max-width: 200px; background: lightcoral; }\n  #min-width { width: 50px; min-width: 150px; background: lightcyan; }\n  #margin-auto { width: 200px; margin: 0 auto; background: lightpink; }\n  #margin-asym { width: 200px; margin: 10px auto 20px 50px; background: lightsalmon; }\n  #padding-all { width: 200px; padding: 10px 20px 30px 40px; background: lavender; }\n  #border-all { width: 200px; border: 5px solid red; border-width: 1px 2px 3px 4px; background: mistyrose; }\n",
+                  "data_normalized": "body { margin: 8px; } #auto-width { background: lightblue; } #explicit { width: 300px; background: lightgreen; } #border-box { width: 300px; box-sizing: border-box; padding: 20px; border: 5px solid black; background: lightyellow; } #max-width { width: 500px; max-width: 200px; background: lightcoral; } #min-width { width: 50px; min-width: 150px; background: lightcyan; } #margin-auto { width: 200px; margin: 0 auto; background: lightpink; } #margin-asym { width: 200px; margin: 10px auto 20px 50px; background: lightsalmon; } #padding-all { width: 200px; padding: 10px 20px 30px 40px; background: lavender; } #border-all { width: 200px; border: 5px solid red; border-width: 1px 2px 3px 4px; background: mistyrose; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "auto-width"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: auto (fills containing block)",
+                  "data_normalized": "width: auto (fills containing block)"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "explicit"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 300px",
+                  "data_normalized": "width: 300px"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "border-box"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 300px with box-sizing:border-box (content shrinks to 250px)",
+                  "data_normalized": "width: 300px with box-sizing:border-box (content shrinks to 250px)"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "max-width"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 500px capped at max-width: 200px",
+                  "data_normalized": "width: 500px capped at max-width: 200px"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "min-width"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 50px expanded to min-width: 150px",
+                  "data_normalized": "width: 50px expanded to min-width: 150px"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "margin-auto"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 200px, margin: 0 auto (centered)",
+                  "data_normalized": "width: 200px, margin: 0 auto (centered)"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "margin-asym"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 200px, asymmetric auto margins",
+                  "data_normalized": "width: 200px, asymmetric auto margins"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "padding-all"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 200px, padding on all sides",
+                  "data_normalized": "width: 200px, padding on all sides"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n  ",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "border-all"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "width: 200px, border on all sides",
+                  "data_normalized": "width: 200px, border on all sides"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

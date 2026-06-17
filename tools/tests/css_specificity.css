@@ -1,0 +1,125 @@
+/* Each rule has a unique color so cascade result can be verified */
+
+/* Tag selector - specificity 0,0,1 */
+div {
+  color: red;
+}
+
+/* Class selector beats tag - specificity 0,1,0 */
+.foo {
+  color: blue;
+}
+
+/* ID selector beats class - specificity 1,0,0 */
+#bar {
+  color: green;
+}
+
+/* Multiple tags - specificity 0,0,2 - loses to single class */
+div span {
+  color: yellow;
+}
+
+/* Tag + class - specificity 0,1,1 - beats single class */
+div.foo {
+  color: orange;
+}
+
+/* Tag + class + class - specificity 0,2,1 - beats tag+class */
+div.foo.baz {
+  color: purple;
+}
+
+/* Two classes - specificity 0,2,0 - beats one class */
+.foo.baz {
+  color: cyan;
+}
+
+/* Three classes - specificity 0,3,0 - beats two classes */
+.foo.baz.qux {
+  color: magenta;
+}
+
+/* ID + class - specificity 1,1,0 - beats lone ID */
+#bar.active {
+  color: pink;
+}
+
+/* Two IDs - specificity 2,0,0 - beats one ID */
+#bar #child {
+  color: brown;
+}
+
+/* ID + class + tag - specificity 1,1,1 */
+div#bar.active {
+  color: teal;
+}
+
+/* Attribute selector equals class in specificity - specificity 0,1,0 */
+[data-type="primary"] {
+  color: navy;
+}
+
+/* Pseudo-class equals class in specificity - specificity 0,1,0 */
+:first-child {
+  color: olive;
+}
+
+/* !important overrides all - test at tag level */
+div {
+  color: maroon !important;
+}
+
+/* !important at class level */
+.foo {
+  color: silver !important;
+}
+
+/* !important at ID level */
+#bar {
+  color: fuchsia !important;
+}
+
+/* !important with inline-style equivalent note */
+/* Note: inline style (style attribute) has specificity 1,0,0,0 */
+
+/* Specificity tie-breaker: source order - later wins */
+.order-tie {
+  color: lime;
+}
+
+.order-tie {
+  color: aqua;
+}
+
+/* :not() contributes only its argument's specificity */
+:not(div) {
+  color: indigo;
+}
+
+:not(.foo) {
+  color: violet;
+}
+
+:not(#bar) {
+  color: gold;
+}
+
+/* :is() and :where() specificity */
+:is(div, span, p) {
+  color: tomato;
+}
+
+:where(div, span, p) {
+  color: salmon;
+}
+
+/* :has() specificity equals its argument */
+div:has(.child) {
+  color: peru;
+}
+
+/* Pseudo-elements have specificity 0,0,1 */
+div::before {
+  color: khaki;
+}

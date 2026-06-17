@@ -1,0 +1,468 @@
+{
+  "source": "tests/html_foster_parenting.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Foster Parenting Algorithm Test",
+                  "data_normalized": "Foster Parenting Algorithm Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h1",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Foster Parenting Algorithm Test",
+                  "data_normalized": "Foster Parenting Algorithm Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Text directly inside table",
+                  "data_normalized": "Text directly inside table"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n  This text is inside the table but not in a cell (foster parenting).\n  \n  More text after the row.\n",
+              "data_normalized": "This text is inside the table but not in a cell (foster parenting). More text after the row."
+            },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "\n    ",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "Valid cell",
+                              "data_normalized": "Valid cell"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n  ",
+                          "data_normalized": ""
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "TR outside TABLE",
+                  "data_normalized": "TR outside TABLE"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Before orphan row.",
+                  "data_normalized": "Before orphan row."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n  Orphan row outside table\n\n",
+              "data_normalized": "Orphan row outside table"
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "After orphan row.",
+                  "data_normalized": "After orphan row."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "TD outside TR",
+                  "data_normalized": "TD outside TR"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Before orphan cell.",
+                  "data_normalized": "Before orphan cell."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\nOrphan cell outside row\n",
+              "data_normalized": "Orphan cell outside row"
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "After orphan cell.",
+                  "data_normalized": "After orphan cell."
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Mixed foster parenting",
+                  "data_normalized": "Mixed foster parenting"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "b",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Bold text in table",
+                  "data_normalized": "Bold text in table"
+                }
+              ]
+            },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "Cell directly in table",
+                              "data_normalized": "Cell directly in table"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n  ",
+                          "data_normalized": ""
+                        }
+                      ]
+                    },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "\n    ",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "Cell in row",
+                              "data_normalized": "Cell in row"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n  ",
+                          "data_normalized": ""
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n  \n",
+                      "data_normalized": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Deep foster parenting",
+                  "data_normalized": "Deep foster parenting"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "\n      ",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "td",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "Nested table cell",
+                              "data_normalized": "Nested table cell"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n    ",
+                          "data_normalized": ""
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n  ",
+                      "data_normalized": ""
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

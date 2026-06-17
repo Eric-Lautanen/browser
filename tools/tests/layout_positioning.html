@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Layout Positioning Test</title>
+<style>
+  body { margin: 8px; }
+  #relative { position: relative; top: 20px; left: 30px; background: lightblue; width: 200px; }
+  #absolute-container { position: relative; width: 400px; height: 200px; background: lightgreen; margin-top: 40px; }
+  #absolute { position: absolute; top: 20px; right: 30px; bottom: 20px; left: 30px; background: lightcoral; }
+  #fixed { position: fixed; bottom: 10px; right: 10px; background: lightyellow; padding: 5px; }
+  #sticky-container { height: 400px; overflow: auto; background: lightpink; margin-top: 40px; }
+  #sticky { position: sticky; top: 0; background: lightcyan; padding: 10px; }
+  #zindex-container { position: relative; width: 300px; height: 200px; background: lavender; margin-top: 40px; }
+  #zindex-a { position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: red; z-index: 1; }
+  #zindex-b { position: absolute; top: 50px; left: 50px; width: 100px; height: 100px; background: blue; z-index: 2; }
+  #zindex-c { position: absolute; top: 80px; left: 80px; width: 100px; height: 100px; background: green; z-index: 0; }
+</style>
+</head>
+<body>
+  <div id="relative">Relative: moved 20px down, 30px right from normal flow.</div>
+  <div id="absolute-container">
+    Positioned ancestor
+    <div id="absolute">Absolute: positioned 20px from top, 30px from right, 20px from bottom, 30px from left within parent.</div>
+  </div>
+  <div id="fixed">Fixed: always 10px from bottom-right of viewport.</div>
+  <div id="sticky-container">
+    <div id="sticky">Sticky: sticks to top when scrolling within container.</div>
+    <div style="height: 600px;">Scroll content to see sticky effect.</div>
+  </div>
+  <div id="zindex-container">
+    <div id="zindex-a">z-index 1</div>
+    <div id="zindex-b">z-index 2 (top)</div>
+    <div id="zindex-c">z-index 0 (bottom)</div>
+  </div>
+</body>
+</html>

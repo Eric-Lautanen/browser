@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Display Stacking Order</title>
+<style>
+.positioned { position: relative; }
+.container {
+  position: relative;
+  width: 300px;
+  height: 200px;
+  border: 1px solid #999;
+  margin: 20px;
+}
+.box {
+  position: absolute;
+  width: 120px;
+  height: 80px;
+  padding: 4px;
+  color: #fff;
+  font-weight: bold;
+}
+.z1 { z-index: 1; top: 20px; left: 20px; background: #c33; }
+.z2 { z-index: 2; top: 50px; left: 50px; background: #393; }
+.z3 { z-index: 3; top: 80px; left: 80px; background: #33c; }
+.zneg { z-index: -1; top: 110px; left: 110px; background: #c93; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="box z1">z-index: 1</div>
+  <div class="box z2">z-index: 2</div>
+  <div class="box z3">z-index: 3</div>
+  <div class="box zneg">z-index: -1</div>
+</div>
+</body>
+</html>

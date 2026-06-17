@@ -1,0 +1,15 @@
+.parent:has(> .child) {
+  border: 2px solid green;
+}
+
+.element:has(+ .sibling) {
+  color: red;
+}
+
+.container:has(.descendant) {
+  background: yellow;
+}
+
+.nested:has(:has(.inner)) {
+  opacity: 0.5;
+}

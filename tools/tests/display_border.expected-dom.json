@@ -1,0 +1,217 @@
+{
+  "source": "tests/display_border.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Display Border",
+                  "data_normalized": "Display Border"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.b {\n  display: inline-block;\n  width: 120px;\n  height: 60px;\n  margin: 12px;\n  padding: 4px;\n  text-align: center;\n  line-height: 60px;\n}\n.b1 { border: 2px solid black; }\n.b2 { border: 4px dashed #c00; }\n.b3 { border: 1px solid #090; }\n.b4 { border: 3px dotted #00c; }\n.b5 { border: 5px double #c90; }\n.b6 { border: 2px solid #ccc; }\n",
+                  "data_normalized": ".b { display: inline-block; width: 120px; height: 60px; margin: 12px; padding: 4px; text-align: center; line-height: 60px; } .b1 { border: 2px solid black; } .b2 { border: 4px dashed #c00; } .b3 { border: 1px solid #090; } .b4 { border: 3px dotted #00c; } .b5 { border: 5px double #c90; } .b6 { border: 2px solid #ccc; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b b1"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "solid",
+                  "data_normalized": "solid"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b b2"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "dashed",
+                  "data_normalized": "dashed"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b b3"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "thin",
+                  "data_normalized": "thin"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b b4"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "dotted",
+                  "data_normalized": "dotted"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b b5"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "double",
+                  "data_normalized": "double"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "b b6"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "light",
+                  "data_normalized": "light"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

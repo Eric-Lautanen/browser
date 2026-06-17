@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Regression 010: Table Cell Width</title>
+<style>
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px;
+  table-layout: fixed;
+}
+td {
+  border: 1px solid #555;
+  padding: 8px;
+  text-align: center;
+  background: #f0f0f0;
+}
+th {
+  border: 1px solid #555;
+  padding: 8px;
+  text-align: center;
+  background: #ddd;
+  font-weight: bold;
+}
+.wide {
+  width: 100%;
+  border: 2px solid #c00;
+}
+</style>
+</head>
+<body>
+<div class="wide">
+  <table>
+    <tr><th>A</th><th>B</th><th>C</th><th>D</th></tr>
+    <tr><td>25%</td><td>25%</td><td>25%</td><td>25%</td></tr>
+  </table>
+</div>
+<p>4 cells share 100% width evenly (25% each).</p>
+</body>
+</html>

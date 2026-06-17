@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Layout Overflow</title>
+<style>
+.container {
+  width: 200px;
+  height: 100px;
+  margin: 10px;
+  border: 1px solid #333;
+  display: inline-block;
+  vertical-align: top;
+}
+.container.hidden { overflow: hidden; }
+.container.scroll { overflow: scroll; }
+.container.auto { overflow: auto; }
+.container.visible { overflow: visible; }
+.content {
+  width: 300px;
+  height: 150px;
+  background: linear-gradient(135deg, #f005 25%, transparent 25%,
+              transparent 50%, #f005 50%, #f005 75%, transparent 75%);
+}
+</style>
+</head>
+<body>
+<div class="container hidden"><div class="content"></div></div>
+<div class="container scroll"><div class="content"></div></div>
+<div class="container auto"><div class="content"></div></div>
+<div class="container visible"><div class="content"></div></div>
+</body>
+</html>

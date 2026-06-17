@@ -1,0 +1,274 @@
+{
+  "source": "tests/layout_float.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Float",
+                  "data_normalized": "Layout Float"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.box { width: 80px; margin: 5px; color: #fff; text-align: center; }\n.left { float: left; }\n.right { float: right; }\n.clear-left { clear: left; }\n.clear-right { clear: right; }\n.clear-both { clear: both; }\n.a { height: 60px; background: #c33; }\n.b { height: 100px; background: #393; }\n.c { height: 40px; background: #33c; }\n.d { height: 80px; background: #c93; }\n.wrapper {\n  width: 400px;\n  border: 1px solid #999;\n  padding: 5px;\n  margin: 10px;\n}\np { margin: 4px 0; }\n",
+                  "data_normalized": ".box { width: 80px; margin: 5px; color: #fff; text-align: center; } .left { float: left; } .right { float: right; } .clear-left { clear: left; } .clear-right { clear: right; } .clear-both { clear: both; } .a { height: 60px; background: #c33; } .b { height: 100px; background: #393; } .c { height: 40px; background: #33c; } .d { height: 80px; background: #c93; } .wrapper { width: 400px; border: 1px solid #999; padding: 5px; margin: 10px; } p { margin: 4px 0; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "wrapper"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box left a"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "L A",
+                      "data_normalized": "L A"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box left b"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "L B",
+                      "data_normalized": "L B"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box right c"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "R C",
+                      "data_normalized": "R C"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box right d"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "R D",
+                      "data_normalized": "R D"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Text wrapping around floats. This text should flow between the left and right floats.",
+                      "data_normalized": "Text wrapping around floats. This text should flow between the left and right floats."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box left a",
+                    "style": "clear:left"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "CL L",
+                      "data_normalized": "CL L"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "div",
+                  "attributes": {
+                    "class": "box right c",
+                    "style": "clear:right"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "CL R",
+                      "data_normalized": "CL R"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {
+                    "style": "clear:both"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "This paragraph clears both. It starts below all floats.",
+                      "data_normalized": "This paragraph clears both. It starts below all floats."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

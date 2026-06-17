@@ -1,0 +1,198 @@
+{
+  "source": "tests/layout_aspect_ratio.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Layout Aspect Ratio",
+                  "data_normalized": "Layout Aspect Ratio"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "style",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n.box {\n  margin: 10px;\n  border: 1px solid #666;\n  display: inline-block;\n  vertical-align: top;\n  background: #f0f0f0;\n}\n.square { aspect-ratio: 1; width: 100px; }\n.sixteen-nine { aspect-ratio: 16 / 9; width: 160px; }\n.auto-w { aspect-ratio: auto; width: 100px; height: 80px; }\n.auto-h { aspect-ratio: auto; width: 100px; }\n.four-three { aspect-ratio: 4 / 3; width: 120px; }\n",
+                  "data_normalized": ".box { margin: 10px; border: 1px solid #666; display: inline-block; vertical-align: top; background: #f0f0f0; } .square { aspect-ratio: 1; width: 100px; } .sixteen-nine { aspect-ratio: 16 / 9; width: 160px; } .auto-w { aspect-ratio: auto; width: 100px; height: 80px; } .auto-h { aspect-ratio: auto; width: 100px; } .four-three { aspect-ratio: 4 / 3; width: 120px; }"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box square"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "1:1",
+                  "data_normalized": "1:1"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box sixteen-nine"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "16:9",
+                  "data_normalized": "16:9"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box four-three"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "4:3",
+                  "data_normalized": "4:3"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box auto-w"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "auto w/h",
+                  "data_normalized": "auto w/h"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "class": "box auto-h"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "auto no h",
+                  "data_normalized": "auto no h"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

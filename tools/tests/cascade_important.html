@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Cascade Important Test</title>
+<style>
+  p { color: red !important; }
+  .special { color: blue; }
+  #unique { color: green !important; }
+  p.override { color: yellow; }
+</style>
+</head>
+<body>
+  <p class="special">Author !important (red) should beat class selector (blue).</p>
+  <p id="unique" class="special">ID !important (green) should beat class (blue). Both have !important on higher-specificity selector.</p>
+  <p class="override" style="color: purple">Inline style (purple) should beat author !important (red) because inline beats author.</p>
+  <p class="override" style="color: cyan !important">Inline !important (cyan) should beat everything.</p>
+</body>
+</html>

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Regression 005: Content Y Padding</title>
+<style>
+  body { margin: 0; }
+  #container { padding: 10px; border: 5px solid black; background: lightblue; }
+  #container p { margin: 0; background: lightcoral; }
+</style>
+</head>
+<body>
+  <div id="container">
+    <p>Child paragraph. Its content.y should be 15px (5px border + 10px padding from parent). Not 0.</p>
+  </div>
+</body>
+</html>

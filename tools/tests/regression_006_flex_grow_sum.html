@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Regression 006: Flex Grow Sum</title>
+<style>
+.flex {
+  display: flex;
+  width: 500px;
+  border: 1px solid #999;
+  margin: 10px;
+}
+.item {
+  height: 50px;
+  text-align: center;
+  line-height: 50px;
+  color: #fff;
+  font-weight: bold;
+}
+.g1 { flex-grow: 1; background: #c33; }
+.g2 { flex-grow: 2; background: #393; }
+.g3 { flex-grow: 3; background: #33c; }
+.g4 { flex-grow: 4; background: #c93; }
+</style>
+</head>
+<body>
+<div class="flex">
+  <div class="item g1" style="flex-basis:0">grow:1</div>
+  <div class="item g2" style="flex-basis:0">grow:2</div>
+  <div class="item g3" style="flex-basis:0">grow:3</div>
+  <div class="item g4" style="flex-basis:0">grow:4</div>
+</div>
+<p>Sum=10 &gt; 1. Free space 500px distributed: 50px, 100px, 150px, 200px.</p>
+</body>
+</html>

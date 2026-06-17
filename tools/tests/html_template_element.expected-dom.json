@@ -1,0 +1,359 @@
+{
+  "source": "tests/html_template_element.html",
+  "encoding": "utf-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {
+        "lang": "en"
+      },
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "meta",
+              "attributes": {
+                "charset": "utf-8"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "title",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Template Element Test",
+                  "data_normalized": "Template Element Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "data": "\n",
+          "data_normalized": ""
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h1",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Template Element Test",
+                  "data_normalized": "Template Element Test"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Nested elements in template",
+                  "data_normalized": "Nested elements in template"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "template",
+              "attributes": {
+                "id": "nested-template"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Template inside a table",
+                  "data_normalized": "Template inside a table"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "thead",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "tr",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "\n      ",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "th",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "Name",
+                              "data_normalized": "Name"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n      ",
+                          "data_normalized": ""
+                        },
+                        {
+                          "type": "element",
+                          "tag": "th",
+                          "attributes": {},
+                          "children": [
+                            {
+                              "type": "text",
+                              "data": "Value",
+                              "data_normalized": "Value"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "text",
+                          "data": "\n    ",
+                          "data_normalized": ""
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n  ",
+                      "data_normalized": ""
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "tbody",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n    ",
+                      "data_normalized": ""
+                    },
+                    {
+                      "type": "element",
+                      "tag": "template",
+                      "attributes": {
+                        "id": "row-template"
+                      },
+                      "children": []
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n  ",
+                      "data_normalized": ""
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Template with script content",
+                  "data_normalized": "Template with script content"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "template",
+              "attributes": {
+                "id": "script-template"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "h2",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Content check",
+                  "data_normalized": "Content check"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "p",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "The following should show \"false\" if the template content is a DocumentFragment:",
+                  "data_normalized": "The following should show \"false\" if the template content is a DocumentFragment:"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "div",
+              "attributes": {
+                "id": "result"
+              },
+              "children": []
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
+            },
+            {
+              "type": "element",
+              "tag": "script",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n  var t = document.getElementById('nested-template');\n  document.getElementById('result').textContent = (t.content instanceof DocumentFragment);\n",
+                  "data_normalized": "var t = document.getElementById('nested-template'); document.getElementById('result').textContent = (t.content instanceof DocumentFragment);"
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n\n",
+              "data_normalized": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}
