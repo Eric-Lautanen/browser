@@ -90,3 +90,13 @@ glyph_drop.txt
 # Build and test artifacts
 build_tidy/
 test_cache/
+
+# Node.js
+tools/node_modules/
+tools/package-lock.json
+*.pyc
+__pycache__/
+
+# Generated test output
+tools/tests/*.actual-*.json
+tools/tests/*.actual-*

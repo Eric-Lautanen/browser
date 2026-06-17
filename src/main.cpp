@@ -16,10 +16,14 @@
 #include "../css/cascade.hpp"
 #include "../css/layout.hpp"
 #include "../render/paint.hpp"
+#include "../render/paint/painter.hpp"
 #include "../browser/browser_window.hpp"
 
+using browser::f32;
+using browser::u32;
+
 // ---------------------------------------------------------------------------
-// JSON helpers – minimal, inline, no external dependency
+// Minimal JSON emitter
 // ---------------------------------------------------------------------------
 namespace json {
 
@@ -34,24 +38,19 @@ namespace json {
                 case '\r': o += "\\r";  break;
                 case '\t': o += "\\t";  break;
                 default:
-                    if (c < 0x20) {
-                        char buf[8]; snprintf(buf, sizeof buf, "\\u%04x", c);
-                        o += buf;
-                    } else {
-                        o += static_cast<char>(c);
-                    }
+                    if (c < 0x20) { char buf[8]; snprintf(buf, sizeof buf, "\\u%04x", c); o += buf; }
+                    else { o += static_cast<char>(c); }
             }
         }
         return o;
     }
 
-    std::string val(const std::string &s) { return "\"" + esc(s) + "\""; }
+    std::string q(const std::string &s) { return "\"" + esc(s) + "\""; }
 
-    std::string val(f32 n, int prec = 4) {
-        if (std::isnan(n)) return "null";
-        if (std::isinf(n)) return n > 0 ? "null" : "null";
+    std::string num(f32 n) {
+        if (std::isnan(n) || std::isinf(n)) return "null";
         std::ostringstream os;
-        os << std::fixed << std::setprecision(prec) << n;
+        os << std::fixed << std::setprecision(4) << n;
         std::string s = os.str();
         auto dot = s.find('.');
         if (dot != std::string::npos) {
@@ -62,15 +61,31 @@ namespace json {
         return s;
     }
 
-    std::string val(bool b) { return b ? "true" : "false"; }
+    std::string bool_str(bool b) { return b ? "true" : "false"; }
 
     struct Obj {
         std::string data = "{";
         bool first = true;
+
         void kv(const std::string &k, const std::string &v) {
             if (!first) data += ",";
             first = false;
-            data += val(k) + ":" + v;
+            data += q(k) + ":" + q(v);
+        }
+        void kv_raw(const std::string &k, const std::string &v) {
+            if (!first) data += ",";
+            first = false;
+            data += q(k) + ":" + v;
+        }
+        void kv_num(const std::string &k, f32 v) {
+            if (!first) data += ",";
+            first = false;
+            data += q(k) + ":" + num(v);
+        }
+        void kv_bool(const std::string &k, bool v) {
+            if (!first) data += ",";
+            first = false;
+            data += q(k) + ":" + bool_str(v);
         }
         std::string done() { data += "}"; return data; }
     };
@@ -94,9 +109,9 @@ namespace json {
 static std::string dump_doctype(const browser::html::DocumentType *dt) {
     json::Obj o;
     o.kv("type", "doctype");
-    o.kv("name", dt->name);
-    o.kv("public_id", dt->public_id);
-    o.kv("system_id", dt->system_id);
+    o.kv_raw("name", json::q(dt->name));
+    o.kv_raw("public_id", json::q(dt->public_id));
+    o.kv_raw("system_id", json::q(dt->system_id));
     return o.done();
 }
 
@@ -106,24 +121,26 @@ static std::string dump_node(const browser::html::Node *node) {
         auto *el = static_cast<const browser::html::Element *>(node);
         json::Obj o;
         o.kv("type", "element");
-        o.kv("tag", el->tag_name);
+        o.kv_raw("tag", json::q(el->tag_name));
+        // attributes
         json::Obj attrs;
         for (auto &[k, v] : el->attributes) {
-            attrs.kv(k, json::val(v));
+            attrs.kv_raw(k, json::q(v));
         }
-        o.kv("attributes", attrs.done());
+        o.kv_raw("attributes", attrs.done());
+        // children
         json::Arr kids;
         for (auto &ch : node->children) {
             kids.push(dump_node(ch.get()));
         }
-        o.kv("children", kids.done());
+        o.kv_raw("children", kids.done());
         return o.done();
     }
     if (node->type == browser::html::NodeType::TEXT) {
         auto *tx = static_cast<const browser::html::Text *>(node);
         json::Obj o;
         o.kv("type", "text");
-        o.kv("data", json::val(tx->data));
+        o.kv_raw("data", json::q(tx->data));
         std::string normalized = tx->data;
         {
             std::string r;
@@ -138,14 +155,14 @@ static std::string dump_node(const browser::html::Node *node) {
             while (!r.empty() && r.back() == ' ') r.pop_back();
             normalized = r;
         }
-        o.kv("data_normalized", json::val(normalized));
+        o.kv_raw("data_normalized", json::q(normalized));
         return o.done();
     }
     if (node->type == browser::html::NodeType::COMMENT) {
         auto *cm = static_cast<const browser::html::Comment *>(node);
         json::Obj o;
         o.kv("type", "comment");
-        o.kv("data", json::val(cm->data));
+        o.kv_raw("data", json::q(cm->data));
         return o.done();
     }
     if (node->type == browser::html::NodeType::DOCUMENT_TYPE) {
@@ -175,181 +192,160 @@ static std::string css_val_type_str(browser::css::CSSValue::Type t) {
 
 static std::string dump_declaration(const browser::css::Declaration &decl) {
     json::Obj o;
-    o.kv("property", json::val(decl.property));
-    {
-        json::Arr vals;
-        for (auto &v : decl.values) {
-            json::Obj vobj;
-            vobj.kv("type", json::val(css_val_type_str(v.type)));
-            if (v.type == browser::css::CSSValue::Type::KEYWORD)
-                vobj.kv("keyword", json::val(v.keyword));
-            else if (v.type == browser::css::CSSValue::Type::LENGTH) {
-                vobj.kv("value", json::val(v.length.value));
-                std::string u;
-                switch (v.length.unit) {
-                    case browser::css::Length::Unit::PX:      u = "px"; break;
-                    case browser::css::Length::Unit::EM:      u = "em"; break;
-                    case browser::css::Length::Unit::REM:     u = "rem"; break;
-                    case browser::css::Length::Unit::PERCENT: u = "%"; break;
-                    case browser::css::Length::Unit::VW:      u = "vw"; break;
-                    case browser::css::Length::Unit::VH:      u = "vh"; break;
-                    default: u = "px"; break;
-                }
-                vobj.kv("unit", json::val(u));
-            } else if (v.type == browser::css::CSSValue::Type::COLOR) {
-                vobj.kv("r", json::val(static_cast<f32>(v.color.r)));
-                vobj.kv("g", json::val(static_cast<f32>(v.color.g)));
-                vobj.kv("b", json::val(static_cast<f32>(v.color.b)));
-                vobj.kv("a", json::val(static_cast<f32>(v.color.a)));
-            } else if (v.type == browser::css::CSSValue::Type::NUMBER ||
-                       v.type == browser::css::CSSValue::Type::PERCENTAGE) {
-                vobj.kv("number", json::val(v.number));
-            } else if (v.type == browser::css::CSSValue::Type::STRING) {
-                vobj.kv("string_value", json::val(v.string_value));
-            } else if (v.type == browser::css::CSSValue::Type::FUNCTION) {
-                vobj.kv("string_value", json::val(v.string_value));
+    o.kv_raw("property", json::q(decl.property));
+    json::Arr vals;
+    for (auto &v : decl.values) {
+        json::Obj vobj;
+        vobj.kv_raw("type", json::q(css_val_type_str(v.type)));
+        if (v.type == browser::css::CSSValue::Type::KEYWORD)
+            vobj.kv_raw("keyword", json::q(v.keyword));
+        else if (v.type == browser::css::CSSValue::Type::LENGTH) {
+            vobj.kv_num("value", v.length.value);
+            std::string u;
+            switch (v.length.unit) {
+                case browser::css::Length::Unit::PX:      u = "px"; break;
+                case browser::css::Length::Unit::EM:      u = "em"; break;
+                case browser::css::Length::Unit::REM:     u = "rem"; break;
+                case browser::css::Length::Unit::PERCENT: u = "%"; break;
+                case browser::css::Length::Unit::VW:      u = "vw"; break;
+                case browser::css::Length::Unit::VH:      u = "vh"; break;
+                default: u = "px"; break;
             }
-            vals.push(vobj.done());
+            vobj.kv_raw("unit", json::q(u));
+        } else if (v.type == browser::css::CSSValue::Type::COLOR) {
+            vobj.kv_num("r", static_cast<f32>(v.color.r));
+            vobj.kv_num("g", static_cast<f32>(v.color.g));
+            vobj.kv_num("b", static_cast<f32>(v.color.b));
+            vobj.kv_num("a", static_cast<f32>(v.color.a));
+        } else if (v.type == browser::css::CSSValue::Type::NUMBER ||
+                   v.type == browser::css::CSSValue::Type::PERCENTAGE) {
+            vobj.kv_num("number", v.number);
+        } else if (v.type == browser::css::CSSValue::Type::STRING) {
+            vobj.kv_raw("string_value", json::q(v.string_value));
+        } else if (v.type == browser::css::CSSValue::Type::FUNCTION) {
+            vobj.kv_raw("string_value", json::q(v.string_value));
         }
-        o.kv("values", vals.done());
+        vals.push(vobj.done());
     }
-    o.kv("important", json::val(decl.important));
+    o.kv_raw("values", vals.done());
+    o.kv_bool("important", decl.important);
     return o.done();
 }
 
 static std::string dump_rule(const browser::css::Rule &rule, int idx) {
     json::Obj o;
     o.kv("type", "rule");
-    {
-        json::Arr sels;
-        for (auto &sel : rule.selectors) {
-            std::string sel_str;
-            for (size_t i = 0; i < sel.compounds.size(); i++) {
-                if (i > 0) {
-                    if (i - 1 < sel.combinators.size()) {
-                        switch (sel.combinators[i - 1]) {
-                            case browser::css::Combinator::DESCENDANT:        sel_str += " "; break;
-                            case browser::css::Combinator::CHILD:             sel_str += " > "; break;
-                            case browser::css::Combinator::ADJACENT_SIBLING:  sel_str += " + "; break;
-                            case browser::css::Combinator::GENERAL_SIBLING:   sel_str += " ~ "; break;
-                        }
-                    } else sel_str += " ";
-                }
-                for (auto &ss : sel.compounds[i].simples) {
-                    switch (ss.type) {
-                        case browser::css::SimpleSelector::Type::TAG: sel_str += ss.name; break;
-                        case browser::css::SimpleSelector::Type::CLASS: sel_str += "." + ss.name; break;
-                        case browser::css::SimpleSelector::Type::ID: sel_str += "#" + ss.name; break;
-                        case browser::css::SimpleSelector::Type::UNIVERSAL: sel_str += "*"; break;
-                        case browser::css::SimpleSelector::Type::ATTRIBUTE: {
-                            sel_str += "[" + ss.name;
-                            if (ss.match_operator) {
-                                sel_str += ss.match_operator;
-                                sel_str += "=" + ss.value;
-                            }
-                            sel_str += "]";
-                            break;
-                        }
-                        case browser::css::SimpleSelector::Type::PSEUDO_CLASS: {
-                            if (ss.name == "nth-child" || ss.name == "nth-last-child") {
-                                sel_str += ":" + ss.name + "(";
-                                if (ss.nth_args.is_odd) sel_str += "odd";
-                                else if (ss.nth_args.is_even) sel_str += "even";
-                                else if (ss.nth_args.a == 0) sel_str += std::to_string(ss.nth_args.b);
-                                else {
-                                    sel_str += std::to_string(ss.nth_args.a) + "n";
-                                    if (ss.nth_args.b > 0) sel_str += "+" + std::to_string(ss.nth_args.b);
-                                    else if (ss.nth_args.b < 0) sel_str += std::to_string(ss.nth_args.b);
+    json::Arr sels;
+    for (auto &sel : rule.selectors) {
+        std::string sel_str;
+        for (size_t i = 0; i < sel.compounds.size(); i++) {
+            if (i > 0) {
+                if (i - 1 < sel.combinators.size()) {
+                    switch (sel.combinators[i - 1]) {
+                        case browser::css::Combinator::DESCENDANT:        sel_str += " "; break;
+                        case browser::css::Combinator::CHILD:             sel_str += " > "; break;
+                        case browser::css::Combinator::ADJACENT_SIBLING:  sel_str += " + "; break;
+                        case browser::css::Combinator::GENERAL_SIBLING:   sel_str += " ~ "; break;
+                    }
+                } else sel_str += " ";
+            }
+            for (auto &ss : sel.compounds[i].simples) {
+                switch (ss.type) {
+                    case browser::css::SimpleSelector::Type::TAG: sel_str += ss.name; break;
+                    case browser::css::SimpleSelector::Type::CLASS: sel_str += "." + ss.name; break;
+                    case browser::css::SimpleSelector::Type::ID: sel_str += "#" + ss.name; break;
+                    case browser::css::SimpleSelector::Type::UNIVERSAL: sel_str += "*"; break;
+                    case browser::css::SimpleSelector::Type::ATTRIBUTE: {
+                        sel_str += "[" + ss.name;
+                        if (ss.match_operator) { sel_str += ss.match_operator; sel_str += "=" + ss.value; }
+                        sel_str += "]"; break;
+                    }
+                    case browser::css::SimpleSelector::Type::PSEUDO_CLASS: {
+                        if (ss.name == "nth-child" || ss.name == "nth-last-child") {
+                            sel_str += ":" + ss.name + "(";
+                            if (ss.nth_args.is_odd) sel_str += "odd";
+                            else if (ss.nth_args.is_even) sel_str += "even";
+                            else if (ss.nth_args.a == 0) sel_str += std::to_string(ss.nth_args.b);
+                            else { sel_str += std::to_string(ss.nth_args.a) + "n";
+                                if (ss.nth_args.b > 0) sel_str += "+" + std::to_string(ss.nth_args.b);
+                                else if (ss.nth_args.b < 0) sel_str += std::to_string(ss.nth_args.b); }
+                            sel_str += ")";
+                        } else {
+                            sel_str += ":" + ss.name;
+                            if (!ss.argument_selectors.empty()) {
+                                sel_str += "(";
+                                for (size_t ai = 0; ai < ss.argument_selectors.size(); ai++) {
+                                    if (ai > 0) sel_str += ",";
+                                    for (auto &cc : ss.argument_selectors[ai].compounds)
+                                        for (auto &sss : cc.simples) {
+                                            if (sss.type == browser::css::SimpleSelector::Type::TAG) sel_str += sss.name;
+                                            else if (sss.type == browser::css::SimpleSelector::Type::CLASS) sel_str += "." + sss.name;
+                                            else if (sss.type == browser::css::SimpleSelector::Type::ID) sel_str += "#" + sss.name;
+                                            else if (sss.type == browser::css::SimpleSelector::Type::UNIVERSAL) sel_str += "*";
+                                        }
                                 }
                                 sel_str += ")";
-                            } else {
-                                sel_str += ":" + ss.name;
-                                if (!ss.argument_selectors.empty()) {
-                                    sel_str += "(";
-                                    for (size_t ai = 0; ai < ss.argument_selectors.size(); ai++) {
-                                        if (ai > 0) sel_str += ",";
-                                        for (auto &cc : ss.argument_selectors[ai].compounds) {
-                                            for (auto &sss : cc.simples) {
-                                                if (sss.type == browser::css::SimpleSelector::Type::TAG) sel_str += sss.name;
-                                                else if (sss.type == browser::css::SimpleSelector::Type::CLASS) sel_str += "." + sss.name;
-                                                else if (sss.type == browser::css::SimpleSelector::Type::ID) sel_str += "#" + sss.name;
-                                                else if (sss.type == browser::css::SimpleSelector::Type::UNIVERSAL) sel_str += "*";
-                                            }
-                                        }
-                                    }
-                                    sel_str += ")";
-                                }
                             }
-                            break;
                         }
-                        case browser::css::SimpleSelector::Type::PSEUDO_ELEMENT: {
-                            sel_str += "::" + ss.name;
-                            break;
-                        }
+                        break;
                     }
+                    case browser::css::SimpleSelector::Type::PSEUDO_ELEMENT: sel_str += "::" + ss.name; break;
                 }
             }
-            sels.push(json::val(sel_str));
         }
-        o.kv("selectors", sels.done());
+        sels.push(json::q(sel_str));
     }
-    {
-        json::Arr decls;
-        for (auto &decl : rule.declarations) {
-            decls.push(dump_declaration(decl));
-        }
-        o.kv("declarations", decls.done());
-    }
-    o.kv("source_index", std::to_string(idx));
+    o.kv_raw("selectors", sels.done());
+    json::Arr decls;
+    for (auto &decl : rule.declarations) decls.push(dump_declaration(decl));
+    o.kv_raw("declarations", decls.done());
+    o.kv_raw("source_index", std::to_string(idx));
     return o.done();
 }
 
 static std::string dump_stylesheet(const browser::css::StyleSheet &sheet) {
     json::Arr rules;
-    for (size_t i = 0; i < sheet.rules.size(); i++) {
-        rules.push(dump_rule(sheet.rules[i], static_cast<int>(i)));
-    }
+    for (size_t i = 0; i < sheet.rules.size(); i++) rules.push(dump_rule(sheet.rules[i], static_cast<int>(i)));
     json::Arr atrules;
     for (auto &at : sheet.at_rules) {
         json::Obj a;
-        a.kv("name", json::val(at.name));
-        a.kv("prelude", json::val(at.prelude));
+        a.kv_raw("name", json::q(at.name));
+        a.kv_raw("prelude", json::q(at.prelude));
         json::Arr nested;
         for (auto &r : at.rules) nested.push(dump_rule(r, 0));
-        a.kv("rules", nested.done());
+        a.kv_raw("rules", nested.done());
         json::Arr nested_at;
         for (auto &na : at.at_rules) {
             json::Obj nao;
-            nao.kv("name", json::val(na.name));
-            nao.kv("prelude", json::val(na.prelude));
-            nao.kv("rules", json::Arr().done());
-            nao.kv("at_rules", json::Arr().done());
+            nao.kv_raw("name", json::q(na.name));
+            nao.kv_raw("prelude", json::q(na.prelude));
+            nao.kv_raw("rules", json::Arr().done());
+            nao.kv_raw("at_rules", json::Arr().done());
             nested_at.push(nao.done());
         }
-        a.kv("at_rules", nested_at.done());
-        // keyframes
+        a.kv_raw("at_rules", nested_at.done());
         if (at.name == "keyframes" || at.name == "-webkit-keyframes") {
             json::Obj kf;
-            kf.kv("name", json::val(at.keyframes.name));
+            kf.kv_raw("name", json::q(at.keyframes.name));
             json::Arr blks;
             for (auto &blk : at.keyframes.blocks) {
                 json::Obj b;
                 json::Arr pos;
-                for (auto p : blk.positions) pos.push(json::val(p));
-                b.kv("positions", pos.done());
+                for (auto p : blk.positions) pos.push(json::num(p));
+                b.kv_raw("positions", pos.done());
                 json::Arr dcl;
                 for (auto &d : blk.declarations) dcl.push(dump_declaration(d));
-                b.kv("declarations", dcl.done());
+                b.kv_raw("declarations", dcl.done());
                 blks.push(b.done());
             }
-            kf.kv("blocks", blks.done());
-            a.kv("keyframes", kf.done());
+            kf.kv_raw("blocks", blks.done());
+            a.kv_raw("keyframes", kf.done());
         }
         atrules.push(a.done());
     }
     json::Obj out;
-    out.kv("rules", rules.done());
-    out.kv("at_rules", atrules.done());
+    out.kv_raw("rules", rules.done());
+    out.kv_raw("at_rules", atrules.done());
     return out.done();
 }
 
@@ -358,47 +354,39 @@ static std::string dump_stylesheet(const browser::css::StyleSheet &sheet) {
 // ---------------------------------------------------------------------------
 static std::string css_value_to_json(const browser::css::CSSValue &v) {
     json::Obj o;
-    o.kv("type", json::val(css_val_type_str(v.type)));
+    o.kv_raw("type", json::q(css_val_type_str(v.type)));
     switch (v.type) {
         case browser::css::CSSValue::Type::KEYWORD:
-            o.kv("value", json::val(v.keyword));
-            break;
+            o.kv_raw("value", json::q(v.keyword)); break;
         case browser::css::CSSValue::Type::LENGTH:
-            o.kv("value", json::val(v.length.value));
-            {
-                std::string u;
+            o.kv_num("value", v.length.value);
+            { std::string u;
                 switch (v.length.unit) {
-                    case browser::css::Length::Unit::PX:      u = "px"; break;
-                    case browser::css::Length::Unit::EM:      u = "em"; break;
-                    case browser::css::Length::Unit::REM:     u = "rem"; break;
+                    case browser::css::Length::Unit::PX: u = "px"; break;
+                    case browser::css::Length::Unit::EM: u = "em"; break;
+                    case browser::css::Length::Unit::REM: u = "rem"; break;
                     case browser::css::Length::Unit::PERCENT: u = "%"; break;
-                    case browser::css::Length::Unit::VW:      u = "vw"; break;
-                    case browser::css::Length::Unit::VH:      u = "vh"; break;
-                    case browser::css::Length::Unit::NONE:    u = ""; break;
+                    case browser::css::Length::Unit::VW: u = "vw"; break;
+                    case browser::css::Length::Unit::VH: u = "vh"; break;
+                    case browser::css::Length::Unit::NONE: u = ""; break;
                     default: u = "px"; break;
                 }
-                o.kv("unit", json::val(u));
-            }
+                o.kv_raw("unit", json::q(u)); }
             break;
         case browser::css::CSSValue::Type::COLOR:
-            o.kv("r", json::val(static_cast<f32>(v.color.r)));
-            o.kv("g", json::val(static_cast<f32>(v.color.g)));
-            o.kv("b", json::val(static_cast<f32>(v.color.b)));
-            o.kv("a", json::val(static_cast<f32>(v.color.a)));
+            o.kv_num("r", static_cast<f32>(v.color.r));
+            o.kv_num("g", static_cast<f32>(v.color.g));
+            o.kv_num("b", static_cast<f32>(v.color.b));
+            o.kv_num("a", static_cast<f32>(v.color.a));
             break;
         case browser::css::CSSValue::Type::NUMBER:
         case browser::css::CSSValue::Type::PERCENTAGE:
-            o.kv("value", json::val(v.number));
-            break;
+            o.kv_num("value", v.number); break;
         case browser::css::CSSValue::Type::STRING:
-            o.kv("value", json::val(v.string_value));
-            break;
         case browser::css::CSSValue::Type::URL:
-            o.kv("value", json::val(v.string_value));
-            break;
+            o.kv_raw("value", json::q(v.string_value)); break;
         default:
-            o.kv("value", json::val(v.keyword));
-            break;
+            o.kv_raw("value", json::q(v.keyword)); break;
     }
     return o.done();
 }
@@ -406,91 +394,61 @@ static std::string css_value_to_json(const browser::css::CSSValue &v) {
 static std::string dump_cascade_element(const browser::html::Element *el,
                                          const browser::css::ComputedStyle &style) {
     json::Obj o;
-    o.kv("tag", json::val(el->tag_name));
-    o.kv("id", json::val(el->id()));
-    {
-        json::Arr cls;
-        for (auto &c : el->class_list()) cls.push(json::val(c));
-        o.kv("classes", cls.done());
+    o.kv_raw("tag", json::q(el->tag_name));
+    o.kv_raw("id", json::q(el->id()));
+    json::Arr cls;
+    for (auto &c : el->class_list()) cls.push(json::q(c));
+    o.kv_raw("classes", cls.done());
+    json::Obj props;
+    for (auto &[prop, val] : style.properties) {
+        if (prop.size() > 1 && prop[0] == '_') continue;
+        props.kv_raw(prop, css_value_to_json(val));
     }
-    {
-        json::Obj props;
-        for (auto &[prop, val] : style.properties) {
-            if (prop.size() > 1 && prop[0] == '_') continue;
-            props.kv(prop, css_value_to_json(val));
-        }
-        o.kv("computed", props.done());
-    }
+    o.kv_raw("computed", props.done());
     return o.done();
 }
 
 // ---------------------------------------------------------------------------
 // Layout dump
 // ---------------------------------------------------------------------------
+static std::string edge_json(const browser::css::EdgeSizes &e) {
+    json::Obj r;
+    r.kv_num("top", e.top); r.kv_num("right", e.right);
+    r.kv_num("bottom", e.bottom); r.kv_num("left", e.left);
+    return r.done();
+}
+
 static std::string dump_layout_node(const browser::css::LayoutNode *node) {
     if (!node) return "null";
     json::Obj o;
     if (!node->is_text()) {
         auto *n = node->node();
-        if (n && n->type == browser::html::NodeType::ELEMENT) {
-            o.kv("tag", json::val(static_cast<browser::html::Element*>(n)->tag_name));
-        } else {
-            o.kv("tag", json::val("(anonymous)"));
-        }
+        if (n && n->type == browser::html::NodeType::ELEMENT)
+            o.kv_raw("tag", json::q(static_cast<browser::html::Element*>(n)->tag_name));
+        else
+            o.kv("tag", "(anonymous)");
     } else {
-        o.kv("tag", json::val("(text)"));
+        o.kv("tag", "(text)");
     }
-    o.kv("is_text", json::val(node->is_text()));
-    o.kv("text", json::val(node->text()));
-    {
-        json::Obj r;
-        r.kv("x", json::val(node->content.x));
-        r.kv("y", json::val(node->content.y));
-        r.kv("width", json::val(node->content.width));
-        r.kv("height", json::val(node->content.height));
-        o.kv("content", r.done());
-    }
-    {
-        json::Obj r;
-        r.kv("top", json::val(node->margin.top));
-        r.kv("right", json::val(node->margin.right));
-        r.kv("bottom", json::val(node->margin.bottom));
-        r.kv("left", json::val(node->margin.left));
-        o.kv("margin", r.done());
-    }
-    {
-        json::Obj r;
-        r.kv("top", json::val(node->padding.top));
-        r.kv("right", json::val(node->padding.right));
-        r.kv("bottom", json::val(node->padding.bottom));
-        r.kv("left", json::val(node->padding.left));
-        o.kv("padding", r.done());
-    }
-    {
-        json::Obj r;
-        r.kv("top", json::val(node->border.top));
-        r.kv("right", json::val(node->border.right));
-        r.kv("bottom", json::val(node->border.bottom));
-        r.kv("left", json::val(node->border.left));
-        o.kv("border", r.done());
-    }
+    o.kv_bool("is_text", node->is_text());
+    o.kv_raw("text", json::q(node->text()));
+    json::Obj cr;
+    cr.kv_num("x", node->content.x); cr.kv_num("y", node->content.y);
+    cr.kv_num("width", node->content.width); cr.kv_num("height", node->content.height);
+    o.kv_raw("content", cr.done());
+o.kv_raw("margin", edge_json(node->margin));
+o.kv_raw("padding", edge_json(node->padding));
+o.kv_raw("border", edge_json(node->border));
     if (!node->text_lines.empty()) {
         json::Arr lines;
         for (auto &li : node->text_lines) {
-            json::Obj l;
-            l.kv("y", json::val(li.y));
-            l.kv("text", json::val(li.text));
-            lines.push(l.done());
+            json::Obj l; l.kv_num("y", li.y); l.kv_raw("text", json::q(li.text)); lines.push(l.done());
         }
-        o.kv("text_lines", lines.done());
+        o.kv_raw("text_lines", lines.done());
     }
-    {
-        json::Arr kids;
-        for (auto &ch : node->children) {
-            kids.push(dump_layout_node(ch.get()));
-        }
-        o.kv("children", kids.done());
-    }
+    json::Arr kids;
+    for (auto &ch : node->children) kids.push(dump_layout_node(ch.get()));
+    o.kv_raw("children", kids.done());
     return o.done();
 }
 
@@ -519,34 +477,28 @@ static std::string paint_cmd_type_str(browser::render::PaintCommand::Type t) {
 static std::string render_color_to_hex(const browser::render::Color &c) {
     char buf[16];
     snprintf(buf, sizeof buf, "#%02x%02x%02x",
-             static_cast<int>(c.r * 255),
-             static_cast<int>(c.g * 255),
-             static_cast<int>(c.b * 255));
+             static_cast<int>(c.r * 255 + 0.5f),
+             static_cast<int>(c.g * 255 + 0.5f),
+             static_cast<int>(c.b * 255 + 0.5f));
     return buf;
 }
 
 static std::string dump_command(const browser::render::PaintCommand &cmd) {
     json::Obj o;
-    o.kv("cmd", json::val(paint_cmd_type_str(cmd.type)));
-    o.kv("x", json::val(cmd.rect.x));
-    o.kv("y", json::val(cmd.rect.y));
-    o.kv("w", json::val(cmd.rect.width));
-    o.kv("h", json::val(cmd.rect.height));
+    o.kv_raw("cmd", json::q(paint_cmd_type_str(cmd.type)));
+    o.kv_num("x", cmd.rect.x); o.kv_num("y", cmd.rect.y);
+    o.kv_num("w", cmd.rect.width); o.kv_num("h", cmd.rect.height);
     if (cmd.type == browser::render::PaintCommand::Type::FILL_RECT ||
-        cmd.type == browser::render::PaintCommand::Type::DRAW_ROUNDED_RECT) {
-        o.kv("color", json::val(render_color_to_hex(cmd.color)));
+        cmd.type == browser::render::PaintCommand::Type::DRAW_ROUNDED_RECT ||
+        cmd.type == browser::render::PaintCommand::Type::DRAW_TEXT ||
+        cmd.type == browser::render::PaintCommand::Type::DRAW_SHADOW) {
+        o.kv_raw("color", json::q(render_color_to_hex(cmd.color)));
     }
     if (cmd.type == browser::render::PaintCommand::Type::DRAW_TEXT) {
-        o.kv("text", json::val(cmd.text));
-        o.kv("font_size", json::val(cmd.font_size));
-        o.kv("color", json::val(render_color_to_hex(cmd.color)));
+        o.kv_raw("text", json::q(cmd.text));
+        o.kv_num("font_size", cmd.font_size);
     }
-    if (cmd.type == browser::render::PaintCommand::Type::DRAW_SHADOW) {
-        o.kv("color", json::val(render_color_to_hex(cmd.color)));
-    }
-    if (cmd.radius > 0) {
-        o.kv("radius", json::val(cmd.radius));
-    }
+    if (cmd.radius > 0) o.kv_num("radius", cmd.radius);
     return o.done();
 }
 
@@ -609,7 +561,6 @@ int main(int argc, char **argv) {
 
     std::string flag = argv[1];
 
-    // Normal browser mode
     if (flag.rfind("--", 0) != 0) {
         SetProcessDPIAware();
         return run_browser(flag);
@@ -632,19 +583,14 @@ int main(int argc, char **argv) {
     // --dump-dom
     if (flag == "--dump-dom") {
         auto doc_r = browser::html::parse_async(content).sync_wait();
-        if (doc_r.is_err()) {
-            std::cerr << "Parse error: " << doc_r.unwrap_err() << std::endl;
-            return 1;
-        }
-        auto doc = doc_r.unwrap();
+        if (doc_r.is_err()) { std::cerr << "Parse error: " << doc_r.unwrap_err() << std::endl; return 1; }
+        auto doc = std::move(doc_r.unwrap());
         json::Obj out;
-        out.kv("source", json::val(filepath));
-        out.kv("encoding", json::val("utf-8"));
+        out.kv_raw("source", json::q(filepath));
+        out.kv_raw("encoding", json::q("utf-8"));
         json::Arr kids;
-        for (auto &ch : doc->children) {
-            kids.push(dump_node(ch.get()));
-        }
-        out.kv("children", kids.done());
+        for (auto &ch : doc->children) kids.push(dump_node(ch.get()));
+        out.kv_raw("children", kids.done());
         std::cout << out.done() << std::endl;
         return 0;
     }
@@ -657,15 +603,12 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // --dump-cascade, --dump-layout, --dump-display-list
+    // --dump-cascade / --dump-layout / --dump-display-list
     if (flag == "--dump-cascade" || flag == "--dump-layout" || flag == "--dump-display-list") {
         SetProcessDPIAware();
         auto doc_r = browser::html::parse_async(content).sync_wait();
-        if (doc_r.is_err()) {
-            std::cerr << "HTML parse error: " << doc_r.unwrap_err() << std::endl;
-            return 1;
-        }
-        auto doc = doc_r.unwrap();
+        if (doc_r.is_err()) { std::cerr << "HTML parse error: " << doc_r.unwrap_err() << std::endl; return 1; }
+        auto doc = std::move(doc_r.unwrap());
 
         std::string merged_css = collect_css_from_dom(doc.get());
         browser::css::StyleSheet author_sheet;
@@ -676,58 +619,41 @@ int main(int argc, char **argv) {
 
         browser::css::Cascade cascader;
         auto styles_r = cascader.compute_async(*doc, author_sheet, 800, 600).sync_wait();
-        if (styles_r.is_err()) {
-            std::cerr << "Cascade error: " << styles_r.unwrap_err() << std::endl;
-            return 1;
-        }
+        if (styles_r.is_err()) { std::cerr << "Cascade error: " << styles_r.unwrap_err() << std::endl; return 1; }
         auto styles = std::move(styles_r.unwrap().element_styles);
 
-        // --dump-cascade
         if (flag == "--dump-cascade") {
             json::Arr elements;
             browser::html::traverse_depth_first(doc.get(), [&](browser::html::Node *n) {
                 if (n->type != browser::html::NodeType::ELEMENT) return;
                 auto *el = static_cast<browser::html::Element *>(n);
                 auto it = styles.find(el);
-                if (it != styles.end()) {
-                    elements.push(dump_cascade_element(el, it->second));
-                }
+                if (it != styles.end()) elements.push(dump_cascade_element(el, it->second));
             });
             json::Obj out;
-            out.kv("elements", elements.done());
+            out.kv_raw("elements", elements.done());
             std::cout << out.done() << std::endl;
             return 0;
         }
 
-        // Layout
         browser::css::LayoutEngine layout_engine;
         layout_engine.set_text_measure(nullptr, headless_text_measure);
         auto layout_r = layout_engine.layout_async(doc.get(), styles, 800.0f, 600.0f).sync_wait();
-        if (layout_r.is_err()) {
-            std::cerr << "Layout error: " << layout_r.unwrap_err() << std::endl;
-            return 1;
-        }
-        auto layout = layout_r.unwrap();
+        if (layout_r.is_err()) { std::cerr << "Layout error: " << layout_r.unwrap_err() << std::endl; return 1; }
+        auto layout = std::move(layout_r.unwrap());
 
-        // --dump-layout
         if (flag == "--dump-layout") {
             std::cout << dump_layout_node(layout.get()) << std::endl;
             return 0;
         }
 
-        // --dump-display-list
         browser::render::Painter painter(nullptr);
         auto dl_r = painter.paint_async(layout.get()).sync_wait();
-        if (dl_r.is_err()) {
-            std::cerr << "Paint error: " << dl_r.unwrap_err() << std::endl;
-            return 1;
-        }
-        auto dl = dl_r.unwrap();
+        if (dl_r.is_err()) { std::cerr << "Paint error: " << dl_r.unwrap_err() << std::endl; return 1; }
+        auto dl = std::move(dl_r.unwrap());
 
         json::Arr cmds;
-        for (auto &cmd : dl->commands()) {
-            cmds.push(dump_command(cmd));
-        }
+        for (auto &cmd : dl->commands()) cmds.push(dump_command(cmd));
         std::cout << cmds.done() << std::endl;
         return 0;
     }
