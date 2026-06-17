@@ -18,7 +18,7 @@ namespace browser {
         if (len > 0 && len < sizeof(buf)) {
             std::string dir = std::string(buf) + "\\Documents";
             CreateDirectoryA(dir.c_str(), nullptr);
-            return dir + "\\browser_bookmarks.txt";
+            return dir + "\\bookmarks.txt";
         }
         return "bookmarks.txt";
     }

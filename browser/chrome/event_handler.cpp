@@ -166,7 +166,27 @@ namespace browser {
             }
         }
         if (my > chrome_height()) {
-            chrome_.show_bookmarks_dropdown = false;
+            // Check bookmarks dropdown first (it extends below chrome)
+            if (chrome_.show_bookmarks_dropdown) {
+                f32 dx = chrome_.rects.bookmark.x, dy = chrome_height();
+                f32 dw = 280.0f;
+                auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
+                f32 item_h = 24.0f;
+                f32 dh = std::max(item_h * 2.0f, static_cast<f32>(all.size()) * item_h + item_h);
+                dh = std::min(dh, 400.0f);
+                if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
+                    f32 rel_y = static_cast<f32>(my) - dy - 4.0f;
+                    if (rel_y >= 0.0f) {
+                        i32 idx = static_cast<i32>(rel_y / item_h);
+                        if (idx >= 0 && idx < static_cast<i32>(all.size())) {
+                            navigate(all[static_cast<size_t>(idx)].url);
+                            chrome_.show_bookmarks_dropdown = false;
+                            return;
+                        }
+                    }
+                }
+                chrome_.show_bookmarks_dropdown = false;
+            }
             if (chrome_.show_settings) {
                 f32 ox = 40, oy = chrome_height() + 20;
                 if (is_in_rect(mx, my, {ox + 155, oy + 46, 80, 22})) {
@@ -362,27 +382,6 @@ namespace browser {
         if (is_in_rect(mx, my, r.bookmark_chevron)) {
             chrome_.show_bookmarks_dropdown = !chrome_.show_bookmarks_dropdown;
             return;
-        }
-
-        if (chrome_.show_bookmarks_dropdown) {
-            f32 dx = r.bookmark.x, dy = chrome_height();
-            f32 dw = 280.0f;
-            auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
-            f32 item_h = 24.0f;
-            f32 dh = std::max(item_h * 2.0f, static_cast<f32>(all.size()) * item_h + item_h);
-            dh = std::min(dh, 400.0f);
-            if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
-                f32 rel_y = static_cast<f32>(my) - dy - 4.0f;
-                if (rel_y >= 0.0f) {
-                    i32 idx = static_cast<i32>(rel_y / item_h);
-                    if (idx >= 0 && idx < static_cast<i32>(all.size())) {
-                        navigate(all[static_cast<size_t>(idx)].url);
-                        chrome_.show_bookmarks_dropdown = false;
-                        return;
-                    }
-                }
-            }
-            chrome_.show_bookmarks_dropdown = false;
         }
 
         if (is_in_rect(mx, my, r.menu)) {
