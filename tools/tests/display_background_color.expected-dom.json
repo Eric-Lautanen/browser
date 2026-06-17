@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.b {\n  display: inline-block;\n  width: 100px;\n  height: 80px;\n  margin: 5px;\n  padding: 4px;\n  color: #fff;\n  text-align: center;\n  line-height: 80px;\n}\n.named { background-color: tomato; }\n.hex3 { background-color: #f90; }\n.hex6 { background-color: #3498db; }\n.rgb { background-color: rgb(46, 204, 113); }\n.rgba { background-color: rgba(155, 89, 182, 0.8); }\n.hsl { background-color: hsl(210, 80%, 50%); }\n",
-                  "data_normalized": " .b { display: inline-block; width: 100px; height: 80px; margin: 5px; padding: 4px; color: #fff; text-align: center; line-height: 80px; } .named { background-color: tomato; } .hex3 { background-color: #f90; } .hex6 { background-color: #3498db; } .rgb { background-color: rgb(46, 204, 113); } .rgba { background-color: rgba(155, 89, 182, 0.8); } .hsl { background-color: hsl(210, 80%, 50%); }"
+                  "data_normalized": ".b { display: inline-block; width: 100px; height: 80px; margin: 5px; padding: 4px; color: #fff; text-align: center; line-height: 80px; } .named { background-color: tomato; } .hex3 { background-color: #f90; } .hex6 { background-color: #3498db; } .rgb { background-color: rgb(46, 204, 113); } .rgba { background-color: rgba(155, 89, 182, 0.8); } .hsl { background-color: hsl(210, 80%, 50%); }"
                 }
               ]
             },
@@ -205,7 +205,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

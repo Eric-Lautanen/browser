@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.b {\n  display: inline-block;\n  width: 120px;\n  height: 60px;\n  margin: 12px;\n  padding: 4px;\n  text-align: center;\n  line-height: 60px;\n}\n.b1 { border: 2px solid black; }\n.b2 { border: 4px dashed #c00; }\n.b3 { border: 1px solid #090; }\n.b4 { border: 3px dotted #00c; }\n.b5 { border: 5px double #c90; }\n.b6 { border: 2px solid #ccc; }\n",
-                  "data_normalized": " .b { display: inline-block; width: 120px; height: 60px; margin: 12px; padding: 4px; text-align: center; line-height: 60px; } .b1 { border: 2px solid black; } .b2 { border: 4px dashed #c00; } .b3 { border: 1px solid #090; } .b4 { border: 3px dotted #00c; } .b5 { border: 5px double #c90; } .b6 { border: 2px solid #ccc; }"
+                  "data_normalized": ".b { display: inline-block; width: 120px; height: 60px; margin: 12px; padding: 4px; text-align: center; line-height: 60px; } .b1 { border: 2px solid black; } .b2 { border: 4px dashed #c00; } .b3 { border: 1px solid #090; } .b4 { border: 3px dotted #00c; } .b5 { border: 5px double #c90; } .b6 { border: 2px solid #ccc; }"
                 }
               ]
             },
@@ -205,7 +205,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

@@ -135,55 +135,54 @@
                     "x": "10",
                     "y": "10"
                   },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "text",
+                  "attributes": {
+                    "dominant-baseline": "central",
+                    "fill": "white",
+                    "text-anchor": "middle",
+                    "x": "100",
+                    "y": "100"
+                  },
                   "children": [
                     {
                       "type": "text",
-                      "data": "\n  ",
-                      "data_normalized": ""
-                    },
-                    {
-                      "type": "element",
-                      "tag": "text",
-                      "attributes": {
-                        "dominant-baseline": "central",
-                        "fill": "white",
-                        "text-anchor": "middle",
-                        "x": "100",
-                        "y": "100"
-                      },
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "\n    SVG Text\n  ",
-                          "data_normalized": " SVG Text"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "data": "\n  ",
-                      "data_normalized": ""
-                    },
-                    {
-                      "type": "element",
-                      "tag": "script",
-                      "attributes": {
-                        "type": "text/javascript"
-                      },
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "\n    <![CDATA[\n      var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');\n      circle.setAttribute('cx', 100);\n      circle.setAttribute('cy', 150);\n      circle.setAttribute('r', 30);\n      circle.setAttribute('fill', 'red');\n      document.querySelector('svg').appendChild(circle);\n    ]]>\n  ",
-                          "data_normalized": " <![CDATA[ var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); circle.setAttribute('cx', 100); circle.setAttribute('cy', 150); circle.setAttribute('r', 30); circle.setAttribute('fill', 'red'); document.querySelector('svg').appendChild(circle); ]]>"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
+                      "data": "\n    SVG Text\n  ",
+                      "data_normalized": "SVG Text"
                     }
                   ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "script",
+                  "attributes": {
+                    "type": "text/javascript"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n    \n      var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');\n      circle.setAttribute('cx', 100);\n      circle.setAttribute('cy', 150);\n      circle.setAttribute('r', 30);\n      circle.setAttribute('fill', 'red');\n      document.querySelector('svg').appendChild(circle);\n    \n  ",
+                      "data_normalized": "var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); circle.setAttribute('cx', 100); circle.setAttribute('cy', 150); circle.setAttribute('r', 30); circle.setAttribute('fill', 'red'); document.querySelector('svg').appendChild(circle);"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
               ]
             },
@@ -232,8 +231,8 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": "\n    <![CDATA[\n      var a = 1 < 2 && 3 > 1;\n      var msg = 'CDATA allows & < > without escaping';\n      var el = document.createElementNS('http://www.w3.org/2000/svg', 'text');\n      el.setAttribute('x', 20);\n      el.setAttribute('y', 50);\n      el.setAttribute('fill', 'green');\n      el.appendChild(document.createTextNode(msg));\n      document.querySelector('svg:last-of-type').appendChild(el);\n    ]]>\n  ",
-                      "data_normalized": " <![CDATA[ var a = 1 < 2 && 3 > 1; var msg = 'CDATA allows & < > without escaping'; var el = document.createElementNS('http://www.w3.org/2000/svg', 'text'); el.setAttribute('x', 20); el.setAttribute('y', 50); el.setAttribute('fill', 'green'); el.appendChild(document.createTextNode(msg)); document.querySelector('svg:last-of-type').appendChild(el); ]]>"
+                      "data": "\n    \n      var a = 1 < 2 && 3 > 1;\n      var msg = 'CDATA allows & < > without escaping';\n      var el = document.createElementNS('http://www.w3.org/2000/svg', 'text');\n      el.setAttribute('x', 20);\n      el.setAttribute('y', 50);\n      el.setAttribute('fill', 'green');\n      el.appendChild(document.createTextNode(msg));\n      document.querySelector('svg:last-of-type').appendChild(el);\n    \n  ",
+                      "data_normalized": "var a = 1 < 2 && 3 > 1; var msg = 'CDATA allows & < > without escaping'; var el = document.createElementNS('http://www.w3.org/2000/svg', 'text'); el.setAttribute('x', 20); el.setAttribute('y', 50); el.setAttribute('fill', 'green'); el.appendChild(document.createTextNode(msg)); document.querySelector('svg:last-of-type').appendChild(el);"
                     }
                   ]
                 },
@@ -299,8 +298,8 @@
                       "children": [
                         {
                           "type": "text",
-                          "data": "\n      <![CDATA[\n        .cda { fill: purple; }\n        .cda:hover { fill: orange; }\n      ]]>\n    ",
-                          "data_normalized": " <![CDATA[ .cda { fill: purple; } .cda:hover { fill: orange; } ]]>"
+                          "data": "\n      \n        .cda { fill: purple; }\n        .cda:hover { fill: orange; }\n      \n    ",
+                          "data_normalized": ".cda { fill: purple; } .cda:hover { fill: orange; }"
                         }
                       ]
                     },
@@ -326,19 +325,18 @@
                     "x": "10",
                     "y": "10"
                   },
-                  "children": [
-                    {
-                      "type": "text",
-                      "data": "\n",
-                      "data_normalized": ""
-                    }
-                  ]
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
               ]
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

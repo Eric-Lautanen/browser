@@ -103,7 +103,7 @@ namespace browser::html {
 
         void process_data_state(char32_t c);
         void process_rcdata_state(char32_t c);
-        void process_tag_state(char c);
+        void process_tag_state(char32_t c);
         void process_foreign_state(char32_t c);
         void process_char_ref_state();
 

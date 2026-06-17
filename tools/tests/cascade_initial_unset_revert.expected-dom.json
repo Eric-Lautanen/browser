@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\nbody { color: #333; font-size: 16px; margin: 10px; }\n.parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; }\n.inherited { color: inherit; }\n.initial { color: initial; }\n.unset { color: unset; }\n.revert { color: revert; }\n.non-init { border: initial; }\n.non-unset { border: unset; }\n.non-revert { border: revert; }\np { margin: 4px 0; }\n",
-                  "data_normalized": " body { color: #333; font-size: 16px; margin: 10px; } .parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; } .inherited { color: inherit; } .initial { color: initial; } .unset { color: unset; } .revert { color: revert; } .non-init { border: initial; } .non-unset { border: unset; } .non-revert { border: revert; } p { margin: 4px 0; }"
+                  "data_normalized": "body { color: #333; font-size: 16px; margin: 10px; } .parent { color: #c00; font-size: 20px; border: 2px solid #999; padding: 10px; margin: 10px; } .inherited { color: inherit; } .initial { color: initial; } .unset { color: unset; } .revert { color: revert; } .non-init { border: initial; } .non-unset { border: unset; } .non-revert { border: revert; } p { margin: 4px 0; }"
                 }
               ]
             },
@@ -243,7 +243,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

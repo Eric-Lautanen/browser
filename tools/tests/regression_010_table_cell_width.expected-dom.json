@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\ntable {\n  width: 100%;\n  border-collapse: collapse;\n  margin: 10px;\n  table-layout: fixed;\n}\ntd {\n  border: 1px solid #555;\n  padding: 8px;\n  text-align: center;\n  background: #f0f0f0;\n}\nth {\n  border: 1px solid #555;\n  padding: 8px;\n  text-align: center;\n  background: #ddd;\n  font-weight: bold;\n}\n.wide {\n  width: 100%;\n  border: 2px solid #c00;\n}\n",
-                  "data_normalized": " table { width: 100%; border-collapse: collapse; margin: 10px; table-layout: fixed; } td { border: 1px solid #555; padding: 8px; text-align: center; background: #f0f0f0; } th { border: 1px solid #555; padding: 8px; text-align: center; background: #ddd; font-weight: bold; } .wide { width: 100%; border: 2px solid #c00; }"
+                  "data_normalized": "table { width: 100%; border-collapse: collapse; margin: 10px; table-layout: fixed; } td { border: 1px solid #555; padding: 8px; text-align: center; background: #f0f0f0; } th { border: 1px solid #555; padding: 8px; text-align: center; background: #ddd; font-weight: bold; } .wide { width: 100%; border: 2px solid #c00; }"
                 }
               ]
             },
@@ -113,7 +113,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": "\n   ",
+                      "data": "\n    ",
                       "data_normalized": ""
                     },
                     {
@@ -126,18 +126,6 @@
                           "tag": "tr",
                           "attributes": {},
                           "children": [
-                            {
-                              "type": "element",
-                              "tag": "th",
-                              "attributes": {},
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "data": " ",
-                                  "data_normalized": ""
-                                }
-                              ]
-                            },
                             {
                               "type": "element",
                               "tag": "th",
@@ -173,13 +161,25 @@
                                   "data_normalized": "C"
                                 }
                               ]
+                            },
+                            {
+                              "type": "element",
+                              "tag": "th",
+                              "attributes": {},
+                              "children": [
+                                {
+                                  "type": "text",
+                                  "data": "D",
+                                  "data_normalized": "D"
+                                }
+                              ]
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "D\n   ",
-                          "data_normalized": "D"
+                          "data": "\n    ",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -193,8 +193,8 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": " 25",
-                                  "data_normalized": " 25"
+                                  "data": "25%",
+                                  "data_normalized": "25%"
                                 }
                               ]
                             },
@@ -205,8 +205,8 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "%25",
-                                  "data_normalized": "%25"
+                                  "data": "25%",
+                                  "data_normalized": "25%"
                                 }
                               ]
                             },
@@ -217,8 +217,8 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "%25",
-                                  "data_normalized": "%25"
+                                  "data": "25%",
+                                  "data_normalized": "25%"
                                 }
                               ]
                             },
@@ -229,8 +229,8 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "%25",
-                                  "data_normalized": "%25"
+                                  "data": "25%",
+                                  "data_normalized": "25%"
                                 }
                               ]
                             }
@@ -238,8 +238,8 @@
                         },
                         {
                           "type": "text",
-                          "data": "%\n ",
-                          "data_normalized": "%"
+                          "data": "\n  ",
+                          "data_normalized": ""
                         }
                       ]
                     }
@@ -247,7 +247,7 @@
                 },
                 {
                   "type": "text",
-                  "data": " \n",
+                  "data": "\n",
                   "data_normalized": ""
                 }
               ]
@@ -271,7 +271,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

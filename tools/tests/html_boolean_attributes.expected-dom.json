@@ -279,7 +279,7 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\n   ",
+                              "data": "\n    ",
                               "data_normalized": ""
                             },
                             {
@@ -289,15 +289,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": " Option ",
-                                  "data_normalized": " Option"
+                                  "data": "Option 1",
+                                  "data_normalized": "Option 1"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "1\n   ",
-                              "data_normalized": "1"
+                              "data": "\n    ",
+                              "data_normalized": ""
                             },
                             {
                               "type": "element",
@@ -306,22 +306,17 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": " Option ",
-                                  "data_normalized": " Option"
+                                  "data": "Option 2",
+                                  "data_normalized": "Option 2"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "2\n ",
-                              "data_normalized": "2"
+                              "data": "\n  ",
+                              "data_normalized": ""
                             }
                           ]
-                        },
-                        {
-                          "type": "text",
-                          "data": " ",
-                          "data_normalized": ""
                         }
                       ]
                     }
@@ -354,7 +349,7 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\n     ",
+                              "data": "\n      ",
                               "data_normalized": ""
                             },
                             {
@@ -364,15 +359,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": " Not selecte",
-                                  "data_normalized": " Not selecte"
+                                  "data": "Not selected",
+                                  "data_normalized": "Not selected"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "d\n     ",
-                              "data_normalized": "d"
+                              "data": "\n      ",
+                              "data_normalized": ""
                             },
                             {
                               "type": "element",
@@ -383,21 +378,21 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": " Selecte",
-                                  "data_normalized": " Selecte"
+                                  "data": "Selected",
+                                  "data_normalized": "Selected"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "d\n   ",
-                              "data_normalized": "d"
+                              "data": "\n    ",
+                              "data_normalized": ""
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": " \n  ",
+                          "data": "\n  ",
                           "data_normalized": ""
                         }
                       ]
@@ -487,7 +482,7 @@
                     {
                       "type": "text",
                       "data": " boolean attribute.",
-                      "data_normalized": " boolean attribute."
+                      "data_normalized": "boolean attribute."
                     }
                   ]
                 },
@@ -814,7 +809,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.col2 { column-count: 2; }\n.col3 { column-count: 3; }\n.colw { column-width: 200px; }\n.gap { column-gap: 40px; }\n.rule { column-rule: 2px solid #c00; }\n.box {\n  margin: 10px;\n  border: 1px solid #999;\n  padding: 8px;\n  background: #f9f9f9;\n}\np { margin: 0 0 8px 0; }\n",
-                  "data_normalized": " .col2 { column-count: 2; } .col3 { column-count: 3; } .colw { column-width: 200px; } .gap { column-gap: 40px; } .rule { column-rule: 2px solid #c00; } .box { margin: 10px; border: 1px solid #999; padding: 8px; background: #f9f9f9; } p { margin: 0 0 8px 0; }"
+                  "data_normalized": ".col2 { column-count: 2; } .col3 { column-count: 3; } .colw { column-width: 200px; } .gap { column-gap: 40px; } .rule { column-rule: 2px solid #c00; } .box { margin: 10px; border: 1px solid #999; padding: 8px; background: #f9f9f9; } p { margin: 0 0 8px 0; }"
                 }
               ]
             },
@@ -301,7 +301,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

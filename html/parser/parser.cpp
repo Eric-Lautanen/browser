@@ -130,15 +130,19 @@ void Parser::reset_insertion_mode() {
 }
 
 void Parser::insert_character(char32_t c) {
-    flush_pending_text();
     pending_text_ += encode_utf8(c);
 }
 
 void Parser::insert_comment(const std::string& data) {
+    flush_pending_text();
     auto c = std::make_unique<Comment>();
     c->data = data;
-    if (current_node()) {
+    if (mode_ == InsertionMode::AFTER_AFTER_BODY || mode_ == InsertionMode::AFTER_AFTER_FRAMESET) {
+        if (document_) append_child(document_.get(), std::move(c));
+    } else if (current_node()) {
         append_child(current_node(), std::move(c));
+    } else if (document_) {
+        append_child(document_.get(), std::move(c));
     }
 }
 
@@ -154,7 +158,9 @@ void Parser::insert_doctype(const DoctypeToken& token) {
 Element* Parser::create_element_for_token(const TagToken& token) {
     auto el = std::make_unique<Element>(token.tag_name);
     for (const auto& attr : token.attributes) {
-        el->attributes[attr.name] = attr.value;
+        if (el->attributes.find(attr.name) == el->attributes.end()) {
+            el->attributes[attr.name] = attr.value;
+        }
     }
     if (token.tag_name == "svg" || token.tag_name == "math") {
         if (token.tag_name == "svg") {
@@ -184,6 +190,7 @@ Element* Parser::create_element_for_token(const TagToken& token) {
 }
 
 void Parser::generate_implied_end_tags(const std::vector<std::string>& exceptions) {
+    flush_pending_text();
     static const std::unordered_set<std::string> implied_tags = {
         "dd", "dt", "li", "optgroup", "option", "p", "rb", "rp", "rt", "rtc"
     };
@@ -278,6 +285,7 @@ bool Parser::has_element_in_select_scope(const std::string& tag_name) {
 }
 
 void Parser::close_element(const std::string& tag_name) {
+    flush_pending_text();
     for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
         if (stack_[i] && stack_[i]->tag_name == tag_name) {
             stack_.resize(static_cast<u32>(i));
@@ -287,6 +295,7 @@ void Parser::close_element(const std::string& tag_name) {
 }
 
 void Parser::clear_stack_back_to_table_context() {
+    flush_pending_text();
     while (current_node() && current_node()->tag_name != "table" &&
            current_node()->tag_name != "template" && current_node()->tag_name != "html") {
         stack_.pop_back();
@@ -294,6 +303,7 @@ void Parser::clear_stack_back_to_table_context() {
 }
 
 void Parser::clear_stack_back_to_table_body_context() {
+    flush_pending_text();
     while (current_node() && current_node()->tag_name != "tbody" &&
            current_node()->tag_name != "tfoot" && current_node()->tag_name != "thead" &&
            current_node()->tag_name != "template" && current_node()->tag_name != "html") {
@@ -302,6 +312,7 @@ void Parser::clear_stack_back_to_table_body_context() {
 }
 
 void Parser::clear_stack_back_to_table_row_context() {
+    flush_pending_text();
     while (current_node() && current_node()->tag_name != "tr" &&
            current_node()->tag_name != "template" && current_node()->tag_name != "html") {
         stack_.pop_back();
@@ -659,7 +670,7 @@ void Parser::parse_generic_start_tag(const TagToken& tag) {
 
     auto* el = create_element_for_token(tag);
     insert_element(el);
-    if (!is_void_element(t)) {
+    if (!is_void_element(t) && !tag.self_closing) {
         stack_.push_back(el);
     }
 }

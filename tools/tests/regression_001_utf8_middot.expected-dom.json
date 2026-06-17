@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  body { font-size: 24px; }\n  .middot { color: red; }\n",
-                  "data_normalized": " body { font-size: 24px; } .middot { color: red; }"
+                  "data_normalized": "body { font-size: 24px; } .middot { color: red; }"
                 }
               ]
             },
@@ -111,8 +111,8 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": "Â·",
-                      "data_normalized": "Â·"
+                      "data": "·",
+                      "data_normalized": "·"
                     }
                   ]
                 }
@@ -130,8 +130,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "The character above should appear as a single middle dot (U+00B7), not as two characters (ÃÂ·).",
-                  "data_normalized": "The character above should appear as a single middle dot (U+00B7), not as two characters (ÃÂ·)."
+                  "data": "The character above should appear as a single middle dot (U+00B7), not as two characters (Â·).",
+                  "data_normalized": "The character above should appear as a single middle dot (U+00B7), not as two characters (Â·)."
                 }
               ]
             },
@@ -159,15 +159,15 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": "Â·",
-                      "data_normalized": "Â·"
+                      "data": "·",
+                      "data_normalized": "·"
                     }
                   ]
                 },
                 {
                   "type": "text",
                   "data": " (entity) vs raw UTF-8: ",
-                  "data_normalized": " (entity) vs raw UTF-8:"
+                  "data_normalized": "(entity) vs raw UTF-8:"
                 },
                 {
                   "type": "element",
@@ -178,8 +178,8 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": "Â·",
-                      "data_normalized": "Â·"
+                      "data": "·",
+                      "data_normalized": "·"
                     }
                   ]
                 }
@@ -187,7 +187,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.b {\n  display: inline-block;\n  width: 100px;\n  height: 80px;\n  margin: 5px;\n  color: #fff;\n  font-weight: bold;\n  text-align: center;\n  line-height: 80px;\n}\n.o0 { opacity: 0; background: #c00; }\n.o25 { opacity: 0.25; background: #090; }\n.o5 { opacity: 0.5; background: #00c; }\n.o75 { opacity: 0.75; background: #c90; }\n.o1 { opacity: 1; background: #c0c; }\n",
-                  "data_normalized": " .b { display: inline-block; width: 100px; height: 80px; margin: 5px; color: #fff; font-weight: bold; text-align: center; line-height: 80px; } .o0 { opacity: 0; background: #c00; } .o25 { opacity: 0.25; background: #090; } .o5 { opacity: 0.5; background: #00c; } .o75 { opacity: 0.75; background: #c90; } .o1 { opacity: 1; background: #c0c; }"
+                  "data_normalized": ".b { display: inline-block; width: 100px; height: 80px; margin: 5px; color: #fff; font-weight: bold; text-align: center; line-height: 80px; } .o0 { opacity: 0; background: #c00; } .o25 { opacity: 0.25; background: #090; } .o5 { opacity: 0.5; background: #00c; } .o75 { opacity: 0.75; background: #c90; } .o1 { opacity: 1; background: #c0c; }"
                 }
               ]
             },
@@ -186,7 +186,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

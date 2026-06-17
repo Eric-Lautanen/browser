@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  *, *::before, *::after { box-sizing: border-box; }\n  :root { --color-primary: #005fcc; --color-accent: #e63946; --color-bg-subtle: #f0f0f0; --spacing-md: 1em; --radius: 4px; }\n  body { font-family: serif; margin: 2em auto; max-width: 800px; color: #111; background: #fff; }\n  h1 { font-size: 2em; }\n  h2 { font-size: 1.5em; margin-top: 1.5em; border-bottom: 1px solid #ccc; }\n  h3 { font-size: 1.2em; }\n  p { line-height: 1.6; }\n  a { color: #00e; }\n  a:visited { color: #551a8b; }\n  code { background: #f0f0f0; padding: 0.1em 0.3em; font-family: monospace; }\n  pre { background: #f0f0f0; padding: 1em; overflow-x: auto; }\n  pre code { background: none; padding: 0; }\n  blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 1em; color: #555; }\n  table { border-collapse: collapse; width: 100%; }\n  th, td { border: 1px solid #ccc; padding: 0.5em 1em; text-align: left; }\n  th { background: #f0f0f0; }\n  ul, ol { line-height: 1.8; }\n  hr { border: none; border-top: 1px solid #ccc; margin: 2em 0; }\n  .box { border: 1px solid #aaa; padding: 1em; margin: 1em 0; }\n  a:hover { color: var(--color-accent); }\n  a:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; }\n  input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-primary); }\n  .pseudo-list li:first-child { font-weight: bold; }\n  .pseudo-list li:last-child { font-style: italic; }\n  .pseudo-list li:nth-child(even) { background: var(--color-bg-subtle); }\n  .pseudo-list li:not(.excluded) { color: #111; }\n  .pseudo-list li.excluded { color: #aaa; text-decoration: line-through; }\n  .pseudo-before::before { content: \"\\2192 \"; color: var(--color-accent); }\n  .pseudo-after::after { content: \" \\2190\"; color: var(--color-accent); }\n  .display-inline-block { display: inline-block; width: 80px; height: 40px; background: #cde; border: 1px solid #99b; vertical-align: middle; }\n  .display-none { display: none; }\n  .overflow-hidden { overflow: hidden; max-height: 3em; background: #ffd; padding: 0.5em; }\n  .overflow-scroll { overflow: scroll; max-height: 3em; background: #dff; padding: 0.5em; }\n  .overflow-auto { overflow: auto; max-height: 3em; background: #fdf; padding: 0.5em; }\n  .pos-container { position: relative; height: 80px; border: 1px dashed #aaa; margin: 0.5em 0; }\n  .pos-absolute { position: absolute; top: 8px; right: 8px; background: #fdd; padding: 0.25em 0.5em; }\n  .flex-container { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; background: #f5f5f5; padding: 0.5em; }\n  .flex-item { flex: 1 1 80px; background: var(--color-primary); color: #fff; padding: 0.5em; text-align: center; border-radius: var(--radius); }\n  .flex-item.grow2 { flex-grow: 2; background: var(--color-accent); }\n  .flex-col { display: flex; flex-direction: column; gap: 0.25em; }\n  .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5em; }\n  .grid-item { background: #e8eaf6; border: 1px solid #c5cae9; padding: 0.5em; text-align: center; }\n  .grid-item.span2 { grid-column: span 2; background: #c5cae9; }\n  .calc-width { width: calc(100% - 4em); background: #efe; padding: 0.5em; }\n  .opacity-50 { opacity: 0.5; }\n  .visibility-hidden { visibility: hidden; }\n",
-                  "data_normalized": " *, *::before, *::after { box-sizing: border-box; } :root { --color-primary: #005fcc; --color-accent: #e63946; --color-bg-subtle: #f0f0f0; --spacing-md: 1em; --radius: 4px; } body { font-family: serif; margin: 2em auto; max-width: 800px; color: #111; background: #fff; } h1 { font-size: 2em; } h2 { font-size: 1.5em; margin-top: 1.5em; border-bottom: 1px solid #ccc; } h3 { font-size: 1.2em; } p { line-height: 1.6; } a { color: #00e; } a:visited { color: #551a8b; } code { background: #f0f0f0; padding: 0.1em 0.3em; font-family: monospace; } pre { background: #f0f0f0; padding: 1em; overflow-x: auto; } pre code { background: none; padding: 0; } blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 1em; color: #555; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ccc; padding: 0.5em 1em; text-align: left; } th { background: #f0f0f0; } ul, ol { line-height: 1.8; } hr { border: none; border-top: 1px solid #ccc; margin: 2em 0; } .box { border: 1px solid #aaa; padding: 1em; margin: 1em 0; } a:hover { color: var(--color-accent); } a:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; } input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-primary); } .pseudo-list li:first-child { font-weight: bold; } .pseudo-list li:last-child { font-style: italic; } .pseudo-list li:nth-child(even) { background: var(--color-bg-subtle); } .pseudo-list li:not(.excluded) { color: #111; } .pseudo-list li.excluded { color: #aaa; text-decoration: line-through; } .pseudo-before::before { content: \"\\2192 \"; color: var(--color-accent); } .pseudo-after::after { content: \" \\2190\"; color: var(--color-accent); } .display-inline-block { display: inline-block; width: 80px; height: 40px; background: #cde; border: 1px solid #99b; vertical-align: middle; } .display-none { display: none; } .overflow-hidden { overflow: hidden; max-height: 3em; background: #ffd; padding: 0.5em; } .overflow-scroll { overflow: scroll; max-height: 3em; background: #dff; padding: 0.5em; } .overflow-auto { overflow: auto; max-height: 3em; background: #fdf; padding: 0.5em; } .pos-container { position: relative; height: 80px; border: 1px dashed #aaa; margin: 0.5em 0; } .pos-absolute { position: absolute; top: 8px; right: 8px; background: #fdd; padding: 0.25em 0.5em; } .flex-container { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; background: #f5f5f5; padding: 0.5em; } .flex-item { flex: 1 1 80px; background: var(--color-primary); color: #fff; padding: 0.5em; text-align: center; border-radius: var(--radius); } .flex-item.grow2 { flex-grow: 2; background: var(--color-accent); } .flex-col { display: flex; flex-direction: column; gap: 0.25em; } .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5em; } .grid-item { background: #e8eaf6; border: 1px solid #c5cae9; padding: 0.5em; text-align: center; } .grid-item.span2 { grid-column: span 2; background: #c5cae9; } .calc-width { width: calc(100% - 4em); background: #efe; padding: 0.5em; } .opacity-50 { opacity: 0.5; } .visibility-hidden { visibility: hidden; }"
+                  "data_normalized": "*, *::before, *::after { box-sizing: border-box; } :root { --color-primary: #005fcc; --color-accent: #e63946; --color-bg-subtle: #f0f0f0; --spacing-md: 1em; --radius: 4px; } body { font-family: serif; margin: 2em auto; max-width: 800px; color: #111; background: #fff; } h1 { font-size: 2em; } h2 { font-size: 1.5em; margin-top: 1.5em; border-bottom: 1px solid #ccc; } h3 { font-size: 1.2em; } p { line-height: 1.6; } a { color: #00e; } a:visited { color: #551a8b; } code { background: #f0f0f0; padding: 0.1em 0.3em; font-family: monospace; } pre { background: #f0f0f0; padding: 1em; overflow-x: auto; } pre code { background: none; padding: 0; } blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 1em; color: #555; } table { border-collapse: collapse; width: 100%; } th, td { border: 1px solid #ccc; padding: 0.5em 1em; text-align: left; } th { background: #f0f0f0; } ul, ol { line-height: 1.8; } hr { border: none; border-top: 1px solid #ccc; margin: 2em 0; } .box { border: 1px solid #aaa; padding: 1em; margin: 1em 0; } a:hover { color: var(--color-accent); } a:focus { outline: 2px solid var(--color-primary); outline-offset: 2px; } input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-primary); } .pseudo-list li:first-child { font-weight: bold; } .pseudo-list li:last-child { font-style: italic; } .pseudo-list li:nth-child(even) { background: var(--color-bg-subtle); } .pseudo-list li:not(.excluded) { color: #111; } .pseudo-list li.excluded { color: #aaa; text-decoration: line-through; } .pseudo-before::before { content: \"\\2192 \"; color: var(--color-accent); } .pseudo-after::after { content: \" \\2190\"; color: var(--color-accent); } .display-inline-block { display: inline-block; width: 80px; height: 40px; background: #cde; border: 1px solid #99b; vertical-align: middle; } .display-none { display: none; } .overflow-hidden { overflow: hidden; max-height: 3em; background: #ffd; padding: 0.5em; } .overflow-scroll { overflow: scroll; max-height: 3em; background: #dff; padding: 0.5em; } .overflow-auto { overflow: auto; max-height: 3em; background: #fdf; padding: 0.5em; } .pos-container { position: relative; height: 80px; border: 1px dashed #aaa; margin: 0.5em 0; } .pos-absolute { position: absolute; top: 8px; right: 8px; background: #fdd; padding: 0.25em 0.5em; } .flex-container { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; background: #f5f5f5; padding: 0.5em; } .flex-item { flex: 1 1 80px; background: var(--color-primary); color: #fff; padding: 0.5em; text-align: center; border-radius: var(--radius); } .flex-item.grow2 { flex-grow: 2; background: var(--color-accent); } .flex-col { display: flex; flex-direction: column; gap: 0.25em; } .grid-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5em; } .grid-item { background: #e8eaf6; border: 1px solid #c5cae9; padding: 0.5em; text-align: center; } .grid-item.span2 { grid-column: span 2; background: #c5cae9; } .calc-width { width: calc(100% - 4em); background: #efe; padding: 0.5em; } .opacity-50 { opacity: 0.5; } .visibility-hidden { visibility: hidden; }"
                 }
               ]
             },
@@ -592,7 +592,7 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "\n ",
+                  "data": "\n  ",
                   "data_normalized": ""
                 },
                 {
@@ -602,7 +602,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": " \n   ",
+                      "data": "\n    ",
                       "data_normalized": ""
                     },
                     {
@@ -617,8 +617,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Elemen",
-                              "data_normalized": " Elemen"
+                              "data": "Element",
+                              "data_normalized": "Element"
                             }
                           ]
                         },
@@ -629,8 +629,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "tTa",
-                              "data_normalized": "tTa"
+                              "data": "Tag",
+                              "data_normalized": "Tag"
                             }
                           ]
                         },
@@ -641,8 +641,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "gNote",
-                              "data_normalized": "gNote"
+                              "data": "Notes",
+                              "data_normalized": "Notes"
                             }
                           ]
                         }
@@ -650,14 +650,14 @@
                     },
                     {
                       "type": "text",
-                      "data": "s\n ",
-                      "data_normalized": "s"
+                      "data": "\n  ",
+                      "data_normalized": ""
                     }
                   ]
                 },
                 {
                   "type": "text",
-                  "data": " \n ",
+                  "data": "\n  ",
                   "data_normalized": ""
                 },
                 {
@@ -667,7 +667,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": " \n   ",
+                      "data": "\n    ",
                       "data_normalized": ""
                     },
                     {
@@ -682,8 +682,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Paragrap",
-                              "data_normalized": " Paragrap"
+                              "data": "Paragraph",
+                              "data_normalized": "Paragraph"
                             }
                           ]
                         },
@@ -694,8 +694,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "h<p",
-                              "data_normalized": "h<p"
+                              "data": "<p>",
+                              "data_normalized": "<p>"
                             }
                           ]
                         },
@@ -706,8 +706,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": ">Block-level text containe",
-                              "data_normalized": ">Block-level text containe"
+                              "data": "Block-level text container",
+                              "data_normalized": "Block-level text container"
                             }
                           ]
                         }
@@ -715,8 +715,8 @@
                     },
                     {
                       "type": "text",
-                      "data": "r\n   ",
-                      "data_normalized": "r"
+                      "data": "\n    ",
+                      "data_normalized": ""
                     },
                     {
                       "type": "element",
@@ -730,8 +730,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Ancho",
-                              "data_normalized": " Ancho"
+                              "data": "Anchor",
+                              "data_normalized": "Anchor"
                             }
                           ]
                         },
@@ -742,8 +742,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "r<a",
-                              "data_normalized": "r<a"
+                              "data": "<a>",
+                              "data_normalized": "<a>"
                             }
                           ]
                         },
@@ -754,8 +754,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": ">Hyperlin",
-                              "data_normalized": ">Hyperlin"
+                              "data": "Hyperlink",
+                              "data_normalized": "Hyperlink"
                             }
                           ]
                         }
@@ -763,8 +763,8 @@
                     },
                     {
                       "type": "text",
-                      "data": "k\n   ",
-                      "data_normalized": "k"
+                      "data": "\n    ",
+                      "data_normalized": ""
                     },
                     {
                       "type": "element",
@@ -778,8 +778,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Divisio",
-                              "data_normalized": " Divisio"
+                              "data": "Division",
+                              "data_normalized": "Division"
                             }
                           ]
                         },
@@ -790,8 +790,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "n<div",
-                              "data_normalized": "n<div"
+                              "data": "<div>",
+                              "data_normalized": "<div>"
                             }
                           ]
                         },
@@ -802,8 +802,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": ">Generic block containe",
-                              "data_normalized": ">Generic block containe"
+                              "data": "Generic block container",
+                              "data_normalized": "Generic block container"
                             }
                           ]
                         }
@@ -811,21 +811,21 @@
                     },
                     {
                       "type": "text",
-                      "data": "r\n ",
-                      "data_normalized": "r"
+                      "data": "\n  ",
+                      "data_normalized": ""
                     }
                   ]
                 },
                 {
                   "type": "text",
-                  "data": " ",
+                  "data": "\n",
                   "data_normalized": ""
                 }
               ]
             },
             {
               "type": "text",
-              "data": "\n\n\n",
+              "data": "\n\n",
               "data_normalized": ""
             },
             {
@@ -907,7 +907,7 @@
                         {
                           "type": "text",
                           "data": " Option A",
-                          "data_normalized": " Option A"
+                          "data_normalized": "Option A"
                         }
                       ]
                     },
@@ -932,7 +932,7 @@
                         {
                           "type": "text",
                           "data": " Option B",
-                          "data_normalized": " Option B"
+                          "data_normalized": "Option B"
                         }
                       ]
                     },
@@ -970,8 +970,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "Alph",
-                              "data_normalized": "Alph"
+                              "data": "Alpha",
+                              "data_normalized": "Alpha"
                             }
                           ]
                         },
@@ -982,17 +982,12 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "aBet",
-                              "data_normalized": "aBet"
+                              "data": "Beta",
+                              "data_normalized": "Beta"
                             }
                           ]
                         }
                       ]
-                    },
-                    {
-                      "type": "text",
-                      "data": "a",
-                      "data_normalized": "a"
                     }
                   ]
                 },
@@ -1371,7 +1366,7 @@
                 {
                   "type": "text",
                   "data": " → Normal",
-                  "data_normalized": " → Normal"
+                  "data_normalized": "→ Normal"
                 }
               ]
             },
@@ -1512,7 +1507,7 @@
                 {
                   "type": "text",
                   "data": "\n  relative container\n  ",
-                  "data_normalized": " relative container"
+                  "data_normalized": "relative container"
                 },
                 {
                   "type": "element",
@@ -1584,7 +1579,7 @@
                 {
                   "type": "text",
                   "data": " text.",
-                  "data_normalized": " text."
+                  "data_normalized": "text."
                 }
               ]
             },
@@ -1643,7 +1638,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

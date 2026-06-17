@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.box { width: 80px; margin: 5px; color: #fff; text-align: center; }\n.left { float: left; }\n.right { float: right; }\n.clear-left { clear: left; }\n.clear-right { clear: right; }\n.clear-both { clear: both; }\n.a { height: 60px; background: #c33; }\n.b { height: 100px; background: #393; }\n.c { height: 40px; background: #33c; }\n.d { height: 80px; background: #c93; }\n.wrapper {\n  width: 400px;\n  border: 1px solid #999;\n  padding: 5px;\n  margin: 10px;\n}\np { margin: 4px 0; }\n",
-                  "data_normalized": " .box { width: 80px; margin: 5px; color: #fff; text-align: center; } .left { float: left; } .right { float: right; } .clear-left { clear: left; } .clear-right { clear: right; } .clear-both { clear: both; } .a { height: 60px; background: #c33; } .b { height: 100px; background: #393; } .c { height: 40px; background: #33c; } .d { height: 80px; background: #c93; } .wrapper { width: 400px; border: 1px solid #999; padding: 5px; margin: 10px; } p { margin: 4px 0; }"
+                  "data_normalized": ".box { width: 80px; margin: 5px; color: #fff; text-align: center; } .left { float: left; } .right { float: right; } .clear-left { clear: left; } .clear-right { clear: right; } .clear-both { clear: both; } .a { height: 60px; background: #c33; } .b { height: 100px; background: #393; } .c { height: 40px; background: #33c; } .d { height: 80px; background: #c93; } .wrapper { width: 400px; border: 1px solid #999; padding: 5px; margin: 10px; } p { margin: 4px 0; }"
                 }
               ]
             },
@@ -262,7 +262,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

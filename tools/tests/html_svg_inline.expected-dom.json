@@ -97,13 +97,12 @@
                         "id": "def-circle",
                         "r": "10"
                       },
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
-                        }
-                      ]
+                      "children": []
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     }
                   ]
                 },
@@ -124,6 +123,102 @@
                     "x": "10",
                     "y": "10"
                   },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "circle",
+                  "attributes": {
+                    "cx": "100",
+                    "cy": "35",
+                    "fill": "green",
+                    "r": "25"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "polygon",
+                  "attributes": {
+                    "fill": "yellow",
+                    "points": "150,10 190,50 170,60",
+                    "stroke": "orange"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "path",
+                  "attributes": {
+                    "d": "M10 100 L50 150 L90 100 Z",
+                    "fill": "purple"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "text",
+                  "attributes": {
+                    "fill": "black",
+                    "font-family": "Arial",
+                    "font-size": "14",
+                    "x": "10",
+                    "y": "180"
+                  },
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "SVG text element",
+                      "data_normalized": "SVG text element"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "use",
+                  "attributes": {
+                    "href": "#def-circle",
+                    "x": "120",
+                    "y": "120"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "g",
+                  "attributes": {
+                    "transform": "translate(130, 130)"
+                  },
                   "children": [
                     {
                       "type": "text",
@@ -134,127 +229,25 @@
                       "type": "element",
                       "tag": "circle",
                       "attributes": {
-                        "cx": "100",
-                        "cy": "35",
-                        "fill": "green",
-                        "r": "25"
+                        "cx": "0",
+                        "cy": "0",
+                        "fill": "cyan",
+                        "opacity": "0.5",
+                        "r": "20"
                       },
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "\n",
-                          "data_normalized": ""
-                        },
-                        {
-                          "type": "element",
-                          "tag": "polygon",
-                          "attributes": {
-                            "fill": "yellow",
-                            "points": "150,10 190,50 170,60",
-                            "stroke": "orange"
-                          },
-                          "children": [
-                            {
-                              "type": "text",
-                              "data": "\n",
-                              "data_normalized": ""
-                            },
-                            {
-                              "type": "element",
-                              "tag": "path",
-                              "attributes": {
-                                "d": "M10 100 L50 150 L90 100 Z",
-                                "fill": "purple"
-                              },
-                              "children": [
-                                {
-                                  "type": "text",
-                                  "data": "\n",
-                                  "data_normalized": ""
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "text",
-                                  "attributes": {
-                                    "fill": "black",
-                                    "font-family": "Arial",
-                                    "font-size": "14",
-                                    "x": "10",
-                                    "y": "180"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "data": "SVG text element",
-                                      "data_normalized": "SVG text element"
-                                    }
-                                  ]
-                                },
-                                {
-                                  "type": "text",
-                                  "data": "\n",
-                                  "data_normalized": ""
-                                },
-                                {
-                                  "type": "element",
-                                  "tag": "use",
-                                  "attributes": {
-                                    "href": "#def-circle",
-                                    "x": "120",
-                                    "y": "120"
-                                  },
-                                  "children": [
-                                    {
-                                      "type": "text",
-                                      "data": "\n",
-                                      "data_normalized": ""
-                                    },
-                                    {
-                                      "type": "element",
-                                      "tag": "g",
-                                      "attributes": {
-                                        "transform": "translate(130, 130)"
-                                      },
-                                      "children": [
-                                        {
-                                          "type": "text",
-                                          "data": "\n",
-                                          "data_normalized": ""
-                                        },
-                                        {
-                                          "type": "element",
-                                          "tag": "circle",
-                                          "attributes": {
-                                            "cx": "0",
-                                            "cy": "0",
-                                            "fill": "cyan",
-                                            "opacity": "0.5",
-                                            "r": "20"
-                                          },
-                                          "children": [
-                                            {
-                                              "type": "text",
-                                              "data": "\n",
-                                              "data_normalized": ""
-                                            }
-                                          ]
-                                        }
-                                      ]
-                                    },
-                                    {
-                                      "type": "text",
-                                      "data": "\n",
-                                      "data_normalized": ""
-                                    }
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
+                      "children": []
+                    },
+                    {
+                      "type": "text",
+                      "data": "\n",
+                      "data_normalized": ""
                     }
                   ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
               ]
             },

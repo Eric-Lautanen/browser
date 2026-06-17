@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  p { color: red !important; }\n  .special { color: blue; }\n  #unique { color: green !important; }\n  p.override { color: yellow; }\n",
-                  "data_normalized": " p { color: red !important; } .special { color: blue; } #unique { color: green !important; } p.override { color: yellow; }"
+                  "data_normalized": "p { color: red !important; } .special { color: blue; } #unique { color: green !important; } p.override { color: yellow; }"
                 }
               ]
             },
@@ -168,7 +168,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

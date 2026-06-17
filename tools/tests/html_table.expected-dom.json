@@ -68,21 +68,26 @@
               "attributes": {},
               "children": [
                 {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
                   "type": "element",
                   "tag": "caption",
                   "attributes": {},
                   "children": [
                     {
                       "type": "text",
-                      "data": "\nComplex Table Tes",
-                      "data_normalized": " Complex Table Tes"
+                      "data": "Complex Table Test",
+                      "data_normalized": "Complex Table Test"
                     }
                   ]
                 },
                 {
                   "type": "text",
-                  "data": "t",
-                  "data_normalized": "t"
+                  "data": "\n",
+                  "data_normalized": ""
                 },
                 {
                   "type": "element",
@@ -111,15 +116,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nHeader ",
-                              "data_normalized": " Header"
+                              "data": "Header 1",
+                              "data_normalized": "Header 1"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "1",
-                          "data_normalized": "1"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -128,15 +133,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nHeader ",
-                              "data_normalized": " Header"
+                              "data": "Header 2",
+                              "data_normalized": "Header 2"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -145,15 +150,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nHeader ",
-                              "data_normalized": " Header"
+                              "data": "Header 3",
+                              "data_normalized": "Header 3"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                          "data": "\n",
+                          "data_normalized": ""
                         }
                       ]
                     },
@@ -198,15 +203,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nRowspan ",
-                              "data_normalized": " Rowspan"
+                              "data": "Rowspan 2",
+                              "data_normalized": "Rowspan 2"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -215,15 +220,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell 1,",
-                              "data_normalized": " Cell 1,"
+                              "data": "Cell 1,2",
+                              "data_normalized": "Cell 1,2"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -232,15 +237,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell 1,",
-                              "data_normalized": " Cell 1,"
+                              "data": "Cell 1,3",
+                              "data_normalized": "Cell 1,3"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                          "data": "\n",
+                          "data_normalized": ""
                         }
                       ]
                     },
@@ -268,15 +273,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nColspan ",
-                              "data_normalized": " Colspan"
+                              "data": "Colspan 2",
+                              "data_normalized": "Colspan 2"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                          "data": "\n",
+                          "data_normalized": ""
                         }
                       ]
                     },
@@ -302,15 +307,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell 3,",
-                              "data_normalized": " Cell 3,"
+                              "data": "Cell 3,1",
+                              "data_normalized": "Cell 3,1"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "1",
-                          "data_normalized": "1"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -319,15 +324,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell 3,",
-                              "data_normalized": " Cell 3,"
+                              "data": "Cell 3,2",
+                              "data_normalized": "Cell 3,2"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -336,15 +341,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell 3,",
-                              "data_normalized": " Cell 3,"
+                              "data": "Cell 3,3",
+                              "data_normalized": "Cell 3,3"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                          "data": "\n",
+                          "data_normalized": ""
                         }
                       ]
                     },
@@ -387,15 +392,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nFooter ",
-                              "data_normalized": " Footer"
+                              "data": "Footer 1",
+                              "data_normalized": "Footer 1"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "1",
-                          "data_normalized": "1"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -404,15 +409,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nFooter ",
-                              "data_normalized": " Footer"
+                              "data": "Footer 2",
+                              "data_normalized": "Footer 2"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "2",
-                          "data_normalized": "2"
+                          "data": "\n",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -421,15 +426,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nFooter ",
-                              "data_normalized": " Footer"
+                              "data": "Footer 3",
+                              "data_normalized": "Footer 3"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "3",
-                          "data_normalized": "3"
+                          "data": "\n",
+                          "data_normalized": ""
                         }
                       ]
                     },
@@ -449,7 +454,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n",
               "data_normalized": ""
             },
             {
@@ -458,21 +463,26 @@
               "attributes": {},
               "children": [
                 {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
                   "type": "element",
                   "tag": "caption",
                   "attributes": {},
                   "children": [
                     {
                       "type": "text",
-                      "data": "\nNested Tabl",
-                      "data_normalized": " Nested Tabl"
+                      "data": "Nested Table",
+                      "data_normalized": "Nested Table"
                     }
                   ]
                 },
                 {
                   "type": "text",
-                  "data": "e",
-                  "data_normalized": "e"
+                  "data": "\n",
+                  "data_normalized": ""
                 },
                 {
                   "type": "element",
@@ -496,7 +506,7 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\n\n",
+                              "data": "\n",
                               "data_normalized": ""
                             },
                             {
@@ -504,6 +514,11 @@
                               "tag": "table",
                               "attributes": {},
                               "children": [
+                                {
+                                  "type": "text",
+                                  "data": "\n",
+                                  "data_normalized": ""
+                                },
                                 {
                                   "type": "element",
                                   "tag": "tbody",
@@ -526,15 +541,15 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "data": "\nNested cell ",
-                                              "data_normalized": " Nested cell"
+                                              "data": "Nested cell 1",
+                                              "data_normalized": "Nested cell 1"
                                             }
                                           ]
                                         },
                                         {
                                           "type": "text",
-                                          "data": "1",
-                                          "data_normalized": "1"
+                                          "data": "\n",
+                                          "data_normalized": ""
                                         },
                                         {
                                           "type": "element",
@@ -543,15 +558,15 @@
                                           "children": [
                                             {
                                               "type": "text",
-                                              "data": "\nNested cell ",
-                                              "data_normalized": " Nested cell"
+                                              "data": "Nested cell 2",
+                                              "data_normalized": "Nested cell 2"
                                             }
                                           ]
                                         },
                                         {
                                           "type": "text",
-                                          "data": "2",
-                                          "data_normalized": "2"
+                                          "data": "\n",
+                                          "data_normalized": ""
                                         }
                                       ]
                                     },
@@ -589,7 +604,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n\n",
+              "data": "\n\n",
               "data_normalized": ""
             }
           ]

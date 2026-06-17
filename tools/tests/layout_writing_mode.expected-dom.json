@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.vrl { writing-mode: vertical-rl; }\n.vlr { writing-mode: vertical-lr; }\n.rtl { direction: rtl; }\n.ltr { direction: ltr; }\n.test-box {\n  border: 1px solid #666;\n  margin: 10px;\n  padding: 8px;\n  height: 200px;\n  display: inline-block;\n  vertical-align: top;\n  background: #f0f0f0;\n}\np { margin: 4px 0; }\n",
-                  "data_normalized": " .vrl { writing-mode: vertical-rl; } .vlr { writing-mode: vertical-lr; } .rtl { direction: rtl; } .ltr { direction: ltr; } .test-box { border: 1px solid #666; margin: 10px; padding: 8px; height: 200px; display: inline-block; vertical-align: top; background: #f0f0f0; } p { margin: 4px 0; }"
+                  "data_normalized": ".vrl { writing-mode: vertical-rl; } .vlr { writing-mode: vertical-lr; } .rtl { direction: rtl; } .ltr { direction: ltr; } .test-box { border: 1px solid #666; margin: 10px; padding: 8px; height: 200px; display: inline-block; vertical-align: top; background: #f0f0f0; } p { margin: 4px 0; }"
                 }
               ]
             },
@@ -306,7 +306,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

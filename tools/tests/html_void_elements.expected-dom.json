@@ -194,18 +194,7 @@
             },
             {
               "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "col",
-              "attributes": {},
-              "children": []
-            },
-            {
-              "type": "text",
-              "data": "\n",
+              "data": "\n\n",
               "data_normalized": ""
             },
             {

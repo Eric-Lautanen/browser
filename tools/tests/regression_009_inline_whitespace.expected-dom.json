@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.container {\n  border: 1px solid #999;\n  margin: 10px;\n  padding: 8px;\n  font-size: 16px;\n}\nspan {\n  background: #fdc;\n  border: 1px solid #c90;\n  padding: 2px;\n}\n.wide {\n  font-size: 24px;\n}\n",
-                  "data_normalized": " .container { border: 1px solid #999; margin: 10px; padding: 8px; font-size: 16px; } span { background: #fdc; border: 1px solid #c90; padding: 2px; } .wide { font-size: 24px; }"
+                  "data_normalized": ".container { border: 1px solid #999; margin: 10px; padding: 8px; font-size: 16px; } span { background: #fdc; border: 1px solid #c90; padding: 2px; } .wide { font-size: 24px; }"
                 }
               ]
             },
@@ -308,7 +308,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

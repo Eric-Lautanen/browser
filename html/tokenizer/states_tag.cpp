@@ -1,8 +1,9 @@
 #include "tokenizer.hpp"
+#include "../utf8.hpp"
 
 namespace browser::html {
 
-    void Tokenizer::process_tag_state(char c) {
+    void Tokenizer::process_tag_state(char32_t c) {
         switch (state_) {
             case State::TAG_OPEN:
                 if (c == '!') {
@@ -186,7 +187,7 @@ namespace browser::html {
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
-                    temporary_buffer_ += c;
+                    temporary_buffer_ += encode_utf8(c);
                 }
                 break;
 
@@ -203,7 +204,7 @@ namespace browser::html {
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
-                    temporary_buffer_ += c;
+                    temporary_buffer_ += encode_utf8(c);
                 }
                 break;
 
@@ -224,7 +225,7 @@ namespace browser::html {
                 } else if (c == '\0') {
                     temporary_buffer_ += static_cast<char>(0xFD);
                 } else {
-                    temporary_buffer_ += c;
+                    temporary_buffer_ += encode_utf8(c);
                 }
                 break;
 
@@ -319,7 +320,7 @@ namespace browser::html {
                     state_ = State::COMMENT_END;
                 } else if (c == '>') {
                     CommentToken ct;
-                    ct.data = std::string("-");
+                    ct.data = temporary_buffer_;
                     emit(Token(ct));
                     state_ = State::DATA;
                 } else if (c == '\0' && is_eof()) {
@@ -331,7 +332,6 @@ namespace browser::html {
                     temporary_buffer_ += static_cast<char>(0xFD);
                     state_ = State::COMMENT;
                 } else {
-                    temporary_buffer_ += '-';
                     state_ = State::COMMENT;
                     reconsume_ = true;
                 }
@@ -386,6 +386,11 @@ namespace browser::html {
             case State::COMMENT_END_DASH:
                 if (c == '-') {
                     state_ = State::COMMENT_END;
+                } else if (c == '>') {
+                    CommentToken ct;
+                    ct.data = temporary_buffer_;
+                    emit(Token(ct));
+                    state_ = State::DATA;
                 } else if (c == '\0' && is_eof()) {
                     temporary_buffer_ += '-';
                     CommentToken ct;
@@ -410,7 +415,7 @@ namespace browser::html {
                 } else if (c == '!') {
                     state_ = State::COMMENT_END_BANG;
                 } else if (c == '-') {
-                    temporary_buffer_ += '-';
+                    state_ = State::COMMENT_END_DASH;
                 } else if (c == '\0' && is_eof()) {
                     CommentToken ct;
                     ct.data = temporary_buffer_;

@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n:root { --spacing: 10px; }\n.parent {\n  width: 300px;\n  height: 200px;\n  border: 1px solid #999;\n  margin: 10px;\n  background: #f5f5f5;\n}\n.cw { width: calc(100% - 20px); background: #fdc; }\n.ch { height: calc(50% - 10px); background: #cfc; }\n.cm { margin: calc(1em + 5px); background: #cdf; }\n.cp { padding: calc(var(--spacing) * 2); background: #fcf; }\n.inner { border: 1px solid #666; margin-bottom: 4px; }\n",
-                  "data_normalized": " :root { --spacing: 10px; } .parent { width: 300px; height: 200px; border: 1px solid #999; margin: 10px; background: #f5f5f5; } .cw { width: calc(100% - 20px); background: #fdc; } .ch { height: calc(50% - 10px); background: #cfc; } .cm { margin: calc(1em + 5px); background: #cdf; } .cp { padding: calc(var(--spacing) * 2); background: #fcf; } .inner { border: 1px solid #666; margin-bottom: 4px; }"
+                  "data_normalized": ":root { --spacing: 10px; } .parent { width: 300px; height: 200px; border: 1px solid #999; margin: 10px; background: #f5f5f5; } .cw { width: calc(100% - 20px); background: #fdc; } .ch { height: calc(50% - 10px); background: #cfc; } .cm { margin: calc(1em + 5px); background: #cdf; } .cp { padding: calc(var(--spacing) * 2); background: #fcf; } .inner { border: 1px solid #666; margin-bottom: 4px; }"
                 }
               ]
             },
@@ -186,7 +186,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

@@ -7,7 +7,6 @@ void Parser::handle_in_body(const Token& token) {
     if (token.index() == 3) {
         char32_t c = std::get<CharacterToken>(token).character;
         if (c == '\0') return;
-        flush_pending_text();
         pending_text_ += encode_utf8(c);
         return;
     }
@@ -51,7 +50,6 @@ void Parser::handle_text(const Token& token) {
     if (token.index() == 3) {
         char32_t c = std::get<CharacterToken>(token).character;
         if (c == '\0') return;
-        flush_pending_text();
         pending_text_ += encode_utf8(c);
         return;
     }
@@ -65,10 +63,11 @@ void Parser::handle_in_table(const Token& token) {
             return;
         }
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 0) return;
 
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "caption") {
@@ -189,10 +188,11 @@ void Parser::handle_in_table_body(const Token& token) {
             return;
         }
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 0) return;
 
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "tr") {
@@ -261,10 +261,11 @@ void Parser::handle_in_row(const Token& token) {
             return;
         }
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 0) return;
 
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "th" || tag.tag_name == "td") {
@@ -329,10 +330,11 @@ void Parser::handle_in_cell(const Token& token) {
         insert_character(c);
         return;
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 0) return;
 
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "caption" || tag.tag_name == "col" || tag.tag_name == "colgroup" ||
@@ -365,7 +367,7 @@ void Parser::handle_in_cell(const Token& token) {
             }
             if (tag.tag_name == "table" || tag.tag_name == "tbody" || tag.tag_name == "tfoot" ||
                 tag.tag_name == "thead" || tag.tag_name == "tr") {
-                if (!has_element_in_table_scope(tag.tag_name)) return;
+                if (!has_element_in_table_scope("td") && !has_element_in_table_scope("th")) return;
                 close_cell();
                 handle_token(token);
                 return;
@@ -383,10 +385,11 @@ void Parser::handle_in_caption(const Token& token) {
             return;
         }
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 0) return;
 
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "caption" || tag.tag_name == "col" || tag.tag_name == "colgroup" ||
@@ -426,7 +429,7 @@ void Parser::handle_in_caption(const Token& token) {
 }
 
 void Parser::handle_in_column_group(const Token& token) {
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 3) {
         char32_t c = std::get<CharacterToken>(token).character;
         if (c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r') {
@@ -435,6 +438,7 @@ void Parser::handle_in_column_group(const Token& token) {
         }
     }
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "col") {
@@ -476,10 +480,11 @@ void Parser::handle_in_select(const Token& token) {
         insert_character(c);
         return;
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 0) return;
 
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "option") {
@@ -572,6 +577,7 @@ void Parser::handle_in_select(const Token& token) {
 }
 
 void Parser::close_cell() {
+    flush_pending_text();
     generate_implied_end_tags();
     while (current_node() && current_node()->tag_name != "td" && current_node()->tag_name != "th") {
         stack_.pop_back();

@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  body { margin: 0; }\n  #adjacent-siblings { background: lightblue; }\n  #adjacent-siblings .box { width: 100px; height: 50px; margin: 20px; background: lightcoral; }\n  #parent-child { background: lightgreen; margin: 10px; }\n  #parent-child .child { margin: 20px; background: lightyellow; }\n  #parent-no-border { background: lightpink; margin: 10px; }\n  #parent-no-border .child { margin: 30px; background: lightcyan; }\n  #negative { overflow: hidden; background: lavender; }\n  #negative .pos { margin-bottom: 30px; background: lightcoral; }\n  #negative .neg { margin-top: -10px; background: lightblue; }\n",
-                  "data_normalized": " body { margin: 0; } #adjacent-siblings { background: lightblue; } #adjacent-siblings .box { width: 100px; height: 50px; margin: 20px; background: lightcoral; } #parent-child { background: lightgreen; margin: 10px; } #parent-child .child { margin: 20px; background: lightyellow; } #parent-no-border { background: lightpink; margin: 10px; } #parent-no-border .child { margin: 30px; background: lightcyan; } #negative { overflow: hidden; background: lavender; } #negative .pos { margin-bottom: 30px; background: lightcoral; } #negative .neg { margin-top: -10px; background: lightblue; }"
+                  "data_normalized": "body { margin: 0; } #adjacent-siblings { background: lightblue; } #adjacent-siblings .box { width: 100px; height: 50px; margin: 20px; background: lightcoral; } #parent-child { background: lightgreen; margin: 10px; } #parent-child .child { margin: 20px; background: lightyellow; } #parent-no-border { background: lightpink; margin: 10px; } #parent-no-border .child { margin: 30px; background: lightcyan; } #negative { overflow: hidden; background: lavender; } #negative .pos { margin-bottom: 30px; background: lightcoral; } #negative .neg { margin-top: -10px; background: lightblue; }"
                 }
               ]
             },
@@ -178,7 +178,7 @@
                 {
                   "type": "text",
                   "data": "\n    Parent margin 10px, child margin 20px (collapses to max: 20px)\n    ",
-                  "data_normalized": " Parent margin 10px, child margin 20px (collapses to max: 20px)"
+                  "data_normalized": "Parent margin 10px, child margin 20px (collapses to max: 20px)"
                 },
                 {
                   "type": "element",
@@ -216,7 +216,7 @@
                 {
                   "type": "text",
                   "data": "\n    Parent-no-border margin 10px, child margin 30px (collapses to 30px)\n    ",
-                  "data_normalized": " Parent-no-border margin 10px, child margin 30px (collapses to 30px)"
+                  "data_normalized": "Parent-no-border margin 10px, child margin 30px (collapses to 30px)"
                 },
                 {
                   "type": "element",
@@ -298,7 +298,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

@@ -5545,7 +5545,7 @@
                     "aria-label": "SVG test shapes",
                     "height": "100",
                     "role": "img",
-                    "viewBox": "0 0 300 100",
+                    "viewbox": "0 0 300 100",
                     "width": "300",
                     "xmlns": "http://www.w3.org/2000/svg"
                   },

@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.container {\n  width: 200px;\n  height: 100px;\n  margin: 10px;\n  border: 1px solid #333;\n  display: inline-block;\n  vertical-align: top;\n}\n.container.hidden { overflow: hidden; }\n.container.scroll { overflow: scroll; }\n.container.auto { overflow: auto; }\n.container.visible { overflow: visible; }\n.content {\n  width: 300px;\n  height: 150px;\n  background: linear-gradient(135deg, #f005 25%, transparent 25%,\n              transparent 50%, #f005 50%, #f005 75%, transparent 75%);\n}\n",
-                  "data_normalized": " .container { width: 200px; height: 100px; margin: 10px; border: 1px solid #333; display: inline-block; vertical-align: top; } .container.hidden { overflow: hidden; } .container.scroll { overflow: scroll; } .container.auto { overflow: auto; } .container.visible { overflow: visible; } .content { width: 300px; height: 150px; background: linear-gradient(135deg, #f005 25%, transparent 25%, transparent 50%, #f005 50%, #f005 75%, transparent 75%); }"
+                  "data_normalized": ".container { width: 200px; height: 100px; margin: 10px; border: 1px solid #333; display: inline-block; vertical-align: top; } .container.hidden { overflow: hidden; } .container.scroll { overflow: scroll; } .container.auto { overflow: auto; } .container.visible { overflow: visible; } .content { width: 300px; height: 150px; background: linear-gradient(135deg, #f005 25%, transparent 25%, transparent 50%, #f005 50%, #f005 75%, transparent 75%); }"
                 }
               ]
             },
@@ -179,7 +179,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

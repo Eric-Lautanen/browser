@@ -136,9 +136,16 @@
                   ]
                 },
                 {
-                  "type": "text",
-                  "data": "more",
-                  "data_normalized": "more"
+                  "type": "element",
+                  "tag": "i",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "more",
+                      "data_normalized": "more"
+                    }
+                  ]
                 }
               ]
             },
@@ -296,9 +303,16 @@
                   ]
                 },
                 {
-                  "type": "text",
-                  "data": "still bold",
-                  "data_normalized": "still bold"
+                  "type": "element",
+                  "tag": "strong",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "still bold",
+                      "data_normalized": "still bold"
+                    }
+                  ]
                 }
               ]
             },
@@ -356,15 +370,41 @@
                   ]
                 },
                 {
-                  "type": "text",
-                  "data": "boundarytest",
-                  "data_normalized": "boundarytest"
+                  "type": "element",
+                  "tag": "em",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "element",
+                      "tag": "b",
+                      "attributes": {},
+                      "children": [
+                        {
+                          "type": "text",
+                          "data": "boundary",
+                          "data_normalized": "boundary"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "element",
+                  "tag": "b",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "test",
+                      "data_normalized": "test"
+                    }
+                  ]
                 }
               ]
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

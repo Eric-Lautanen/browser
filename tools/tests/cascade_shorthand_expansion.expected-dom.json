@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  #m1 { margin: auto; }\n  #m2 { margin: 2em auto; }\n  #m3 { margin: 10px 20px 30px 40px; }\n  #m4 { margin: 1em; }\n  #p1 { padding: 1em; }\n  #p2 { padding: 5px 10px; }\n  #p3 { padding: 1px 2px 3px 4px; }\n  #b1 { border: 2px solid black; }\n  #b2 { border: 3px dashed red; }\n  #box1 { width: 100px; margin: 0 auto; }\n",
-                  "data_normalized": " #m1 { margin: auto; } #m2 { margin: 2em auto; } #m3 { margin: 10px 20px 30px 40px; } #m4 { margin: 1em; } #p1 { padding: 1em; } #p2 { padding: 5px 10px; } #p3 { padding: 1px 2px 3px 4px; } #b1 { border: 2px solid black; } #b2 { border: 3px dashed red; } #box1 { width: 100px; margin: 0 auto; }"
+                  "data_normalized": "#m1 { margin: auto; } #m2 { margin: 2em auto; } #m3 { margin: 10px 20px 30px 40px; } #m4 { margin: 1em; } #p1 { padding: 1em; } #p2 { padding: 5px 10px; } #p3 { padding: 1px 2px 3px 4px; } #b1 { border: 2px solid black; } #b2 { border: 3px dashed red; } #box1 { width: 100px; margin: 0 auto; }"
                 }
               ]
             },
@@ -279,7 +279,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

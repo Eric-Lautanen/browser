@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  :root { --main-color: red; --font-size: 20px; --spacing: 10px; --border-color: black; }\n  .theme { --main-color: blue; --bg: lightgray; }\n  .child { --font-size: 24px; }\n  #fallback { color: var(--undefined-color, purple); }\n  #nested { font-size: var(--font-size, 16px); border: 2px solid var(--border-color, gray); }\n",
-                  "data_normalized": " :root { --main-color: red; --font-size: 20px; --spacing: 10px; --border-color: black; } .theme { --main-color: blue; --bg: lightgray; } .child { --font-size: 24px; } #fallback { color: var(--undefined-color, purple); } #nested { font-size: var(--font-size, 16px); border: 2px solid var(--border-color, gray); }"
+                  "data_normalized": ":root { --main-color: red; --font-size: 20px; --spacing: 10px; --border-color: black; } .theme { --main-color: blue; --bg: lightgray; } .child { --font-size: 24px; } #fallback { color: var(--undefined-color, purple); } #nested { font-size: var(--font-size, 16px); border: 2px solid var(--border-color, gray); }"
                 }
               ]
             },
@@ -103,7 +103,7 @@
                 {
                   "type": "text",
                   "data": "\n    Should be blue text on lightgray background with 10px padding.\n    ",
-                  "data_normalized": " Should be blue text on lightgray background with 10px padding."
+                  "data_normalized": "Should be blue text on lightgray background with 10px padding."
                 },
                 {
                   "type": "element",
@@ -116,7 +116,7 @@
                     {
                       "type": "text",
                       "data": "\n      Should be blue text (inherited from .theme) at 24px font (overridden by .child).\n    ",
-                      "data_normalized": " Should be blue text (inherited from .theme) at 24px font (overridden by .child)."
+                      "data_normalized": "Should be blue text (inherited from .theme) at 24px font (overridden by .child)."
                     }
                   ]
                 },
@@ -167,7 +167,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

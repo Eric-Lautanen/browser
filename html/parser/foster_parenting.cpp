@@ -5,6 +5,7 @@
 namespace browser::html {
 
 void Parser::insert_element(Element* element) {
+    flush_pending_text();
     if (foster_parenting_) {
         for (i32 i = static_cast<i32>(stack_.size()) - 1; i >= 0; i--) {
             if (stack_[i] && stack_[i]->tag_name == "table") {

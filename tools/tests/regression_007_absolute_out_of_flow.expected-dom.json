@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.parent {\n  width: 300px;\n  border: 2px solid #c00;\n  margin: 10px;\n  padding: 5px;\n}\n.child-abs {\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100px;\n  height: 200px;\n  background: rgba(0, 150, 0, 0.3);\n  border: 1px solid #090;\n}\n.child-normal {\n  height: 40px;\n  background: #cdf;\n  border: 1px solid #00c;\n  margin: 5px 0;\n}\n",
-                  "data_normalized": " .parent { width: 300px; border: 2px solid #c00; margin: 10px; padding: 5px; } .child-abs { position: absolute; top: 0; left: 0; width: 100px; height: 200px; background: rgba(0, 150, 0, 0.3); border: 1px solid #090; } .child-normal { height: 40px; background: #cdf; border: 1px solid #00c; margin: 5px 0; }"
+                  "data_normalized": ".parent { width: 300px; border: 2px solid #c00; margin: 10px; padding: 5px; } .child-abs { position: absolute; top: 0; left: 0; width: 100px; height: 200px; background: rgba(0, 150, 0, 0.3); border: 1px solid #090; } .child-normal { height: 40px; background: #cdf; border: 1px solid #00c; margin: 5px 0; }"
                 }
               ]
             },
@@ -184,7 +184,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

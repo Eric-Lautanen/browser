@@ -1,18 +1,8 @@
 {
   "source": "html_malformed.html",
   "encoding": "UTF-8",
-  "doctype": {
-    "name": "html",
-    "public_id": "",
-    "system_id": ""
-  },
+  "doctype": null,
   "children": [
-    {
-      "type": "doctype",
-      "name": "html",
-      "public_id": "",
-      "system_id": ""
-    },
     {
       "type": "element",
       "tag": "html",
@@ -22,11 +12,17 @@
           "type": "element",
           "tag": "head",
           "attributes": {},
+          "children": []
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
           "children": [
             {
               "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+              "data": "Content before doctype\n\n\n\n",
+              "data_normalized": "Content before doctype"
             },
             {
               "type": "element",
@@ -42,24 +38,7 @@
             },
             {
               "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            }
-          ]
-        },
-        {
-          "type": "text",
-          "data": "\n",
-          "data_normalized": ""
-        },
-        {
-          "type": "element",
-          "tag": "body",
-          "attributes": {},
-          "children": [
-            {
-              "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n\n",
               "data_normalized": ""
             },
             {
@@ -105,7 +84,24 @@
                 },
                 {
                   "type": "text",
-                  "data": "\n\n\n   \n",
+                  "data": "\n\n\n",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "extra",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "Stray element after body",
+                      "data_normalized": "Stray element after body"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
                   "data_normalized": ""
                 }
               ]
@@ -115,5 +111,5 @@
       ]
     }
   ],
-  "quirks_mode": false
+  "quirks_mode": true
 }

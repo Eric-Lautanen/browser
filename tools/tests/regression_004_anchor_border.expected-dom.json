@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  body { margin: 0; }\n  a { text-decoration: none; }\n  .bordered { border: 2px solid black; padding: 5px; }\n",
-                  "data_normalized": " body { margin: 0; } a { text-decoration: none; } .bordered { border: 2px solid black; padding: 5px; }"
+                  "data_normalized": "body { margin: 0; } a { text-decoration: none; } .bordered { border: 2px solid black; padding: 5px; }"
                 }
               ]
             },
@@ -142,7 +142,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

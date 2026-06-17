@@ -53,7 +53,7 @@
                 {
                   "type": "text",
                   "data": "\nbody { background: white; color: black; }\np { font-size: 16px; }\n",
-                  "data_normalized": " body { background: white; color: black; } p { font-size: 16px; }"
+                  "data_normalized": "body { background: white; color: black; } p { font-size: 16px; }"
                 }
               ]
             },
@@ -70,7 +70,7 @@
                 {
                   "type": "text",
                   "data": "\nfunction test() {\n  var x = \"",
-                  "data_normalized": " function test() { var x = \""
+                  "data_normalized": "function test() { var x = \""
                 }
               ]
             }
@@ -94,7 +94,7 @@
                 {
                   "type": "text",
                   "data": "\n.inline-style { color: red; }\n",
-                  "data_normalized": " .inline-style { color: red; }"
+                  "data_normalized": ".inline-style { color: red; }"
                 }
               ]
             },
@@ -111,7 +111,7 @@
                 {
                   "type": "text",
                   "data": "\nvar y = \"hello\";\ndocument.write(\"<p>Script in body</p>\");\n",
-                  "data_normalized": " var y = \"hello\"; document.write(\"<p>Script in body</p>\");"
+                  "data_normalized": "var y = \"hello\"; document.write(\"<p>Script in body</p>\");"
                 }
               ]
             },

@@ -117,98 +117,7 @@
               "attributes": {
                 "id": "nested-template"
               },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "div",
-                  "attributes": {},
-                  "children": [
-                    {
-                      "type": "text",
-                      "data": "\n    ",
-                      "data_normalized": ""
-                    },
-                    {
-                      "type": "element",
-                      "tag": "p",
-                      "attributes": {},
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "Paragraph inside template",
-                          "data_normalized": "Paragraph inside template"
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "data": "\n    ",
-                      "data_normalized": ""
-                    },
-                    {
-                      "type": "element",
-                      "tag": "ul",
-                      "attributes": {},
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "\n      ",
-                          "data_normalized": ""
-                        },
-                        {
-                          "type": "element",
-                          "tag": "li",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "data": "Item 1",
-                              "data_normalized": "Item 1"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "text",
-                          "data": "\n      ",
-                          "data_normalized": ""
-                        },
-                        {
-                          "type": "element",
-                          "tag": "li",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "data": "Item 2",
-                              "data_normalized": "Item 2"
-                            }
-                          ]
-                        },
-                        {
-                          "type": "text",
-                          "data": "\n    ",
-                          "data_normalized": ""
-                        }
-                      ]
-                    },
-                    {
-                      "type": "text",
-                      "data": "\n  ",
-                      "data_normalized": ""
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                }
-              ]
+              "children": []
             },
             {
               "type": "text",
@@ -239,7 +148,7 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "\n ",
+                  "data": "\n  ",
                   "data_normalized": ""
                 },
                 {
@@ -249,7 +158,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": " \n   ",
+                      "data": "\n    ",
                       "data_normalized": ""
                     },
                     {
@@ -259,7 +168,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "data": " \n     ",
+                          "data": "\n      ",
                           "data_normalized": ""
                         },
                         {
@@ -269,15 +178,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Nam",
-                              "data_normalized": " Nam"
+                              "data": "Name",
+                              "data_normalized": "Name"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "e\n     ",
-                          "data_normalized": "e"
+                          "data": "\n      ",
+                          "data_normalized": ""
                         },
                         {
                           "type": "element",
@@ -286,28 +195,28 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Valu",
-                              "data_normalized": " Valu"
+                              "data": "Value",
+                              "data_normalized": "Value"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "e\n   ",
-                          "data_normalized": "e"
+                          "data": "\n    ",
+                          "data_normalized": ""
                         }
                       ]
                     },
                     {
                       "type": "text",
-                      "data": " \n ",
+                      "data": "\n  ",
                       "data_normalized": ""
                     }
                   ]
                 },
                 {
                   "type": "text",
-                  "data": " \n ",
+                  "data": "\n  ",
                   "data_normalized": ""
                 },
                 {
@@ -317,7 +226,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "data": " \n    ",
+                      "data": "\n    ",
                       "data_normalized": ""
                     },
                     {
@@ -326,74 +235,25 @@
                       "attributes": {
                         "id": "row-template"
                       },
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "\n     ",
-                          "data_normalized": ""
-                        },
-                        {
-                          "type": "element",
-                          "tag": "tr",
-                          "attributes": {},
-                          "children": [
-                            {
-                              "type": "text",
-                              "data": " \n       ",
-                              "data_normalized": ""
-                            },
-                            {
-                              "type": "element",
-                              "tag": "td",
-                              "attributes": {
-                                "class": "name"
-                              },
-                              "children": []
-                            },
-                            {
-                              "type": "text",
-                              "data": " \n       ",
-                              "data_normalized": ""
-                            },
-                            {
-                              "type": "element",
-                              "tag": "td",
-                              "attributes": {
-                                "class": "value"
-                              },
-                              "children": []
-                            },
-                            {
-                              "type": "text",
-                              "data": " \n     ",
-                              "data_normalized": ""
-                            }
-                          ]
-                        },
-                        {
-                          "type": "text",
-                          "data": " \n    ",
-                          "data_normalized": ""
-                        }
-                      ]
+                      "children": []
                     },
                     {
                       "type": "text",
-                      "data": "\n ",
+                      "data": "\n  ",
                       "data_normalized": ""
                     }
                   ]
                 },
                 {
                   "type": "text",
-                  "data": " ",
+                  "data": "\n",
                   "data_normalized": ""
                 }
               ]
             },
             {
               "type": "text",
-              "data": "\n\n\n",
+              "data": "\n\n",
               "data_normalized": ""
             },
             {
@@ -419,49 +279,7 @@
               "attributes": {
                 "id": "script-template"
               },
-              "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "script",
-                  "attributes": {},
-                  "children": [
-                    {
-                      "type": "text",
-                      "data": "console.log('template script executed?');",
-                      "data_normalized": "console.log('template script executed?');"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "button",
-                  "attributes": {
-                    "onclick": "alert('clicked')"
-                  },
-                  "children": [
-                    {
-                      "type": "text",
-                      "data": "Click me",
-                      "data_normalized": "Click me"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                }
-              ]
+              "children": []
             },
             {
               "type": "text",
@@ -523,13 +341,13 @@
                 {
                   "type": "text",
                   "data": "\n  var t = document.getElementById('nested-template');\n  document.getElementById('result').textContent = (t.content instanceof DocumentFragment);\n",
-                  "data_normalized": " var t = document.getElementById('nested-template'); document.getElementById('result').textContent = (t.content instanceof DocumentFragment);"
+                  "data_normalized": "var t = document.getElementById('nested-template'); document.getElementById('result').textContent = (t.content instanceof DocumentFragment);"
                 }
               ]
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

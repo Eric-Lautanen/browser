@@ -695,7 +695,7 @@
                         {
                           "type": "text",
                           "data": " Male",
-                          "data_normalized": " Male"
+                          "data_normalized": "Male"
                         }
                       ]
                     },
@@ -722,7 +722,7 @@
                         {
                           "type": "text",
                           "data": " Female",
-                          "data_normalized": " Female"
+                          "data_normalized": "Female"
                         }
                       ]
                     },
@@ -770,6 +770,11 @@
                       },
                       "children": [
                         {
+                          "type": "text",
+                          "data": "\n",
+                          "data_normalized": ""
+                        },
+                        {
                           "type": "element",
                           "tag": "optgroup",
                           "attributes": {
@@ -790,15 +795,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "\nJapa",
-                                  "data_normalized": " Japa"
+                                  "data": "Japan",
+                                  "data_normalized": "Japan"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "n",
-                              "data_normalized": "n"
+                              "data": "\n",
+                              "data_normalized": ""
                             },
                             {
                               "type": "element",
@@ -809,15 +814,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "\nChin",
-                                  "data_normalized": " Chin"
+                                  "data": "China",
+                                  "data_normalized": "China"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "a",
-                              "data_normalized": "a"
+                              "data": "\n",
+                              "data_normalized": ""
                             },
                             {
                               "type": "element",
@@ -828,15 +833,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "\nKore",
-                                  "data_normalized": " Kore"
+                                  "data": "Korea",
+                                  "data_normalized": "Korea"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "a",
-                              "data_normalized": "a"
+                              "data": "\n",
+                              "data_normalized": ""
                             }
                           ]
                         },
@@ -866,15 +871,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "\nU",
-                                  "data_normalized": " U"
+                                  "data": "UK",
+                                  "data_normalized": "UK"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "K",
-                              "data_normalized": "K"
+                              "data": "\n",
+                              "data_normalized": ""
                             },
                             {
                               "type": "element",
@@ -885,15 +890,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "\nFranc",
-                                  "data_normalized": " Franc"
+                                  "data": "France",
+                                  "data_normalized": "France"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "e",
-                              "data_normalized": "e"
+                              "data": "\n",
+                              "data_normalized": ""
                             },
                             {
                               "type": "element",
@@ -904,15 +909,15 @@
                               "children": [
                                 {
                                   "type": "text",
-                                  "data": "\nGerman",
-                                  "data_normalized": " German"
+                                  "data": "Germany",
+                                  "data_normalized": "Germany"
                                 }
                               ]
                             },
                             {
                               "type": "text",
-                              "data": "y",
-                              "data_normalized": "y"
+                              "data": "\n",
+                              "data_normalized": ""
                             }
                           ]
                         },
@@ -925,7 +930,7 @@
                     },
                     {
                       "type": "text",
-                      "data": "\n\n",
+                      "data": "\n",
                       "data_normalized": ""
                     },
                     {

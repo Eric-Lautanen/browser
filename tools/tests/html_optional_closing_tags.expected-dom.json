@@ -210,6 +210,11 @@
               "attributes": {},
               "children": [
                 {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
+                },
+                {
                   "type": "element",
                   "tag": "tbody",
                   "attributes": {},
@@ -231,8 +236,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell one",
-                              "data_normalized": " Cell one"
+                              "data": "Cell one\n",
+                              "data_normalized": "Cell one"
                             }
                           ]
                         },
@@ -243,8 +248,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell two",
-                              "data_normalized": " Cell two"
+                              "data": "Cell two\n",
+                              "data_normalized": "Cell two"
                             }
                           ]
                         }
@@ -267,8 +272,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell three",
-                              "data_normalized": " Cell three"
+                              "data": "Cell three\n",
+                              "data_normalized": "Cell three"
                             }
                           ]
                         },
@@ -279,8 +284,8 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": "\nCell four\n\n\n",
-                              "data_normalized": " Cell four"
+                              "data": "Cell four\n",
+                              "data_normalized": "Cell four"
                             }
                           ]
                         }
@@ -289,6 +294,11 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "text",
+              "data": "\n\n",
+              "data_normalized": ""
             }
           ]
         }

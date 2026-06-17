@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  body { margin: 8px; }\n  #relative { position: relative; top: 20px; left: 30px; background: lightblue; width: 200px; }\n  #absolute-container { position: relative; width: 400px; height: 200px; background: lightgreen; margin-top: 40px; }\n  #absolute { position: absolute; top: 20px; right: 30px; bottom: 20px; left: 30px; background: lightcoral; }\n  #fixed { position: fixed; bottom: 10px; right: 10px; background: lightyellow; padding: 5px; }\n  #sticky-container { height: 400px; overflow: auto; background: lightpink; margin-top: 40px; }\n  #sticky { position: sticky; top: 0; background: lightcyan; padding: 10px; }\n  #zindex-container { position: relative; width: 300px; height: 200px; background: lavender; margin-top: 40px; }\n  #zindex-a { position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: red; z-index: 1; }\n  #zindex-b { position: absolute; top: 50px; left: 50px; width: 100px; height: 100px; background: blue; z-index: 2; }\n  #zindex-c { position: absolute; top: 80px; left: 80px; width: 100px; height: 100px; background: green; z-index: 0; }\n",
-                  "data_normalized": " body { margin: 8px; } #relative { position: relative; top: 20px; left: 30px; background: lightblue; width: 200px; } #absolute-container { position: relative; width: 400px; height: 200px; background: lightgreen; margin-top: 40px; } #absolute { position: absolute; top: 20px; right: 30px; bottom: 20px; left: 30px; background: lightcoral; } #fixed { position: fixed; bottom: 10px; right: 10px; background: lightyellow; padding: 5px; } #sticky-container { height: 400px; overflow: auto; background: lightpink; margin-top: 40px; } #sticky { position: sticky; top: 0; background: lightcyan; padding: 10px; } #zindex-container { position: relative; width: 300px; height: 200px; background: lavender; margin-top: 40px; } #zindex-a { position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: red; z-index: 1; } #zindex-b { position: absolute; top: 50px; left: 50px; width: 100px; height: 100px; background: blue; z-index: 2; } #zindex-c { position: absolute; top: 80px; left: 80px; width: 100px; height: 100px; background: green; z-index: 0; }"
+                  "data_normalized": "body { margin: 8px; } #relative { position: relative; top: 20px; left: 30px; background: lightblue; width: 200px; } #absolute-container { position: relative; width: 400px; height: 200px; background: lightgreen; margin-top: 40px; } #absolute { position: absolute; top: 20px; right: 30px; bottom: 20px; left: 30px; background: lightcoral; } #fixed { position: fixed; bottom: 10px; right: 10px; background: lightyellow; padding: 5px; } #sticky-container { height: 400px; overflow: auto; background: lightpink; margin-top: 40px; } #sticky { position: sticky; top: 0; background: lightcyan; padding: 10px; } #zindex-container { position: relative; width: 300px; height: 200px; background: lavender; margin-top: 40px; } #zindex-a { position: absolute; top: 20px; left: 20px; width: 100px; height: 100px; background: red; z-index: 1; } #zindex-b { position: absolute; top: 50px; left: 50px; width: 100px; height: 100px; background: blue; z-index: 2; } #zindex-c { position: absolute; top: 80px; left: 80px; width: 100px; height: 100px; background: green; z-index: 0; }"
                 }
               ]
             },
@@ -121,7 +121,7 @@
                 {
                   "type": "text",
                   "data": "\n    Positioned ancestor\n    ",
-                  "data_normalized": " Positioned ancestor"
+                  "data_normalized": "Positioned ancestor"
                 },
                 {
                   "type": "element",
@@ -298,7 +298,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.table { display: table; width: 100%; border-collapse: collapse; }\n.row { display: table-row; }\n.cell { display: table-cell; border: 1px solid #555; padding: 8px; }\n.cell.pct25 { width: 25%; }\n.cell.pct50 { width: 50%; }\n.cell.pct75 { width: 75%; }\n.cell.colspan2 { /* colspan equivalent by spanning two columns */ }\n.header { background: #ddd; font-weight: bold; }\n",
-                  "data_normalized": " .table { display: table; width: 100%; border-collapse: collapse; } .row { display: table-row; } .cell { display: table-cell; border: 1px solid #555; padding: 8px; } .cell.pct25 { width: 25%; } .cell.pct50 { width: 50%; } .cell.pct75 { width: 75%; } .cell.colspan2 { /* colspan equivalent by spanning two columns */ } .header { background: #ddd; font-weight: bold; }"
+                  "data_normalized": ".table { display: table; width: 100%; border-collapse: collapse; } .row { display: table-row; } .cell { display: table-cell; border: 1px solid #555; padding: 8px; } .cell.pct25 { width: 25%; } .cell.pct50 { width: 50%; } .cell.pct75 { width: 75%; } .cell.colspan2 { /* colspan equivalent by spanning two columns */ } .header { background: #ddd; font-weight: bold; }"
                 }
               ]
             },
@@ -320,7 +320,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

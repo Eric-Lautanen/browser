@@ -8,8 +8,9 @@ void Parser::handle_before_head(const Token& token) {
         char32_t c = std::get<CharacterToken>(token).character;
         if (c == ' ' || c == '\t' || c == '\n' || c == '\f' || c == '\r') return;
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG && tag.tag_name == "html") {
             handle_in_body(token);
@@ -42,11 +43,11 @@ void Parser::handle_in_head(const Token& token) {
             insert_character(c); return;
         }
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
-            flush_pending_text();
             if (tag.tag_name == "html") {
                 handle_in_body(token);
                 return;
@@ -138,8 +139,9 @@ void Parser::handle_after_head(const Token& token) {
             insert_character(c); return;
         }
     }
-    if (token.index() == 2) { insert_comment(std::get<CommentToken>(token).data); return; }
+    if (token.index() == 2) { flush_pending_text(); insert_comment(std::get<CommentToken>(token).data); return; }
     if (token.index() == 1) {
+        flush_pending_text();
         auto& tag = std::get<TagToken>(token);
         if (tag.type == TokenType::START_TAG) {
             if (tag.tag_name == "html") {
@@ -147,7 +149,6 @@ void Parser::handle_after_head(const Token& token) {
                 return;
             }
             if (tag.tag_name == "body") {
-                flush_pending_text();
                 auto* body = create_element_for_token(tag);
                 insert_element(body);
                 stack_.push_back(body);

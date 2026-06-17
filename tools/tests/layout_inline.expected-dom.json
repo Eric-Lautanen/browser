@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  body { margin: 8px; font-size: 16px; }\n  #block { background: lightblue; }\n  #block span { background: lightcoral; }\n  #line-height { line-height: 2; background: lightgreen; }\n  #line-height span { background: lightyellow; }\n  #text-align-left { text-align: left; width: 400px; border: 1px solid black; }\n  #text-align-center { text-align: center; width: 400px; border: 1px solid black; }\n  #text-align-right { text-align: right; width: 400px; border: 1px solid black; }\n  #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; }\n  #mixed { width: 400px; border: 1px solid black; background: lavender; }\n  #spaces { width: 400px; border: 1px solid black; background: mistyrose; }\n",
-                  "data_normalized": " body { margin: 8px; font-size: 16px; } #block { background: lightblue; } #block span { background: lightcoral; } #line-height { line-height: 2; background: lightgreen; } #line-height span { background: lightyellow; } #text-align-left { text-align: left; width: 400px; border: 1px solid black; } #text-align-center { text-align: center; width: 400px; border: 1px solid black; } #text-align-right { text-align: right; width: 400px; border: 1px solid black; } #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; } #mixed { width: 400px; border: 1px solid black; background: lavender; } #spaces { width: 400px; border: 1px solid black; background: mistyrose; }"
+                  "data_normalized": "body { margin: 8px; font-size: 16px; } #block { background: lightblue; } #block span { background: lightcoral; } #line-height { line-height: 2; background: lightgreen; } #line-height span { background: lightyellow; } #text-align-left { text-align: left; width: 400px; border: 1px solid black; } #text-align-center { text-align: center; width: 400px; border: 1px solid black; } #text-align-right { text-align: right; width: 400px; border: 1px solid black; } #text-align-justify { text-align: justify; width: 400px; border: 1px solid black; } #mixed { width: 400px; border: 1px solid black; background: lavender; } #spaces { width: 400px; border: 1px solid black; background: mistyrose; }"
                 }
               ]
             },
@@ -119,7 +119,7 @@
                 {
                   "type": "text",
                   "data": " inside a block. ",
-                  "data_normalized": " inside a block."
+                  "data_normalized": "inside a block."
                 },
                 {
                   "type": "element",
@@ -136,7 +136,7 @@
                 {
                   "type": "text",
                   "data": " with text wrapping around.\n  ",
-                  "data_normalized": " with text wrapping around."
+                  "data_normalized": "with text wrapping around."
                 }
               ]
             },
@@ -377,7 +377,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

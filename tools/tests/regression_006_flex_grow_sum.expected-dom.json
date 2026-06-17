@@ -68,7 +68,7 @@
                 {
                   "type": "text",
                   "data": "\n.flex {\n  display: flex;\n  width: 500px;\n  border: 1px solid #999;\n  margin: 10px;\n}\n.item {\n  height: 50px;\n  text-align: center;\n  line-height: 50px;\n  color: #fff;\n  font-weight: bold;\n}\n.g1 { flex-grow: 1; background: #c33; }\n.g2 { flex-grow: 2; background: #393; }\n.g3 { flex-grow: 3; background: #33c; }\n.g4 { flex-grow: 4; background: #c93; }\n",
-                  "data_normalized": " .flex { display: flex; width: 500px; border: 1px solid #999; margin: 10px; } .item { height: 50px; text-align: center; line-height: 50px; color: #fff; font-weight: bold; } .g1 { flex-grow: 1; background: #c33; } .g2 { flex-grow: 2; background: #393; } .g3 { flex-grow: 3; background: #33c; } .g4 { flex-grow: 4; background: #c93; }"
+                  "data_normalized": ".flex { display: flex; width: 500px; border: 1px solid #999; margin: 10px; } .item { height: 50px; text-align: center; line-height: 50px; color: #fff; font-weight: bold; } .g1 { flex-grow: 1; background: #c33; } .g2 { flex-grow: 2; background: #393; } .g3 { flex-grow: 3; background: #33c; } .g4 { flex-grow: 4; background: #c93; }"
                 }
               ]
             },
@@ -207,7 +207,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "../html/parser.hpp"
+#include "../html/utf8.hpp"
 #include "../html/traversal.hpp"
 #include "../css/parser.hpp"
 #include "../css/cascade.hpp"
@@ -31,16 +32,29 @@ namespace json {
     std::string esc(const std::string &s) {
         std::string o;
         o.reserve(s.size() + 8);
-        for (unsigned char c : s) {
-            switch (c) {
-                case '"':  o += "\\\""; break;
-                case '\\': o += "\\\\"; break;
-                case '\n': o += "\\n";  break;
-                case '\r': o += "\\r";  break;
-                case '\t': o += "\\t";  break;
-                default:
-                    if (c < 0x20) { char buf[8]; snprintf(buf, sizeof buf, "\\u%04x", c); o += buf; }
-                    else { o += static_cast<char>(c); }
+        for (size_t i = 0; i < s.size(); i++) {
+            unsigned char c = static_cast<unsigned char>(s[i]);
+            if (c < 0x80) {
+                switch (c) {
+                    case '"':  o += "\\\""; break;
+                    case '\\': o += "\\\\"; break;
+                    case '\n': o += "\\n";  break;
+                    case '\r': o += "\\r";  break;
+                    case '\t': o += "\\t";  break;
+                    default:
+                        if (c < 0x20) { char buf[8]; snprintf(buf, sizeof buf, "\\u%04x", c); o += buf; }
+                        else { o += static_cast<char>(c); }
+                }
+            } else if ((c & 0xF8) == 0xF0) {
+                // 4-byte UTF-8: output raw bytes (matching JSON.stringify with ensure_ascii=false)
+                auto dr = browser::html::decode_utf8(reinterpret_cast<const uint8_t*>(s.data()) + i,
+                                            static_cast<uint32_t>(s.size() - i));
+                i += dr.bytes_consumed - 1;
+                for (uint32_t j = 0; j < dr.bytes_consumed; j++) {
+                    o += s[i - (dr.bytes_consumed - 1) + j];
+                }
+            } else {
+                o += static_cast<char>(c);
             }
         }
         return o;
@@ -74,7 +88,7 @@ namespace json {
         void nl(bool inner = true) {
             if (indent >= 0) {
                 int level = inner ? indent + 1 : indent;
-                data += "\r\n" + std::string(level * 2, ' ');
+                data += "\n" + std::string(level * 2, ' ');
             }
         }
         void kv(const std::string &k, const std::string &v) {
@@ -118,7 +132,7 @@ namespace json {
         void nl(bool inner = true) {
             if (indent >= 0) {
                 int level = inner ? indent + 1 : indent;
-                data += "\r\n" + std::string(level * 2, ' ');
+                data += "\n" + std::string(level * 2, ' ');
             }
         }
         void push(const std::string &v) {
@@ -902,16 +916,6 @@ static int run_test_suite(const std::string &test_dir, const std::string &filter
                 dom_s = (actual_str == expected_str) ? "PASS" : "FAIL";
                 if (dom_s == "FAIL") {
                     critical_total++;
-                    if (base.find("text_formatting") != std::string::npos) {
-                        size_t min_sz = std::min(actual_str.size(), expected_str.size());
-                        size_t diff_at = 0;
-                        for (size_t di = 0; di < min_sz; di++) {
-                            if (actual_str[di] != expected_str[di]) { diff_at = di; break; }
-                        }
-                        fprintf(stderr, "  [DBG] diff=%zu exp_len=%zu act_len=%zu\n", diff_at, expected_str.size(), actual_str.size());
-                        fprintf(stderr, "  [DBG] E: '%.80s'\n", expected_str.c_str() + diff_at);
-                        fprintf(stderr, "  [DBG] A: '%.80s'\n", actual_str.c_str() + diff_at);
-                    }
                 }
             }
         }

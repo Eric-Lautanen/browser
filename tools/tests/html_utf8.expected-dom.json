@@ -84,8 +84,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Japanese: æ¡ãè¦ã",
-                  "data_normalized": "Japanese: æ¡ãè¦ã"
+                  "data": "Japanese: 桜を見る",
+                  "data_normalized": "Japanese: 桜を見る"
                 }
               ]
             },
@@ -104,8 +104,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Arabic: Ø§ÙØ³ÙØ§Ù Ø¹ÙÙÙÙ",
-                  "data_normalized": "Arabic: Ø§ÙØ³ÙØ§Ù Ø¹ÙÙÙÙ"
+                  "data": "Arabic: السلام عليكم",
+                  "data_normalized": "Arabic: السلام عليكم"
                 }
               ]
             },
@@ -121,8 +121,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Emoji: ð ð¦ ð",
-                  "data_normalized": "Emoji: ð ð¦ ð"
+                  "data": "Emoji: 🎉 🦊 🌍",
+                  "data_normalized": "Emoji: 🎉 🦊 🌍"
                 }
               ]
             },
@@ -140,8 +140,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Chinese: ä¸­ææµè¯",
-                  "data_normalized": "Chinese: ä¸­ææµè¯"
+                  "data": "Chinese: 中文测试",
+                  "data_normalized": "Chinese: 中文测试"
                 }
               ]
             },
@@ -159,8 +159,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Korean: íêµ­ì´ íì¤í¸",
-                  "data_normalized": "Korean: íêµ­ì´ íì¤í¸"
+                  "data": "Korean: 한국어 테스트",
+                  "data_normalized": "Korean: 한국어 테스트"
                 }
               ]
             },
@@ -176,8 +176,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Mathematical: âââ«â",
-                  "data_normalized": "Mathematical: âââ«â"
+                  "data": "Mathematical: ∑∏∫√",
+                  "data_normalized": "Mathematical: ∑∏∫√"
                 }
               ]
             },
@@ -193,8 +193,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Middle dot raw UTF-8: Â·",
-                  "data_normalized": "Middle dot raw UTF-8: Â·"
+                  "data": "Middle dot raw UTF-8: ·",
+                  "data_normalized": "Middle dot raw UTF-8: ·"
                 }
               ]
             },
@@ -210,8 +210,8 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "Mixed: æ¡ãè¦ã Â· ð Â· ä¸­ææµè¯ Â· íêµ­ì´ íì¤í¸ Â· âââ«â",
-                  "data_normalized": "Mixed: æ¡ãè¦ã Â· ð Â· ä¸­ææµè¯ Â· íêµ­ì´ íì¤í¸ Â· âââ«â"
+                  "data": "Mixed: 桜を見る · 🎉 · 中文测试 · 한국어 테스트 · ∑∏∫√",
+                  "data_normalized": "Mixed: 桜を見る · 🎉 · 中文测试 · 한국어 테스트 · ∑∏∫√"
                 }
               ]
             },

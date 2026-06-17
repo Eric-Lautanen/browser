@@ -66,7 +66,7 @@
                 {
                   "type": "text",
                   "data": "\n  body { color: black; font-size: 16px; font-family: serif; line-height: 1.2; text-align: left; }\n  #container { color: red; font-size: 20px; font-family: sans-serif; line-height: 1.5; text-align: center; border: 2px solid black; padding: 10px; margin: 20px; width: 500px; }\n  #child1 { }\n  #child2 { border: inherit; color: initial; }\n",
-                  "data_normalized": " body { color: black; font-size: 16px; font-family: serif; line-height: 1.2; text-align: left; } #container { color: red; font-size: 20px; font-family: sans-serif; line-height: 1.5; text-align: center; border: 2px solid black; padding: 10px; margin: 20px; width: 500px; } #child1 { } #child2 { border: inherit; color: initial; }"
+                  "data_normalized": "body { color: black; font-size: 16px; font-family: serif; line-height: 1.2; text-align: left; } #container { color: red; font-size: 20px; font-family: sans-serif; line-height: 1.5; text-align: center; border: 2px solid black; padding: 10px; margin: 20px; width: 500px; } #child1 { } #child2 { border: inherit; color: initial; }"
                 }
               ]
             },
@@ -146,7 +146,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

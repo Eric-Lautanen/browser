@@ -1,0 +1,53 @@
+{
+  "source": "test_decoration.html",
+  "encoding": "UTF-8",
+  "doctype": {
+    "name": "html",
+    "public_id": "",
+    "system_id": ""
+  },
+  "children": [
+    {
+      "type": "doctype",
+      "name": "html",
+      "public_id": "",
+      "system_id": ""
+    },
+    {
+      "type": "element",
+      "tag": "html",
+      "attributes": {},
+      "children": [
+        {
+          "type": "element",
+          "tag": "head",
+          "attributes": {},
+          "children": []
+        },
+        {
+          "type": "element",
+          "tag": "body",
+          "attributes": {},
+          "children": [
+            {
+              "type": "element",
+              "tag": "a",
+              "attributes": {
+                "href": "#",
+                "style": "text-decoration:underline"
+              },
+              "children": [
+                {
+                  "type": "text",
+                  "data": "click me",
+                  "data_normalized": "click me"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "quirks_mode": false
+}

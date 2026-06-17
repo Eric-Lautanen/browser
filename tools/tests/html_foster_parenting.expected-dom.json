@@ -108,294 +108,14 @@
             },
             {
               "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "T",
-              "data_normalized": "T"
-            },
-            {
-              "type": "text",
-              "data": "h",
-              "data_normalized": "h"
-            },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
-            },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
-            },
-            {
-              "type": "text",
-              "data": "x",
-              "data_normalized": "x"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
-            },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
-            },
-            {
-              "type": "text",
-              "data": "s",
-              "data_normalized": "s"
-            },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
-            },
-            {
-              "type": "text",
-              "data": "d",
-              "data_normalized": "d"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
-            },
-            {
-              "type": "text",
-              "data": "h",
-              "data_normalized": "h"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
-            },
-            {
-              "type": "text",
-              "data": "a",
-              "data_normalized": "a"
-            },
-            {
-              "type": "text",
-              "data": "b",
-              "data_normalized": "b"
-            },
-            {
-              "type": "text",
-              "data": "l",
-              "data_normalized": "l"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "b",
-              "data_normalized": "b"
-            },
-            {
-              "type": "text",
-              "data": "u",
-              "data_normalized": "u"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
-            },
-            {
-              "type": "text",
-              "data": "o",
-              "data_normalized": "o"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "c",
-              "data_normalized": "c"
-            },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
-            },
-            {
-              "type": "text",
-              "data": "l",
-              "data_normalized": "l"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "(",
-              "data_normalized": "("
-            },
-            {
-              "type": "text",
-              "data": "f",
-              "data_normalized": "f"
-            },
-            {
-              "type": "text",
-              "data": "o",
-              "data_normalized": "o"
-            },
-            {
-              "type": "text",
-              "data": "s",
-              "data_normalized": "s"
-            },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
-            },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
-            },
-            {
-              "type": "text",
-              "data": " ",
-              "data_normalized": ""
-            },
-            {
-              "type": "text",
-              "data": "p",
-              "data_normalized": "p"
-            },
-            {
-              "type": "text",
-              "data": "a",
-              "data_normalized": "a"
-            },
-            {
-              "type": "text",
-              "data": "r",
-              "data_normalized": "r"
-            },
-            {
-              "type": "text",
-              "data": "e",
-              "data_normalized": "e"
-            },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
-            },
-            {
-              "type": "text",
-              "data": "t",
-              "data_normalized": "t"
-            },
-            {
-              "type": "text",
-              "data": "i",
-              "data_normalized": "i"
-            },
-            {
-              "type": "text",
-              "data": "n",
-              "data_normalized": "n"
-            },
-            {
-              "type": "text",
-              "data": "g",
-              "data_normalized": "g"
-            },
-            {
-              "type": "text",
-              "data": ")",
-              "data_normalized": ")"
+              "data": "\n\n  This text is inside the table but not in a cell (foster parenting).\n  \n  More text after the row.\n",
+              "data_normalized": "This text is inside the table but not in a cell (foster parenting). More text after the row."
             },
             {
               "type": "element",
               "tag": "table",
               "attributes": {},
               "children": [
-                {
-                  "type": "text",
-                  "data": "\n stseeettnalr.\n ",
-                  "data_normalized": " stseeettnalr."
-                },
                 {
                   "type": "element",
                   "tag": "tbody",
@@ -408,7 +128,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "data": " \n   ",
+                          "data": "\n    ",
                           "data_normalized": ""
                         },
                         {
@@ -418,22 +138,17 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Valid cel",
-                              "data_normalized": " Valid cel"
+                              "data": "Valid cell",
+                              "data_normalized": "Valid cell"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "l\n ",
-                          "data_normalized": "l"
+                          "data": "\n  ",
+                          "data_normalized": ""
                         }
                       ]
-                    },
-                    {
-                      "type": "text",
-                      "data": " \n  More text after the row.",
-                      "data_normalized": " More text after the row."
                     }
                   ]
                 }
@@ -441,7 +156,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n\n",
+              "data": "\n\n",
               "data_normalized": ""
             },
             {
@@ -475,42 +190,8 @@
             },
             {
               "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "tr",
-              "attributes": {},
-              "children": [
-                {
-                  "type": "text",
-                  "data": "\n  ",
-                  "data_normalized": ""
-                },
-                {
-                  "type": "element",
-                  "tag": "td",
-                  "attributes": {},
-                  "children": [
-                    {
-                      "type": "text",
-                      "data": "Orphan row outside table",
-                      "data_normalized": "Orphan row outside table"
-                    }
-                  ]
-                },
-                {
-                  "type": "text",
-                  "data": "\n",
-                  "data_normalized": ""
-                }
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+              "data": "\n\n  Orphan row outside table\n\n",
+              "data_normalized": "Orphan row outside table"
             },
             {
               "type": "element",
@@ -560,25 +241,8 @@
             },
             {
               "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "element",
-              "tag": "td",
-              "attributes": {},
-              "children": [
-                {
-                  "type": "text",
-                  "data": "Orphan cell outside row",
-                  "data_normalized": "Orphan cell outside row"
-                }
-              ]
-            },
-            {
-              "type": "text",
-              "data": "\n",
-              "data_normalized": ""
+              "data": "\nOrphan cell outside row\n",
+              "data_normalized": "Orphan cell outside row"
             },
             {
               "type": "element",
@@ -616,12 +280,24 @@
             },
             {
               "type": "element",
+              "tag": "b",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "Bold text in table",
+                  "data_normalized": "Bold text in table"
+                }
+              ]
+            },
+            {
+              "type": "element",
               "tag": "table",
               "attributes": {},
               "children": [
                 {
                   "type": "text",
-                  "data": "\n ",
+                  "data": "\n  ",
                   "data_normalized": ""
                 },
                 {
@@ -641,15 +317,15 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Cell directly in tabl",
-                              "data_normalized": " Cell directly in tabl"
+                              "data": "Cell directly in table",
+                              "data_normalized": "Cell directly in table"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "e\n ",
-                          "data_normalized": "e"
+                          "data": "\n  ",
+                          "data_normalized": ""
                         }
                       ]
                     },
@@ -660,7 +336,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "data": " \n   ",
+                          "data": "\n    ",
                           "data_normalized": ""
                         },
                         {
@@ -670,34 +346,22 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Cell in ro",
-                              "data_normalized": " Cell in ro"
+                              "data": "Cell in row",
+                              "data_normalized": "Cell in row"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "w\n ",
-                          "data_normalized": "w"
+                          "data": "\n  ",
+                          "data_normalized": ""
                         }
                       ]
                     },
                     {
                       "type": "text",
-                      "data": " \n  ",
+                      "data": "\n  \n",
                       "data_normalized": ""
-                    },
-                    {
-                      "type": "element",
-                      "tag": "b",
-                      "attributes": {},
-                      "children": [
-                        {
-                          "type": "text",
-                          "data": "Bold text in table",
-                          "data_normalized": "Bold text in table"
-                        }
-                      ]
                     }
                   ]
                 }
@@ -705,7 +369,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n\n",
+              "data": "\n\n",
               "data_normalized": ""
             },
             {
@@ -732,7 +396,19 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "\n  \n   ",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                }
+              ]
+            },
+            {
+              "type": "element",
+              "tag": "table",
+              "attributes": {},
+              "children": [
+                {
+                  "type": "text",
+                  "data": "\n    ",
                   "data_normalized": ""
                 },
                 {
@@ -747,7 +423,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "data": " \n     ",
+                          "data": "\n      ",
                           "data_normalized": ""
                         },
                         {
@@ -757,21 +433,21 @@
                           "children": [
                             {
                               "type": "text",
-                              "data": " Nested table cel",
-                              "data_normalized": " Nested table cel"
+                              "data": "Nested table cell",
+                              "data_normalized": "Nested table cell"
                             }
                           ]
                         },
                         {
                           "type": "text",
-                          "data": "l\n   ",
-                          "data_normalized": "l"
+                          "data": "\n    ",
+                          "data_normalized": ""
                         }
                       ]
                     },
                     {
                       "type": "text",
-                      "data": " \n ",
+                      "data": "\n  ",
                       "data_normalized": ""
                     }
                   ]
@@ -780,7 +456,7 @@
             },
             {
               "type": "text",
-              "data": " \n\n\n",
+              "data": "\n\n\n\n",
               "data_normalized": ""
             }
           ]

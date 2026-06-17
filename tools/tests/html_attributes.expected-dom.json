@@ -244,8 +244,8 @@
               "type": "element",
               "tag": "div",
               "attributes": {
-                "class": "b",
-                "id": "duplicate"
+                "class": "a",
+                "id": "test"
               },
               "children": [
                 {

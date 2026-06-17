@@ -132,7 +132,7 @@
                 {
                   "type": "text",
                   "data": " tag is set in the head.",
-                  "data_normalized": " tag is set in the head."
+                  "data_normalized": "tag is set in the head."
                 }
               ]
             },
@@ -367,7 +367,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]

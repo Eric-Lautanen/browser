@@ -8,6 +8,10 @@
   },
   "children": [
     {
+      "type": "comment",
+      "data": " Comment at document start "
+    },
+    {
       "type": "doctype",
       "name": "html",
       "public_id": "",
@@ -41,12 +45,17 @@
               ]
             },
             {
+              "type": "text",
+              "data": "\n",
+              "data_normalized": ""
+            },
+            {
               "type": "comment",
-              "data": "- Normal comment in head "
+              "data": " Normal comment in head "
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n",
               "data_normalized": ""
             }
           ]
@@ -68,7 +77,7 @@
             },
             {
               "type": "comment",
-              "data": "- Comment between elements "
+              "data": " Comment between elements "
             },
             {
               "type": "text",
@@ -87,7 +96,7 @@
                 },
                 {
                   "type": "comment",
-                  "data": "- inline comment "
+                  "data": " inline comment "
                 },
                 {
                   "type": "text",
@@ -103,7 +112,7 @@
             },
             {
               "type": "comment",
-              "data": "-"
+              "data": ""
             },
             {
               "type": "text",
@@ -129,7 +138,7 @@
             },
             {
               "type": "comment",
-              "data": "- Comment with -- inside -- -- "
+              "data": " Comment with -- inside -- -- "
             },
             {
               "type": "text",
@@ -155,25 +164,20 @@
             },
             {
               "type": "comment",
-              "data": "-\nMulti-line\ncomment\nhere\n"
+              "data": "\nMulti-line\ncomment\nhere\n"
             },
             {
               "type": "text",
-              "data": "\n",
-              "data_normalized": ""
-            },
-            {
-              "type": "comment",
-              "data": "- Comment at document end "
-            },
-            {
-              "type": "text",
-              "data": "\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]
         }
       ]
+    },
+    {
+      "type": "comment",
+      "data": " Comment at document end "
     }
   ],
   "quirks_mode": false

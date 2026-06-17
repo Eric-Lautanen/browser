@@ -67,8 +67,39 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "\n  <link rel=\"stylesheet\" href=\"noscript.css\">\n  <style>\n    body { background: red; }\n  </style>\n",
-                  "data_normalized": " <link rel=\"stylesheet\" href=\"noscript.css\"> <style> body { background: red; } </style>"
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "link",
+                  "attributes": {
+                    "href": "noscript.css",
+                    "rel": "stylesheet"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "style",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "\n    body { background: red; }\n  ",
+                      "data_normalized": "body { background: red; }"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
               ]
             },
@@ -152,8 +183,25 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "\n  <p>JavaScript is disabled. This message is from a noscript element in the body.</p>\n",
-                  "data_normalized": " <p>JavaScript is disabled. This message is from a noscript element in the body.</p>"
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "p",
+                  "attributes": {},
+                  "children": [
+                    {
+                      "type": "text",
+                      "data": "JavaScript is disabled. This message is from a noscript element in the body.",
+                      "data_normalized": "JavaScript is disabled. This message is from a noscript element in the body."
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
               ]
             },
@@ -203,8 +251,22 @@
               "children": [
                 {
                   "type": "text",
-                  "data": "\n  <img src=\"noscript-fallback.png\" alt=\"Fallback content\">\n",
-                  "data_normalized": " <img src=\"noscript-fallback.png\" alt=\"Fallback content\">"
+                  "data": "\n  ",
+                  "data_normalized": ""
+                },
+                {
+                  "type": "element",
+                  "tag": "img",
+                  "attributes": {
+                    "alt": "Fallback content",
+                    "src": "noscript-fallback.png"
+                  },
+                  "children": []
+                },
+                {
+                  "type": "text",
+                  "data": "\n",
+                  "data_normalized": ""
                 }
               ]
             },
@@ -227,7 +289,7 @@
             },
             {
               "type": "text",
-              "data": "\n\n",
+              "data": "\n\n\n",
               "data_normalized": ""
             }
           ]
