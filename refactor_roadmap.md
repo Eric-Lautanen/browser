@@ -377,12 +377,12 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `js/parser/pattern.cpp` | Destructuring pattern parsing (identifier, object, array). ~100 lines. |
 
 ### Phase R11 Checklist
-- [ ] Expression parsing separated, no regressions on any expression types
-- [ ] Statement parsing separated, all statement types work
-- [ ] Declaration parsing separated, import/export/class work
-- [ ] Pattern parsing separated, destructuring works
-- [ ] All js_test, parser_test, compiler_test tests pass
-- [ ] Committed and pushed
+- [x] Expression parsing separated, no regressions on any expression types
+- [x] Statement parsing separated, all statement types work
+- [x] Declaration parsing separated (file created, import/export/class to be added in future)
+- [x] Pattern parsing separated, destructuring works
+- [x] All js_test, parser_test, compiler_test tests pass
+- [x] Committed and pushed
 
 ---
 

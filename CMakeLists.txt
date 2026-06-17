@@ -194,7 +194,12 @@ add_library(js STATIC
     js/lexer.cpp
     js/ast.hpp
     js/parser.hpp
-    js/parser.cpp
+    js/parser/parser.hpp
+    js/parser/parser.cpp
+    js/parser/expression.cpp
+    js/parser/statement.cpp
+    js/parser/declaration.cpp
+    js/parser/pattern.cpp
     js/bytecode.hpp
     js/compiler.hpp
     js/compiler.cpp
