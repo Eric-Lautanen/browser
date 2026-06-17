@@ -1,6 +1,6 @@
-#include "paint_executor.hpp"
-#include "texture.hpp"
-#include "../platform/opengl.hpp"
+#include "executor.hpp"
+#include "../texture.hpp"
+#include "../../platform/opengl.hpp"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -63,9 +63,7 @@ Texture2D* PaintExecutor::get_or_create_texture(const image::Image& img) {
     return ptr;
 }
 
-// Gradient texture cache
 Texture2D* PaintExecutor::get_or_create_gradient_texture(const css::CSSGradient& grad, f32 w, f32 h) {
-    // Simple hash-based lookup
     uint64_t key = static_cast<uint64_t>(grad.type) ^
                    (static_cast<uint64_t>(grad.angle * 1000)) ^
                    (static_cast<uint64_t>(w) << 20) ^
@@ -73,7 +71,6 @@ Texture2D* PaintExecutor::get_or_create_gradient_texture(const css::CSSGradient&
     auto it = gradient_cache_.find(key);
     if (it != gradient_cache_.end()) return it->second.get();
 
-    // Generate gradient pixels
     std::vector<Color> pixels;
     generate_linear_gradient_colors(grad, w, h, pixels);
     if (pixels.empty()) return nullptr;
@@ -81,7 +78,6 @@ Texture2D* PaintExecutor::get_or_create_gradient_texture(const css::CSSGradient&
     u32 pw = static_cast<u32>(w > 0 ? w : 100);
     u32 ph = static_cast<u32>(h > 0 ? h : 100);
 
-    // Convert Color to RGBA bytes
     std::vector<u8> rgba(pw * ph * 4);
     for (u32 i = 0; i < pw * ph; i++) {
         rgba[i * 4] = static_cast<u8>(pixels[i].r * 255);
@@ -97,72 +93,6 @@ Texture2D* PaintExecutor::get_or_create_gradient_texture(const css::CSSGradient&
     Texture2D* ptr = tex.get();
     gradient_cache_[key] = std::move(tex);
     return ptr;
-}
-
-void PaintExecutor::generate_linear_gradient_colors(const css::CSSGradient& grad, f32 w, f32 h,
-                                                      std::vector<Color>& pixels) {
-    // Reuse the same logic from painter.cpp
-    u32 pw = static_cast<u32>(w > 0 ? w : 100);
-    u32 ph = static_cast<u32>(h > 0 ? h : 100);
-
-    if (pw == 0 || ph == 0) return;
-    pixels.resize(pw * ph);
-
-    f32 angle_rad = grad.angle * 3.14159265f / 180.0f;
-    f32 cos_a = cosf(angle_rad);
-    f32 sin_a = sinf(angle_rad);
-
-    f32 dx = cos_a;
-    f32 dy = -sin_a;
-
-    f32 len = sqrtf(dx * dx + dy * dy);
-    if (len > 0) { dx /= len; dy /= len; }
-
-    f32 cx = w / 2.0f, cy = h / 2.0f;
-    f32 half_extent = std::abs(dx * w) + std::abs(dy * h);
-
-    for (u32 y = 0; y < ph; y++) {
-        for (u32 x = 0; x < pw; x++) {
-            f32 px = static_cast<f32>(x);
-            f32 py = static_cast<f32>(y);
-            f32 t = ((px - cx) * dx + (py - cy) * dy) / half_extent + 0.5f;
-            t = std::max(0.0f, std::min(1.0f, t));
-
-            Color result = {0, 0, 0, 0};
-            if (grad.stops.empty()) {
-                u8 v = static_cast<u8>(t * 255);
-                result = {static_cast<f32>(v)/255, static_cast<f32>(v)/255, static_cast<f32>(v)/255, 1.0f};
-            } else if (grad.stops.size() == 1) {
-                auto& s = grad.stops[0];
-                result = css_to_render_color(s.color);
-            } else {
-                size_t i = 0;
-                while (i + 1 < grad.stops.size()) {
-                    f32 p0 = grad.stops[i].position >= 0 ? grad.stops[i].position :
-                             (i == 0 ? 0.0f : 1.0f);
-                    f32 p1 = grad.stops[i + 1].position >= 0 ? grad.stops[i + 1].position : 1.0f;
-                    if (t >= p0 && t <= p1) {
-                        f32 range = p1 - p0;
-                        f32 local_t = range > 0 ? (t - p0) / range : 0.5f;
-                        auto& c0 = grad.stops[i].color;
-                        auto& c1 = grad.stops[i + 1].color;
-                        f32 r = static_cast<f32>(c0.r) / 255.0f + (static_cast<f32>(c1.r) / 255.0f - static_cast<f32>(c0.r) / 255.0f) * local_t;
-                        f32 g = static_cast<f32>(c0.g) / 255.0f + (static_cast<f32>(c1.g) / 255.0f - static_cast<f32>(c0.g) / 255.0f) * local_t;
-                        f32 b = static_cast<f32>(c0.b) / 255.0f + (static_cast<f32>(c1.b) / 255.0f - static_cast<f32>(c0.b) / 255.0f) * local_t;
-                        f32 a = static_cast<f32>(c0.a) / 255.0f + (static_cast<f32>(c1.a) / 255.0f - static_cast<f32>(c0.a) / 255.0f) * local_t;
-                        result = {r, g, b, a};
-                        break;
-                    }
-                    i++;
-                }
-                if (i + 1 >= grad.stops.size()) {
-                    auto& last = grad.stops.back().color;
-                    result = css_to_render_color(last);
-                }
-            }
-            pixels[y * pw + x] = result;
-        }
-    }
 }
 
 void PaintExecutor::execute(const DisplayList& list) {
@@ -272,21 +202,12 @@ void PaintExecutor::execute(const DisplayList& list) {
                 f32 y = cmd.rect.y + offset_y_;
                 f32 w = cmd.rect.width;
                 f32 h = cmd.rect.height;
-                f32 blur = cmd.radius;
                 if (!is_identity(current_transform_)) {
                     transform_rect(x, y, w, h);
                 }
-
                 Color c = cmd.color;
                 c.a *= current_opacity_;
-
-                if (blur > 0) {
-                    // Render shadow as a blurred rect
-                    // For simplicity, just render a semi-transparent rect larger than the blur
-                    renderer_->fill_rect(x, y, w, h, c);
-                } else {
-                    renderer_->fill_rect(x, y, w, h, c);
-                }
+                renderer_->fill_rect(x, y, w, h, c);
                 break;
             }
             case PaintCommand::Type::PUSH_TRANSFORM: {
@@ -327,7 +248,6 @@ void PaintExecutor::execute(const DisplayList& list) {
                 Color c = cmd.color;
                 c.a *= current_opacity_;
 
-                // Draw 5 rectangles to fill the rounded area, plus quarter-circles at corners
                 f32 inner_x1 = x + r, inner_y1 = y + r;
                 f32 inner_x2 = x + w - r, inner_y2 = y + h - r;
                 if (inner_x2 < inner_x1) inner_x2 = inner_x1;
@@ -335,19 +255,16 @@ void PaintExecutor::execute(const DisplayList& list) {
                 f32 inner_w = inner_x2 - inner_x1;
                 f32 inner_h = inner_y2 - inner_y1;
 
-                // Top, bottom, left, right, center
                 renderer_->fill_rect(inner_x1, y, inner_w, r, c);
                 renderer_->fill_rect(inner_x1, y + h - r, inner_w, r, c);
                 renderer_->fill_rect(x, inner_y1, r, inner_h, c);
                 renderer_->fill_rect(x + w - r, inner_y1, r, inner_h, c);
                 renderer_->fill_rect(inner_x1, inner_y1, inner_w, inner_h, c);
 
-                // Draw quarter-circle corners using small quads for approximation
                 if (r > 0) {
                     i32 segments = static_cast<i32>(r * 0.5f);
                     if (segments < 2) segments = 2;
                     if (segments > 12) segments = 12;
-                    // Top-left corner
                     for (i32 i = 0; i < segments; i++) {
                         f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
                         f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
@@ -361,7 +278,6 @@ void PaintExecutor::execute(const DisplayList& list) {
                         f32 tri_h = std::max({y1c, y2c, y + r}) - tri_y;
                         renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
                     }
-                    // Top-right corner
                     for (i32 i = 0; i < segments; i++) {
                         f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
                         f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
@@ -375,7 +291,6 @@ void PaintExecutor::execute(const DisplayList& list) {
                         f32 tri_h = std::max({y1c, y2c, y + r}) - tri_y;
                         renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
                     }
-                    // Bottom-left corner
                     for (i32 i = 0; i < segments; i++) {
                         f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
                         f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
@@ -389,7 +304,6 @@ void PaintExecutor::execute(const DisplayList& list) {
                         f32 tri_h = std::max({y1c, y2c, y + h - r}) - tri_y;
                         renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
                     }
-                    // Bottom-right corner
                     for (i32 i = 0; i < segments; i++) {
                         f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
                         f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
@@ -409,7 +323,6 @@ void PaintExecutor::execute(const DisplayList& list) {
         }
     }
 
-    // Reset state
     clip_stack_.clear();
     pgl::glDisable(GL_SCISSOR_TEST);
 }

@@ -47,10 +47,8 @@ async::task<std::shared_ptr<DisplayList>> Painter::paint_async(css::LayoutNode* 
 void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
     if (!node) return;
 
-    // Check visibility: hidden elements still occupy layout space but are not painted
     auto* vis = node->style().get("visibility");
     if (vis && vis->type == css::CSSValue::Type::KEYWORD && vis->keyword == "hidden") {
-        // Still paint children (visibility is inherited but can be overridden)
         for (auto& child : node->children) {
             paint_node(list, child.get(),
                        ox + child->content.x + child->scroll_offset_x,
@@ -114,11 +112,6 @@ void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
         paint_text(list, node, ox, oy);
     }
 
-    // Paint children in correct stacking order per CSS spec:
-    // 1. Children that create stacking contexts with negative z-index (sorted by z-index)
-    // 2. Children that don't create stacking contexts (painted in DOM order)
-    // 3. Children that create stacking contexts with positive z-index (sorted by z-index)
-    // Children with z-index:auto that don't otherwise create a stacking context paint in DOM order
     std::vector<css::LayoutNode*> negative_z;
     std::vector<css::LayoutNode*> normal_flow;
     std::vector<css::LayoutNode*> positive_z;
@@ -138,7 +131,6 @@ void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
         }
     }
 
-    // Sort negative z-index ascending, positive z-index ascending
     auto sort_by_z = [](std::vector<css::LayoutNode*>& v) {
         for (size_t i = 1; i < v.size(); i++) {
             css::LayoutNode* key = v[i];
@@ -154,21 +146,18 @@ void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
     sort_by_z(negative_z);
     sort_by_z(positive_z);
 
-    // Paint negative z (behind parent background)
     for (auto* child : negative_z) {
         paint_node(list, child,
                    ox + child->content.x + child->scroll_offset_x,
                    oy + child->content.y + child->scroll_offset_y);
     }
 
-    // Paint normal flow (DOM order)
     for (auto* child : normal_flow) {
         paint_node(list, child,
                    ox + child->content.x + child->scroll_offset_x,
                    oy + child->content.y + child->scroll_offset_y);
     }
 
-    // Paint positive z (in front)
     for (auto* child : positive_z) {
         paint_node(list, child,
                    ox + child->content.x + child->scroll_offset_x,
@@ -189,7 +178,6 @@ void Painter::paint_node(DisplayList& list, css::LayoutNode* node, f32 ox, f32 o
 }
 
 void Painter::paint_background(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
-    // Check for gradient background
     auto* bg_img = node->style().get("background-image");
     if (bg_img && bg_img->type == css::CSSValue::Type::GRADIENT) {
         f32 bx = ox - node->padding.left;
@@ -227,7 +215,6 @@ void Painter::paint_background(DisplayList& list, css::LayoutNode* node, f32 ox,
 }
 
 void Painter::paint_shadow(DisplayList& list, css::LayoutNode* node, f32 ox, f32 oy) const {
-    // box-shadow
     auto* bs = node->style().get("box-shadow");
     if (bs && bs->type == css::CSSValue::Type::STRING && !bs->string_value.empty()) {
         std::string s = bs->string_value;
@@ -360,10 +347,8 @@ void Painter::paint_outline(DisplayList& list, css::LayoutNode* node, f32 ox, f3
         outline_width = ow->length.value;
     }
     if (outline_width <= 0) {
-        // Check outline shorthand
         auto* outline = node->style().get("outline");
         if (outline && outline->type == css::CSSValue::Type::STRING) {
-            // Try to extract width from string
             std::string s = outline->string_value;
             char* end = nullptr;
             f32 w = std::strtof(s.c_str(), &end);
@@ -393,7 +378,6 @@ void Painter::paint_outline(DisplayList& list, css::LayoutNode* node, f32 ox, f3
     f32 bh = node->content.height + node->padding.top + node->padding.bottom
              + node->border.top + node->border.bottom + 2 * outline_offset + 2 * outline_width;
 
-    // Draw outline as 4 rectangles (top, right, bottom, left)
     list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, outline_width}, outline_color));
     list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, outline_color));
     list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, outline_color));

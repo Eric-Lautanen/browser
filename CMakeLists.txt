@@ -241,9 +241,10 @@ add_library(render STATIC
     render/font/rasterizer.cpp
     render/font/atlas.cpp
     render/font/embedded.cpp
-    render/paint.cpp
-    render/painter.cpp
-    render/paint_executor.cpp
+    render/paint/gradient.cpp
+    render/paint/shadow.cpp
+    render/paint/painter.cpp
+    render/paint/executor.cpp
     render/font_loader.cpp
     render/shaders.hpp
     render/shader_program.hpp

@@ -355,11 +355,11 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `render/paint/shadow.cpp` | Box-shadow and text-shadow blur rendering. ~150 lines. |
 
 ### Phase R10 Checklist
-- [ ] Painter generates identical display lists
-- [ ] Executor renders identically
-- [ ] Gradients and shadows separated
-- [ ] All paint_test tests pass
-- [ ] Committed and pushed
+- [x] Painter generates identical display lists
+- [x] Executor renders identically
+- [x] Gradients and shadows separated
+- [x] All paint_test tests pass
+- [x] Committed and pushed
 
 ---
 
