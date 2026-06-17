@@ -261,12 +261,16 @@ Validate that `engine.cpp` is now under ~600 lines.
 | `browser/chrome/navigator.cpp` | `navigate()`, `navigate_back()`, `navigate_forward()`, `refresh()`, `new_tab()`, `close_tab()`. ~100 lines. |
 
 ### Phase R6 Checklist
-- [ ] BrowserWindow still initializes and runs correctly
-- [ ] All chrome rendering unchanged
-- [ ] All event handling unchanged
-- [ ] Tab operations work identically
-- [ ] All chrome_test tests pass
-- [ ] Committed and pushed
+- [x] BrowserWindow still initializes and runs correctly
+- [x] All chrome rendering unchanged
+- [x] All event handling unchanged
+- [x] Tab operations work identically
+- [x] All chrome_test tests pass
+- [x] `cmake --build build` clean, no warnings (-Werror)
+- [x] clang-format applied to all changed files
+- [x] clang-tidy — no new warnings
+- [x] No circular includes in browser/chrome/
+- [x] Committed and pushed
 
 ---
 
