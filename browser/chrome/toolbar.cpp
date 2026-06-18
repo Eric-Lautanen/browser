@@ -91,11 +91,7 @@ namespace browser {
         auto &t = theme_;
         auto &r = chrome_.rects.download;
 
-        // Only visible when downloads are active or mode is enabled
-        if (download_manager_->behavior() != DownloadBehavior::ENABLED) {
-            if (download_manager_->items().empty())
-                return;
-        }
+        // Only visible when there are download items
         if (download_manager_->items().empty())
             return;
 

@@ -1,4 +1,5 @@
 #include "page_loader.hpp"
+#include "paths.hpp"
 
 #include "../async/executor.hpp"
 #include "../css/cascade.hpp"
@@ -52,11 +53,20 @@ namespace browser {
         std::string r;
         for (char c : s) {
             switch (c) {
-                case '<': r += "&lt;"; break;
-                case '>': r += "&gt;"; break;
-                case '&': r += "&amp;"; break;
-                case '"': r += "&quot;"; break;
-                default: r += c;
+                case '<':
+                    r += "&lt;";
+                    break;
+                case '>':
+                    r += "&gt;";
+                    break;
+                case '&':
+                    r += "&amp;";
+                    break;
+                case '"':
+                    r += "&quot;";
+                    break;
+                default:
+                    r += c;
             }
         }
         return r;
@@ -113,10 +123,12 @@ namespace browser {
             }
 
             // Build syntax-highlighted HTML source
-            std::string raw_body(reinterpret_cast<const char*>(resp.body.data()), resp.body.size());
+            std::string raw_body(reinterpret_cast<const char *>(resp.body.data()), resp.body.size());
             std::string escaped = html_escape(raw_body);
-            std::string html = "<!DOCTYPE html><html><head><style>"
-                "body{background:#1e1e1e;color:#d4d4d4;font-family:monospace;padding:16px;font-size:13px;white-space:pre}"
+            std::string html =
+                "<!DOCTYPE html><html><head><style>"
+                "body{background:#1e1e1e;color:#d4d4d4;font-family:monospace;padding:16px;font-size:13px;white-space:"
+                "pre}"
                 ".tag{color:#569cd6}.attr{color:#9cdcfe}.str{color:#ce9178}.cmt{color:#6a9955}"
                 "</style></head><body><pre><code>";
             // Simple syntax highlighting: wrap tags, attributes, strings, comments
@@ -126,16 +138,20 @@ namespace browser {
                     // Check for comment
                     if (escaped.substr(i + 4, 3) == "!--") {
                         auto end = escaped.find("--&gt;", i);
-                        if (end == std::string::npos) end = escaped.size();
-                        else end += 6;
+                        if (end == std::string::npos)
+                            end = escaped.size();
+                        else
+                            end += 6;
                         highlighted += "<span class=\"cmt\">" + escaped.substr(i, end - i) + "</span>";
                         i = end;
                         continue;
                     }
                     // Tag
                     auto end = escaped.find("&gt;", i);
-                    if (end != std::string::npos) end += 4;
-                    else end = escaped.size();
+                    if (end != std::string::npos)
+                        end += 4;
+                    else
+                        end = escaped.size();
                     std::string tag_content = escaped.substr(i, end - i);
                     // Highlight attributes within tag
                     std::string colored_tag;
@@ -162,7 +178,8 @@ namespace browser {
                                     colored_tag += ' ';
                                     pos++;
                                 }
-                                if (pos >= inner.size()) break;
+                                if (pos >= inner.size())
+                                    break;
                                 auto eq = inner.find('=', pos);
                                 if (eq == std::string::npos) {
                                     colored_tag += "<span class=\"attr\">" + inner.substr(pos) + "</span>";
@@ -179,7 +196,8 @@ namespace browser {
                                         colored_tag += "<span class=\"str\">" + inner.substr(pos) + "</span>";
                                         break;
                                     }
-                                    colored_tag += "<span class=\"str\">" + inner.substr(pos, end_q - pos + 1) + "</span>";
+                                    colored_tag +=
+                                        "<span class=\"str\">" + inner.substr(pos, end_q - pos + 1) + "</span>";
                                     pos = end_q + 1;
                                 }
                             }
@@ -255,7 +273,7 @@ namespace browser {
             co_return;
         }
 
-        auto& hsts = net::HTTPClient::hsts_manager();
+        auto &hsts = net::HTTPClient::hsts_manager();
         hsts.load_preload_list();
         {
             std::string upgraded = hsts.upgrade_url(parsed.unwrap().to_string());
@@ -288,22 +306,6 @@ namespace browser {
         }
         auto resp = std::move(resp_r.unwrap());
 
-        // Check for Content-Disposition: attachment
-        {
-            std::string cd = resp.headers.get("Content-Disposition");
-            if (!cd.empty() && cd.find("attachment") != std::string::npos) {
-                std::string mime_type = resp.headers.get("Content-Type");
-                u64 content_length = 0;
-                std::string cl = resp.headers.get("Content-Length");
-                if (!cl.empty()) content_length = std::stoull(cl);
-                if (download_callback_ && download_callback_(url_str, cd, mime_type, content_length)) {
-                    // Download will be handled externally; skip page load
-                    loading_ = false;
-                    co_return;
-                }
-            }
-        }
-
         u32 redirect_count = 0;
         while ((resp.status.code == 301 || resp.status.code == 302 || resp.status.code == 303 ||
                 resp.status.code == 307 || resp.status.code == 308) &&
@@ -328,13 +330,33 @@ namespace browser {
             resp = std::move(nr.unwrap());
         }
 
+        // Check for Content-Disposition: attachment on the final response (after redirects)
+        {
+            std::string cd = resp.headers.get("Content-Disposition");
+            if (!cd.empty() && cd.find("attachment") != std::string::npos) {
+                std::string mime_type = resp.headers.get("Content-Type");
+                u64 content_length = 0;
+                std::string cl = resp.headers.get("Content-Length");
+                if (!cl.empty()) {
+                    char *end = nullptr;
+                    u64 parsed = std::strtoull(cl.c_str(), &end, 10);
+                    if (end && end != cl.c_str())
+                        content_length = parsed;
+                }
+                if (download_callback_ && download_callback_(req.url.to_string(), cd, mime_type, content_length)) {
+                    loading_ = false;
+                    co_return;
+                }
+            }
+        }
+
         page_is_https_ = (req.url.scheme == "https");
         has_mixed_content_ = false;
         current_csp_ = net::CSPPolicy();
         {
             std::string csp_val;
             std::string hsts_val;
-            for (auto& [hk, hv] : resp.headers.all()) {
+            for (auto &[hk, hv] : resp.headers.all()) {
                 std::string lk;
                 for (char ch : hk) lk += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
                 if (lk == "content-security-policy") {
@@ -502,9 +524,6 @@ namespace browser {
             auto paint_r = co_await painter.paint_async(page.layout.get());
             if (paint_r.is_ok()) {
                 page.display_list = std::move(paint_r.unwrap());
-                { static FILE* f = fopen("pl_debug.txt", "w"); if (f) { fprintf(f, "display_list size=%zu\n", page.display_list ? page.display_list->commands().size() : 0); fclose(f); } }
-            } else {
-                { static FILE* f = fopen("pl_debug.txt", "w"); if (f) { fprintf(f, "paint_r ERROR: %s\n", paint_r.unwrap_err().c_str()); fclose(f); } }
             }
 
             page.layer_tree = render::LayerTreeBuilder::build(page.layout.get());
@@ -555,7 +574,7 @@ namespace browser {
         } else if (key == "zoom") {
             settings_->set_zoom_level(std::stof(val));
         }
-        settings_->save_to_file("./settings.txt");
+        settings_->save_to_file(data_dir() + "/settings.txt");
     }
 
     std::string PageLoader::error_page(const std::string &url, const std::string &msg) {
@@ -606,7 +625,8 @@ namespace browser {
                             auto css_url = url_r.unwrap();
                             std::string css_url_str = css_url.to_string();
                             if (page_is_https_) {
-                                if (css_url.scheme == "http" && css_url.scheme != "data" && css_url.scheme != "blob" && css_url.scheme != "about") {
+                                if (css_url.scheme == "http" && css_url.scheme != "data" && css_url.scheme != "blob" &&
+                                    css_url.scheme != "about") {
                                     has_mixed_content_ = true;
                                     return;
                                 }

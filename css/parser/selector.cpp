@@ -169,7 +169,8 @@ namespace browser::css {
 
                     if (func_name == "not" || func_name == "is" || func_name == "where") {
                         s.argument_selectors = CssParser::parse_selectors(inner);
-                    } else if (func_name == "nth-child" || func_name == "nth-last-child") {
+                    } else if (func_name == "nth-child" || func_name == "nth-last-child" ||
+                               func_name == "nth-of-type" || func_name == "nth-last-of-type") {
                         s.nth_args = parse_nth_args(inner);
                     }
                 }

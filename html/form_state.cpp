@@ -23,8 +23,7 @@ namespace browser::html {
         auto it = check_states.find(el);
         if (it != check_states.end())
             return it->second;
-        std::string val = el ? el->get_attribute("value") : "";
-        return val == "on" || val == "checked" || val == "true";
+        return el ? el->has_attribute("checked") : false;
     }
 
     void FormState::set_selected_index(const Element *el, int idx) {

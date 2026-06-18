@@ -1,8 +1,8 @@
 #include "painter.hpp"
 
 #include "../../html/form_state.hpp"
-#include "../form_controls.hpp"
 #include "../canvas.hpp"
+#include "../form_controls.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -104,8 +104,14 @@ namespace browser::render {
         if (!node)
             return;
 
-    auto *vis = node->style().get("visibility");
+        auto *vis = node->style().get("visibility");
         if (vis && vis->type == css::CSSValue::Type::KEYWORD && vis->keyword == "hidden") {
+            // Push clip to the hidden node's padding box so children are clipped
+            f32 px = ox - node->padding.left;
+            f32 py = oy - node->padding.top;
+            f32 pw = node->content.width + node->padding.left + node->padding.right;
+            f32 ph = node->content.height + node->padding.top + node->padding.bottom;
+            list.push(make_cmd(PaintCommand::Type::PUSH_CLIP, {px, py, pw, ph}, Color::TRANSPARENT));
             for (auto &child : node->children) {
                 if (skip_layer_children && paint_needs_own_layer(child.get()))
                     continue;
@@ -115,6 +121,7 @@ namespace browser::render {
                            oy + child->content.y + child->scroll_offset_y,
                            skip_layer_children);
             }
+            list.push(make_cmd(PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT));
             return;
         }
 
@@ -327,51 +334,75 @@ namespace browser::render {
         }
     }
 
+    static f32 parse_shadow_len(const std::string &s, size_t &pos) {
+        while (pos < s.size() && s[pos] == ' ') pos++;
+        if (pos >= s.size())
+            return 0;
+        char *end = nullptr;
+        f32 val = std::strtof(s.c_str() + pos, &end);
+        if (end && end != s.c_str() + pos) {
+            pos = static_cast<size_t>(end - s.c_str());
+            // Skip unit suffix (px, em, etc.)
+            while (pos < s.size() &&
+                   (s[pos] == 'p' || s[pos] == 'x' || s[pos] == 'e' || s[pos] == 'm' || s[pos] == 'r' ||
+                    s[pos] == 'v' || s[pos] == 'h' || s[pos] == 'w' || s[pos] == '%' || s[pos] == 'c' || s[pos] == 't'))
+                pos++;
+            return val;
+        }
+        return 0;
+    }
+
     void Painter::paint_shadow(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
         auto *bs = node->style().get("box-shadow");
         if (bs && bs->type == css::CSSValue::Type::STRING && !bs->string_value.empty()) {
             std::string s = bs->string_value;
-            char *end = nullptr;
-            f32 off_x = std::strtof(s.c_str(), &end);
-            if (end && *end != '\0') {
-                while (*end == ' ') end++;
-                f32 off_y = std::strtof(end, &end);
-                if (end) {
-                    while (*end == ' ') end++;
-                    f32 blur = std::strtof(end, &end);
-                    if (blur == 0 && end)
-                        blur = 0;
+            // Ignore inset keyword
+            size_t pos = 0;
+            while (pos < s.size() && s[pos] == ' ') pos++;
+            if (s.substr(pos, 5) == "inset") {
+                pos += 5;
+                while (pos < s.size() && s[pos] == ' ') pos++;
+            }
 
-                    Color shadow_color = {0, 0, 0, 0.5f};
-                    std::string rest = end ? end : "";
-                    while (!rest.empty() && rest[0] == ' ') rest = rest.substr(1);
-                    if (!rest.empty()) {
-                        auto css_c = css::Color::from_name(rest);
-                        if (css_c.a != 0 || rest == "transparent") {
-                            shadow_color = css_to_render_color(css_c);
-                        }
-                    }
+            f32 off_x = parse_shadow_len(s, pos);
+            f32 off_y = parse_shadow_len(s, pos);
+            f32 blur = parse_shadow_len(s, pos);
+            // Skip spread radius if present
+            parse_shadow_len(s, pos);
 
-                    f32 bx = ox - node->padding.left + off_x;
-                    f32 by = oy - node->padding.top + off_y;
-                    f32 bw = node->content.width + node->padding.left + node->padding.right + node->border.left +
-                             node->border.right;
-                    f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
-                             node->border.bottom;
-
-                    if (blur > 0) {
-                        list.push(make_cmd(PaintCommand::Type::DRAW_SHADOW,
-                                           {bx - blur, by - blur, bw + 2 * blur, bh + 2 * blur},
-                                           shadow_color,
-                                           "",
-                                           0,
-                                           0,
-                                           {},
-                                           blur));
-                    } else {
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, bh}, shadow_color));
-                    }
+            Color shadow_color = {0, 0, 0, 0.5f};
+            while (pos < s.size() && s[pos] == ' ') pos++;
+            if (pos < s.size()) {
+                std::string color_str = s.substr(pos);
+                // Try named color first
+                auto css_c = css::Color::from_name(color_str);
+                if (css_c.a != 0 || color_str == "transparent") {
+                    shadow_color = css_to_render_color(css_c);
+                } else {
+                    // Try rgba(r,g,b,a) or rgb(r,g,b)
+                    // (simplified: actual CSS color parsing is done by the cascade layer)
+                    // Fallback: just use default shadow color
                 }
+            }
+
+            f32 bx = ox - node->padding.left + off_x;
+            f32 by = oy - node->padding.top + off_y;
+            f32 bw =
+                node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
+            f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
+                     node->border.bottom;
+
+            if (blur > 0) {
+                list.push(make_cmd(PaintCommand::Type::DRAW_SHADOW,
+                                   {bx - blur, by - blur, bw + 2 * blur, bh + 2 * blur},
+                                   shadow_color,
+                                   "",
+                                   0,
+                                   0,
+                                   {},
+                                   blur));
+            } else {
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, bh}, shadow_color));
             }
         }
     }
@@ -436,13 +467,22 @@ namespace browser::render {
         if (!node->text_lines.empty()) {
             for (auto &li : node->text_lines) {
                 css::Rect line_rect = {ox, oy + li.y, node->content.width, font_size + descender_pad};
-                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, line_rect, text_color, li.text, font_size, 0, {}, 0, {}, 1.0f, font_flags));
+                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                   line_rect,
+                                   text_color,
+                                   li.text,
+                                   font_size,
+                                   0,
+                                   {},
+                                   0,
+                                   {},
+                                   1.0f,
+                                   font_flags));
                 if (has_underline) {
                     f32 underline_y = oy + li.y + font_size + 1.0f;
                     f32 thickness = std::max(1.0f, font_size / 14.0f);
-                    list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                                       {ox, underline_y, node->content.width, thickness},
-                                       text_color));
+                    list.push(make_cmd(
+                        PaintCommand::Type::FILL_RECT, {ox, underline_y, node->content.width, thickness}, text_color));
                 }
             }
         } else {
@@ -451,13 +491,18 @@ namespace browser::render {
                                {ox, oy, node->content.width, node->content.height + descender_pad},
                                text_color,
                                node->text(),
-                               font_size, 0, {}, 0, {}, 1.0f, font_flags));
+                               font_size,
+                               0,
+                               {},
+                               0,
+                               {},
+                               1.0f,
+                               font_flags));
             if (has_underline) {
                 f32 underline_y = oy + font_size + 1.0f;
                 f32 thickness = std::max(1.0f, font_size / 14.0f);
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                                   {ox, underline_y, node->content.width, thickness},
-                                   text_color));
+                list.push(make_cmd(
+                    PaintCommand::Type::FILL_RECT, {ox, underline_y, node->content.width, thickness}, text_color));
             }
         }
     }
@@ -491,31 +536,40 @@ namespace browser::render {
     }
 
     void Painter::paint_canvas(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
-        if (node->is_text()) return;
+        if (node->is_text())
+            return;
         html::Node *n = node->node();
-        if (!n || n->type != html::NodeType::ELEMENT) return;
+        if (!n || n->type != html::NodeType::ELEMENT)
+            return;
         auto *el = static_cast<html::Element *>(n);
-        if (el->tag_name != "canvas") return;
+        if (el->tag_name != "canvas")
+            return;
 
         auto it = g_canvas_registry.find(el);
-        if (it == g_canvas_registry.end() || !it->second) return;
+        if (it == g_canvas_registry.end() || !it->second)
+            return;
 
         auto *canvas = it->second.get();
-        if (canvas->width() == 0 || canvas->height() == 0) return;
+        if (canvas->width() == 0 || canvas->height() == 0)
+            return;
 
         f32 bx = ox;
         f32 by = oy;
         f32 bw = node->content.width > 0 ? node->content.width : static_cast<f32>(canvas->width());
         f32 bh = node->content.height > 0 ? node->content.height : static_cast<f32>(canvas->height());
 
-        // Create a DRAW_CANVAS command with pixel data reference
+        // Copy pixel data into the command for thread safety
         PaintCommand cmd;
         cmd.type = PaintCommand::Type::DRAW_CANVAS;
         cmd.rect = {bx, by, bw, bh};
         cmd.color = Color::WHITE;
-        cmd.canvas_data = canvas->pixels();
         cmd.canvas_data_w = canvas->width();
         cmd.canvas_data_h = canvas->height();
+        {
+            const u8 *pixels = canvas->pixels();
+            u32 count = cmd.canvas_data_w * cmd.canvas_data_h * 4;
+            cmd.canvas_pixels.assign(pixels, pixels + count);
+        }
         list.push(cmd);
     }
 

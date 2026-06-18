@@ -8,8 +8,9 @@ namespace browser::render {
         auto it = cache_.find(key);
         if (it == cache_.end())
             return std::nullopt;
-        touch_key(key);
-        return it->second;
+        // Move to front of LRU list
+        lru_list_.splice(lru_list_.begin(), lru_list_, it->second.lru_it);
+        return it->second.tile;
     }
 
     void TileCache::insert(TileKey key, RasterizedTile tile) {
@@ -19,14 +20,17 @@ namespace browser::render {
         }
         auto it = cache_.find(key);
         if (it != cache_.end()) {
-            total_cache_bytes_ -= it->second.rgba_pixels.size();
-            it->second = std::move(tile);
-            total_cache_bytes_ += it->second.rgba_pixels.size();
-            touch_key(key);
+            total_cache_bytes_ -= it->second.tile.rgba_pixels.size();
+            it->second.tile = std::move(tile);
+            total_cache_bytes_ += it->second.tile.rgba_pixels.size();
+            lru_list_.splice(lru_list_.begin(), lru_list_, it->second.lru_it);
         } else {
             total_cache_bytes_ += tile_bytes;
-            cache_[key] = std::move(tile);
             lru_list_.push_front(key);
+            CacheEntry entry;
+            entry.tile = std::move(tile);
+            entry.lru_it = lru_list_.begin();
+            cache_[key] = std::move(entry);
         }
     }
 
@@ -37,7 +41,7 @@ namespace browser::render {
         lru_list_.pop_back();
         auto it = cache_.find(key);
         if (it != cache_.end()) {
-            total_cache_bytes_ -= it->second.rgba_pixels.size();
+            total_cache_bytes_ -= it->second.tile.rgba_pixels.size();
             cache_.erase(it);
             eviction_count_++;
         }
@@ -45,7 +49,7 @@ namespace browser::render {
 
     void TileCache::clear_layer(u32 layer_id) {
         std::vector<TileKey> to_remove;
-        for (auto &[key, _] : cache_) {
+        for (auto &[key, entry] : cache_) {
             if (key.layer_id == layer_id) {
                 to_remove.push_back(key);
             }
@@ -53,10 +57,10 @@ namespace browser::render {
         for (auto &key : to_remove) {
             auto it = cache_.find(key);
             if (it != cache_.end()) {
-                total_cache_bytes_ -= it->second.rgba_pixels.size();
+                total_cache_bytes_ -= it->second.tile.rgba_pixels.size();
+                lru_list_.erase(it->second.lru_it);
                 cache_.erase(it);
             }
-            lru_list_.remove(key);
         }
     }
 
@@ -65,11 +69,6 @@ namespace browser::render {
         lru_list_.clear();
         total_cache_bytes_ = 0;
         eviction_count_ = 0;
-    }
-
-    void TileCache::touch_key(const TileKey &key) {
-        lru_list_.remove(key);
-        lru_list_.push_front(key);
     }
 
 }  // namespace browser::render

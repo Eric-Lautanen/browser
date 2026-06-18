@@ -1,4 +1,5 @@
 #include "tokenizer.hpp"
+
 #include "../utf8.hpp"
 
 namespace browser::html {
@@ -104,8 +105,10 @@ namespace browser::html {
         if (c == '\r') {
             if (!is_eof() && input_[pos_] == '\n')
                 pos_++;
+            last_char_ = '\n';
             return '\n';
         }
+        last_char_ = static_cast<unsigned char>(c);
         return c;
     }
 
@@ -142,11 +145,7 @@ namespace browser::html {
             return;
         if (reconsume_) {
             reconsume_ = false;
-            unsigned char rc = static_cast<unsigned char>(input_[pos_ - 1]);
-            if (rc < 0x80) { process_char(rc); return; }
-            auto dr = decode_utf8(reinterpret_cast<const u8*>(input_.data()) + pos_ - 1,
-                                   static_cast<u32>(input_.size()) - pos_ + 1);
-            process_char(dr.codepoint);
+            process_char(last_char_);
             return;
         }
         char c = advance();
@@ -154,9 +153,10 @@ namespace browser::html {
         if (uc < 0x80) {
             process_char(uc);
         } else {
-            auto dr = decode_utf8(reinterpret_cast<const u8*>(input_.data()) + pos_ - 1,
-                                   static_cast<u32>(input_.size()) - pos_ + 1);
+            auto dr = decode_utf8(reinterpret_cast<const u8 *>(input_.data()) + pos_ - 1,
+                                  static_cast<u32>(input_.size()) - pos_ + 1);
             pos_ += dr.bytes_consumed - 1;
+            last_char_ = dr.codepoint;
             process_char(dr.codepoint);
         }
     }
@@ -214,6 +214,7 @@ namespace browser::html {
             case State::BEFORE_ATTRIBUTE_NAME:
             case State::ATTRIBUTE_NAME:
             case State::AFTER_ATTRIBUTE_NAME:
+            case State::AFTER_ATTRIBUTE_VALUE:
             case State::BEFORE_ATTRIBUTE_VALUE:
             case State::ATTRIBUTE_VALUE_DQ:
             case State::ATTRIBUTE_VALUE_SQ:

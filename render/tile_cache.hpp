@@ -29,6 +29,11 @@ namespace browser::render {
         }
     };
 
+    struct CacheEntry {
+        RasterizedTile tile;
+        std::list<TileKey>::iterator lru_it;
+    };
+
     class TileCache {
     public:
         static constexpr size_t MAX_CACHE_BYTES = 256 * 1024 * 1024;  // 256MB
@@ -43,12 +48,10 @@ namespace browser::render {
         size_t eviction_count() const { return eviction_count_; }
 
     private:
-        std::unordered_map<TileKey, RasterizedTile, TileKeyHash> cache_;
+        std::unordered_map<TileKey, CacheEntry, TileKeyHash> cache_;
         std::list<TileKey> lru_list_;
         size_t total_cache_bytes_ = 0;
         size_t eviction_count_ = 0;
-
-        void touch_key(const TileKey &key);
     };
 
 }  // namespace browser::render

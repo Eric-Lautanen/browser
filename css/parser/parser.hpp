@@ -26,7 +26,6 @@ namespace browser::css {
         Declaration parse_declaration();
         SimpleSelector parse_simple_selector();
         CSSValue parse_value();
-        CSSValue parse_calc_args();
         CSSValue parse_transform_func(const std::string &func_name);
         CSSValue parse_gradient(const std::string &func_name);
         AtRule parse_at_rule();

@@ -180,11 +180,18 @@ namespace browser {
             text_renderer_->render_text(
                 renderer_.get(), "> " + dt.console_input, 6, input_y + 4, render::Color{1, 1, 1, 1}, 12);
         } else if (dt.active_tab == DevToolsState::ELEMENTS) {
-            // Show DOM tree as indented text
+            // Show DOM tree as indented text, one line at a time
             if (current_page_.has_value() && current_page_->dom) {
-                std::string dom_text;
+                f32 line_y = content_y;
                 html::Node *root = current_page_->dom.get();
-                dom_text += "<!DOCTYPE html>\n";
+                auto emit_line = [&](const std::string &s) {
+                    if (line_y > devtools_y + devtools_h - 20)
+                        return;
+                    text_renderer_->render_text(
+                        renderer_.get(), s, 10, line_y, render::Color{0.6f, 0.8f, 0.6f, 1.0f}, 11);
+                    line_y += 14;
+                };
+                emit_line("<!DOCTYPE html>");
                 html::traverse_depth_first(root, [&](html::Node *n) {
                     int depth = 0;
                     html::Node *p = n->parent;
@@ -195,20 +202,23 @@ namespace browser {
                     std::string indent(depth * 2, ' ');
                     if (n->type == html::NodeType::ELEMENT) {
                         auto *el = static_cast<html::Element *>(n);
-                        dom_text += indent + "<" + el->tag_name;
+                        std::string line = indent + "<" + el->tag_name;
                         if (!el->id().empty())
-                            dom_text += " id=\"" + el->id() + "\"";
-                        dom_text += ">\n";
+                            line += " id=\"" + el->id() + "\"";
+                        line += ">";
+                        emit_line(line);
                     } else if (n->type == html::NodeType::TEXT) {
                         auto *txt = static_cast<html::Text *>(n);
                         std::string t = txt->data;
                         if (t.length() > 80)
                             t = t.substr(0, 80) + "...";
-                        dom_text += indent + t + "\n";
+                        // Escape newlines in text content
+                        for (auto &c : t)
+                            if (c == '\n')
+                                c = ' ';
+                        emit_line(indent + t);
                     }
                 });
-                text_renderer_->render_text(
-                    renderer_.get(), dom_text, 10, content_y, render::Color{0.6f, 0.8f, 0.6f, 1.0f}, 11);
             } else {
                 text_renderer_->render_text(
                     renderer_.get(), "No page loaded", 10, content_y, render::Color{0.7f, 0.7f, 0.7f, 1.0f}, 12);

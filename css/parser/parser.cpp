@@ -12,12 +12,6 @@ namespace browser::css {
         current_ = tokenizer_.next();
     }
 
-    void CssParser::expect(CssTokenType type) {
-        if (current_.type != type) {
-            advance();
-        }
-    }
-
     bool CssParser::is_simple_selector_start() const {
         if (current_.type == CssTokenType::IDENT)
             return true;

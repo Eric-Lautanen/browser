@@ -1,21 +1,23 @@
-#include "test_framework.hpp"
 #include "../css/grid.hpp"
+
+#include "../async/task.hpp"
 #include "../css/layout.hpp"
 #include "../html/dom.hpp"
 #include "../html/parser.hpp"
-#include <unordered_map>
+#include "test_framework.hpp"
+
 #include <memory>
-#include "../async/task.hpp"
+#include <unordered_map>
 
 using namespace browser;
 using namespace browser::css;
 using namespace browser::html;
 
-static void add_prop(ComputedStyle& style, const std::string& prop, CSSValue value) {
+static void add_prop(ComputedStyle &style, const std::string &prop, CSSValue value) {
     style.properties[prop] = std::move(value);
 }
 
-static CSSValue kw(const std::string& k) {
+static CSSValue kw(const std::string &k) {
     CSSValue v;
     v.type = CSSValue::Type::KEYWORD;
     v.keyword = k;
@@ -29,7 +31,7 @@ static CSSValue len_val(f32 value) {
     return v;
 }
 
-static CSSValue str_val(const std::string& s) {
+static CSSValue str_val(const std::string &s) {
     CSSValue v;
     v.type = CSSValue::Type::STRING;
     v.string_value = s;
@@ -40,7 +42,7 @@ static CSSValue str_val(const std::string& s) {
 
 TEST(grid_parse_tracks, {
     using namespace browser::css;
-    auto tracks = parse_track_list("100px 1fr auto", 800, 16);
+    auto tracks = parse_track_list("100px 1fr auto", 800, 16, 16);
     ASSERT_EQ(tracks.size(), 3u);
     ASSERT_EQ(tracks[0].type, GridTrackType::FIXED);
     ASSERT_EQ(tracks[1].type, GridTrackType::FLEX);
@@ -49,7 +51,7 @@ TEST(grid_parse_tracks, {
 
 TEST(grid_parse_minmax, {
     using namespace browser::css;
-    auto tracks = parse_track_list("minmax(100px, 1fr)", 800, 16);
+    auto tracks = parse_track_list("minmax(100px, 1fr)", 800, 16, 16);
     ASSERT_EQ(tracks.size(), 1u);
     ASSERT_EQ(tracks[0].type, GridTrackType::MINMAX);
 })
@@ -144,21 +146,21 @@ TEST(grid_auto_placement_basic, {
     auto container = create_element("div");
 
     append_child(doc.get(), std::move(html_el));
-    auto* html_ptr = doc->children[0].get();
+    auto *html_ptr = doc->children[0].get();
     append_child(html_ptr, std::move(body));
-    auto* body_ptr = html_ptr->children[0].get();
+    auto *body_ptr = html_ptr->children[0].get();
     append_child(body_ptr, std::move(container));
-    auto* cont_ptr = body_ptr->children[0].get();
+    auto *cont_ptr = body_ptr->children[0].get();
 
-    std::vector<Element*> children;
+    std::vector<Element *> children;
     for (int i = 0; i < 3; ++i) {
         auto ch = create_element("div");
-        auto* ch_ptr = ch.get();
+        auto *ch_ptr = ch.get();
         append_child(cont_ptr, std::move(ch));
         children.push_back(ch_ptr);
     }
 
-    std::unordered_map<const Element*, ComputedStyle> styles;
+    std::unordered_map<const Element *, ComputedStyle> styles;
     ComputedStyle html_style, body_style, cont_style;
 
     add_prop(html_style, "display", kw("block"));
@@ -174,11 +176,11 @@ TEST(grid_auto_placement_basic, {
     add_prop(cont_style, "padding", len_val(0));
     add_prop(cont_style, "border-width", len_val(0));
 
-    styles[static_cast<Element*>(html_ptr)] = std::move(html_style);
-    styles[static_cast<Element*>(body_ptr)] = std::move(body_style);
-    styles[static_cast<Element*>(cont_ptr)] = std::move(cont_style);
+    styles[static_cast<Element *>(html_ptr)] = std::move(html_style);
+    styles[static_cast<Element *>(body_ptr)] = std::move(body_style);
+    styles[static_cast<Element *>(cont_ptr)] = std::move(cont_style);
 
-    for (auto* ch : children) {
+    for (auto *ch : children) {
         ComputedStyle cs;
         add_prop(cs, "margin", len_val(0));
         add_prop(cs, "padding", len_val(0));
@@ -190,14 +192,12 @@ TEST(grid_auto_placement_basic, {
     auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
-    auto* grid_node = root->children[0].get();
+    auto *grid_node = root->children[0].get();
     ASSERT_EQ(grid_node->children.size(), 3u);
 
     // In 3-column grid, all 3 items should be on the same row
-    ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.y),
-              static_cast<int>(grid_node->children[1]->content.y));
-    ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.y),
-              static_cast<int>(grid_node->children[2]->content.y));
+    ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.y), static_cast<int>(grid_node->children[1]->content.y));
+    ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.y), static_cast<int>(grid_node->children[2]->content.y));
     // Different x positions
     ASSERT(grid_node->children[1]->content.x > grid_node->children[0]->content.x);
     ASSERT(grid_node->children[2]->content.x > grid_node->children[1]->content.x);
@@ -213,14 +213,14 @@ TEST(grid_explicit_placement, {
     auto child = create_element("div");
 
     append_child(doc.get(), std::move(html_el));
-    auto* html_ptr = doc->children[0].get();
+    auto *html_ptr = doc->children[0].get();
     append_child(html_ptr, std::move(body));
-    auto* body_ptr = html_ptr->children[0].get();
+    auto *body_ptr = html_ptr->children[0].get();
     append_child(body_ptr, std::move(container));
-    auto* cont_ptr = body_ptr->children[0].get();
+    auto *cont_ptr = body_ptr->children[0].get();
     append_child(cont_ptr, std::move(child));
 
-    std::unordered_map<const Element*, ComputedStyle> styles;
+    std::unordered_map<const Element *, ComputedStyle> styles;
     ComputedStyle html_style, body_style, cont_style, child_style;
 
     add_prop(html_style, "display", kw("block"));
@@ -243,21 +243,21 @@ TEST(grid_explicit_placement, {
     add_prop(child_style, "padding", len_val(0));
     add_prop(child_style, "border-width", len_val(0));
 
-    styles[static_cast<Element*>(html_ptr)] = std::move(html_style);
-    styles[static_cast<Element*>(body_ptr)] = std::move(body_style);
-    styles[static_cast<Element*>(cont_ptr)] = std::move(cont_style);
+    styles[static_cast<Element *>(html_ptr)] = std::move(html_style);
+    styles[static_cast<Element *>(body_ptr)] = std::move(body_style);
+    styles[static_cast<Element *>(cont_ptr)] = std::move(cont_style);
 
-    auto* child_ptr_dom = cont_ptr->children[0].get();
-    styles[static_cast<Element*>(child_ptr_dom)] = std::move(child_style);
+    auto *child_ptr_dom = cont_ptr->children[0].get();
+    styles[static_cast<Element *>(child_ptr_dom)] = std::move(child_style);
 
     LayoutEngine engine;
     auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
-    auto* grid_node = root->children[0].get();
+    auto *grid_node = root->children[0].get();
     ASSERT_EQ(grid_node->children.size(), 1u);
 
-    auto* item = grid_node->children[0].get();
+    auto *item = grid_node->children[0].get();
     // Item starts at column 2 (0-indexed: 1), so x = 100
     ASSERT_EQ(static_cast<int>(item->content.x), 100);
     // Spans 2 columns, so width = 200
@@ -273,11 +273,11 @@ TEST(grid_implicit, {
     auto container = create_element("div");
 
     append_child(doc.get(), std::move(html_el));
-    auto* html_ptr = doc->children[0].get();
+    auto *html_ptr = doc->children[0].get();
     append_child(html_ptr, std::move(body));
-    auto* body_ptr = html_ptr->children[0].get();
+    auto *body_ptr = html_ptr->children[0].get();
     append_child(body_ptr, std::move(container));
-    auto* cont_ptr = body_ptr->children[0].get();
+    auto *cont_ptr = body_ptr->children[0].get();
 
     // 5 items in 2-column grid
     for (int i = 0; i < 5; ++i) {
@@ -285,7 +285,7 @@ TEST(grid_implicit, {
         append_child(cont_ptr, std::move(ch));
     }
 
-    std::unordered_map<const Element*, ComputedStyle> styles;
+    std::unordered_map<const Element *, ComputedStyle> styles;
     ComputedStyle html_style, body_style, cont_style;
 
     add_prop(html_style, "display", kw("block"));
@@ -302,29 +302,28 @@ TEST(grid_implicit, {
     add_prop(cont_style, "padding", len_val(0));
     add_prop(cont_style, "border-width", len_val(0));
 
-    styles[static_cast<Element*>(html_ptr)] = std::move(html_style);
-    styles[static_cast<Element*>(body_ptr)] = std::move(body_style);
-    styles[static_cast<Element*>(cont_ptr)] = std::move(cont_style);
+    styles[static_cast<Element *>(html_ptr)] = std::move(html_style);
+    styles[static_cast<Element *>(body_ptr)] = std::move(body_style);
+    styles[static_cast<Element *>(cont_ptr)] = std::move(cont_style);
 
-    for (auto& child : cont_ptr->children) {
+    for (auto &child : cont_ptr->children) {
         ComputedStyle cs;
         add_prop(cs, "margin", len_val(0));
         add_prop(cs, "padding", len_val(0));
         add_prop(cs, "border-width", len_val(0));
-        styles[static_cast<Element*>(child.get())] = std::move(cs);
+        styles[static_cast<Element *>(child.get())] = std::move(cs);
     }
 
     LayoutEngine engine;
     auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
-    auto* grid_node = root->children[0].get();
+    auto *grid_node = root->children[0].get();
     // 5 items in 2-column grid → rows fill in row-major order
     ASSERT_EQ(grid_node->children.size(), 5u);
 
     // Items 0 and 1 on row 0 (same y)
-    ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.y),
-              static_cast<int>(grid_node->children[1]->content.y));
+    ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.y), static_cast<int>(grid_node->children[1]->content.y));
     // Item 2 starts on row 1 — y should be 50 (height of row 0)
     ASSERT_EQ(static_cast<int>(grid_node->children[2]->content.y), 50);
     // Item 4 starts on row 2 — y should be 100 (50+50)
@@ -341,14 +340,14 @@ TEST(grid_align_self, {
     auto child = create_element("div");
 
     append_child(doc.get(), std::move(html_el));
-    auto* html_ptr = doc->children[0].get();
+    auto *html_ptr = doc->children[0].get();
     append_child(html_ptr, std::move(body));
-    auto* body_ptr = html_ptr->children[0].get();
+    auto *body_ptr = html_ptr->children[0].get();
     append_child(body_ptr, std::move(container));
-    auto* cont_ptr = body_ptr->children[0].get();
+    auto *cont_ptr = body_ptr->children[0].get();
     append_child(cont_ptr, std::move(child));
 
-    std::unordered_map<const Element*, ComputedStyle> styles;
+    std::unordered_map<const Element *, ComputedStyle> styles;
     ComputedStyle html_style, body_style, cont_style, child_style;
 
     add_prop(html_style, "display", kw("block"));
@@ -370,19 +369,19 @@ TEST(grid_align_self, {
     add_prop(child_style, "padding", len_val(0));
     add_prop(child_style, "border-width", len_val(0));
 
-    styles[static_cast<Element*>(html_ptr)] = std::move(html_style);
-    styles[static_cast<Element*>(body_ptr)] = std::move(body_style);
-    styles[static_cast<Element*>(cont_ptr)] = std::move(cont_style);
+    styles[static_cast<Element *>(html_ptr)] = std::move(html_style);
+    styles[static_cast<Element *>(body_ptr)] = std::move(body_style);
+    styles[static_cast<Element *>(cont_ptr)] = std::move(cont_style);
 
-    auto* child_ptr_dom = cont_ptr->children[0].get();
-    styles[static_cast<Element*>(child_ptr_dom)] = std::move(child_style);
+    auto *child_ptr_dom = cont_ptr->children[0].get();
+    styles[static_cast<Element *>(child_ptr_dom)] = std::move(child_style);
 
     LayoutEngine engine;
     auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
-    auto* grid_node = root->children[0].get();
-    auto* item = grid_node->children[0].get();
+    auto *grid_node = root->children[0].get();
+    auto *item = grid_node->children[0].get();
     // align-self:center → content.y is centered in 200px cell (y=100 for empty item)
     ASSERT_EQ(static_cast<int>(item->content.y), 100);
 })
@@ -396,18 +395,18 @@ TEST(grid_sizing, {
     auto container = create_element("div");
 
     append_child(doc.get(), std::move(html_el));
-    auto* html_ptr = doc->children[0].get();
+    auto *html_ptr = doc->children[0].get();
     append_child(html_ptr, std::move(body));
-    auto* body_ptr = html_ptr->children[0].get();
+    auto *body_ptr = html_ptr->children[0].get();
     append_child(body_ptr, std::move(container));
-    auto* cont_ptr = body_ptr->children[0].get();
+    auto *cont_ptr = body_ptr->children[0].get();
 
     for (int i = 0; i < 2; ++i) {
         auto ch = create_element("div");
         append_child(cont_ptr, std::move(ch));
     }
 
-    std::unordered_map<const Element*, ComputedStyle> styles;
+    std::unordered_map<const Element *, ComputedStyle> styles;
     ComputedStyle html_style, body_style, cont_style;
 
     add_prop(html_style, "display", kw("block"));
@@ -423,23 +422,23 @@ TEST(grid_sizing, {
     add_prop(cont_style, "padding", len_val(0));
     add_prop(cont_style, "border-width", len_val(0));
 
-    styles[static_cast<Element*>(html_ptr)] = std::move(html_style);
-    styles[static_cast<Element*>(body_ptr)] = std::move(body_style);
-    styles[static_cast<Element*>(cont_ptr)] = std::move(cont_style);
+    styles[static_cast<Element *>(html_ptr)] = std::move(html_style);
+    styles[static_cast<Element *>(body_ptr)] = std::move(body_style);
+    styles[static_cast<Element *>(cont_ptr)] = std::move(cont_style);
 
-    for (auto& child : cont_ptr->children) {
+    for (auto &child : cont_ptr->children) {
         ComputedStyle cs;
         add_prop(cs, "margin", len_val(0));
         add_prop(cs, "padding", len_val(0));
         add_prop(cs, "border-width", len_val(0));
-        styles[static_cast<Element*>(child.get())] = std::move(cs);
+        styles[static_cast<Element *>(child.get())] = std::move(cs);
     }
 
     LayoutEngine engine;
     auto root = std::move(engine.layout_async(doc.get(), styles, 800, 600).sync_wait().unwrap());
     ASSERT(root != nullptr);
 
-    auto* grid_node = root->children[0].get();
+    auto *grid_node = root->children[0].get();
     ASSERT_EQ(grid_node->children.size(), 2u);
     // Both items should be 100px wide
     ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.width), 100);

@@ -1,5 +1,5 @@
-#include "tokenizer.hpp"
 #include "../utf8.hpp"
+#include "tokenizer.hpp"
 
 namespace browser::html {
 
@@ -65,7 +65,7 @@ namespace browser::html {
                     state_ = State::DATA;
                     reconsume_ = true;
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                 } else {
                     temporary_buffer_ += c;
                 }
@@ -83,7 +83,7 @@ namespace browser::html {
                     reconsume_ = true;
                 } else if (c == '\0') {
                     Attribute attr;
-                    attr.name = static_cast<char>(0xFD);
+                    attr.name = encode_utf8(0xFFFD);
                     current_tag_.attributes.push_back(attr);
                     temporary_buffer_.clear();
                     state_ = State::ATTRIBUTE_NAME;
@@ -114,7 +114,7 @@ namespace browser::html {
                     state_ = State::DATA;
                     reconsume_ = true;
                 } else if (c == '\0') {
-                    current_tag_.attributes.back().name += static_cast<char>(0xFD);
+                    current_tag_.attributes.back().name += encode_utf8(0xFFFD);
                 } else {
                     current_tag_.attributes.back().name += c;
                 }
@@ -134,7 +134,7 @@ namespace browser::html {
                     reconsume_ = true;
                 } else if (c == '\0') {
                     Attribute attr;
-                    attr.name = static_cast<char>(0xFD);
+                    attr.name = encode_utf8(0xFFFD);
                     current_tag_.attributes.push_back(attr);
                     temporary_buffer_.clear();
                     state_ = State::ATTRIBUTE_NAME;
@@ -146,6 +146,22 @@ namespace browser::html {
                     current_tag_.attributes.push_back(attr);
                     temporary_buffer_.clear();
                     state_ = State::ATTRIBUTE_NAME;
+                }
+                break;
+
+            case State::AFTER_ATTRIBUTE_VALUE:
+                if (c == ' ' || c == '\t' || c == '\n' || c == '\f') {
+                } else if (c == '/') {
+                    state_ = State::SELF_CLOSING_START_TAG;
+                } else if (c == '>') {
+                    emit_current_tag();
+                    state_ = State::DATA;
+                } else if (c == '\0' && is_eof()) {
+                    state_ = State::DATA;
+                    reconsume_ = true;
+                } else {
+                    state_ = State::BEFORE_ATTRIBUTE_NAME;
+                    reconsume_ = true;
                 }
                 break;
 
@@ -165,7 +181,7 @@ namespace browser::html {
                     reconsume_ = true;
                 } else if (c == '\0') {
                     temporary_buffer_.clear();
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                     state_ = State::ATTRIBUTE_VALUE_UQ;
                 } else {
                     temporary_buffer_.clear();
@@ -177,7 +193,7 @@ namespace browser::html {
             case State::ATTRIBUTE_VALUE_DQ:
                 if (c == '"') {
                     current_tag_.attributes.back().value = temporary_buffer_;
-                    state_ = State::AFTER_ATTRIBUTE_NAME;
+                    state_ = State::AFTER_ATTRIBUTE_VALUE;
                 } else if (c == '&') {
                     return_state_ = State::ATTRIBUTE_VALUE_DQ;
                     state_ = State::CHARACTER_REFERENCE;
@@ -185,7 +201,7 @@ namespace browser::html {
                     state_ = State::DATA;
                     reconsume_ = true;
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                 } else {
                     temporary_buffer_ += encode_utf8(c);
                 }
@@ -194,7 +210,7 @@ namespace browser::html {
             case State::ATTRIBUTE_VALUE_SQ:
                 if (c == '\'') {
                     current_tag_.attributes.back().value = temporary_buffer_;
-                    state_ = State::AFTER_ATTRIBUTE_NAME;
+                    state_ = State::AFTER_ATTRIBUTE_VALUE;
                 } else if (c == '&') {
                     return_state_ = State::ATTRIBUTE_VALUE_SQ;
                     state_ = State::CHARACTER_REFERENCE;
@@ -202,7 +218,7 @@ namespace browser::html {
                     state_ = State::DATA;
                     reconsume_ = true;
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                 } else {
                     temporary_buffer_ += encode_utf8(c);
                 }
@@ -223,7 +239,7 @@ namespace browser::html {
                     state_ = State::DATA;
                     reconsume_ = true;
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                 } else {
                     temporary_buffer_ += encode_utf8(c);
                 }
@@ -241,11 +257,13 @@ namespace browser::html {
                     reconsume_ = true;
                 } else {
                     state_ = State::BEFORE_ATTRIBUTE_NAME;
+                    reconsume_ = true;
                 }
                 break;
 
             case State::MARKUP_DECLARATION_OPEN:
-                if (c == '-') {
+                if (c == '-' && peek(0) == '-') {
+                    advance();
                     temporary_buffer_.clear();
                     state_ = State::COMMENT_START;
                 } else if (c == 'D' || c == 'd') {
@@ -287,7 +305,7 @@ namespace browser::html {
                     emit(Token(ct));
                     emit_eof();
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                 } else {
                     temporary_buffer_ += c;
                 }
@@ -307,7 +325,7 @@ namespace browser::html {
                     emit(Token(ct));
                     emit_eof();
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                     state_ = State::COMMENT;
                 } else {
                     temporary_buffer_ += c;
@@ -329,7 +347,7 @@ namespace browser::html {
                     emit(Token(ct));
                     emit_eof();
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                     state_ = State::COMMENT;
                 } else {
                     state_ = State::COMMENT;
@@ -349,7 +367,7 @@ namespace browser::html {
                     emit(Token(ct));
                     emit_eof();
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                 } else {
                     temporary_buffer_ += c;
                 }
@@ -398,7 +416,7 @@ namespace browser::html {
                     emit(Token(ct));
                     emit_eof();
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                 } else {
                     temporary_buffer_ += '-';
                     state_ = State::COMMENT;
@@ -422,7 +440,7 @@ namespace browser::html {
                     emit(Token(ct));
                     emit_eof();
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                     state_ = State::COMMENT;
                 } else {
                     temporary_buffer_ += "--";
@@ -447,7 +465,7 @@ namespace browser::html {
                     emit(Token(ct));
                     emit_eof();
                 } else if (c == '\0') {
-                    temporary_buffer_ += static_cast<char>(0xFD);
+                    temporary_buffer_ += encode_utf8(0xFFFD);
                     state_ = State::COMMENT;
                 } else {
                     temporary_buffer_ += "--!";
@@ -509,7 +527,7 @@ namespace browser::html {
                     emit(Token(dt));
                     emit_eof();
                 } else if (c == '\0') {
-                    current_doctype_.name = static_cast<char>(0xFD);
+                    current_doctype_.name = encode_utf8(0xFFFD);
                     state_ = State::DOCTYPE_NAME;
                 } else {
                     std::string n;
@@ -533,7 +551,7 @@ namespace browser::html {
                     emit(Token(dt));
                     emit_eof();
                 } else if (c == '\0') {
-                    current_doctype_.name += static_cast<char>(0xFD);
+                    current_doctype_.name += encode_utf8(0xFFFD);
                 } else {
                     current_doctype_.name += c;
                 }
@@ -654,7 +672,7 @@ namespace browser::html {
                     emit(Token(dt));
                     emit_eof();
                 } else if (c == '\0') {
-                    current_doctype_.public_id += static_cast<char>(0xFD);
+                    current_doctype_.public_id += encode_utf8(0xFFFD);
                 } else {
                     current_doctype_.public_id += c;
                 }
@@ -669,7 +687,7 @@ namespace browser::html {
                     emit(Token(dt));
                     emit_eof();
                 } else if (c == '\0') {
-                    current_doctype_.public_id += static_cast<char>(0xFD);
+                    current_doctype_.public_id += encode_utf8(0xFFFD);
                 } else {
                     current_doctype_.public_id += c;
                 }
@@ -782,7 +800,7 @@ namespace browser::html {
                     emit(Token(dt));
                     emit_eof();
                 } else if (c == '\0') {
-                    current_doctype_.system_id += static_cast<char>(0xFD);
+                    current_doctype_.system_id += encode_utf8(0xFFFD);
                 } else {
                     current_doctype_.system_id += c;
                 }
@@ -797,7 +815,7 @@ namespace browser::html {
                     emit(Token(dt));
                     emit_eof();
                 } else if (c == '\0') {
-                    current_doctype_.system_id += static_cast<char>(0xFD);
+                    current_doctype_.system_id += encode_utf8(0xFFFD);
                 } else {
                     current_doctype_.system_id += c;
                 }
@@ -833,8 +851,7 @@ namespace browser::html {
                     emit(Token(dt));
                     emit_eof();
                 } else if (c == '\0') {
-                    DoctypeToken dt = current_doctype_;
-                    emit(Token(dt));
+                    // Ignore null bytes per spec
                 }
                 break;
 

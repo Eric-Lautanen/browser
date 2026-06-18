@@ -81,6 +81,8 @@ namespace browser::render {
             EnterCriticalSection(&tree_mutex_);
             if (has_pending_tree_) {
                 if (pending_tree_) {
+                    // Clear tile cache on new tree to prevent stale tiles
+                    tile_cache_.clear();
                     current_tree_ = std::move(pending_tree_);
                 }
                 if (pending_scroll_delta_ != 0 && current_tree_ && current_tree_->root_layer) {

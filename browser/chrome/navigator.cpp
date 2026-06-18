@@ -9,36 +9,29 @@ namespace browser {
 
     void BrowserWindow::navigate(const std::string &url) {
         std::string final_url = url;
-        // Trim whitespace
-        while (!final_url.empty() && (final_url[0] == ' ' || final_url[0] == '\t'))
-            final_url.erase(final_url.begin());
-        while (!final_url.empty() && (final_url.back() == ' ' || final_url.back() == '\t'))
-            final_url.pop_back();
+        while (!final_url.empty() && (final_url[0] == ' ' || final_url[0] == '\t')) final_url.erase(final_url.begin());
+        while (!final_url.empty() && (final_url.back() == ' ' || final_url.back() == '\t')) final_url.pop_back();
 
-        if (final_url.empty()) return;
-
-        // Check if it looks like a URL
+        if (final_url.empty())
+            return;
         bool looks_like_url = (final_url.find("://") != std::string::npos ||
-                               final_url.find('.') != std::string::npos ||
-                               final_url.rfind("about:", 0) == 0 ||
-                               final_url.rfind("view-source:", 0) == 0 ||
+                               (final_url.find('.') != std::string::npos && final_url.find(' ') == std::string::npos &&
+                                final_url.find('\t') == std::string::npos) ||
+                               final_url.rfind("about:", 0) == 0 || final_url.rfind("view-source:", 0) == 0 ||
                                final_url.rfind("file:", 0) == 0);
-
         if (looks_like_url) {
-            // Add https:// prefix if no scheme
-            if (final_url.find("://") == std::string::npos &&
-                final_url.rfind("about:", 0) != 0 &&
-                final_url.rfind("view-source:", 0) != 0 &&
-                final_url.rfind("file:", 0) != 0) {
+            if (final_url.find("://") == std::string::npos && final_url.rfind("about:", 0) != 0 &&
+                final_url.rfind("view-source:", 0) != 0 && final_url.rfind("file:", 0) != 0) {
                 final_url = "https://" + final_url;
             }
         } else {
-            // Treat as search query
             std::string search_engine_url = "https://www.google.com/search?q=";
             if (settings_) {
                 auto se = settings_->search_engine();
-                if (se == "bing") search_engine_url = "https://www.bing.com/search?q=";
-                else if (se == "duckduckgo") search_engine_url = "https://duckduckgo.com/?q=";
+                if (se == "bing")
+                    search_engine_url = "https://www.bing.com/search?q=";
+                else if (se == "duckduckgo")
+                    search_engine_url = "https://duckduckgo.com/?q=";
             }
             final_url = search_engine_url + html::url_encode(final_url);
         }
@@ -49,34 +42,36 @@ namespace browser {
             update_tab_placeholder(chrome_.active_tab);
         }
         start_load(final_url);
-        if (history_)
-            history_->push(final_url, "");
+        if (!chrome_.tabs.empty() && chrome_.tabs[chrome_.active_tab].history)
+            chrome_.tabs[chrome_.active_tab].history->push(final_url, "");
     }
 
     void BrowserWindow::navigate_back() {
-        if (!history_)
+        if (chrome_.tabs.empty())
             return;
-        auto url = history_->go_back();
+        auto &tab = chrome_.tabs[chrome_.active_tab];
+        if (!tab.history)
+            return;
+        auto url = tab.history->go_back();
         if (url.has_value()) {
             chrome_.url = url.value();
-            if (!chrome_.tabs.empty()) {
-                chrome_.tabs[chrome_.active_tab].url = url.value();
-                update_tab_placeholder(chrome_.active_tab);
-            }
+            chrome_.tabs[chrome_.active_tab].url = url.value();
+            update_tab_placeholder(chrome_.active_tab);
             start_load(url.value());
         }
     }
 
     void BrowserWindow::navigate_forward() {
-        if (!history_)
+        if (chrome_.tabs.empty())
             return;
-        auto url = history_->go_forward();
+        auto &tab = chrome_.tabs[chrome_.active_tab];
+        if (!tab.history)
+            return;
+        auto url = tab.history->go_forward();
         if (url.has_value()) {
             chrome_.url = url.value();
-            if (!chrome_.tabs.empty()) {
-                chrome_.tabs[chrome_.active_tab].url = url.value();
-                update_tab_placeholder(chrome_.active_tab);
-            }
+            chrome_.tabs[chrome_.active_tab].url = url.value();
+            update_tab_placeholder(chrome_.active_tab);
             start_load(url.value());
         }
     }
@@ -90,14 +85,15 @@ namespace browser {
         TabInfo tab;
         tab.url = url;
         tab.placeholder_color = {0.7f, 0.7f, 0.7f, 1.0f};
-        chrome_.tabs.push_back(tab);
+        tab.history = std::make_unique<HistoryManager>();
+        chrome_.tabs.push_back(std::move(tab));
         chrome_.active_tab = static_cast<u32>(chrome_.tabs.size()) - 1;
         compute_layout();
         update_tab_placeholder(chrome_.active_tab);
         chrome_.url = url;
         start_load(url);
-        if (history_)
-            history_->push(url, "");
+        if (!chrome_.tabs.empty() && chrome_.tabs[chrome_.active_tab].history)
+            chrome_.tabs[chrome_.active_tab].history->push(url, "");
     }
 
     void BrowserWindow::close_tab(u32 index) {

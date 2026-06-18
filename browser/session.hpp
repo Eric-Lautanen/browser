@@ -1,4 +1,5 @@
 #pragma once
+#include "paths.hpp"
 #include "../tests/utility.hpp"
 
 #include <string>
@@ -6,24 +7,25 @@
 
 namespace browser {
 
-struct SessionEntry {
-    std::string url;
-    std::string title;
-    i32 scroll_y = 0;
-};
+    struct SessionEntry {
+        std::string url;
+        std::string title;
+        i32 scroll_y = 0;
+    };
 
-class SessionManager {
-public:
-    SessionManager();
+    class SessionManager {
+    public:
+        SessionManager();
 
-    void save(const std::vector<SessionEntry>& tabs);
-    std::vector<SessionEntry> load();
-    bool previous_session_crashed() const;
-    void clear();
+        void save(const std::vector<SessionEntry> &tabs);
+        void mark_dirty();
+        std::vector<SessionEntry> load();
+        bool previous_session_crashed() const;
+        void clear();
 
-private:
-    std::string path_ = "./session.dat";
-    std::string lock_path_ = "./session.lock";
-};
+    private:
+        std::string path_ = data_dir() + "/session.dat";
+        std::string lock_path_ = data_dir() + "/session.lock";
+    };
 
 }  // namespace browser

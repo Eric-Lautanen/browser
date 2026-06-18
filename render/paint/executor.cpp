@@ -88,6 +88,14 @@ namespace browser::render {
     Texture2D *PaintExecutor::get_or_create_gradient_texture(const css::CSSGradient &grad, f32 w, f32 h) {
         uint64_t key = static_cast<uint64_t>(grad.type) ^ (static_cast<uint64_t>(grad.angle * 1000)) ^
                        (static_cast<uint64_t>(w) << 20) ^ (static_cast<uint64_t>(h) << 40);
+        // Hash all stop colors and positions into the key
+        for (const auto &stop : grad.stops) {
+            uint64_t stop_key = (static_cast<uint64_t>(stop.color.r) << 48) ^
+                                (static_cast<uint64_t>(stop.color.g) << 32) ^
+                                (static_cast<uint64_t>(stop.color.b) << 16) ^ static_cast<uint64_t>(stop.color.a);
+            key ^= stop_key ^ (static_cast<uint64_t>(static_cast<i64>(stop.position * 10000.0f)));
+            key = (key << 7) | (key >> 57);
+        }
         auto it = gradient_cache_.find(key);
         if (it != gradient_cache_.end())
             return it->second.get();
@@ -119,6 +127,7 @@ namespace browser::render {
     }
 
     void PaintExecutor::execute(const DisplayList &list) {
+        canvas_cache_.clear();
         for (const auto &cmd : list.commands()) {
             switch (cmd.type) {
                 case PaintCommand::Type::FILL_RECT: {
@@ -134,15 +143,15 @@ namespace browser::render {
                     renderer_->fill_rect(x, y, w, h, c);
                     break;
                 }
-            case PaintCommand::Type::DRAW_TEXT: {
-                f32 x = cmd.rect.x + offset_x_;
-                f32 y = cmd.rect.y + offset_y_;
-                Color c = cmd.color;
-                c.a *= current_opacity_;
-                text_renderer_->render_text(renderer_, cmd.text, x, y,
-                                            c, static_cast<u32>(cmd.font_size), cmd.font_flags);
-                break;
-            }
+                case PaintCommand::Type::DRAW_TEXT: {
+                    f32 x = cmd.rect.x + offset_x_;
+                    f32 y = cmd.rect.y + offset_y_;
+                    Color c = cmd.color;
+                    c.a *= current_opacity_;
+                    text_renderer_->render_text(
+                        renderer_, cmd.text, x, y, c, static_cast<u32>(cmd.font_size), cmd.font_flags);
+                    break;
+                }
                 case PaintCommand::Type::PUSH_CLIP: {
                     renderer_->flush();
                     f32 x = cmd.rect.x + offset_x_;
@@ -279,7 +288,7 @@ namespace browser::render {
                     break;
                 }
                 case PaintCommand::Type::DRAW_CANVAS: {
-                    if (!cmd.canvas_data || cmd.canvas_data_w == 0 || cmd.canvas_data_h == 0)
+                    if (cmd.canvas_pixels.empty() || cmd.canvas_data_w == 0 || cmd.canvas_data_h == 0)
                         break;
                     f32 x = cmd.rect.x + offset_x_;
                     f32 y = cmd.rect.y + offset_y_;
@@ -289,13 +298,22 @@ namespace browser::render {
                         transform_rect(x, y, w, h);
                     }
 
-                    auto tex = std::make_unique<Texture2D>();
-                    auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_data, true);
-                    if (r.is_ok()) {
-                        Color c = cmd.color;
-                        c.a *= current_opacity_;
-                        renderer_->draw_textured_quad(x, y, w, h, c, tex.get());
+                    // Cache canvas texture by pointer to pixel data (stable within one execute)
+                    void *pix_ptr = const_cast<u8 *>(cmd.canvas_pixels.data());
+                    auto cache_it = canvas_cache_.find(pix_ptr);
+                    if (cache_it == canvas_cache_.end()) {
+                        auto tex = std::make_unique<Texture2D>();
+                        auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_pixels.data(), true);
+                        if (r.is_err())
+                            break;
+                        canvas_cache_[pix_ptr] = std::move(tex);
+                        cache_it = canvas_cache_.find(pix_ptr);
+                        if (cache_it == canvas_cache_.end())
+                            break;
                     }
+                    Color c = cmd.color;
+                    c.a *= current_opacity_;
+                    renderer_->draw_textured_quad(x, y, w, h, c, cache_it->second.get());
                     break;
                 }
                 case PaintCommand::Type::DRAW_ROUNDED_RECT: {
@@ -327,62 +345,29 @@ namespace browser::render {
 
                     if (r > 0) {
                         i32 segments = static_cast<i32>(r * 0.5f);
-                        if (segments < 2)
-                            segments = 2;
-                        if (segments > 12)
-                            segments = 12;
-                        for (i32 i = 0; i < segments; i++) {
-                            f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
-                            f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
-                            f32 x1c = x + r - r * cosf(a1);
-                            f32 y1c = y + r - r * sinf(a1);
-                            f32 x2c = x + r - r * cosf(a2);
-                            f32 y2c = y + r - r * sinf(a2);
-                            f32 tri_x = std::min({x1c, x2c, x + r});
-                            f32 tri_y = std::min({y1c, y2c, y + r});
-                            f32 tri_w = std::max({x1c, x2c, x + r}) - tri_x;
-                            f32 tri_h = std::max({y1c, y2c, y + r}) - tri_y;
-                            renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
-                        }
-                        for (i32 i = 0; i < segments; i++) {
-                            f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
-                            f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
-                            f32 x1c = x + w - r + r * sinf(a1);
-                            f32 y1c = y + r - r * cosf(a1);
-                            f32 x2c = x + w - r + r * sinf(a2);
-                            f32 y2c = y + r - r * cosf(a2);
-                            f32 tri_x = std::min({x1c, x2c, x + w - r});
-                            f32 tri_y = std::min({y1c, y2c, y + r});
-                            f32 tri_w = std::max({x1c, x2c, x + w - r}) - tri_x;
-                            f32 tri_h = std::max({y1c, y2c, y + r}) - tri_y;
-                            renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
-                        }
-                        for (i32 i = 0; i < segments; i++) {
-                            f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
-                            f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
-                            f32 x1c = x + r - r * cosf(a1);
-                            f32 y1c = y + h - r + r * sinf(a1);
-                            f32 x2c = x + r - r * cosf(a2);
-                            f32 y2c = y + h - r + r * sinf(a2);
-                            f32 tri_x = std::min({x1c, x2c, x + r});
-                            f32 tri_y = std::min({y1c, y2c, y + h - r});
-                            f32 tri_w = std::max({x1c, x2c, x + r}) - tri_x;
-                            f32 tri_h = std::max({y1c, y2c, y + h - r}) - tri_y;
-                            renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
-                        }
-                        for (i32 i = 0; i < segments; i++) {
-                            f32 a1 = 3.14159f / 2.0f * static_cast<f32>(i) / segments;
-                            f32 a2 = 3.14159f / 2.0f * static_cast<f32>(i + 1) / segments;
-                            f32 x1c = x + w - r + r * sinf(a1);
-                            f32 y1c = y + h - r + r * cosf(a1);
-                            f32 x2c = x + w - r + r * sinf(a2);
-                            f32 y2c = y + h - r + r * cosf(a2);
-                            f32 tri_x = std::min({x1c, x2c, x + w - r});
-                            f32 tri_y = std::min({y1c, y2c, y + h - r});
-                            f32 tri_w = std::max({x1c, x2c, x + w - r}) - tri_x;
-                            f32 tri_h = std::max({y1c, y2c, y + h - r}) - tri_y;
-                            renderer_->fill_rect(tri_x, tri_y, tri_w, tri_h, c);
-                        }
+                        if (segments < 4)
+                            segments = 4;
+                        if (segments > 16)
+                            segments = 16;
+                        auto arc_segment = [&](f32 cx, f32 cy, f32 start_angle, f32 end_angle) {
+                            for (i32 i = 0; i < segments; i++) {
+                                f32 a1 = start_angle + (end_angle - start_angle) * static_cast<f32>(i) / segments;
+                                f32 a2 = start_angle + (end_angle - start_angle) * static_cast<f32>(i + 1) / segments;
+                                f32 x1 = cx + r * cosf(a1);
+                                f32 y1 = cy + r * sinf(a1);
+                                f32 x2 = cx + r * cosf(a2);
+                                f32 y2 = cy + r * sinf(a2);
+                                f32 min_x = std::min({x1, x2, cx});
+                                f32 min_y = std::min({y1, y2, cy});
+                                f32 max_x = std::max({x1, x2, cx});
+                                f32 max_y = std::max({y1, y2, cy});
+                                renderer_->fill_rect(min_x, min_y, max_x - min_x, max_y - min_y, c);
+                            }
+                        };
+                        arc_segment(x + r, y + r, 3.14159f, 3.14159f * 1.5f);
+                        arc_segment(x + w - r, y + r, 3.14159f * 1.5f, 3.14159f * 2.0f);
+                        arc_segment(x + r, y + h - r, 3.14159f * 0.5f, 3.14159f);
+                        arc_segment(x + w - r, y + h - r, 0.0f, 3.14159f * 0.5f);
                     }
                     break;
                 }

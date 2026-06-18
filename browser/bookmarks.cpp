@@ -1,26 +1,16 @@
 #include "bookmarks.hpp"
+#include "paths.hpp"
 
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <string>
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
 
 namespace browser {
 
     std::string BookmarkManager::default_path() {
-        char buf[MAX_PATH];
-        DWORD len = GetEnvironmentVariableA("USERPROFILE", buf, sizeof(buf));
-        if (len > 0 && len < sizeof(buf)) {
-            std::string dir = std::string(buf) + "\\Documents";
-            CreateDirectoryA(dir.c_str(), nullptr);
-            return dir + "\\bookmarks.txt";
-        }
-        return "bookmarks.txt";
+        return data_dir() + "/bookmarks.txt";
     }
 
     BookmarkManager::BookmarkManager() {}

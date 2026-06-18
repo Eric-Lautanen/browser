@@ -212,8 +212,8 @@ namespace browser::css {
         std::string rows_str = get_grid_prop_raw(node->style(), "grid-template-rows");
 
         GridState state;
-        state.columns = parse_track_list(cols_str, container_width, font_size);
-        state.rows = parse_track_list(rows_str, container_height, font_size);
+        state.columns = parse_track_list(cols_str, container_width, font_size, root_font_size_);
+        state.rows = parse_track_list(rows_str, container_height, font_size, root_font_size_);
 
         std::unordered_map<std::string, std::pair<i32, i32>> named_areas;
         std::vector<std::vector<std::string>> area_grid;

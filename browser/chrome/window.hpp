@@ -50,11 +50,13 @@ namespace browser {
         }
     };
 
+    class HistoryManager;
     struct TabInfo {
         std::string url;
         render::Texture2D *favicon = nullptr;
         render::Color placeholder_color{0.7f, 0.7f, 0.7f, 1.0f};
         i32 scroll_y = 0;
+        std::unique_ptr<HistoryManager> history;
     };
 
     struct ChromeUI {
@@ -152,7 +154,6 @@ namespace browser {
         Theme theme_;
         u32 viewport_width_ = 1024, viewport_height_ = 768;
         std::optional<LoadedPage> current_page_;
-        std::unique_ptr<HistoryManager> history_;
         std::unique_ptr<BookmarkManager> bookmarks_;
         std::unique_ptr<Telemetry> telemetry_;
         std::unique_ptr<SettingsManager> settings_;

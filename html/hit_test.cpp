@@ -88,7 +88,7 @@ namespace browser::html {
                                 f32 px,
                                 f32 py,
                                 std::vector<HitCandidate> &candidates,
-                                int &depth) {
+                                int &paint_counter) {
             if (!node)
                 return;
 
@@ -145,7 +145,7 @@ namespace browser::html {
                 if (passes_radius && !is_visibility_hidden(style)) {
                     f32 zi = get_z(style);
                     bool pos = is_positioned(style);
-                    int order = depth;
+                    int order = paint_counter++;
                     // Elements without position and z-index=0 paint in tree order
                     // Positioned/stacking contexts with z-index auto = 0
                     // Adjust paint_order to reflect paint layer ordering
@@ -177,19 +177,17 @@ namespace browser::html {
                 }
             }
 
-            depth++;
-
             // If has_clip and point is outside clip rect, don't recurse into children
             bool pass_clip = !has_clip || point_in_rect(px, py, clip_rect);
 
             if (pass_clip) {
-                for (auto *child : negative_z) collect_candidates(child, child_ox, child_oy, px, py, candidates, depth);
+                for (auto *child : negative_z)
+                    collect_candidates(child, child_ox, child_oy, px, py, candidates, paint_counter);
                 for (auto *child : normal_flow)
-                    collect_candidates(child, child_ox, child_oy, px, py, candidates, depth);
-                for (auto *child : positive_z) collect_candidates(child, child_ox, child_oy, px, py, candidates, depth);
+                    collect_candidates(child, child_ox, child_oy, px, py, candidates, paint_counter);
+                for (auto *child : positive_z)
+                    collect_candidates(child, child_ox, child_oy, px, py, candidates, paint_counter);
             }
-
-            depth--;
         }
 
     }  // namespace
@@ -201,8 +199,8 @@ namespace browser::html {
             return result;
 
         std::vector<HitCandidate> candidates;
-        int depth = 0;
-        collect_candidates(layout_root, 0, 0, px, py, candidates, depth);
+        int paint_counter = 0;
+        collect_candidates(layout_root, 0, 0, px, py, candidates, paint_counter);
 
         if (candidates.empty())
             return result;

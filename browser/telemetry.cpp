@@ -7,6 +7,27 @@
 #include <iomanip>
 #include <sstream>
 
+namespace {
+
+    std::string html_escape(const std::string &s) {
+        std::string r;
+        for (char c : s) {
+            if (c == '&')
+                r += "&amp;";
+            else if (c == '<')
+                r += "&lt;";
+            else if (c == '>')
+                r += "&gt;";
+            else if (c == '"')
+                r += "&quot;";
+            else
+                r += c;
+        }
+        return r;
+    }
+
+}  // namespace
+
 namespace browser {
 
     Telemetry::Telemetry() = default;
@@ -183,8 +204,8 @@ namespace browser {
             else if (r.type == "font")
                 css_class = "type-font";
             html << "<tr class='" << css_class << "'>"
-                 << "<td>" << r.url << "</td>"
-                 << "<td>" << r.type << "</td>"
+                 << "<td>" << html_escape(r.url) << "</td>"
+                 << "<td>" << html_escape(r.type) << "</td>"
                  << "<td>" << r.start_ms << "</td>"
                  << "<td>" << r.end_ms << "</td>"
                  << "<td>" << (r.end_ms - r.start_ms) << "</td>"
@@ -230,7 +251,7 @@ namespace browser {
             }
             html << "<tr>"
                  << "<td>" << type_name << "</td>"
-                 << "<td>" << e.url << "</td>"
+                 << "<td>" << html_escape(e.url) << "</td>"
                  << "<td>" << e.duration_ms << "</td>"
                  << "</tr>";
         }

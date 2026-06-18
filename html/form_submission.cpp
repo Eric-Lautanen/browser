@@ -117,7 +117,7 @@ namespace browser::html {
         return net::url_decode(s);
     }
 
-    std::string submit_form(const Element *form_element) {
+    std::string submit_form(const Element *form_element, net::HTTPClient *http) {
         if (!form_element || form_element->tag_name != "form")
             return {};
 
@@ -173,11 +173,13 @@ namespace browser::html {
                 req.headers.set("Host", host_hdr);
             }
             req.headers.set("Content-Type", "application/x-www-form-urlencoded");
+            req.headers.set("Content-Length", std::to_string(encoded_body.size()));
             req.headers.set("Connection", "close");
             req.body.assign(encoded_body.begin(), encoded_body.end());
 
-            // Return the action URL so the browser can navigate and reload
-            // (the caller will use start_load() which re-fetches)
+            if (http) {
+                http->fetch_async(req).sync_wait();
+            }
             return action;
         }
 
@@ -192,7 +194,7 @@ namespace browser::html {
         return action;
     }
 
-    std::string handle_form_submission(const Element *submit_button) {
+    std::string handle_form_submission(const Element *submit_button, net::HTTPClient *http) {
         if (!submit_button)
             return {};
 
@@ -204,7 +206,7 @@ namespace browser::html {
         if (!form)
             return {};
 
-        return submit_form(form);
+        return submit_form(form, http);
     }
 
 }  // namespace browser::html

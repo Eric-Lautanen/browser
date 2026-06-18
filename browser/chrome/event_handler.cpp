@@ -1,3 +1,4 @@
+#include "../paths.hpp"
 #include "../../html/form_state.hpp"
 #include "../../html/form_submission.hpp"
 #include "../../html/hit_test.hpp"
@@ -166,6 +167,41 @@ namespace browser {
             }
         }
         if (my > chrome_height()) {
+            // Check overlay panels first — prevent clicks from reaching page below
+            if (chrome_.show_downloads) {
+                return;
+            }
+            if (chrome_.devtools.visible) {
+                // DevTools tab bar click handling
+                f32 dt_y = static_cast<f32>(viewport_height_) - 300.0f;
+                if (my >= dt_y + 1 && my <= dt_y + 24) {
+                    f32 tx = mx;
+                    for (int i = 0; i < 3; i++) {
+                        if (tx >= i * 100 && tx < (i + 1) * 100) {
+                            chrome_.devtools.active_tab = static_cast<DevToolsState::Tab>(i);
+                            break;
+                        }
+                    }
+                }
+                return;
+            }
+            if (chrome_.find_state.visible) {
+                f32 bar_y = chrome_height();
+                f32 bar_h = 30.0f;
+                if (my >= bar_y && my < bar_y + bar_h) {
+                    // Find bar buttons: [<] at tx≈290, [>] at tx≈318
+                    f32 tx = 10.0f + 40.0f + 200.0f + 60.0f;
+                    if (mx >= tx && mx < tx + 28) {
+                        // [<] previous
+                        chrome_.find_state.previous();
+                    } else if (mx >= tx + 28 && mx < tx + 56) {
+                        // [>] next
+                        chrome_.find_state.next();
+                    }
+                }
+                return;
+            }
+
             // Check bookmarks dropdown first (it extends below chrome)
             if (chrome_.show_bookmarks_dropdown) {
                 auto &br = chrome_.rects.bookmark;
@@ -182,7 +218,8 @@ namespace browser {
 
                 // Position: right-edge of dropdown aligns with right-edge of bookmark button
                 f32 dx = br.x + br.w - dw;
-                if (dx < 4.0f) dx = 4.0f;
+                if (dx < 4.0f)
+                    dx = 4.0f;
                 if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
                     dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
 
@@ -219,7 +256,7 @@ namespace browser {
                     set_theme(Theme::current);
                     if (settings_) {
                         settings_->set_theme(Theme::current);
-                        settings_->save_to_file("./settings.txt");
+                        settings_->save_to_file(data_dir() + "/settings.txt");
                     }
                     chrome_.address_focused = false;
                     return;
@@ -284,7 +321,10 @@ namespace browser {
                                         auto *found_el = static_cast<html::Element *>(found);
                                         // Find this element in the styles map and compute its Y position
                                         // Simple approach: search layout tree for matching element
-                                        struct FindResult { bool found; f32 y; };
+                                        struct FindResult {
+                                            bool found;
+                                            f32 y;
+                                        };
                                         std::function<FindResult(html::Element *, css::LayoutNode *, f32)> find_y =
                                             [&](html::Element *target, css::LayoutNode *node, f32 acc_y) -> FindResult {
                                             if (node->node() == target)
@@ -555,63 +595,12 @@ namespace browser {
         // Ctrl+A: select all text (works globally)
         if (e.key == platform::KeyCode::A && chrome_.ctrl_down) {
             selection_.active = true;
-            if (current_page_.has_value() && current_page_->dom) {
-                std::string all_text;
-                html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
-                    if (n->type == html::NodeType::TEXT) {
-                        auto *tx = static_cast<html::Text *>(n);
-                        if (!tx->data.empty())
-                            all_text += tx->data;
-                    }
-                });
-                if (!all_text.empty()) {
-                    HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
-                    if (hglb) {
-                        char *buf = (char *)GlobalLock(hglb);
-                        if (buf) {
-                            memcpy(buf, all_text.data(), all_text.size());
-                            buf[all_text.size()] = 0;
-                        }
-                        GlobalUnlock(hglb);
-                        if (OpenClipboard(nullptr)) {
-                            EmptyClipboard();
-                            SetClipboardData(CF_TEXT, hglb);
-                            CloseClipboard();
-                        }
-                    }
-                }
-            }
             renderer_->set_needs_redraw();
             return;
         }
-        // Ctrl+C: copy selected text (works globally)
+        // Ctrl+C: copy selected text
+        // (no real selection mechanism exists yet, so this is a no-op on page content)
         if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
-            if (selection_.active && current_page_.has_value() && current_page_->dom) {
-                std::string all_text;
-                html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
-                    if (n->type == html::NodeType::TEXT) {
-                        auto *tx = static_cast<html::Text *>(n);
-                        if (!tx->data.empty())
-                            all_text += tx->data;
-                    }
-                });
-                if (!all_text.empty()) {
-                    HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
-                    if (hglb) {
-                        char *buf = (char *)GlobalLock(hglb);
-                        if (buf) {
-                            memcpy(buf, all_text.data(), all_text.size());
-                            buf[all_text.size()] = 0;
-                        }
-                        GlobalUnlock(hglb);
-                        if (OpenClipboard(nullptr)) {
-                            EmptyClipboard();
-                            SetClipboardData(CF_TEXT, hglb);
-                            CloseClipboard();
-                        }
-                    }
-                }
-            }
             return;
         }
         if (e.key == platform::KeyCode::L && chrome_.ctrl_down) {
@@ -659,7 +648,7 @@ namespace browser {
             // Ctrl+0: reset zoom
             if (settings_) {
                 settings_->set_zoom_level(1.0f);
-                settings_->save_to_file("./settings.txt");
+                settings_->save_to_file(data_dir() + "/settings.txt");
             }
             return;
         }
@@ -670,7 +659,7 @@ namespace browser {
                 if (z > 5.0f)
                     z = 5.0f;
                 settings_->set_zoom_level(z);
-                settings_->save_to_file("./settings.txt");
+                settings_->save_to_file(data_dir() + "/settings.txt");
             }
             return;
         }
@@ -681,7 +670,7 @@ namespace browser {
                 if (z < 0.25f)
                     z = 0.25f;
                 settings_->set_zoom_level(z);
-                settings_->save_to_file("./settings.txt");
+                settings_->save_to_file(data_dir() + "/settings.txt");
             }
             return;
         }
@@ -1015,7 +1004,8 @@ namespace browser {
                 f32 dh = header_h + visible_list_h + 8.0f;
 
                 f32 dx = br.x + br.w - dw;
-                if (dx < 4.0f) dx = 4.0f;
+                if (dx < 4.0f)
+                    dx = 4.0f;
                 if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
                     dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
 
@@ -1133,7 +1123,8 @@ namespace browser {
             f32 dh = header_h + visible_list_h + 8.0f;
 
             f32 dx = br.x + br.w - dw;
-            if (dx < 4.0f) dx = 4.0f;
+            if (dx < 4.0f)
+                dx = 4.0f;
             if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
                 dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
 

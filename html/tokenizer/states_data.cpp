@@ -57,7 +57,6 @@ namespace browser::html {
     }
 
     void Tokenizer::consume_char_ref() {
-        u32 start = pos_;
         bool in_attr = (return_state_ == State::ATTRIBUTE_VALUE_DQ || return_state_ == State::ATTRIBUTE_VALUE_SQ ||
                         return_state_ == State::ATTRIBUTE_VALUE_UQ);
 
@@ -107,9 +106,7 @@ namespace browser::html {
                 advance();
             }
             if (!consume_if(';')) {
-                pos_ = start;
-                emit_or_buffer('&');
-                return;
+                // Parse error: missing semicolon, but still consume the numeric reference
             }
             if (overflow || cp == 0 || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) {
                 cp = kReplacementChar;
@@ -143,22 +140,9 @@ namespace browser::html {
             if (ent) {
                 char next = current();
                 // Per spec: if entity is not terminated by ';' and next char is
-                // alphanumeric or '=', this is an "ambiguous ampersand" — emit
-                // the entity only if allowed per spec
+                // alphanumeric or ';' or '=', this is an "ambiguous ampersand"
+                // — the entity is NOT consumed, try the next shorter match
                 if (is_ascii_alnum(next) || next == ';' || next == '=') {
-                    // The spec says: if entity is not terminated by semicolon,
-                    // and the next character is alphanumeric, it's NOT consumed
-                    // as an entity reference (ambiguous ampersand)
-                    if (next == ';') {
-                        // Entity with semicolon was not found above, so we
-                        // need to check: if name_buf + ";" doesn't exist,
-                        // but name_buf does, and next is ';', consume ';'
-                        // anyway
-                        advance();
-                        emit_or_buffer(ent->codepoint);
-                        return;
-                    }
-                    // Shorten the match — try shorter entity
                     name_buf.pop_back();
                     pos_ = saved + static_cast<u32>(name_buf.size());
                     continue;

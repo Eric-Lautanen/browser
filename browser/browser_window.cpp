@@ -68,7 +68,7 @@ Result<void> BrowserWindow::initialize() {
 
     telemetry_ = std::make_unique<Telemetry>();
     settings_ = std::make_unique<SettingsManager>();
-    auto rs = settings_->load_from_file("./settings.txt");
+    auto rs = settings_->load_from_file("browser/settings.txt");
 
     set_theme(settings_->theme());
 
@@ -114,9 +114,9 @@ Result<void> BrowserWindow::initialize() {
                                                  fm_.get(), text_renderer_.get());
     page_loader_->set_viewport_size(viewport_width_, viewport_height_);
 
-    history_ = std::make_unique<HistoryManager>();
+    // History is per-tab, initialized in new_tab
     bookmarks_ = std::make_unique<BookmarkManager>();
-    auto rb = bookmarks_->load_from_file("./bookmarks.txt");
+    auto rb = bookmarks_->load_from_file("browser/bookmarks.txt");
 
     window_->set_event_callback([this](const platform::Event& e) { handle_event(e); });
 
@@ -197,12 +197,15 @@ void BrowserWindow::navigate(const std::string& url) {
         update_tab_placeholder(chrome_.active_tab);
     }
     start_load(url);
-    if (history_) history_->push(url, "");
+    if (!chrome_.tabs.empty() && chrome_.tabs[chrome_.active_tab].history) {
+        chrome_.tabs[chrome_.active_tab].history->push(url, "");
+    }
 }
 
 void BrowserWindow::navigate_back() {
-    if (!history_) return;
-    auto url = history_->go_back();
+    auto& tab = chrome_.tabs[chrome_.active_tab];
+    if (!tab.history) return;
+    auto url = tab.history->go_back();
     if (url.has_value()) {
         chrome_.url = url.value();
         if (!chrome_.tabs.empty()) {
@@ -214,8 +217,9 @@ void BrowserWindow::navigate_back() {
 }
 
 void BrowserWindow::navigate_forward() {
-    if (!history_) return;
-    auto url = history_->go_forward();
+    auto& tab = chrome_.tabs[chrome_.active_tab];
+    if (!tab.history) return;
+    auto url = tab.history->go_forward();
     if (url.has_value()) {
         chrome_.url = url.value();
         if (!chrome_.tabs.empty()) {
@@ -582,7 +586,7 @@ void BrowserWindow::handle_mouse_click(i32 mx, i32 my) {
                 set_theme(Theme::current);
                 if (settings_) {
                     settings_->set_theme(Theme::current);
-                    settings_->save_to_file("./settings.txt");
+                    settings_->save_to_file("browser/settings.txt");
                 }
                 chrome_.address_focused = false;
                 return;
@@ -686,6 +690,8 @@ static void clipboard_copy(const std::string& text) {
         EmptyClipboard();
         SetClipboardData(CF_TEXT, hglb);
         CloseClipboard();
+    } else {
+        GlobalFree(hglb);
     }
 }
 
@@ -936,13 +942,14 @@ void BrowserWindow::new_tab(const std::string& url) {
     TabInfo tab;
     tab.url = url;
     tab.placeholder_color = {0.7f, 0.7f, 0.7f, 1.0f};
-    chrome_.tabs.push_back(tab);
+    tab.history = std::make_unique<HistoryManager>();
+    chrome_.tabs.push_back(std::move(tab));
     chrome_.active_tab = static_cast<u32>(chrome_.tabs.size()) - 1;
     compute_layout();
     update_tab_placeholder(chrome_.active_tab);
     chrome_.url = url;
     start_load(url);
-    if (history_) history_->push(url, "");
+    chrome_.tabs[chrome_.active_tab].history->push(url, "");
 }
 
 void BrowserWindow::close_tab(u32 index) {
@@ -981,14 +988,15 @@ void BrowserWindow::handle_bookmark_click() {
         }
         bookmarks_->add(chrome_.url, title);
     }
-    bookmarks_->save_to_file("./bookmarks.txt");
+    bookmarks_->save_to_file("browser/bookmarks.txt");
     chrome_.is_bookmarked = bookmarks_->is_bookmarked(chrome_.url);
 }
 
 void BrowserWindow::update_chrome_state() {
-    if (history_) {
-        chrome_.can_go_back = history_->can_go_back();
-        chrome_.can_go_forward = history_->can_go_forward();
+    if (!chrome_.tabs.empty() && chrome_.tabs[chrome_.active_tab].history) {
+        auto& tab = chrome_.tabs[chrome_.active_tab];
+        chrome_.can_go_back = tab.history->can_go_back();
+        chrome_.can_go_forward = tab.history->can_go_forward();
     }
     if (bookmarks_) {
         chrome_.is_bookmarked = bookmarks_->is_bookmarked(chrome_.url);

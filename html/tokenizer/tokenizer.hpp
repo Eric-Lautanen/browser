@@ -53,6 +53,7 @@ namespace browser::html {
             BEFORE_ATTRIBUTE_NAME,
             ATTRIBUTE_NAME,
             AFTER_ATTRIBUTE_NAME,
+            AFTER_ATTRIBUTE_VALUE,
             BEFORE_ATTRIBUTE_VALUE,
             ATTRIBUTE_VALUE_DQ,
             ATTRIBUTE_VALUE_SQ,
@@ -100,6 +101,7 @@ namespace browser::html {
         std::string temporary_buffer_;
         std::string appropriate_end_tag_;
         bool reconsume_ = false;
+        char32_t last_char_ = 0;
 
         void process_data_state(char32_t c);
         void process_rcdata_state(char32_t c);

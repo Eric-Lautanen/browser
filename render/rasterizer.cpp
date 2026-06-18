@@ -159,9 +159,66 @@ namespace browser::render {
                               static_cast<u8>(clampf(c.a, 0, 1) * 255));
                 break;
             }
+            case PaintCommand::Type::DRAW_TEXT: {
+                f32 cx = cmd.rect.x;
+                f32 cy = cmd.rect.y;
+                f32 cw = cmd.rect.width;
+                f32 ch = cmd.rect.height;
+                f32 lx = cx - tile_origin_x;
+                f32 ly = cy - tile_origin_y;
+                if (!rects_intersect(lx, ly, cw, ch, 0, 0, static_cast<f32>(TILE_SIZE), static_cast<f32>(TILE_SIZE)))
+                    break;
+                Color c = cmd.color;
+                buf.fill_rect(static_cast<i32>(lx),
+                              static_cast<i32>(ly),
+                              static_cast<i32>(cw),
+                              static_cast<i32>(ch),
+                              static_cast<u8>(clampf(c.r, 0, 1) * 255),
+                              static_cast<u8>(clampf(c.g, 0, 1) * 255),
+                              static_cast<u8>(clampf(c.b, 0, 1) * 255),
+                              static_cast<u8>(clampf(c.a, 0, 1) * 255));
+                break;
+            }
+            case PaintCommand::Type::DRAW_IMAGE: {
+                f32 cx = cmd.rect.x;
+                f32 cy = cmd.rect.y;
+                f32 cw = cmd.rect.width;
+                f32 ch = cmd.rect.height;
+                f32 lx = cx - tile_origin_x;
+                f32 ly = cy - tile_origin_y;
+                if (!rects_intersect(lx, ly, cw, ch, 0, 0, static_cast<f32>(TILE_SIZE), static_cast<f32>(TILE_SIZE)))
+                    break;
+                Color c = cmd.color;
+                buf.fill_rect(static_cast<i32>(lx),
+                              static_cast<i32>(ly),
+                              static_cast<i32>(cw),
+                              static_cast<i32>(ch),
+                              static_cast<u8>(clampf(c.r, 0, 1) * 255),
+                              static_cast<u8>(clampf(c.g, 0, 1) * 255),
+                              static_cast<u8>(clampf(c.b, 0, 1) * 255),
+                              static_cast<u8>(clampf(c.a, 0, 1) * 255));
+                break;
+            }
+            case PaintCommand::Type::DRAW_GRADIENT: {
+                f32 cx = cmd.rect.x;
+                f32 cy = cmd.rect.y;
+                f32 cw = cmd.rect.width;
+                f32 ch = cmd.rect.height;
+                f32 lx = cx - tile_origin_x;
+                f32 ly = cy - tile_origin_y;
+                if (!rects_intersect(lx, ly, cw, ch, 0, 0, static_cast<f32>(TILE_SIZE), static_cast<f32>(TILE_SIZE)))
+                    break;
+                buf.fill_rect(static_cast<i32>(lx),
+                              static_cast<i32>(ly),
+                              static_cast<i32>(cw),
+                              static_cast<i32>(ch),
+                              255,
+                              255,
+                              255,
+                              255);
+                break;
+            }
             default:
-                // DRAW_TEXT, DRAW_IMAGE, DRAW_GRADIENT, PUSH_CLIP, etc.
-                // Not yet handled in CPU rasterizer; will be GPU-rasterized later.
                 break;
         }
     }

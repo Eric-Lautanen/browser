@@ -49,7 +49,7 @@ namespace browser {
 
         telemetry_ = std::make_unique<Telemetry>();
         settings_ = std::make_unique<SettingsManager>();
-        auto rs = settings_->load_from_file("./settings.txt");
+        auto rs = settings_->load_from_file(data_dir() + "/settings.txt");
 
         download_manager_ = std::make_unique<DownloadManager>();
         {
@@ -157,7 +157,6 @@ namespace browser {
         compositor_->start();
         composited_texture_ = std::make_unique<render::Texture2D>();
 
-        history_ = std::make_unique<HistoryManager>();
         bookmarks_ = std::make_unique<BookmarkManager>();
         auto rb = bookmarks_->load_from_file(BookmarkManager::default_path());
 
@@ -171,7 +170,8 @@ namespace browser {
                     TabInfo tab;
                     tab.url = entry.url;
                     tab.scroll_y = entry.scroll_y;
-                    chrome_.tabs.push_back(tab);
+                    tab.history = std::make_unique<HistoryManager>();
+                    chrome_.tabs.push_back(std::move(tab));
                 }
                 chrome_.active_tab = 0;
                 chrome_.url = chrome_.tabs[0].url;
@@ -219,7 +219,8 @@ namespace browser {
         if (chrome_.tabs.empty()) {
             TabInfo tab;
             tab.url = "about:blank";
-            chrome_.tabs.push_back(tab);
+            tab.history = std::make_unique<HistoryManager>();
+            chrome_.tabs.push_back(std::move(tab));
             chrome_.active_tab = 0;
             chrome_.url = "about:blank";
         }
@@ -260,8 +261,8 @@ namespace browser {
             update_chrome_state();
             render_chrome();
             renderer_->end_textured();
-            render_find_bar();
             render_page();
+            render_find_bar();
             renderer_->end_frame();
             // Read pixels BEFORE swapping (back buffer is still valid)
             ::glReadPixels(0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
@@ -341,8 +342,8 @@ namespace browser {
             update_chrome_state();
             render_chrome();
             renderer_->end_textured();
-            render_find_bar();
             render_page();
+            render_find_bar();
             if (chrome_.show_bookmarks_dropdown) {
                 render_bookmarks_dropdown();
             }
@@ -569,9 +570,10 @@ namespace browser {
     }
 
     void BrowserWindow::update_chrome_state() {
-        if (history_) {
-            chrome_.can_go_back = history_->can_go_back();
-            chrome_.can_go_forward = history_->can_go_forward();
+        if (!chrome_.tabs.empty() && chrome_.tabs[chrome_.active_tab].history) {
+            auto &tab = chrome_.tabs[chrome_.active_tab];
+            chrome_.can_go_back = tab.history->can_go_back();
+            chrome_.can_go_forward = tab.history->can_go_forward();
         }
         if (bookmarks_) {
             chrome_.is_bookmarked = bookmarks_->is_bookmarked(chrome_.url);
