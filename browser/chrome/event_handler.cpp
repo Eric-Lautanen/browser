@@ -1,4 +1,3 @@
-#include "../paths.hpp"
 #include "../../html/form_state.hpp"
 #include "../../html/form_submission.hpp"
 #include "../../html/hit_test.hpp"
@@ -6,6 +5,7 @@
 #include "../../net/url.hpp"
 #include "../../platform/window_win32.hpp"
 #include "../bookmarks.hpp"
+#include "../paths.hpp"
 #include "../settings.hpp"
 #include "window.hpp"
 
@@ -148,6 +148,9 @@ namespace browser {
             compute_layout();
             if (page_loader_)
                 page_loader_->set_viewport_size(viewport_width_, viewport_height_);
+            // During live drag-resize, defer full re-layout for 100ms
+            resize_pending_ = true;
+            resize_last_time_ = std::chrono::steady_clock::now();
         }
     }
 
@@ -272,6 +275,34 @@ namespace browser {
                 chrome_.address_focused = false;
                 return;
             }
+
+            // Menu dropdown click handling
+            if (chrome_.show_menu) {
+                auto &mr = chrome_.rects.menu;
+                f32 mw = 200.0f, mh = 96.0f, item_h = 30.0f, pad = 4.0f;
+                f32 dx = mr.x + mr.w - mw;
+                if (dx < 4.0f)
+                    dx = 4.0f;
+                if (dx + mw > static_cast<f32>(viewport_width_) - 4.0f)
+                    dx = static_cast<f32>(viewport_width_) - mw - 4.0f;
+                f32 dy = chrome_height() + 2.0f;
+                if (dy + mh > static_cast<f32>(viewport_height_) - 8.0f)
+                    dy = chrome_height() - mh - 2.0f;
+                if (mx >= dx && mx <= dx + mw && my >= dy && my <= dy + mh) {
+                    f32 rel_y = static_cast<f32>(my) - dy - pad;
+                    i32 idx = static_cast<i32>(rel_y / item_h);
+                    if (idx == 0)
+                        new_tab();
+                    else if (idx == 1)
+                        chrome_.show_settings = true;
+                    chrome_.show_menu = false;
+                    chrome_.hovered_menu_item = -1;
+                    return;
+                }
+                chrome_.show_menu = false;
+                chrome_.hovered_menu_item = -1;
+            }
+
             chrome_.address_focused = false;
             selection_.active = false;
 
@@ -378,8 +409,8 @@ namespace browser {
             return;
         }
         if (is_in_rect(mx, my, r.maximize_btn)) {
-            HWND hwnd = (HWND)window_->get_native_handle();
-            IsZoomed(hwnd) ? ShowWindow(hwnd, SW_RESTORE) : ShowWindow(hwnd, SW_MAXIMIZE);
+            auto *w32 = static_cast<platform::Win32Window *>(window_.get());
+            w32->toggle_maximize();
             return;
         }
         if (is_in_rect(mx, my, r.minimize_btn)) {
@@ -463,20 +494,6 @@ namespace browser {
             chrome_.hovered_bookmark_item = -1;
             chrome_.bookmark_scroll_offset = 0.0f;
             return;
-        }
-
-        if (chrome_.show_menu) {
-            f32 mx2 = r.menu.x - 80, my2 = chrome_height();
-            f32 my_off = my - my2;
-            if (mx >= mx2 && mx <= mx2 + 160 && my_off >= 0 && my_off <= 70) {
-                if (my_off < 22)
-                    new_tab();
-                else if (my_off < 44)
-                    chrome_.show_settings = true;
-                chrome_.show_menu = false;
-                return;
-            }
-            chrome_.show_menu = false;
         }
 
         chrome_.show_bookmarks_dropdown = false;
@@ -606,15 +623,14 @@ namespace browser {
             if (current_page_.has_value() && current_page_->layout) {
                 const css::LayoutNode *first = nullptr;
                 const css::LayoutNode *last = nullptr;
-                std::function<void(const css::LayoutNode *)> find_text =
-                    [&](const css::LayoutNode *node) {
-                        if (node->is_text() && !node->text().empty()) {
-                            if (!first) first = node;
-                            last = node;
-                        }
-                        for (auto &ch : node->children)
-                            find_text(ch.get());
-                    };
+                std::function<void(const css::LayoutNode *)> find_text = [&](const css::LayoutNode *node) {
+                    if (node->is_text() && !node->text().empty()) {
+                        if (!first)
+                            first = node;
+                        last = node;
+                    }
+                    for (auto &ch : node->children) find_text(ch.get());
+                };
                 find_text(current_page_->layout.get());
                 if (first && last) {
                     // Collect all text into selected_text immediately so Ctrl+C
@@ -626,18 +642,18 @@ namespace browser {
                     selection_.end_offset = static_cast<u32>(last->text().size());
                     selection_.all_text = true;
                     bool collecting = false;
-                    std::function<void(const css::LayoutNode *)> collect =
-                        [&](const css::LayoutNode *node) {
-                            if (node == selection_.start_node) collecting = true;
-                            if (collecting && node->is_text() && !node->text().empty()) {
-                                if (!selection_.selected_text.empty())
-                                    selection_.selected_text += '\n';
-                                selection_.selected_text += node->text();
-                            }
-                            for (auto &ch : node->children)
-                                collect(ch.get());
-                            if (node == selection_.end_node) collecting = false;
-                        };
+                    std::function<void(const css::LayoutNode *)> collect = [&](const css::LayoutNode *node) {
+                        if (node == selection_.start_node)
+                            collecting = true;
+                        if (collecting && node->is_text() && !node->text().empty()) {
+                            if (!selection_.selected_text.empty())
+                                selection_.selected_text += '\n';
+                            selection_.selected_text += node->text();
+                        }
+                        for (auto &ch : node->children) collect(ch.get());
+                        if (node == selection_.end_node)
+                            collecting = false;
+                    };
                     collect(current_page_->layout.get());
                 }
             }
@@ -654,8 +670,12 @@ namespace browser {
                     if (hglb) {
                         wchar_t *buf = (wchar_t *)GlobalLock(hglb);
                         if (buf) {
-                            MultiByteToWideChar(CP_UTF8, 0,
-                                selection_.selected_text.data(), (int)selection_.selected_text.size(), buf, wide_len);
+                            MultiByteToWideChar(CP_UTF8,
+                                                0,
+                                                selection_.selected_text.data(),
+                                                (int)selection_.selected_text.size(),
+                                                buf,
+                                                wide_len);
                             buf[wide_len] = 0;
                         }
                         GlobalUnlock(hglb);
@@ -1053,8 +1073,10 @@ namespace browser {
         chrome_.hovered_button = -1;
         chrome_.hovered_tab = -1;
         chrome_.hovered_close = -1;
+        chrome_.hovered_menu_item = -1;
         if (my > chrome_height()) {
             update_tab_tooltip(-1, -1);
+            chrome_.hovered_menu_item = -1;
             // Track hover in bookmarks dropdown
             if (chrome_.show_bookmarks_dropdown) {
                 auto &br = chrome_.rects.bookmark;
@@ -1096,6 +1118,28 @@ namespace browser {
                 }
             }
             chrome_.hovered_bookmark_item = -1;
+
+            // Track menu item hover
+            if (chrome_.show_menu) {
+                auto &mr = chrome_.rects.menu;
+                f32 mw = 200.0f, mh = 96.0f, item_h = 30.0f, pad = 4.0f;
+                f32 dx = mr.x + mr.w - mw;
+                if (dx < 4.0f)
+                    dx = 4.0f;
+                if (dx + mw > static_cast<f32>(viewport_width_) - 4.0f)
+                    dx = static_cast<f32>(viewport_width_) - mw - 4.0f;
+                f32 dy = chrome_height() + 2.0f;
+                if (dy + mh > static_cast<f32>(viewport_height_) - 8.0f)
+                    dy = chrome_height() - mh - 2.0f;
+                if (mx >= dx && mx <= dx + mw && my >= dy && my <= dy + mh) {
+                    f32 rel_y = static_cast<f32>(my) - dy - pad;
+                    i32 idx = static_cast<i32>(rel_y / item_h);
+                    chrome_.hovered_menu_item = (idx >= 0 && idx < 3) ? idx : -1;
+                } else {
+                    chrome_.hovered_menu_item = -1;
+                }
+            }
+
             // Set cursor based on page content under mouse
             if (current_page_.has_value() && current_page_->layout) {
                 f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);

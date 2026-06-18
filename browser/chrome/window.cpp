@@ -1,5 +1,6 @@
 #include "window.hpp"
 
+#include "../../css/layout.hpp"
 #include "../../html/form_state.hpp"
 #include "../../net/http_client.hpp"
 #include "../../net/storage.hpp"
@@ -8,6 +9,7 @@
 #include "../../platform/opengl.hpp"
 #include "../../platform/window_win32.hpp"
 #include "../../render/canvas.hpp"
+#include "../../render/painter.hpp"
 #include "../bookmarks.hpp"
 #include "../history.hpp"
 #include "../perf_counter.hpp"
@@ -19,6 +21,16 @@
 #include <windows.h>
 
 namespace browser {
+
+    // ---------------------------------------------------------------------------
+    // Text measurement callbacks (used by LayoutEngine / do_relayout)
+    // ---------------------------------------------------------------------------
+    /*static*/ f32 BrowserWindow::text_measure_cb(void *ctx, const std::string &text, u32 pixel_size) {
+        return static_cast<render::TextRenderer *>(ctx)->measure_text(text, pixel_size);
+    }
+    /*static*/ css::FontMetrics BrowserWindow::text_metrics_cb(void *ctx, u32 pixel_size) {
+        return static_cast<render::TextRenderer *>(ctx)->get_font_metrics(pixel_size);
+    }
 
     BrowserWindow::BrowserWindow() = default;
     BrowserWindow::~BrowserWindow() {
@@ -384,6 +396,9 @@ namespace browser {
                 }
             }
 
+            // Check for deferred resize re-layout after messages are processed
+            check_resize();
+
             // 6. Render frame
             renderer_->begin_frame();
             renderer_->set_viewport(viewport_width_, viewport_height_);
@@ -395,6 +410,9 @@ namespace browser {
 
             // render_page() handles both compositor and old paths internally
             render_page();
+            if (chrome_.show_menu) {
+                render_menu();
+            }
             if (chrome_.show_bookmarks_dropdown) {
                 render_bookmarks_dropdown();
             }
@@ -458,6 +476,66 @@ namespace browser {
                                     pc.paint_time_ms.load(),
                                     pc.composite_time_ms.load(),
                                     pc.gpu_time_ms.load());
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Resize handling — deferred re-layout after live-resize settles
+    // ---------------------------------------------------------------------------
+    void BrowserWindow::do_relayout() {
+        if (!current_page_.has_value() || !current_page_->dom)
+            return;
+
+        // Clear selection — layout node pointers become invalid after re-layout
+        selection_.clear();
+
+        auto &page = current_page_.value();
+
+        css::LayoutEngine layout_engine;
+        layout_engine.set_text_measure(text_renderer_.get(), text_measure_cb);
+        layout_engine.set_text_metrics(text_renderer_.get(), text_metrics_cb);
+
+        auto layout_r =
+            layout_engine
+                .layout_async(
+                    page.dom.get(), page.styles, static_cast<f32>(viewport_width_), static_cast<f32>(viewport_height_))
+                .sync_wait();
+        if (layout_r.is_err() || !layout_r.unwrap())
+            return;
+
+        page.layout = std::move(layout_r.unwrap());
+
+        // Re-paint with new layout
+        render::Painter painter(text_renderer_.get());
+        painter.set_image_data(page.images);
+        auto paint_r = painter.paint_async(page.layout.get()).sync_wait();
+        if (paint_r.is_ok()) {
+            page.display_list = std::move(paint_r.unwrap());
+        }
+
+        // Re-build layer tree for compositor
+        page.layer_tree = render::LayerTreeBuilder::build(page.layout.get());
+        if (page.layer_tree) {
+            for (auto *layer : page.layer_tree->all_layers) {
+                if (layer->layout_node) {
+                    layer->display_list = painter.build_display_list(layer->layout_node, 0, 0);
+                }
+            }
+        }
+
+        // Signal the main loop to redraw
+        renderer_->set_needs_redraw();
+        InvalidateRect(static_cast<HWND>(window_->get_native_handle()), nullptr, FALSE);
+    }
+
+    void BrowserWindow::check_resize() {
+        if (!resize_pending_)
+            return;
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - resize_last_time_).count();
+        if (elapsed >= 100) {
+            resize_pending_ = false;
+            do_relayout();
         }
     }
 
@@ -526,8 +604,6 @@ namespace browser {
         render_download_button();
         render_bookmark();
         render_menu_button();
-        if (chrome_.show_menu)
-            render_menu();
     }
 
     void BrowserWindow::set_theme(ThemeMode mode) {
@@ -588,6 +664,11 @@ namespace browser {
         RECT wr;
         GetWindowRect(static_cast<HWND>(window_->get_native_handle()), &wr);
         int w = wr.right - wr.left;
+        int h = wr.bottom - wr.top;
+
+        // All edges and corners must return the proper HT* code so the
+        // window can be resized from any side.  With WS_POPUP the standard
+        // non-client area is removed, so DefWindowProc cannot detect edges.
 
         if (my < border) {
             if (mx < border)
@@ -596,6 +677,18 @@ namespace browser {
                 return HTTOPRIGHT;
             return HTTOP;
         }
+        if (my >= h - border) {
+            if (mx < border)
+                return HTBOTTOMLEFT;
+            if (mx > w - border)
+                return HTBOTTOMRIGHT;
+            return HTBOTTOM;
+        }
+        if (mx < border)
+            return HTLEFT;
+        if (mx > w - border)
+            return HTRIGHT;
+
         if (my >= (i32)ChromeUI::TITLEBAR_H)
             return HTCLIENT;
 

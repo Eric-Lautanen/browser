@@ -137,16 +137,70 @@ namespace browser {
     }
 
     void BrowserWindow::render_menu() {
+        if (!chrome_.show_menu)
+            return;
         auto &t = theme_;
         auto &mr = chrome_.rects.menu;
-        f32 mx = mr.x - 80, my = chrome_height();
-        f32 mw = 160, mh = 70;
+        f32 mw = 200, mh = 96;
+        f32 item_h = 30.0f;
+        f32 pad = 4.0f;
 
-        renderer_->fill_rect(mx, my, mw, mh, t.surface);
-        renderer_->stroke_rect(mx, my, mw, mh, t.border, 1.0f);
-        text_renderer_->render_text(renderer_.get(), "New Tab    Ctrl+T", mx + 10, my + 6, t.text, 13);
-        text_renderer_->render_text(renderer_.get(), "Settings", mx + 10, my + 28, t.text, 13);
-        text_renderer_->render_text(renderer_.get(), "About", mx + 10, my + 50, t.text_secondary, 11);
+        f32 dx = mr.x + mr.w - mw;
+        if (dx < 4.0f)
+            dx = 4.0f;
+        if (dx + mw > static_cast<f32>(viewport_width_) - 4.0f)
+            dx = static_cast<f32>(viewport_width_) - mw - 4.0f;
+
+        f32 dy = chrome_height() + 2.0f;
+        if (dy + mh > static_cast<f32>(viewport_height_) - 8.0f) {
+            dy = chrome_height() - mh - 2.0f;
+        }
+
+        renderer_->fill_rect(dx + 3.0f, dy + 3.0f, mw, mh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 1.5f});
+        renderer_->fill_rect(dx + 1.5f, dy + 1.5f, mw, mh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 0.8f});
+
+        renderer_->fill_rect(dx, dy, mw, mh, t.surface);
+        renderer_->stroke_rect(dx, dy, mw, mh, t.border, 1.0f);
+
+        f32 arrow_cx = mr.x + mr.w * 0.5f;
+        f32 arrow_cy = dy;
+        f32 arrow_sz = 5.0f;
+        if (dy > chrome_height()) {
+            renderer_->draw_line(arrow_cx - arrow_sz, arrow_cy, arrow_cx, arrow_cy - arrow_sz, t.surface, 2.0f);
+            renderer_->draw_line(arrow_cx, arrow_cy - arrow_sz, arrow_cx + arrow_sz, arrow_cy, t.surface, 2.0f);
+            renderer_->draw_line(arrow_cx - arrow_sz, arrow_cy, arrow_cx + arrow_sz, arrow_cy, t.surface, 2.0f);
+        }
+
+        struct MenuItem {
+            const char *label;
+            const char *shortcut;
+            bool secondary;
+        };
+        MenuItem items[] = {
+            {"New Tab",  "Ctrl+T", false},
+            {"Settings", "",       false},
+            {"About",    "",       true},
+        };
+
+        f32 iy = dy + pad;
+        for (i32 i = 0; i < 3; i++) {
+            auto &item = items[i];
+            bool hovered = (chrome_.hovered_menu_item == i);
+            if (hovered)
+                renderer_->fill_rect(dx + 2.0f, iy, mw - 4.0f, item_h, t.accent);
+            render::Color tc = hovered ? render::Color::WHITE : (item.secondary ? t.text_secondary : t.text);
+            text_renderer_->render_text(renderer_.get(), item.label, dx + 12.0f, iy + 6.0f, tc, 13);
+            if (item.shortcut[0]) {
+                render::Color sc = hovered ? render::Color{1.0f, 1.0f, 1.0f, 0.7f} : t.text_secondary;
+                text_renderer_->render_text(renderer_.get(),
+                                            item.shortcut,
+                                            dx + mw - 12.0f - text_renderer_->measure_text(item.shortcut, 11),
+                                            iy + 7.0f,
+                                            sc,
+                                            11);
+            }
+            iy += item_h;
+        }
     }
 
     void BrowserWindow::render_bookmarks_dropdown() {

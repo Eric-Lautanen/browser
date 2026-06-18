@@ -1,4 +1,5 @@
 #pragma once
+#include "../../css/layout.hpp"
 #include "../../platform/window.hpp"
 #include "../../render/compositor.hpp"
 #include "../../render/font.hpp"
@@ -114,6 +115,7 @@ namespace browser {
         bool show_menu = false;
         bool show_bookmarks_dropdown = false;
         i32 hovered_bookmark_item = -1;
+        i32 hovered_menu_item = -1;
         f32 bookmark_scroll_offset = 0.0f;
         bool show_settings = false;
         bool ctrl_down = false, shift_down = false, alt_down = false;
@@ -200,6 +202,15 @@ namespace browser {
         void handle_bookmark_click();
         LRESULT hit_test_titlebar(i32 x, i32 y);
         void update_tab_tooltip(i32 mx, i32 my);
+
+        void check_resize();
+        void do_relayout();
+
+        static f32 text_measure_cb(void *ctx, const std::string &text, u32 pixel_size);
+        static css::FontMetrics text_metrics_cb(void *ctx, u32 pixel_size);
+
+        bool resize_pending_ = false;
+        std::chrono::steady_clock::time_point resize_last_time_;
 
         HWND tooltip_hwnd_ = nullptr;
         std::string tooltip_text_;
