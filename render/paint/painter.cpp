@@ -443,6 +443,14 @@ namespace browser::render {
         f32 font_size = resolve_font_size(node->style());
         f32 descender_pad = std::ceil(font_size * 0.25f);
 
+        std::string font_family;
+        auto *ff_val = node->style().get("font-family");
+        if (ff_val && ff_val->type == css::CSSValue::Type::STRING) {
+            font_family = ff_val->string_value;
+        } else if (ff_val && ff_val->type == css::CSSValue::Type::KEYWORD) {
+            font_family = ff_val->keyword;
+        }
+
         u8 font_flags = 0;
         auto *fw = node->style().get("font-weight");
         if (fw && fw->type == css::CSSValue::Type::KEYWORD) {
@@ -467,7 +475,7 @@ namespace browser::render {
         if (!node->text_lines.empty()) {
             for (auto &li : node->text_lines) {
                 css::Rect line_rect = {ox, oy + li.y, node->content.width, font_size + descender_pad};
-                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                auto tc = make_cmd(PaintCommand::Type::DRAW_TEXT,
                                    line_rect,
                                    text_color,
                                    li.text,
@@ -477,7 +485,9 @@ namespace browser::render {
                                    0,
                                    {},
                                    1.0f,
-                                   font_flags));
+                                   font_flags);
+                tc.font_family = font_family;
+                list.push(tc);
                 if (has_underline) {
                     f32 underline_y = oy + li.y + font_size + 1.0f;
                     f32 thickness = std::max(1.0f, font_size / 14.0f);
@@ -487,7 +497,7 @@ namespace browser::render {
             }
         } else {
             // No wrapping info — single line fallback
-            list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+            auto tc = make_cmd(PaintCommand::Type::DRAW_TEXT,
                                {ox, oy, node->content.width, node->content.height + descender_pad},
                                text_color,
                                node->text(),
@@ -497,7 +507,9 @@ namespace browser::render {
                                0,
                                {},
                                1.0f,
-                               font_flags));
+                               font_flags);
+            tc.font_family = font_family;
+            list.push(tc);
             if (has_underline) {
                 f32 underline_y = oy + font_size + 1.0f;
                 f32 thickness = std::max(1.0f, font_size / 14.0f);

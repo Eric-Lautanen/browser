@@ -1,4 +1,6 @@
 #include "font.hpp"
+#include "image/format.hpp"
+#include "image/decoder.hpp"
 #include <algorithm>
 #include <cstring>
 #include <cmath>
@@ -22,12 +24,9 @@ i16 FontFace::read_i16_be(const u8* data, u32 offset, u32 data_len) {
     return internal::read_i16_be(data, offset, data_len);
 }
 
-Result<void> FontFace::load_from_memory(const u8* data, u32 size) {
-    static u32 next_id = 1;
-    font_id_ = next_id++;
-    font_data_.assign(data, data + size);
-    const u8* fp = font_data_.data();
-    u32 fl = (u32)font_data_.size();
+Result<void> FontFace::load_tables_from_offset(const u8 *data, u32 total_size, u32 font_offset) {
+    const u8 *fp = data + font_offset;
+    u32 fl = total_size - font_offset;
 
     if (fl < 12) return Result<void>(std::string("Font too small"));
 
@@ -45,40 +44,76 @@ Result<void> FontFace::load_from_memory(const u8* data, u32 size) {
         u32 tab_off = read_u32_be(fp, dir_off + 8, fl);
         u32 tab_len = read_u32_be(fp, dir_off + 12, fl);
 
-        if (tab_off > fl || tab_len > fl || tab_off + tab_len > fl) continue;
+        u32 abs_off = font_offset + tab_off;
+        if (abs_off > total_size || tab_len > total_size || abs_off + tab_len > total_size) continue;
 
-        if (std::strcmp(tag, "cmap") == 0) { cmap_off_ = tab_off; cmap_len_ = tab_len; }
-        else if (std::strcmp(tag, "head") == 0) { head_off_ = tab_off; head_len_ = tab_len; }
-        else if (std::strcmp(tag, "hhea") == 0) { hhea_off_ = tab_off; hhea_len_ = tab_len; }
-        else if (std::strcmp(tag, "maxp") == 0) { maxp_off_ = tab_off; maxp_len_ = tab_len; }
-        else if (std::strcmp(tag, "hmtx") == 0) { hmtx_off_ = tab_off; hmtx_len_ = tab_len; }
-        else if (std::strcmp(tag, "loca") == 0) { loca_off_ = tab_off; loca_len_ = tab_len; }
-        else if (std::strcmp(tag, "glyf") == 0) { glyf_off_ = tab_off; glyf_len_ = tab_len; }
-        else if (std::strcmp(tag, "kern") == 0) { kern_off_ = tab_off; kern_len_ = tab_len; }
+        if (std::strcmp(tag, "cmap") == 0) { cmap_off_ = abs_off; cmap_len_ = tab_len; }
+        else if (std::strcmp(tag, "head") == 0) { head_off_ = abs_off; head_len_ = tab_len; }
+        else if (std::strcmp(tag, "hhea") == 0) { hhea_off_ = abs_off; hhea_len_ = tab_len; }
+        else if (std::strcmp(tag, "maxp") == 0) { maxp_off_ = abs_off; maxp_len_ = tab_len; }
+        else if (std::strcmp(tag, "hmtx") == 0) { hmtx_off_ = abs_off; hmtx_len_ = tab_len; }
+        else if (std::strcmp(tag, "loca") == 0) { loca_off_ = abs_off; loca_len_ = tab_len; }
+        else if (std::strcmp(tag, "glyf") == 0) { glyf_off_ = abs_off; glyf_len_ = tab_len; }
+        else if (std::strcmp(tag, "kern") == 0) { kern_off_ = abs_off; kern_len_ = tab_len; }
+        else if (std::strcmp(tag, "CBDT") == 0) { cbdt_off_ = abs_off; cbdt_len_ = tab_len; }
+        else if (std::strcmp(tag, "CBLC") == 0) { cblc_off_ = abs_off; cblc_len_ = tab_len; }
     }
 
     if (!head_off_ || !maxp_off_ || !hhea_off_) {
         return Result<void>(std::string("Missing required tables"));
     }
 
-    units_per_em_ = (f32)read_u16_be(fp, head_off_ + 18, fl);
+    units_per_em_ = (f32)read_u16_be(fp, head_off_ - font_offset + 18, fl);
     if (units_per_em_ < 16 || units_per_em_ > 16384) {
         return Result<void>(std::string("Invalid unitsPerEm"));
     }
 
-    num_glyphs_ = read_u16_be(fp, maxp_off_ + 4, fl);
+    num_glyphs_ = read_u16_be(fp, maxp_off_ - font_offset + 4, fl);
     if (num_glyphs_ == 0) return Result<void>(std::string("No glyphs"));
 
-    num_h_metrics_ = read_u16_be(fp, hhea_off_ + 34, fl);
+    num_h_metrics_ = read_u16_be(fp, hhea_off_ - font_offset + 34, fl);
     if (num_h_metrics_ == 0) num_h_metrics_ = num_glyphs_;
 
-    hhea_ascender_ = read_i16_be(fp, hhea_off_ + 4, fl);
-    hhea_descender_ = read_i16_be(fp, hhea_off_ + 6, fl);
-    hhea_line_gap_ = read_i16_be(fp, hhea_off_ + 8, fl);
+    hhea_ascender_ = read_i16_be(fp, hhea_off_ - font_offset + 4, fl);
+    hhea_descender_ = read_i16_be(fp, hhea_off_ - font_offset + 6, fl);
+    hhea_line_gap_ = read_i16_be(fp, hhea_off_ - font_offset + 8, fl);
 
-    long_loca_ = (read_i16_be(fp, head_off_ + 50, fl) == 1);
+    long_loca_ = (read_i16_be(fp, head_off_ - font_offset + 50, fl) == 1);
 
     return {};
+}
+
+Result<void> FontFace::load_from_memory(const u8 *data, u32 size) {
+    static u32 next_id = 1;
+    font_id_ = next_id++;
+    font_data_.assign(data, data + size);
+
+    // Detect TTC (TrueType Collection)
+    if (size >= 4 && std::memcmp(data, "ttcf", 4) == 0) {
+        return load_from_ttc_memory(data, size, 0);
+    }
+
+    return load_tables_from_offset(font_data_.data(), (u32)font_data_.size(), 0);
+}
+
+Result<void> FontFace::load_from_ttc_memory(const u8 *data, u32 size, u32 font_index) {
+    static u32 next_id = 1;
+    font_id_ = next_id++;
+    font_data_.assign(data, data + size);
+
+    if (size < 12) return Result<void>(std::string("TTC too small"));
+
+    u32 num_fonts = read_u32_be(data, 8, size);
+    if (font_index >= num_fonts) {
+        return Result<void>(std::string("TTC font index out of range"));
+    }
+
+    u32 font_offset = read_u32_be(data, 12 + font_index * 4, size);
+    if (font_offset >= size) {
+        return Result<void>(std::string("TTC font offset out of bounds"));
+    }
+
+    return load_tables_from_offset(font_data_.data(), (u32)font_data_.size(), font_offset);
 }
 
 u32 FontFace::glyph_index(u32 codepoint) const {
@@ -525,6 +560,146 @@ i32 FontFace::get_kerning(u16 left_gid, u16 right_gid) const {
         }
     }
     return 0;
+}
+
+bool FontFace::has_color_bitmap(u32 codepoint, u32 pixel_size) const {
+    if (!cblc_off_ || !cbdt_off_) return false;
+    u32 gid = glyph_index(codepoint);
+    if (gid == 0) return false;
+
+    const u8 *fp = font_data_.data();
+    u32 fl = (u32)font_data_.size();
+
+    if (cblc_off_ + 4 > fl) return false;
+    u16 num_sizes = read_u16_be(fp, cblc_off_ + 2, fl);
+
+    u32 cblc_pos = cblc_off_ + 4;
+
+    for (u16 s = 0; s < num_sizes; s++) {
+        if (cblc_pos + 12 > fl) return false;
+        u8 ppem_x = fp[cblc_pos];
+        u8 ppem_y = fp[cblc_pos + 1];
+
+        if ((u32)ppem_x != pixel_size && (u32)ppem_y != pixel_size)
+        { cblc_pos += 8 + read_u32_be(fp, cblc_pos + 4, fl); continue; }
+
+        u32 glyph_count = read_u32_be(fp, cblc_pos + 8, fl);
+        cblc_pos += 12;
+
+        for (u32 i = 0; i < glyph_count && cblc_pos + 8 <= fl; i++) {
+            u16 glyph_id = read_u16_be(fp, cblc_pos, fl);
+            u32 location = read_u32_be(fp, cblc_pos + 4, fl);
+            if (glyph_id == gid) {
+                u32 data_off = cbdt_off_ + location;
+                if (data_off + 5 > fl) return false;
+                u8 data_fmt = fp[data_off + 4];
+                return (data_fmt == 17 || data_fmt == 18 || data_fmt == 19);
+            }
+            cblc_pos += 8;
+        }
+        break;
+    }
+    return false;
+}
+
+Result<GlyphBitmap> FontFace::rasterize_color_bitmap(u32 codepoint) const {
+    if (!cblc_off_ || !cbdt_off_)
+        return Result<GlyphBitmap>(std::string("No color bitmap tables"));
+
+    u32 gid = glyph_index(codepoint);
+    if (gid == 0) return Result<GlyphBitmap>(std::string("glyph not in font"));
+
+    const u8 *fp = font_data_.data();
+    u32 fl = (u32)font_data_.size();
+
+    u16 num_sizes = read_u16_be(fp, cblc_off_ + 2, fl);
+    u32 cblc_pos = cblc_off_ + 4;
+
+    for (u16 s = 0; s < num_sizes; s++) {
+        if (cblc_pos + 12 > fl)
+            return Result<GlyphBitmap>(std::string("CBLC too small"));
+
+        u32 glyph_count = read_u32_be(fp, cblc_pos + 8, fl);
+        cblc_pos += 12;
+
+        for (u32 i = 0; i < glyph_count && cblc_pos + 8 <= fl; i++) {
+            u16 glyph_id = read_u16_be(fp, cblc_pos, fl);
+            u32 location = read_u32_be(fp, cblc_pos + 4, fl);
+            cblc_pos += 8;
+
+            if (glyph_id != gid) continue;
+
+            u32 data_off = cbdt_off_ + location;
+            if (data_off + 9 > fl)
+                return Result<GlyphBitmap>(std::string("CBDT too small"));
+
+            u8 height = fp[data_off];
+            i8 bearing_x = (i8)fp[data_off + 2];
+            i8 bearing_y = (i8)fp[data_off + 3];
+            u8 advance = fp[data_off + 4];
+            u8 data_fmt = fp[data_off + 5];
+
+            const u8 *png_start;
+            u32 png_size;
+
+            if (data_fmt == 17) {
+                png_start = fp + data_off + 6;
+                png_size = fl - (data_off + 6);
+            } else if (data_fmt == 18) {
+                png_start = fp + data_off + 9;
+                png_size = fl - (data_off + 9);
+            } else {
+                return Result<GlyphBitmap>(std::string("Unsupported bitmap format"));
+            }
+
+            if (png_size < 8 || std::memcmp(png_start, "\x89PNG\r\n\x1a\n", 8) != 0)
+                return Result<GlyphBitmap>(std::string("Invalid PNG in CBDT"));
+
+            auto decoder = image::create_decoder(image::ImageFormat::PNG);
+            if (!decoder)
+                return Result<GlyphBitmap>(std::string("No PNG decoder"));
+
+            auto img_r = decoder->decode(png_start, png_size);
+            if (img_r.is_err())
+                return Result<GlyphBitmap>(img_r.unwrap_err());
+
+            auto img = std::move(img_r.unwrap());
+
+            u32 bw = img.width;
+            u32 bh = img.height;
+
+            // Pack RGBA pixels into bitmap
+            std::vector<u8> pixels(bw * bh * 4);
+            if (img.rgba_pixels.size() >= bw * bh * 4) {
+                std::memcpy(pixels.data(), img.rgba_pixels.data(), bw * bh * 4);
+            } else {
+                // Convert from RGB or other format
+                for (u32 y = 0; y < bh && y * bw * 3 < (u32)img.rgba_pixels.size(); y++) {
+                    for (u32 x = 0; x < bw; x++) {
+                        u32 src_idx = (y * bw + x) * 3;
+                        u32 dst_idx = (y * bw + x) * 4;
+                        pixels[dst_idx] = img.rgba_pixels[src_idx];
+                        pixels[dst_idx + 1] = img.rgba_pixels[src_idx + 1];
+                        pixels[dst_idx + 2] = img.rgba_pixels[src_idx + 2];
+                        pixels[dst_idx + 3] = 255;
+                    }
+                }
+            }
+
+            GlyphBitmap gb;
+            gb.width = bw;
+            gb.height = bh;
+            gb.bearing_x = bearing_x;
+            gb.bearing_y = (i32)(height) - (i32)bearing_y;
+            gb.advance_x = (i32)advance * 16; // Scale to font units
+            gb.has_color = true;
+            gb.bitmap = std::move(pixels);
+            return Result<GlyphBitmap>(std::move(gb));
+        }
+        break; // Only check first matching size
+    }
+
+    return Result<GlyphBitmap>(std::string("No bitmap found"));
 }
 
 } // namespace browser::render

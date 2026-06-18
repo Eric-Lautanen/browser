@@ -1,5 +1,7 @@
+#include "../../css/layout.hpp"
 #include "../../html/traversal.hpp"
 #include "../../render/paint_executor.hpp"
+#include <functional>
 #include "../../render/rasterizer.hpp"
 #include "../settings.hpp"
 #include "window.hpp"
@@ -39,6 +41,29 @@ namespace browser {
         renderer_->flush();
         if (page.display_list)
             executor.execute(*page.display_list);
+        renderer_->flush();
+
+        // Text selection highlight
+        if (selection_.has_selection() && page.layout) {
+            render::Color sel_color = {0.2f, 0.4f, 0.9f, 0.45f};
+            bool drawing = false;
+            std::function<void(const css::LayoutNode *, f32, f32)> draw_sel =
+                [&](const css::LayoutNode *node, f32 ox, f32 oy) {
+                    f32 nx = ox + node->content.x + node->padding.left + node->border.left;
+                    f32 ny = oy + node->content.y + node->padding.top + node->border.top;
+                    if (node == selection_.start_node) drawing = true;
+                    if (drawing && node->is_text() && !node->text().empty()) {
+                        f32 abs_x = nx;
+                        f32 abs_y = ny - static_cast<f32>(chrome_.scroll_y) + content_y;
+                        renderer_->fill_rect(abs_x, abs_y, node->content.width, node->content.height, sel_color);
+                    }
+                    for (auto &ch : node->children)
+                        draw_sel(ch.get(), nx, ny);
+                    if (node == selection_.end_node) drawing = false;
+                };
+            draw_sel(page.layout.get(), 0, 0);
+        }
+
         renderer_->flush();
         pgl::glDisable(GL_SCISSOR_TEST);
 

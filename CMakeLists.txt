@@ -280,6 +280,7 @@ add_library(render STATIC
     render/font/rasterizer.cpp
     render/font/atlas.cpp
     render/font/embedded.cpp
+    render/font/registry.cpp
     render/paint/gradient.cpp
     render/paint/shadow.cpp
     render/paint/painter.cpp
@@ -291,6 +292,7 @@ add_library(render STATIC
     render/renderer.hpp
     render/texture.hpp
     render/font.hpp
+    render/font/registry.hpp
     render/embedded_font.hpp
     render/text_renderer.hpp
     render/paint.hpp

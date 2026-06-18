@@ -41,12 +41,20 @@ namespace browser {
         f32 end_x = 0, end_y = 0;
         bool dragging = false;
 
-        bool has_selection() const { return active && start_node && end_node && start_node != end_node; }
+        // The collected text is stored here at select-time so that Ctrl+C
+        // always has valid data even if the layout tree is rebuilt.
+        std::string selected_text;
+
+        bool has_selection() const { return active && start_node && end_node; }
+        bool covers_all_text() const { return active && all_text; }
+        bool all_text = false;
         void clear() {
             active = false;
             start_node = end_node = nullptr;
             start_offset = end_offset = 0;
             dragging = false;
+            all_text = false;
+            selected_text.clear();
         }
     };
 

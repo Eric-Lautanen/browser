@@ -77,67 +77,33 @@ namespace browser {
         text_renderer_ = std::make_unique<render::TextRenderer>();
         fm_ = std::make_unique<render::FontManager>();
 
-        bool font_ok = false;
-        const char *font_paths[] = {"C:\\Windows\\Fonts\\arial.ttf",
-                                    "C:\\Windows\\Fonts\\consola.ttf",
-                                    "C:\\Windows\\Fonts\\cour.ttf",
-                                    "C:\\Windows\\Fonts\\lucon.ttf"};
-        for (auto p : font_paths) {
-            auto r = fm_->load_from_file(p);
+        render::FontFace *primary_face = nullptr;
+        struct FontEntry {
+            const char *path;
+        };
+        FontEntry font_paths[] = {{"C:\\Windows\\Fonts\\arial.ttf"},
+                                  {"C:\\Windows\\Fonts\\consola.ttf"},
+                                  {"C:\\Windows\\Fonts\\cour.ttf"},
+                                  {"C:\\Windows\\Fonts\\lucon.ttf"}};
+        for (auto &fe : font_paths) {
+            auto r = fm_->load_from_file(fe.path);
             if (r.is_ok()) {
-                text_renderer_->initialize(r.unwrap(), fm_.get());
-                font_ok = true;
-                {
-                    static FILE *f = nullptr;
-                    if (!f) {
-                        f = fopen("font_debug.txt", "w");
-                    }
-                    if (f) {
-                        std::string msg = "loaded: " + std::string(p) + "\n";
-                        fprintf(f, "%s", msg.c_str());
-                        fflush(f);
-                    }
-                }
-                break;
-            } else {
-                {
-                    static FILE *f = nullptr;
-                    if (!f) {
-                        f = fopen("font_debug.txt", "w");
-                    }
-                    if (f) {
-                        std::string msg = "FAILED: " + std::string(p) + " - " + r.unwrap_err() + "\n";
-                        fprintf(f, "%s", msg.c_str());
-                        fflush(f);
-                    }
-                }
+                if (!primary_face)
+                    primary_face = r.unwrap();
             }
         }
-        if (!font_ok) {
+        if (primary_face) {
+            text_renderer_->initialize(primary_face, fm_.get());
+        } else {
             auto font_r = fm_->load_default_font();
             if (font_r.is_ok()) {
                 text_renderer_->initialize(font_r.unwrap(), fm_.get());
-                font_ok = true;
-                {
-                    static FILE *f = fopen("font_debug.txt", "a");
-                    if (f) {
-                        fprintf(f, "using embedded default font\n");
-                        fflush(f);
-                        fclose(f);
-                    }
-                }
+                primary_face = font_r.unwrap();
             } else {
                 text_renderer_->initialize(fm_.get());
-                {
-                    static FILE *f = fopen("font_debug.txt", "a");
-                    if (f) {
-                        fprintf(f, "using FontManager fallback\n");
-                        fflush(f);
-                        fclose(f);
-                    }
-                }
             }
         }
+        fm_->load_fallback_fonts();
 
         page_loader_ = std::make_unique<PageLoader>(
             telemetry_.get(), settings_.get(), tracker_.get(), fm_.get(), text_renderer_.get());

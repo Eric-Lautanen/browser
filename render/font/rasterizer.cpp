@@ -91,10 +91,15 @@ std::vector<u8> FontFace::rasterize_scanline(const GlyphOutline& outline,
 
 Result<GlyphBitmap> FontFace::rasterize_glyph(u32 codepoint, u32 pixel_size) {
     u16 gid = (u16)glyph_index(codepoint);
-    // Glyph index 0 is the .notdef glyph (font's built-in tofu/box).
-    // Skip it so missing codepoints render invisibly instead of as boxes.
     if (gid == 0) {
         return Result<GlyphBitmap>(std::string("glyph not in font"));
+    }
+
+    // Try color bitmap (emoji) first
+    if (has_color_bitmap(codepoint, pixel_size)) {
+        auto cr = rasterize_color_bitmap(codepoint);
+        if (cr.is_ok()) return cr;
+        // Fall through to outline on failure
     }
 
     int bezier_steps = (std::max)(4, (int)(pixel_size) / 4);

@@ -11,6 +11,14 @@ struct DecodeResult {
 
 DecodeResult decode_utf8(const u8* data, u32 len);
 
+inline bool is_emoji(char32_t cp) {
+    return (cp >= 0x2600 && cp <= 0x27BF) ||
+           (cp >= 0x1F300 && cp <= 0x1FAFF) ||
+           (cp >= 0xFE00 && cp <= 0xFE0F) ||
+           cp == 0x200D ||
+           (cp >= 0x1F1E6 && cp <= 0x1F1FF);
+}
+
 inline std::string encode_utf8(char32_t cp) {
     std::string r;
     if (cp < 0x80) {

@@ -61,18 +61,21 @@ namespace browser {
         void clipboard_copy(const std::string &text) {
             if (text.empty())
                 return;
-            HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, text.size() + 1);
+            int wide_len = MultiByteToWideChar(CP_UTF8, 0, text.data(), (int)text.size(), nullptr, 0);
+            if (wide_len <= 0)
+                return;
+            HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, (wide_len + 1) * sizeof(wchar_t));
             if (!hglb)
                 return;
-            char *buf = (char *)GlobalLock(hglb);
+            wchar_t *buf = (wchar_t *)GlobalLock(hglb);
             if (buf) {
-                memcpy(buf, text.data(), text.size());
-                buf[text.size()] = 0;
+                MultiByteToWideChar(CP_UTF8, 0, text.data(), (int)text.size(), buf, wide_len);
+                buf[wide_len] = 0;
             }
             GlobalUnlock(hglb);
             if (OpenClipboard(nullptr)) {
                 EmptyClipboard();
-                SetClipboardData(CF_TEXT, hglb);
+                SetClipboardData(CF_UNICODETEXT, hglb);
                 CloseClipboard();
             }
         }
@@ -538,13 +541,15 @@ namespace browser {
             }
             return;
         }
-        // Ctrl+Shift+X: copy all visible page text to clipboard (from layout tree, not raw DOM)
+        // Ctrl+Shift+X: copy all visible page text to clipboard (Unicode)
         if (e.key == platform::KeyCode::X && chrome_.ctrl_down && chrome_.shift_down) {
             if (current_page_.has_value() && current_page_->layout) {
                 std::string all_text;
                 auto collect_text = [&](const css::LayoutNode *node, auto &self) -> void {
                     if (node->is_text() && !node->text().empty()) {
-                        all_text += node->text() + "\n";
+                        if (!all_text.empty())
+                            all_text += '\n';
+                        all_text += node->text();
                     }
                     for (const auto &child : node->children) {
                         self(child.get(), self);
@@ -552,18 +557,21 @@ namespace browser {
                 };
                 collect_text(current_page_->layout.get(), collect_text);
                 if (!all_text.empty()) {
-                    HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
-                    if (hglb) {
-                        char *buf = (char *)GlobalLock(hglb);
-                        if (buf) {
-                            memcpy(buf, all_text.data(), all_text.size());
-                            buf[all_text.size()] = 0;
-                        }
-                        GlobalUnlock(hglb);
-                        if (OpenClipboard(nullptr)) {
-                            EmptyClipboard();
-                            SetClipboardData(CF_TEXT, hglb);
-                            CloseClipboard();
+                    int wide_len = MultiByteToWideChar(CP_UTF8, 0, all_text.data(), (int)all_text.size(), nullptr, 0);
+                    if (wide_len > 0) {
+                        HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, (wide_len + 1) * sizeof(wchar_t));
+                        if (hglb) {
+                            wchar_t *buf = (wchar_t *)GlobalLock(hglb);
+                            if (buf) {
+                                MultiByteToWideChar(CP_UTF8, 0, all_text.data(), (int)all_text.size(), buf, wide_len);
+                                buf[wide_len] = 0;
+                            }
+                            GlobalUnlock(hglb);
+                            if (OpenClipboard(nullptr)) {
+                                EmptyClipboard();
+                                SetClipboardData(CF_UNICODETEXT, hglb);
+                                CloseClipboard();
+                            }
                         }
                     }
                 }
@@ -592,15 +600,73 @@ namespace browser {
             }
             return;
         }
-        // Ctrl+A: select all text (works globally)
+        // Ctrl+A: select all text in the page
         if (e.key == platform::KeyCode::A && chrome_.ctrl_down) {
-            selection_.active = true;
+            selection_.clear();
+            if (current_page_.has_value() && current_page_->layout) {
+                const css::LayoutNode *first = nullptr;
+                const css::LayoutNode *last = nullptr;
+                std::function<void(const css::LayoutNode *)> find_text =
+                    [&](const css::LayoutNode *node) {
+                        if (node->is_text() && !node->text().empty()) {
+                            if (!first) first = node;
+                            last = node;
+                        }
+                        for (auto &ch : node->children)
+                            find_text(ch.get());
+                    };
+                find_text(current_page_->layout.get());
+                if (first && last) {
+                    // Collect all text into selected_text immediately so Ctrl+C
+                    // doesn't need to touch the layout tree (avoiding dangling pointers).
+                    selection_.active = true;
+                    selection_.start_node = first;
+                    selection_.end_node = last;
+                    selection_.start_offset = 0;
+                    selection_.end_offset = static_cast<u32>(last->text().size());
+                    selection_.all_text = true;
+                    bool collecting = false;
+                    std::function<void(const css::LayoutNode *)> collect =
+                        [&](const css::LayoutNode *node) {
+                            if (node == selection_.start_node) collecting = true;
+                            if (collecting && node->is_text() && !node->text().empty()) {
+                                if (!selection_.selected_text.empty())
+                                    selection_.selected_text += '\n';
+                                selection_.selected_text += node->text();
+                            }
+                            for (auto &ch : node->children)
+                                collect(ch.get());
+                            if (node == selection_.end_node) collecting = false;
+                        };
+                    collect(current_page_->layout.get());
+                }
+            }
             renderer_->set_needs_redraw();
             return;
         }
-        // Ctrl+C: copy selected text
-        // (no real selection mechanism exists yet, so this is a no-op on page content)
+        // Ctrl+C: copy selected text to clipboard (Unicode via CF_UNICODETEXT)
         if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
+            if (selection_.active && !selection_.selected_text.empty()) {
+                int wide_len = MultiByteToWideChar(
+                    CP_UTF8, 0, selection_.selected_text.data(), (int)selection_.selected_text.size(), nullptr, 0);
+                if (wide_len > 0) {
+                    HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, (wide_len + 1) * sizeof(wchar_t));
+                    if (hglb) {
+                        wchar_t *buf = (wchar_t *)GlobalLock(hglb);
+                        if (buf) {
+                            MultiByteToWideChar(CP_UTF8, 0,
+                                selection_.selected_text.data(), (int)selection_.selected_text.size(), buf, wide_len);
+                            buf[wide_len] = 0;
+                        }
+                        GlobalUnlock(hglb);
+                        if (OpenClipboard(nullptr)) {
+                            EmptyClipboard();
+                            SetClipboardData(CF_UNICODETEXT, hglb);
+                            CloseClipboard();
+                        }
+                    }
+                }
+            }
             return;
         }
         if (e.key == platform::KeyCode::L && chrome_.ctrl_down) {

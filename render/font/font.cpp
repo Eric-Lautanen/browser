@@ -1,10 +1,12 @@
 #include "font.hpp"
 
 #include "embedded.hpp"
+#include "registry.hpp"
 
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <cwctype>
 #include <memory>
 
 namespace browser::render {
@@ -47,6 +49,7 @@ namespace browser::render {
         FontFace *ptr = face.get();
         fonts_.push_back(std::move(face));
         default_font_ = ptr;
+        add_font(ptr);
         return Result<FontFace *>(ptr);
     }
 
@@ -57,6 +60,7 @@ namespace browser::render {
             return nullptr;
         FontFace *ptr = face.get();
         fonts_.push_back(std::move(face));
+        add_font(ptr);
         return ptr;
     }
 
@@ -85,8 +89,101 @@ namespace browser::render {
             return Result<FontFace *>(r.unwrap_err());
 
         FontFace *ptr = face.get();
+        ptr->set_path(path);
         fonts_.push_back(std::move(face));
+        add_font(ptr);
         return Result<FontFace *>(ptr);
+    }
+
+    void FontManager::add_font(FontFace *face) {
+        all_fonts_.push_back(face);
+    }
+
+    FontFace *FontManager::find_font_by_name(const std::string &name) const {
+        (void)name;
+        return default_font_;
+    }
+
+    static bool font_has_glyph(FontFace *face, u32 codepoint) {
+        return face && face->glyph_index(codepoint) != 0;
+    }
+
+    FontFace *FontManager::find_font_for_codepoint(FontFace *preferred, u32 codepoint) const {
+        // First check preferred font
+        if (preferred && font_has_glyph(preferred, codepoint))
+            return preferred;
+
+        // Walk fallback chain by unicode range
+        for (const auto &fb : fallback_chain_) {
+            if (codepoint >= fb.range_start && codepoint <= fb.range_end) {
+                if (font_has_glyph(fb.face, codepoint))
+                    return fb.face;
+            }
+        }
+
+        // Try all loaded fonts as last resort
+        for (auto *face : all_fonts_) {
+            if (face != preferred && font_has_glyph(face, codepoint))
+                return face;
+        }
+
+        return preferred;
+    }
+
+    void FontManager::load_fallback_fonts() {
+        // Try to load CJK and emoji fonts from standard Windows locations.
+        // These are loaded silently; failure is non-fatal.
+        struct FontEntry {
+            const char *path;
+            u32 range_start;
+            u32 range_end;
+        };
+
+        FontEntry entries[] = {
+            {"C:\\Windows\\Fonts\\msgothic.ttc", 0x4E00, 0x9FFF},    // CJK Unified
+            {"C:\\Windows\\Fonts\\msmincho.ttc", 0x4E00, 0x9FFF},    // CJK fallback
+            {"C:\\Windows\\Fonts\\yugothm.ttc", 0x3040, 0x30FF},     // Japanese kana
+            {"C:\\Windows\\Fonts\\seguiemj.ttf", 0x1F300, 0x1FAFF},  // Emoji
+            {"C:\\Windows\\Fonts\\seguisym.ttf", 0x2000, 0x2BFF},    // Symbols
+            {"C:\\Windows\\Fonts\\cour.ttf", 0x0000, 0x007F},        // ASCII monospace
+            {"C:\\Windows\\Fonts\\times.ttf", 0x0000, 0x007F},       // Serif ASCII
+        };
+
+        // Also add a generic fallback on unicode ranges for already-loaded fonts
+        // so that find_font_for_codepoint works even without Windows fonts
+        for (auto *face : all_fonts_) {
+            fallback_chain_.push_back({face, 0x0000, 0xFFFF});
+        }
+
+        for (const auto &entry : entries) {
+            auto r = const_cast<FontManager *>(this)->load_from_file(entry.path);
+            if (r.is_ok()) {
+                fallback_chain_.push_back({r.unwrap(), entry.range_start, entry.range_end});
+            }
+        }
+    }
+
+    FontFace *FontManager::resolve_family(const std::string &family) {
+        auto &reg = FontRegistry::instance();
+        if (!reg.scanned())
+            reg.scan();
+
+        std::string path = reg.find_path(family);
+        if (path.empty())
+            path = reg.find_generic(family);
+        if (path.empty())
+            return default_font_;
+
+        // Check if already loaded
+        for (auto *f : all_fonts_) {
+            if (f && f->path() == path)
+                return f;
+        }
+
+        auto r = load_from_file(path);
+        if (r.is_ok())
+            return r.unwrap();
+        return default_font_;
     }
 
     GlyphBitmap *FontManager::get_or_rasterize(FontFace *face, u32 codepoint, u32 pixel_size) {
