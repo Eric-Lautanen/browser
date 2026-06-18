@@ -1,9 +1,21 @@
+#include "../../html/utf8.hpp"
 #include "../layout.hpp"
 
 #include <string>
 #include <vector>
 
 namespace browser::css {
+
+    namespace {
+        u32 count_codepoints(const std::string &s) {
+            u32 n = 0;
+            for (char c : s) {
+                if ((static_cast<unsigned char>(c) & 0xC0) != 0x80)
+                    n++;
+            }
+            return n;
+        }
+    }  // namespace
 
     void LayoutEngine::layout_inline(LayoutNode *node, f32 containing_width, f32) {
         f32 char_width_factor = 0.6f;
@@ -36,10 +48,9 @@ namespace browser::css {
         }
 
         auto *wb = node->style().get("word-break");
-        bool break_words = (wb && wb->type == CSSValue::Type::KEYWORD && wb->keyword == "break-all");
         auto *ow = node->style().get("overflow-wrap");
-        if (ow && ow->type == CSSValue::Type::KEYWORD && ow->keyword == "break-word")
-            break_words = true;
+        bool break_words = (wb && wb->type == CSSValue::Type::KEYWORD && wb->keyword == "break-all") ||
+                           (ow && ow->type == CSSValue::Type::KEYWORD && ow->keyword == "break-word");
 
         bool nowrap = (whitespace == "nowrap");
         bool preserve_ws = (whitespace == "pre" || whitespace == "pre-wrap" || whitespace == "pre-line");
@@ -56,10 +67,19 @@ namespace browser::css {
         std::size_t start = 0;
 
         if (preserve_ws) {
-            for (char c : text) {
-                f32 w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, std::string(1, c), (u32)font_size)
-                                         : char_width;
-                words.push_back({std::string(1, c), w});
+            const u8 *txt = reinterpret_cast<const u8 *>(text.data());
+            u32 off = 0;
+            u32 tlen = static_cast<u32>(text.size());
+            while (off < tlen) {
+                auto dr = browser::html::decode_utf8(txt + off, tlen - off);
+                if (dr.bytes_consumed == 0) {
+                    off++;
+                    continue;
+                }
+                std::string ch(text.data() + off, dr.bytes_consumed);
+                off += dr.bytes_consumed;
+                f32 w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ch, (u32)font_size) : char_width;
+                words.push_back({std::move(ch), w});
             }
         } else {
             while (start < text.size()) {
@@ -77,7 +97,7 @@ namespace browser::css {
                     end = text.size();
                 std::string word_text = text.substr(start, end - start);
                 f32 word_width = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, word_text, (u32)font_size)
-                                                  : static_cast<f32>(word_text.size()) * char_width;
+                                                  : static_cast<f32>(count_codepoints(word_text)) * char_width;
                 words.push_back({std::move(word_text), word_width});
                 start = end;
             }
@@ -86,40 +106,68 @@ namespace browser::css {
         f32 line_x = 0;
         f32 line_y = 0;
         f32 max_line_width = 0;
+        size_t line_word_start = 0;
+        f32 pending_space = 0;
 
         auto flush_line = [&](size_t word_start, size_t word_end) {
-            if (line_x > max_line_width) max_line_width = line_x;
+            f32 line_width = line_x + pending_space;
+            if (line_width > max_line_width)
+                max_line_width = line_width;
             std::string line_str;
             for (size_t wi = word_start; wi < word_end; wi++) {
                 if (words[wi].text == " ") {
-                    if (!line_str.empty()) line_str += ' ';
+                    line_str += ' ';
                 } else {
                     line_str += words[wi].text;
                 }
             }
+            // Collapse multiple spaces to one for normal whitespace mode
+            if (whitespace == "normal" || whitespace == "nowrap") {
+                std::string collapsed;
+                bool last_space = false;
+                for (char c : line_str) {
+                    if (c == ' ') {
+                        if (!last_space)
+                            collapsed += ' ';
+                        last_space = true;
+                    } else {
+                        collapsed += c;
+                        last_space = false;
+                    }
+                }
+                line_str = std::move(collapsed);
+            }
             node->text_lines.push_back({std::move(line_str), line_y});
             line_y += line_height;
             line_x = 0;
+            pending_space = 0;
         };
-
-        size_t line_word_start = 0;
         for (size_t wi = 0; wi < words.size(); wi++) {
             auto &word = words[wi];
             if (word.text == " ") {
-                line_x += word.width;
+                pending_space += word.width;
                 continue;
             }
-            if (line_x + word.width > containing_width && line_x > 0 && !nowrap) {
+            f32 word_x = line_x + pending_space;
+            if (word_x + word.width > containing_width && word_x > 0 && !nowrap) {
                 if (break_words && word.width > containing_width) {
+                    // Word is wider than container and break-word is set
+                    // Fall through to place it on its own line (clipped by overflow)
                 }
                 flush_line(line_word_start, wi);
                 line_word_start = wi;
+                pending_space = 0;
+                line_x = 0;
+            } else {
+                line_x = word_x;
+                pending_space = 0;
             }
             line_x += word.width;
         }
 
         // Flush remaining words on the last line
-        if (line_word_start < words.size() || (!words.empty() && words.back().text == " ")) {
+        if (line_word_start < words.size()) {
+            line_x += pending_space;
             flush_line(line_word_start, words.size());
         }
 

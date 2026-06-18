@@ -502,6 +502,9 @@ namespace browser {
             auto paint_r = co_await painter.paint_async(page.layout.get());
             if (paint_r.is_ok()) {
                 page.display_list = std::move(paint_r.unwrap());
+                { static FILE* f = fopen("pl_debug.txt", "w"); if (f) { fprintf(f, "display_list size=%zu\n", page.display_list ? page.display_list->commands().size() : 0); fclose(f); } }
+            } else {
+                { static FILE* f = fopen("pl_debug.txt", "w"); if (f) { fprintf(f, "paint_r ERROR: %s\n", paint_r.unwrap_err().c_str()); fclose(f); } }
             }
 
             page.layer_tree = render::LayerTreeBuilder::build(page.layout.get());

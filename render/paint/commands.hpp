@@ -19,6 +19,7 @@ struct PaintCommand {
     Color color;
     std::string text;
     f32 font_size = 16;
+    u8 font_flags = 0;  // bit 0=bold, bit 1=italic
     ImageId image_id = 0;
     css::CSSGradient gradient;
     f32 radius = 0;

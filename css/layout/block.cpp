@@ -71,11 +71,7 @@ namespace browser::css {
         f32 h_margin = margins.left + margins.right;
 
         if (width_auto) {
-            if (border_box) {
-                node->content.width = containing_width - h_margin - h_padding - h_border;
-            } else {
-                node->content.width = containing_width - h_margin - h_padding - h_border;
-            }
+            node->content.width = containing_width - h_margin - h_padding - h_border;
             if (node->content.width < 0)
                 node->content.width = 0;
         } else {
@@ -235,48 +231,75 @@ namespace browser::css {
             }
         }
 
-    // Handle list-item display: generate marker content
-    auto *display_val = node->style().get("display");
-    bool is_list_item = display_val && display_val->type == CSSValue::Type::KEYWORD &&
-                        display_val->keyword == "list-item";
-    if (is_list_item) {
-        // Reserve space for the marker on the left
-        f32 marker_width = font_size * 1.5f;
-        node->content.width = (node->content.width > marker_width)
-            ? node->content.width - marker_width
-            : 0;
-        std::string list_style = "disc";
-        auto *ls = node->style().get("list-style-type");
-        if (ls && ls->type == CSSValue::Type::KEYWORD) {
-            list_style = ls->keyword;
-        }
-        // Build the marker glyph text
-        std::string marker_text;
-        if (list_style == "disc") marker_text = "\xE2\x80\xA2"; // •
-        else if (list_style == "circle") marker_text = "\xE2\x97\x8B"; // ○
-        else if (list_style == "square") marker_text = "\xE2\x96\xAA"; // ▪
-        else if (list_style == "decimal") marker_text = "1.";
+        // Handle list-item display: generate marker content
+        auto *display_val = node->style().get("display");
+        bool is_list_item =
+            display_val && display_val->type == CSSValue::Type::KEYWORD && display_val->keyword == "list-item";
+        if (is_list_item) {
+            // Reserve space for the marker on the left
+            f32 marker_width = font_size * 1.5f;
+            node->content.width = (node->content.width > marker_width) ? node->content.width - marker_width : 0;
+            std::string list_style = "disc";
+            auto *ls = node->style().get("list-style-type");
+            if (ls && ls->type == CSSValue::Type::KEYWORD) {
+                list_style = ls->keyword;
+            }
+            // Build the marker glyph text
+            std::string marker_text;
+            if (list_style == "disc")
+                marker_text = "\xE2\x80\xA2";  // •
+            else if (list_style == "circle")
+                marker_text = "\xE2\x97\x8B";  // ○
+            else if (list_style == "square")
+                marker_text = "\xE2\x96\xAA";  // ▪
+            else if (list_style == "decimal") {
+                int counter = 0;
+                html::Node *n = node->node();
+                if (n && n->type == html::NodeType::ELEMENT && n->parent) {
+                    for (auto &sibling : n->parent->children) {
+                        if (sibling.get() == n) {
+                            counter++;
+                            break;
+                        }
+                        if (sibling->type == html::NodeType::ELEMENT) {
+                            auto *sib_el = static_cast<html::Element *>(sibling.get());
+                            if (sib_el->tag_name == "li")
+                                counter++;
+                        }
+                    }
+                }
+                marker_text = std::to_string(std::max(1, counter)) + ".";
+            }
 
-        if (!marker_text.empty()) {
-            auto marker_child = std::make_unique<LayoutNode>(marker_text, node->style());
-            marker_child->content.x = -node->padding.left;
-            marker_child->content.y = 0;
-            marker_child->content.width = marker_width;
-            marker_child->content.height = font_size;
-            // Insert before other children so it paints behind content
-            node->children.insert(node->children.begin(), std::move(marker_child));
+            if (!marker_text.empty()) {
+                // Remove previously inserted marker children to prevent duplicates on re-layout
+                auto it = node->children.begin();
+                while (it != node->children.end()) {
+                    if (!(*it)->node()) {
+                        it = node->children.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+                auto marker_child = std::make_unique<LayoutNode>(marker_text, node->style());
+                marker_child->content.x = -node->padding.left;
+                marker_child->content.y = 0;
+                marker_child->content.width = marker_width;
+                marker_child->content.height = font_size;
+                // Insert before other children so it paints behind content
+                node->children.insert(node->children.begin(), std::move(marker_child));
+            }
+            // The marker will be rendered in the padding area
+            node->padding.left += marker_width;
         }
-        // The marker will be rendered in the padding area
-        node->padding.left += marker_width;
-    }
 
-    auto *float_val = node->style().get("float");
-    bool is_floating = float_val && float_val->type == CSSValue::Type::KEYWORD &&
+        auto *float_val = node->style().get("float");
+        bool is_floating = float_val && float_val->type == CSSValue::Type::KEYWORD &&
                            (float_val->keyword == "left" || float_val->keyword == "right");
-    if (is_floating) {
-        node->is_floating = true;
-        node->float_direction = float_val->keyword == "left" ? 0 : 1;
-    }
+        if (is_floating) {
+            node->is_floating = true;
+            node->float_direction = float_val->keyword == "left" ? 0 : 1;
+        }
 
         auto *overflow = node->style().get("overflow");
         if (overflow && overflow->type == CSSValue::Type::KEYWORD) {

@@ -16,9 +16,10 @@ public:
 
     Result<void> initialize(FontManager* fm);
     void initialize(FontFace* face, FontManager* fm = nullptr);
+    void set_font_face(FontFace* face, FontManager* fm) { face_ = face; fm_ = fm; }
     void set_font_manager(FontManager* fm) { fm_ = fm; }
     f32 render_text(Renderer* r, const std::string& text, f32 x, f32 y,
-                    const Color& color, u32 pixel_size = 16);
+                    const Color& color, u32 pixel_size = 16, u8 font_flags = 0);
     f32 measure_text(const std::string& text, u32 pixel_size = 16);
 
 private:

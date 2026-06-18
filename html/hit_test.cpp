@@ -210,7 +210,7 @@ namespace browser::html {
         // Sort by paint order: backgrounds → negative z-index → non-positioned → positive z-index
         // Negative z-index paints first (furthest back), then non-positioned (tree order),
         // then positive z-index (last = topmost)
-        std::sort(candidates.begin(), candidates.end(), [](const HitCandidate &a, const HitCandidate &b) {
+        std::stable_sort(candidates.begin(), candidates.end(), [](const HitCandidate &a, const HitCandidate &b) {
             // Both have z-index: sort by z then paint order
             if (a.z_index != b.z_index)
                 return a.z_index < b.z_index;

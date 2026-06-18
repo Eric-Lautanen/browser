@@ -6,7 +6,7 @@ namespace browser::render {
 
 namespace pgl = browser::platform;
 
-TextRenderer::TextRenderer() = default;
+TextRenderer::TextRenderer() { glyph_cache_.reserve(2048); }
 TextRenderer::~TextRenderer() = default;
 TextRenderer::TextRenderer(TextRenderer&&) noexcept = default;
 
@@ -39,7 +39,7 @@ void TextRenderer::initialize(FontFace* face, FontManager* fm) {
 }
 
 f32 TextRenderer::render_text(Renderer* r, const std::string& text, f32 x, f32 y,
-                               const Color& color, u32 pixel_size) {
+                               const Color& color, u32 pixel_size, u8 font_flags) {
     f32 cursor_x = x;
     bool textured_started = false;
     u32 current_page = 0;
@@ -48,13 +48,27 @@ f32 TextRenderer::render_text(Renderer* r, const std::string& text, f32 x, f32 y
     u32 len = static_cast<u32>(text.size());
     u32 prev_gid = 0;
     f32 scale = face_ ? (f32)pixel_size / face_->units_per_em() : 0.0f;
+    bool is_bold = (font_flags & 1) != 0;
+    bool is_italic = (font_flags & 2) != 0;
+
+    if (!face_ || atlas_pages_.empty()) {
+        f32 tw = static_cast<f32>(text.size()) * static_cast<f32>(pixel_size) * 0.6f;
+        return tw;
+    }
 
     while (offset < len) {
         auto dr = html::decode_utf8(data + offset, len - offset);
         if (dr.bytes_consumed == 0) { offset++; continue; }
         offset += dr.bytes_consumed;
         GlyphAtlasEntry* gt = prepare_glyph(dr.codepoint, pixel_size);
-        if (!gt) continue;
+        if (!gt) {
+            // Advance cursor only if the glyph actually exists in the font
+            if (face_ && face_->glyph_index(dr.codepoint) != 0) {
+                auto mr = face_->get_metrics(dr.codepoint, pixel_size);
+                if (mr.is_ok()) cursor_x += (f32)mr.unwrap().advance_x;
+            }
+            continue;
+        }
 
         if (face_ && prev_gid != 0) {
             u32 gid = face_->glyph_index(dr.codepoint);
@@ -71,10 +85,30 @@ f32 TextRenderer::render_text(Renderer* r, const std::string& text, f32 x, f32 y
 
         f32 glyph_x = cursor_x + (f32)gt->bearing_x;
         f32 asc = face_ ? face_->ascender(pixel_size) : (f32)pixel_size * 0.8f;
-        f32 glyph_y = y + asc - (f32)gt->bearing_y;
+        f32 glyph_y = y + asc - static_cast<f32>(gt->bearing_y);
 
-        r->add_tex_quad(glyph_x, glyph_y, (f32)gt->width, (f32)gt->height,
-                        color, gt->u0, gt->v0, gt->u1, gt->v1);
+        if (is_bold && is_italic) {
+            // Bold italic: slanted + double render
+            f32 skew = pixel_size * 0.2f;
+            r->add_tex_quad_skewed(glyph_x - 0.5f, glyph_y, (f32)gt->width, (f32)gt->height, skew,
+                                   color, gt->u0, gt->v0, gt->u1, gt->v1);
+            r->add_tex_quad_skewed(glyph_x + 0.5f, glyph_y, (f32)gt->width, (f32)gt->height, skew,
+                                   color, gt->u0, gt->v0, gt->u1, gt->v1);
+        } else if (is_bold) {
+            // Faux bold: render twice with ±0.5px offset for thicker strokes
+            r->add_tex_quad(glyph_x - 0.5f, glyph_y, (f32)gt->width, (f32)gt->height,
+                            color, gt->u0, gt->v0, gt->u1, gt->v1);
+            r->add_tex_quad(glyph_x + 0.5f, glyph_y, (f32)gt->width, (f32)gt->height,
+                            color, gt->u0, gt->v0, gt->u1, gt->v1);
+        } else if (is_italic) {
+            // Faux italic: shear quad (top shifted right, bottom stationary)
+            f32 skew = pixel_size * 0.2f;
+            r->add_tex_quad_skewed(glyph_x, glyph_y, (f32)gt->width, (f32)gt->height, skew,
+                                   color, gt->u0, gt->v0, gt->u1, gt->v1);
+        } else {
+            r->add_tex_quad(glyph_x, glyph_y, (f32)gt->width, (f32)gt->height,
+                            color, gt->u0, gt->v0, gt->u1, gt->v1);
+        }
         cursor_x += (f32)gt->advance_x;
     }
 
@@ -100,21 +134,15 @@ TextRenderer::GlyphAtlasEntry* TextRenderer::prepare_glyph(u32 codepoint, u32 pi
         return face_->rasterize_glyph(codepoint, pixel_size);
     };
 
+    GlyphBitmap gb;
     auto r = rasterize();
     if (r.is_err()) {
-        if (codepoint > 32) {
-            static FILE* f = fopen("glyph_drop.txt", "a");
-            if (f) { fprintf(f, "drop: cp=0x%04X '%c' err=%s\n", codepoint, (codepoint < 128 ? (char)codepoint : '?'), r.unwrap_err().c_str()); fflush(f); fclose(f); }
-        }
         return nullptr;
+    } else {
+        gb = std::move(r.unwrap());
     }
-    auto gb = std::move(r.unwrap());
 
     if (gb.width == 0 || gb.height == 0) {
-        if (codepoint > 32) {
-            static FILE* f = fopen("glyph_drop.txt", "a");
-            if (f) { fprintf(f, "drop: cp=0x%04X '%c' w=%d h=%d\n", codepoint, (codepoint < 128 ? (char)codepoint : '?'), (int)gb.width, (int)gb.height); fflush(f); fclose(f); }
-        }
         return nullptr;
     }
 
@@ -166,6 +194,9 @@ TextRenderer::GlyphAtlasEntry* TextRenderer::prepare_glyph(u32 codepoint, u32 pi
 }
 
 f32 TextRenderer::measure_text(const std::string& text, u32 pixel_size) {
+    if (!face_) {
+        return static_cast<f32>(text.size()) * static_cast<f32>(pixel_size) * 0.6f;
+    }
     f32 total = 0.0f;
     const u8* data = reinterpret_cast<const u8*>(text.data());
     u32 offset = 0;
@@ -180,6 +211,8 @@ f32 TextRenderer::measure_text(const std::string& text, u32 pixel_size) {
         if (it != glyph_cache_.end()) {
             total += (f32)it->second.advance_x;
         } else if (face_) {
+            // Skip characters not actually present in the font (gid==0)
+            if (face_->glyph_index(cp) == 0) continue;
             auto mr = face_->get_metrics(cp, pixel_size);
             if (mr.is_ok()) {
                 total += (f32)mr.unwrap().advance_x;

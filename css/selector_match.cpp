@@ -195,12 +195,22 @@ bool match_simple(const SimpleSelector& ss, const html::Element* el, const html:
                 ss.name == "visited" || ss.name == "link" || ss.name == "focus-within" ||
                 ss.name == "focus-visible") {
                 // These are evaluated based on element state stored externally.
-                // For now, match by default unless we can check state
+                // In static cascade, only :link matches <a> elements with href
+                if (ss.name == "link") {
+                    std::string href = el->get_attribute("href");
+                    return !href.empty();
+                }
+                // :visited also matches <a[href]> but with different styling
+                if (ss.name == "visited") {
+                    return false; // Not visited in static analysis
+                }
+                // :hover/:focus/:active should NOT match in static cascade
+                // (they only match when triggered interactively)
                 std::string state = el->get_attribute("data-pseudo-state");
                 if (!state.empty()) {
                     return state.find(ss.name) != std::string::npos;
                 }
-                return true; // Match by default for correct static rendering
+                return false;
             }
             return false;
         }

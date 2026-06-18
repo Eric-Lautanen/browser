@@ -91,6 +91,11 @@ std::vector<u8> FontFace::rasterize_scanline(const GlyphOutline& outline,
 
 Result<GlyphBitmap> FontFace::rasterize_glyph(u32 codepoint, u32 pixel_size) {
     u16 gid = (u16)glyph_index(codepoint);
+    // Glyph index 0 is the .notdef glyph (font's built-in tofu/box).
+    // Skip it so missing codepoints render invisibly instead of as boxes.
+    if (gid == 0) {
+        return Result<GlyphBitmap>(std::string("glyph not in font"));
+    }
 
     int bezier_steps = (std::max)(4, (int)(pixel_size) / 4);
     auto outline_result = read_outline(gid, bezier_steps);
@@ -112,8 +117,8 @@ Result<GlyphBitmap> FontFace::rasterize_glyph(u32 codepoint, u32 pixel_size) {
     f32 x_max_px = (f32)outline.x_max * scale;
     f32 y_max_px = (f32)outline.y_max * scale;
 
-    i32 pw = std::max(1, (i32)std::ceil(x_max_px - x_min_px));
-    i32 ph = std::max(1, (i32)std::ceil(y_max_px - y_min_px));
+    i32 pw = std::max(1, (i32)std::ceil(x_max_px - x_min_px) + 1);
+    i32 ph = std::max(1, (i32)std::ceil(y_max_px - y_min_px) + 1);
     if (pw > 1024) pw = 1024;
     if (ph > 1024) ph = 1024;
 

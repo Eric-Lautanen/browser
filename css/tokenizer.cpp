@@ -298,9 +298,9 @@ CssToken CssTokenizer::next() {
         // Strings
         if (peek() == '"' || peek() == '\'') return consume_string(peek());
 
-        // Hash
+        // Hash (hex colors like #005fcc or ID selectors like #foo)
         if (peek() == '#') {
-            if (pos_ + 1 < input_.size() && (is_ident_start(input_[pos_ + 1]) || input_[pos_ + 1] == '\\')) {
+            if (pos_ + 1 < input_.size() && (is_ident_start(input_[pos_ + 1]) || input_[pos_ + 1] == '\\' || is_digit(input_[pos_ + 1]))) {
                 return consume_hash();
             }
             advance();

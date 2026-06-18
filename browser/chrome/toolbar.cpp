@@ -159,34 +159,144 @@ namespace browser {
         auto &t = theme_;
         auto &br = chrome_.rects.bookmark;
 
-        f32 dx = br.x;
-        f32 dy = chrome_height();
         auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
-        f32 item_h = 24.0f;
-        f32 dw = 280.0f;
-        f32 dh = std::max(item_h * 2.0f, static_cast<f32>(all.size()) * item_h + item_h);
-        dh = std::min(dh, 400.0f);
+        f32 item_h = 28.0f;
+        f32 header_h = 28.0f;
+        f32 dw = 300.0f;
+        f32 max_visible_items = 12.0f;
+        f32 max_list_h = max_visible_items * item_h;
+        f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
+        f32 visible_list_h = std::min(list_h, max_list_h);
+        f32 dh = header_h + visible_list_h + 8.0f;  // header + items + bottom padding
+        f32 pad = 4.0f;
 
+        // Position: align dropdown so it stays on screen
+        // Default: right-edge of dropdown aligns with right-edge of bookmark button
+        f32 dx = br.x + br.w - dw;
+        // Clamp to stay within viewport
+        if (dx < 4.0f)
+            dx = 4.0f;
+        if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
+            dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
+
+        f32 dy = chrome_height() + 2.0f;
+        // If dropdown would go below viewport, flip above
+        if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
+            dy = chrome_height() - dh - 2.0f;
+        }
+
+        // Shadow (subtle offset dark rect behind the dropdown)
+        renderer_->fill_rect(dx + 3.0f, dy + 3.0f, dw, dh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 1.5f});
+        renderer_->fill_rect(dx + 1.5f, dy + 1.5f, dw, dh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 0.8f});
+
+        // Main dropdown background
         renderer_->fill_rect(dx, dy, dw, dh, t.surface);
         renderer_->stroke_rect(dx, dy, dw, dh, t.border, 1.0f);
 
-        f32 iy = dy + 4;
+        // Small arrow/pointer at the top pointing toward the bookmark button
+        f32 arrow_cx = br.x + br.w * 0.5f;
+        f32 arrow_cy = dy;
+        f32 arrow_sz = 5.0f;
+        // Only draw arrow if dropdown is below chrome (not flipped above)
+        if (dy > chrome_height()) {
+            // Fill a small triangle using lines
+            renderer_->draw_line(arrow_cx - arrow_sz, arrow_cy, arrow_cx, arrow_cy - arrow_sz, t.surface, 2.0f);
+            renderer_->draw_line(arrow_cx, arrow_cy - arrow_sz, arrow_cx + arrow_sz, arrow_cy, t.surface, 2.0f);
+            // Cover the border line behind the arrow
+            renderer_->draw_line(arrow_cx - arrow_sz, arrow_cy, arrow_cx + arrow_sz, arrow_cy, t.surface, 2.0f);
+        }
+
+        // Header: "Bookmarks" title
+        f32 iy = dy + pad;
+        renderer_->fill_rect(dx + 1.0f, iy, dw - 2.0f, header_h - pad, t.surface_hover);
+        text_renderer_->render_text(renderer_.get(), "Bookmarks", dx + 10.0f, iy + 4.0f, t.text, 13);
+        // Header separator
+        renderer_->draw_line(dx + 4.0f, iy + header_h - pad, dx + dw - 4.0f, iy + header_h - pad, t.border, 1.0f);
+
+        iy += header_h;
+
         if (all.empty()) {
-            text_renderer_->render_text(renderer_.get(), "No bookmarks yet", dx + 10, iy, t.text_secondary, 12);
+            text_renderer_->render_text(
+                renderer_.get(), "No bookmarks yet", dx + 10.0f, iy + 4.0f, t.text_secondary, 12);
             return;
         }
-        for (auto &b : all) {
-            // Truncate long titles
+
+        // Calculate scroll bounds
+        f32 total_list_h = static_cast<f32>(all.size()) * item_h;
+        f32 max_scroll = std::max(0.0f, total_list_h - visible_list_h);
+        if (chrome_.bookmark_scroll_offset > max_scroll)
+            chrome_.bookmark_scroll_offset = max_scroll;
+        if (chrome_.bookmark_scroll_offset < 0.0f)
+            chrome_.bookmark_scroll_offset = 0.0f;
+
+        f32 scroll_off = chrome_.bookmark_scroll_offset;
+        f32 first_visible = std::floor(scroll_off / item_h);
+        f32 y_start = iy - std::fmod(scroll_off, item_h);
+
+        i32 start_idx = static_cast<i32>(first_visible);
+        if (start_idx < 0)
+            start_idx = 0;
+        i32 end_idx = start_idx + static_cast<i32>(max_visible_items) + 1;
+        if (end_idx > static_cast<i32>(all.size()))
+            end_idx = static_cast<i32>(all.size());
+
+        for (i32 i = start_idx; i < end_idx; i++) {
+            auto &b = all[static_cast<size_t>(i)];
+            f32 item_y = y_start + (i - start_idx) * item_h;
+
+            // Clip to visible area
+            if (item_y + item_h < iy || item_y > iy + visible_list_h)
+                continue;
+
+            // Hover highlight
+            if (chrome_.hovered_bookmark_item == i) {
+                renderer_->fill_rect(dx + 2.0f, item_y, dw - 4.0f, item_h, t.accent);
+            }
+
+            // Bookmark icon (small star)
+            renderer_->draw_icon(render::Icon::BOOKMARK_ON,
+                                 dx + 8.0f,
+                                 item_y + 6.0f,
+                                 12.0f,
+                                 chrome_.hovered_bookmark_item == i ? render::Color::WHITE : t.bookmark_fill);
+
+            // Title (primary line)
             std::string label = b.title.empty() ? b.url : b.title;
-            if (text_renderer_->measure_text(label, 12) > dw - 20) {
-                while (!label.empty() && text_renderer_->measure_text(label + "..", 12) > dw - 20) label.pop_back();
+            f32 max_label_w = dw - 48.0f;
+            if (text_renderer_->measure_text(label, 12) > max_label_w) {
+                while (!label.empty() && text_renderer_->measure_text(label + "..", 12) > max_label_w) label.pop_back();
                 label += "..";
             }
-            text_renderer_->render_text(renderer_.get(), label, dx + 8, iy, t.text, 12);
-            // Draw separator
-            if (&b != &all.back())
-                renderer_->draw_line(dx + 4, iy + item_h - 1, dx + dw - 4, iy + item_h - 1, t.border, 0.5f);
-            iy += item_h;
+            render::Color title_color = chrome_.hovered_bookmark_item == i ? render::Color::WHITE : t.text;
+            text_renderer_->render_text(renderer_.get(), label, dx + 26.0f, item_y + 2.0f, title_color, 12);
+
+            // URL (secondary line, smaller)
+            std::string url_label = b.url;
+            if (text_renderer_->measure_text(url_label, 10) > max_label_w) {
+                while (!url_label.empty() && text_renderer_->measure_text(url_label + "..", 10) > max_label_w)
+                    url_label.pop_back();
+                url_label += "..";
+            }
+            render::Color url_color =
+                chrome_.hovered_bookmark_item == i ? render::Color{1.0f, 1.0f, 1.0f, 0.8f} : t.text_secondary;
+            text_renderer_->render_text(renderer_.get(), url_label, dx + 26.0f, item_y + 15.0f, url_color, 10);
+
+            // Subtle separator between items
+            if (i < static_cast<i32>(all.size()) - 1) {
+                renderer_->draw_line(
+                    dx + 26.0f, item_y + item_h - 0.5f, dx + dw - 8.0f, item_y + item_h - 0.5f, t.border, 0.5f);
+            }
+        }
+
+        // Scrollbar indicator (if needed)
+        if (max_scroll > 0.0f) {
+            f32 sb_x = dx + dw - 5.0f;
+            f32 sb_y = iy;
+            f32 sb_h = visible_list_h;
+            f32 thumb_h = std::max(20.0f, sb_h * visible_list_h / total_list_h);
+            f32 thumb_y = sb_y + (sb_h - thumb_h) * (scroll_off / max_scroll);
+            renderer_->fill_rect(sb_x, sb_y, 3.0f, sb_h, {0.0f, 0.0f, 0.0f, 0.06f});
+            renderer_->fill_rect(sb_x, thumb_y, 3.0f, thumb_h, {0.0f, 0.0f, 0.0f, 0.2f});
         }
     }
 

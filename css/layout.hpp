@@ -12,31 +12,31 @@ namespace browser::css {
         f32 y;             // y-position from top of node content
     };
 
-class LayoutNode {
-public:
-    LayoutNode(html::Element *element, ComputedStyle style);
-    LayoutNode(const std::string &text, ComputedStyle style);
-    LayoutNode(const LayoutNode &) = delete;
-    LayoutNode &operator=(const LayoutNode &) = delete;
-    virtual ~LayoutNode() = default;
+    class LayoutNode {
+    public:
+        LayoutNode(html::Element *element, ComputedStyle style);
+        LayoutNode(const std::string &text, ComputedStyle style);
+        LayoutNode(const LayoutNode &) = delete;
+        LayoutNode &operator=(const LayoutNode &) = delete;
+        virtual ~LayoutNode() = default;
 
-    std::vector<std::unique_ptr<LayoutNode>> children;
-    LayoutNode *parent = nullptr;
+        std::vector<std::unique_ptr<LayoutNode>> children;
+        LayoutNode *parent = nullptr;
 
-    Rect content;
-    EdgeSizes padding, border, margin;
+        Rect content;
+        EdgeSizes padding, border, margin;
 
-    // Extended properties
-    Mat3x3 transform_matrix;
-    bool has_transform = false;
-    bool is_floating = false;
-    u32 float_direction = 0;  // 0=left, 1=right
-    bool is_scrollable = false;
-    f32 scroll_offset_x = 0, scroll_offset_y = 0;
-    f32 opacity = 1.0f;
+        // Extended properties
+        Mat3x3 transform_matrix;
+        bool has_transform = false;
+        bool is_floating = false;
+        u32 float_direction = 0;  // 0=left, 1=right
+        bool is_scrollable = false;
+        f32 scroll_offset_x = 0, scroll_offset_y = 0;
+        f32 opacity = 1.0f;
 
-    // Per-line break info for wrapped text (populated by layout_inline)
-    std::vector<LineInfo> text_lines;
+        // Per-line break info for wrapped text (populated by layout_inline)
+        std::vector<LineInfo> text_lines;
 
         Rect get_padding_box() const;
         Rect get_border_box() const;
@@ -71,7 +71,7 @@ public:
         }
         async::task<std::unique_ptr<LayoutNode>> layout_async(
             html::Document *doc,
-            std::unordered_map<const html::Element *, ComputedStyle> &styles,
+            const std::unordered_map<const html::Element *, ComputedStyle> &styles,
             f32 viewport_width,
             f32 viewport_height);
 
@@ -106,8 +106,8 @@ public:
         void layout_absolute_pass(
             LayoutNode *node, LayoutNode *containing_block, f32 cb_width, f32 cb_height, f32 font_size);
 
-        std::unique_ptr<LayoutNode> build_layout_tree(html::Node *node,
-                                                      std::unordered_map<const html::Element *, ComputedStyle> &styles);
+        std::unique_ptr<LayoutNode> build_layout_tree(
+            html::Node *node, const std::unordered_map<const html::Element *, ComputedStyle> &styles);
 
         static std::unique_ptr<LayoutNode> make_anonymous_block(ComputedStyle style);
         static bool is_block_element(const ComputedStyle &style);

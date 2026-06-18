@@ -142,11 +142,26 @@ namespace browser::css {
 
                     layout_block(child.get(), child_cb_width, child_cb_height);
 
-                    f32 left_off = resolve_property(child->style(), "left", child_cb_width, child_font_size);
-                    f32 top_off = resolve_property(child->style(), "top", child_cb_height, child_font_size);
+                    bool has_left = child->style().get("left") != nullptr;
+                    bool has_right = child->style().get("right") != nullptr;
+                    bool has_top = child->style().get("top") != nullptr;
+                    bool has_bottom = child->style().get("bottom") != nullptr;
 
-                    child->content.x = left_off;
-                    child->content.y = top_off;
+                    if (has_left) {
+                        f32 left_off = resolve_property(child->style(), "left", child_cb_width, child_font_size);
+                        child->content.x = left_off;
+                    } else if (has_right) {
+                        f32 right_off = resolve_property(child->style(), "right", child_cb_width, child_font_size);
+                        child->content.x = child_cb_width - right_off - child->content.width;
+                    }
+
+                    if (has_top) {
+                        f32 top_off = resolve_property(child->style(), "top", child_cb_height, child_font_size);
+                        child->content.y = top_off;
+                    } else if (has_bottom) {
+                        f32 bottom_off = resolve_property(child->style(), "bottom", child_cb_height, child_font_size);
+                        child->content.y = child_cb_height - bottom_off - child->content.height;
+                    }
                 } else {
                     child_cb = find_positioned_ancestor(child.get());
                     if (child_cb) {
@@ -157,22 +172,54 @@ namespace browser::css {
 
                         layout_block(child.get(), child_cb_width, child_cb_height);
 
-                        f32 left_off = resolve_property(child->style(), "left", child_cb_width, child_font_size);
-                        f32 top_off = resolve_property(child->style(), "top", child_cb_height, child_font_size);
+                        bool has_left = child->style().get("left") != nullptr;
+                        bool has_right = child->style().get("right") != nullptr;
+                        bool has_top = child->style().get("top") != nullptr;
+                        bool has_bottom = child->style().get("bottom") != nullptr;
 
-                        child->content.x = cb_padding.x + left_off;
-                        child->content.y = cb_padding.y + top_off;
+                        if (has_left) {
+                            f32 left_off = resolve_property(child->style(), "left", child_cb_width, child_font_size);
+                            child->content.x = cb_padding.x + left_off;
+                        } else if (has_right) {
+                            f32 right_off = resolve_property(child->style(), "right", child_cb_width, child_font_size);
+                            child->content.x = cb_padding.x + cb_padding.width - right_off - child->content.width;
+                        }
+
+                        if (has_top) {
+                            f32 top_off = resolve_property(child->style(), "top", child_cb_height, child_font_size);
+                            child->content.y = cb_padding.y + top_off;
+                        } else if (has_bottom) {
+                            f32 bottom_off =
+                                resolve_property(child->style(), "bottom", child_cb_height, child_font_size);
+                            child->content.y = cb_padding.y + cb_padding.height - bottom_off - child->content.height;
+                        }
                     } else {
                         child_cb_width = viewport_width_;
                         child_cb_height = viewport_height_;
 
                         layout_block(child.get(), child_cb_width, child_cb_height);
 
-                        f32 left_off = resolve_property(child->style(), "left", child_cb_width, root_font_size_);
-                        f32 top_off = resolve_property(child->style(), "top", child_cb_height, root_font_size_);
+                        bool has_left = child->style().get("left") != nullptr;
+                        bool has_right = child->style().get("right") != nullptr;
+                        bool has_top = child->style().get("top") != nullptr;
+                        bool has_bottom = child->style().get("bottom") != nullptr;
 
-                        child->content.x = left_off;
-                        child->content.y = top_off;
+                        if (has_left) {
+                            f32 left_off = resolve_property(child->style(), "left", child_cb_width, root_font_size_);
+                            child->content.x = left_off;
+                        } else if (has_right) {
+                            f32 right_off = resolve_property(child->style(), "right", child_cb_width, root_font_size_);
+                            child->content.x = child_cb_width - right_off - child->content.width;
+                        }
+
+                        if (has_top) {
+                            f32 top_off = resolve_property(child->style(), "top", child_cb_height, root_font_size_);
+                            child->content.y = top_off;
+                        } else if (has_bottom) {
+                            f32 bottom_off =
+                                resolve_property(child->style(), "bottom", child_cb_height, root_font_size_);
+                            child->content.y = child_cb_height - bottom_off - child->content.height;
+                        }
                     }
                 }
             }

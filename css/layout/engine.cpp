@@ -77,7 +77,7 @@ namespace browser::css {
     }
 
     std::unique_ptr<LayoutNode> LayoutEngine::build_layout_tree(
-        html::Node *node, std::unordered_map<const html::Element *, ComputedStyle> &styles) {
+        html::Node *node, const std::unordered_map<const html::Element *, ComputedStyle> &styles) {
         if (!node)
             return nullptr;
 
@@ -162,6 +162,15 @@ namespace browser::css {
                         continue;
 
                     ComputedStyle text_style = it->second;
+                    // Resolve font-size to absolute px so em values aren't double-resolved
+                    {
+                        f32 parent_fs = resolve_font_size(it->second, root_font_size_);
+                        css::CSSValue pv;
+                        pv.type = css::CSSValue::Type::LENGTH;
+                        pv.length.value = parent_fs;
+                        pv.length.unit = css::Length::Unit::PX;
+                        text_style.properties["font-size"] = pv;
+                    }
                     auto text_node = std::make_unique<LayoutNode>(text->data, std::move(text_style));
                     inline_pending.push_back(std::move(text_node));
                 }
@@ -246,12 +255,12 @@ namespace browser::css {
 
     async::task<std::unique_ptr<LayoutNode>> LayoutEngine::layout_async(
         html::Document *doc,
-        std::unordered_map<const html::Element *, ComputedStyle> &styles,
+        const std::unordered_map<const html::Element *, ComputedStyle> &styles,
         f32 viewport_width,
         f32 viewport_height) {
-        co_await async::thread_pool_executor{};
         viewport_width_ = viewport_width;
         viewport_height_ = viewport_height;
+        co_await async::thread_pool_executor{};
 
         auto *body = html::find_element_by_tag(doc, "body");
         if (!body) {
@@ -370,19 +379,6 @@ namespace browser::css {
                     }
                 }
 
-                if (child->is_text()) {
-                    auto *ta = node->style().get("text-align");
-                    if (ta && ta->type == CSSValue::Type::KEYWORD) {
-                        f32 remaining = node->content.width - child->margin.left - child->border.left -
-                                        child->padding.left - child->padding.right - child->border.right -
-                                        child->margin.right - child->content.width;
-                        if (ta->keyword == "center" && remaining > 0)
-                            child->content.x += remaining / 2.0f;
-                        else if (ta->keyword == "right" && remaining > 0)
-                            child->content.x += remaining;
-                    }
-                }
-
                 child->content.y = current_y + collapsed_gap + child->border.top + child->padding.top;
                 current_y = child->content.y + child->content.height + child->padding.bottom + child->border.bottom;
                 prev_margin_bottom = child->margin.bottom;
@@ -398,10 +394,8 @@ namespace browser::css {
                 bool is_inline_block = false;
                 if (!child->is_text()) {
                     auto *dv = child->style().get("display");
-                    is_inline = dv && dv->type == CSSValue::Type::KEYWORD &&
-                                dv->keyword == "inline";
-                    is_inline_block = dv && dv->type == CSSValue::Type::KEYWORD &&
-                                      dv->keyword == "inline-block";
+                    is_inline = dv && dv->type == CSSValue::Type::KEYWORD && dv->keyword == "inline";
+                    is_inline_block = dv && dv->type == CSSValue::Type::KEYWORD && dv->keyword == "inline-block";
                 }
 
                 if (child->is_text()) {

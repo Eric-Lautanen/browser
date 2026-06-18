@@ -188,6 +188,10 @@ namespace browser::render {
         batch_mesh_->add_quad_tex(x, y, w, h, color.r, color.g, color.b, color.a, u0, v0, u1, v1);
     }
 
+    void Renderer::add_tex_quad_skewed(f32 x, f32 y, f32 w, f32 h, f32 skew, const Color &color, f32 u0, f32 v0, f32 u1, f32 v1) {
+        batch_mesh_->add_quad_tex_skewed(x, y, w, h, skew, color.r, color.g, color.b, color.a, u0, v0, u1, v1);
+    }
+
     void Renderer::end_textured() {
         if (textured_mode_)
             flush();

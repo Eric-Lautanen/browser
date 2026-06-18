@@ -40,8 +40,9 @@ namespace browser::render {
         void fill_rect_tex(f32 x, f32 y, f32 w, f32 h, const Color &color, class Texture2D *texture);
         void draw_textured_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, class Texture2D *texture);
         void begin_textured(class Texture2D *texture);
-        void add_tex_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, f32 u0, f32 v0, f32 u1, f32 v1);
-        void end_textured();
+    void add_tex_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, f32 u0, f32 v0, f32 u1, f32 v1);
+    void add_tex_quad_skewed(f32 x, f32 y, f32 w, f32 h, f32 skew, const Color &color, f32 u0, f32 v0, f32 u1, f32 v1);
+    void end_textured();
         void set_viewport(u32 width, u32 height);
         void flush();
         u32 width() const { return width_; }

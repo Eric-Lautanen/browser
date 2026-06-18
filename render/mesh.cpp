@@ -136,6 +136,24 @@ void Mesh2D::add_quad_tex(f32 x, f32 y, f32 w, f32 h,
     indices_.push_back(start + 3);
 }
 
+void Mesh2D::add_quad_tex_skewed(f32 x, f32 y, f32 w, f32 h, f32 skew,
+                                  f32 r, f32 g, f32 b, f32 a,
+                                  f32 u0, f32 v0, f32 u1, f32 v1) {
+    u32 start = (u32)vertices_.size();
+    // Top edge shifted right by skew, bottom edge at x
+    vertices_.push_back({x + skew, y,     r, g, b, a, u0, v0});
+    vertices_.push_back({x + w + skew, y, r, g, b, a, u1, v0});
+    vertices_.push_back({x + w,     y + h, r, g, b, a, u1, v1});
+    vertices_.push_back({x,         y + h, r, g, b, a, u0, v1});
+
+    indices_.push_back(start);
+    indices_.push_back(start + 1);
+    indices_.push_back(start + 2);
+    indices_.push_back(start);
+    indices_.push_back(start + 2);
+    indices_.push_back(start + 3);
+}
+
 void Mesh2D::add_line(f32 x1, f32 y1, f32 x2, f32 y2,
                        f32 r, f32 g, f32 b, f32 a, f32 width) {
     f32 dx = x2 - x1;

@@ -19,6 +19,8 @@
 #include "../css/layout.hpp"
 #include "../render/paint.hpp"
 #include "../render/paint/painter.hpp"
+#include "../render/font/font.hpp"
+#include "../render/font/atlas.hpp"
 #include "../browser/browser_window.hpp"
 
 using browser::f32;
@@ -638,16 +640,52 @@ static std::string dump_command(const browser::render::PaintCommand &cmd) {
     if (cmd.type == browser::render::PaintCommand::Type::DRAW_TEXT) {
         o.kv_raw("text", json::q(cmd.text));
         o.kv_num("font_size", cmd.font_size);
+        if (cmd.font_flags) o.kv_num("font_flags", static_cast<f32>(cmd.font_flags));
     }
     if (cmd.radius > 0) o.kv_num("radius", cmd.radius);
     return o.done();
 }
 
 // ---------------------------------------------------------------------------
-// Text measurer stub for headless layout
+// Text measurer
 // ---------------------------------------------------------------------------
 static f32 headless_text_measure(void *, const std::string &text, u32 pixel_size) {
     return static_cast<f32>(text.size()) * static_cast<f32>(pixel_size) * 0.6f;
+}
+
+static f32 text_measure_cb(void *ctx, const std::string &text, u32 pixel_size) {
+    return static_cast<browser::render::TextRenderer *>(ctx)->measure_text(text, pixel_size);
+}
+
+struct FontSetup {
+    std::unique_ptr<browser::render::FontManager> fm;
+    std::unique_ptr<browser::render::TextRenderer> tr;
+    bool ok = false;
+};
+
+static FontSetup setup_font() {
+    FontSetup fs;
+    fs.fm = std::make_unique<browser::render::FontManager>();
+    fs.tr = std::make_unique<browser::render::TextRenderer>();
+    const char *paths[] = {
+        "C:\\Windows\\Fonts\\arial.ttf",
+        "C:\\Windows\\Fonts\\consola.ttf",
+        "C:\\Windows\\Fonts\\cour.ttf",
+        "C:\\Windows\\Fonts\\lucon.ttf"};
+    for (auto p : paths) {
+        auto r = fs.fm->load_from_file(p);
+        if (r.is_ok()) {
+            fs.tr->set_font_face(r.unwrap(), fs.fm.get());
+            fs.ok = true;
+            return fs;
+        }
+    }
+    auto r = fs.fm->load_default_font();
+    if (r.is_ok()) {
+        fs.tr->set_font_face(r.unwrap(), fs.fm.get());
+        fs.ok = true;
+    }
+    return fs;
 }
 
 // ---------------------------------------------------------------------------
@@ -694,7 +732,7 @@ static int run_browser_screenshot(const std::string &filepath, const std::string
         std::cerr << "Failed to initialize: " << r.unwrap_err() << std::endl;
         return 1;
     }
-    browser.navigate("file:///" + filepath);
+    browser.navigate(filepath);
     browser.run_with_screenshot(outpath);
     return 0;
 }
@@ -811,8 +849,12 @@ int main(int argc, char **argv) {
             return 0;
         }
 
+        auto fs = setup_font();
         browser::css::LayoutEngine layout_engine;
-        layout_engine.set_text_measure(nullptr, headless_text_measure);
+        if (fs.ok)
+            layout_engine.set_text_measure(fs.tr.get(), text_measure_cb);
+        else
+            layout_engine.set_text_measure(nullptr, headless_text_measure);
         auto layout_r = layout_engine.layout_async(doc.get(), styles, 800.0f, 600.0f).sync_wait();
         if (layout_r.is_err()) { std::cerr << "Layout error: " << layout_r.unwrap_err() << std::endl; return 1; }
         auto layout = std::move(layout_r.unwrap());
@@ -912,6 +954,7 @@ static int run_test_suite(const std::string &test_dir, const std::string &filter
         auto pos = p.find_last_of("/\\");
         return (pos != std::string::npos) ? p.substr(pos+1) : p;
     };
+    auto fs = setup_font();
     for (auto &html_file : html_files) {
         auto base = strip_path(html_file);
         auto stem = html_file.substr(0, html_file.size()-5);
@@ -991,7 +1034,10 @@ static int run_test_suite(const std::string &test_dir, const std::string &filter
                 std::string expected_layout_path = stem + ".expected-layout.json";
                 if (file_exists(expected_layout_path)) {
                     browser::css::LayoutEngine layout_engine;
-                    layout_engine.set_text_measure(nullptr, headless_text_measure);
+                    if (fs.ok)
+                        layout_engine.set_text_measure(fs.tr.get(), text_measure_cb);
+                    else
+                        layout_engine.set_text_measure(nullptr, headless_text_measure);
                     auto layout_r = layout_engine.layout_async(doc.get(), styles, 800.0f, 600.0f).sync_wait();
                     if (layout_r.is_ok()) {
                         auto layout = std::move(layout_r.unwrap());

@@ -25,7 +25,7 @@ namespace browser::css {
                 auto trim_fn = [](const std::string &s) -> std::string {
                     size_t start = 0, end = s.size();
                     while (start < end && (s[start] == ' ' || s[start] == '\t')) start++;
-                    while (end > start && (s[end-1] == ' ' || s[end-1] == '\t')) end--;
+                    while (end > start && (s[end - 1] == ' ' || s[end - 1] == '\t')) end--;
                     return s.substr(start, end - start);
                 };
                 std::string result = v->keyword + "(";
@@ -36,7 +36,8 @@ namespace browser::css {
                     result += trim_fn(raw);
                 }
                 result = trim_fn(result);
-                if (result.back() != ')') result += ")";
+                if (result.back() != ')')
+                    result += ")";
                 return result;
             }
             if (v->type == CSSValue::Type::NUMBER) {
@@ -127,6 +128,7 @@ namespace browser::css {
                     break;
                 case GridTrackType::AUTO:
                     t.resolved_size = std::max(t.min_size.value, font_size);
+                    total_fixed += t.resolved_size;
                     break;
             }
         }
@@ -205,7 +207,6 @@ namespace browser::css {
         }
 
         node->content.width = container_width;
-
 
         std::string cols_str = get_grid_prop_raw(node->style(), "grid-template-columns");
         std::string rows_str = get_grid_prop_raw(node->style(), "grid-template-rows");
@@ -401,8 +402,8 @@ namespace browser::css {
                             cursor_col = 0;
                             cursor_row++;
                             while (cursor_row + row_span > state.num_rows) {
-                                state.rows.push_back(
-                                    GridTrackDef{GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
+                                state.rows.push_back(GridTrackDef{
+                                    GridTrackType::AUTO, Length{0, Length::Unit::PX}, Length{0, Length::Unit::PX}});
                                 state.num_rows = static_cast<i32>(state.rows.size());
                             }
                         }

@@ -445,6 +445,7 @@ Result<GlyphOutline> FontFace::read_outline(u16 glyph_idx, int bezier_steps) con
 Result<FontFace::GlyphMetrics> FontFace::get_metrics_by_gid(u16 gid, u32 pixel_size) const {
     const u8* fp = font_data_.data();
     u32 fl = (u32)font_data_.size();
+    if (units_per_em_ <= 0) return Result<GlyphMetrics>(std::string("invalid unitsPerEm"));
     f32 scale = (f32)pixel_size / units_per_em_;
 
     u16 hmtx_idx = (std::min)(gid, (u16)(num_h_metrics_ - 1));

@@ -65,7 +65,12 @@ namespace browser {
         set_theme(settings_->theme());
 
         renderer_ = std::make_unique<render::Renderer>();
-        auto r = renderer_->initialize(1024, 768);
+        {
+            auto ext = window_->get_extent();
+            viewport_width_ = ext.width;
+            viewport_height_ = ext.height;
+        }
+        auto r = renderer_->initialize(viewport_width_, viewport_height_);
         if (r.is_err())
             return r.unwrap_err();
 
@@ -225,6 +230,20 @@ namespace browser {
     void BrowserWindow::run_with_screenshot(const std::string &path) {
         window_->show();
 
+        // Wait for page to load before capturing screenshot
+        if (page_loader_) {
+            int max_wait = 10000;
+            while (page_loader_->is_loading() && max_wait > 0) {
+                Sleep(5);
+                max_wait -= 5;
+                MSG msg;
+                while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+                    TranslateMessage(&msg);
+                    DispatchMessage(&msg);
+                }
+            }
+        }
+
         LARGE_INTEGER qpc_freq;
         QueryPerformanceFrequency(&qpc_freq);
 
@@ -232,6 +251,9 @@ namespace browser {
         QueryPerformanceCounter(&frame_start);
 
         // Render one frame (same initial render as run())
+        int sw = static_cast<int>(viewport_width_);
+        int sh = static_cast<int>(viewport_height_);
+        std::vector<u8> pixels(static_cast<size_t>(sw * sh * 4));
         {
             renderer_->begin_frame();
             renderer_->set_viewport(viewport_width_, viewport_height_);
@@ -241,14 +263,12 @@ namespace browser {
             render_find_bar();
             render_page();
             renderer_->end_frame();
+            // Read pixels BEFORE swapping (back buffer is still valid)
+            ::glReadPixels(0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
             window_->swap_buffers();
         }
 
-        // Read pixels and save BMP
-        int sw = static_cast<int>(viewport_width_);
-        int sh = static_cast<int>(viewport_height_);
-        std::vector<u8> pixels(static_cast<size_t>(sw * sh * 4));
-        ::glReadPixels(0, 0, sw, sh, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        // Save BMP
 
         auto wu32 = [](std::vector<u8> &d, u32 v) {
             d.push_back(v & 0xFF);
@@ -263,19 +283,23 @@ namespace browser {
         std::vector<u8> bmp;
         u32 row = ((static_cast<u32>(sw) * 24 + 31) / 32) * 4;
         u32 ds = row * static_cast<u32>(sh);
-        bmp.push_back('B'); bmp.push_back('M');
+        bmp.push_back('B');
+        bmp.push_back('M');
         wu32(bmp, 14 + 40 + ds);
         wu32(bmp, 0);
         wu32(bmp, 14 + 40);
         wu32(bmp, 40);
         wu32(bmp, static_cast<u32>(sw));
         wu32(bmp, static_cast<u32>(sh));
-        wu16(bmp, 1); wu16(bmp, 24);
+        wu16(bmp, 1);
+        wu16(bmp, 24);
         wu32(bmp, 0);
         wu32(bmp, ds);
-        wu32(bmp, 2835); wu32(bmp, 2835);
-        wu32(bmp, 0); wu32(bmp, 0);
-        for (int y = sh - 1; y >= 0; y--) {
+        wu32(bmp, 2835);
+        wu32(bmp, 2835);
+        wu32(bmp, 0);
+        wu32(bmp, 0);
+        for (int y = 0; y < sh; y++) {
             for (int x = 0; x < sw; x++) {
                 size_t idx = (static_cast<size_t>(y) * sw + static_cast<size_t>(x)) * 4;
                 bmp.push_back(pixels[idx + 2]);

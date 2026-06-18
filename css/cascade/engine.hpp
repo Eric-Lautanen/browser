@@ -25,6 +25,7 @@ namespace browser::css {
         std::unordered_map<std::string, CSSValue> properties;
         std::unordered_map<std::string, ComputedStyle> pseudo_styles;  // key: "before", "after", etc.
         const ComputedStyle *parent = nullptr;
+        const html::Element *_element = nullptr;  // for parent linking after map is stable
 
         bool has(const std::string &p) const { return properties.find(p) != properties.end(); }
 

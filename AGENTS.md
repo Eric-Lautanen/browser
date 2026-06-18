@@ -4,6 +4,8 @@
 
 From-scratch C++20 web browser for Windows x86-64. Zero third-party dependencies. Every component — HTML5 parser, CSS layout (block/flex/grid), JavaScript VM+JIT, TLS 1.3, HTTP/2, font rasterizer, OpenGL renderer — is hand-written. ~25K LOC. Read `structure.md` for the complete file tree and CMake targets before touching any source.
 
+**This is a fully functional browser, not a toy.** Every page must render correctly — HTML structure, CSS styling (all layout modes including flex/grid/table/positioned), UTF-8 text (Latin, CJK, Arabic, emoji), images, forms, interactive elements. Performance and correctness must match mainstream browsers. If a feature is partially implemented, finish it before moving on. The test suite validates internal data structures; visual output is the real measure of correctness.
+
 ---
 
 ## Core Principles (Non-Negotiable)

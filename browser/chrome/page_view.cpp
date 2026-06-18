@@ -34,6 +34,7 @@ namespace browser {
         render::PaintExecutor executor(renderer_.get(), text_renderer_.get());
         executor.set_offset(0, content_y - static_cast<f32>(chrome_.scroll_y));
         executor.set_base_clip(0, content_y, static_cast<f32>(viewport_width_), content_h);
+        executor.set_image_data(page.images);
         renderer_->fill_rect(0, content_y, static_cast<f32>(viewport_width_), content_h, theme_.page_bg);
         renderer_->flush();
         if (page.display_list)
@@ -67,16 +68,19 @@ namespace browser {
         text_renderer_->render_text(renderer_.get(), "Downloads", ox + 16, oy + 12, t.text, 18);
         f32 iy = oy + 48;
 
-        const auto& items = download_manager_->items();
+        const auto &items = download_manager_->items();
         if (items.empty()) {
             text_renderer_->render_text(renderer_.get(), "No downloads", ox + 16, iy, t.text_secondary, 13);
         } else {
             for (size_t i = 0; i < items.size() && i < 10; i++) {
-                auto& item = items[i];
+                auto &item = items[i];
                 std::string dl_text = item.filename;
-                if (item.completed) dl_text += " (completed)";
-                else if (item.cancelled) dl_text += " (cancelled)";
-                else if (!item.error.empty()) dl_text += " (" + item.error + ")";
+                if (item.completed)
+                    dl_text += " (completed)";
+                else if (item.cancelled)
+                    dl_text += " (cancelled)";
+                else if (!item.error.empty())
+                    dl_text += " (" + item.error + ")";
                 text_renderer_->render_text(renderer_.get(), dl_text, ox + 16, iy, t.text, 13);
                 iy += 22;
             }
@@ -86,7 +90,8 @@ namespace browser {
     }
 
     void BrowserWindow::render_find_bar() {
-        if (!chrome_.find_state.visible) return;
+        if (!chrome_.find_state.visible)
+            return;
         auto &t = theme_;
         f32 bar_y = chrome_height();
         f32 bar_h = 30.0f;
@@ -106,7 +111,8 @@ namespace browser {
         renderer_->fill_rect(tx + 1, bar_y + 5, input_w - 2, 20, {0.2f, 0.2f, 0.22f, 1.0f});
 
         std::string display_text = chrome_.find_state.query;
-        if (display_text.empty()) display_text = " ";
+        if (display_text.empty())
+            display_text = " ";
         text_renderer_->render_text(renderer_.get(), display_text, tx + 4, bar_y + 5, {1.0f, 1.0f, 1.0f, 1.0f}, 13);
         tx += input_w + 8;
 
@@ -136,14 +142,18 @@ namespace browser {
 
         // Tab bar
         f32 tab_x = 0;
-        const char* tabs[] = {"Console", "Elements", "Network"};
+        const char *tabs[] = {"Console", "Elements", "Network"};
         for (int i = 0; i < 3; i++) {
             bool active = (static_cast<int>(dt.active_tab) == i);
             if (active) {
                 renderer_->fill_rect(tab_x, devtools_y, 100, 24, {0.2f, 0.2f, 0.22f, 1.0f});
             }
-            text_renderer_->render_text(renderer_.get(), tabs[i], tab_x + 10, devtools_y + 5,
-                                        active ? render::Color{1,1,1,1} : render::Color{0.7f,0.7f,0.7f,1.0f}, 12);
+            text_renderer_->render_text(renderer_.get(),
+                                        tabs[i],
+                                        tab_x + 10,
+                                        devtools_y + 5,
+                                        active ? render::Color{1, 1, 1, 1} : render::Color{0.7f, 0.7f, 0.7f, 1.0f},
+                                        12);
             tab_x += 100;
         }
 
@@ -153,59 +163,72 @@ namespace browser {
         if (dt.active_tab == DevToolsState::CONSOLE) {
             // Console log entries
             f32 log_y = content_y;
-            for (auto& entry : dt.console_entries) {
-                if (log_y > devtools_y + devtools_h - 30) break;
+            for (auto &entry : dt.console_entries) {
+                if (log_y > devtools_y + devtools_h - 30)
+                    break;
                 render::Color c = {0.9f, 0.9f, 0.9f, 1.0f};
-                if (entry.level == DevToolsState::ConsoleEntry::LEVEL_ERROR) c = {1.0f, 0.3f, 0.3f, 1.0f};
-                else if (entry.level == DevToolsState::ConsoleEntry::WARN) c = {1.0f, 0.8f, 0.2f, 1.0f};
+                if (entry.level == DevToolsState::ConsoleEntry::LEVEL_ERROR)
+                    c = {1.0f, 0.3f, 0.3f, 1.0f};
+                else if (entry.level == DevToolsState::ConsoleEntry::WARN)
+                    c = {1.0f, 0.8f, 0.2f, 1.0f};
                 text_renderer_->render_text(renderer_.get(), entry.text, 10, log_y, c, 11);
                 log_y += 16;
             }
             // Input box
             f32 input_y = devtools_y + devtools_h - 24;
             renderer_->fill_rect(0, input_y, devtools_w, 24, {0.08f, 0.08f, 0.1f, 1.0f});
-            text_renderer_->render_text(renderer_.get(), "> " + dt.console_input, 6, input_y + 4,
-                                        render::Color{1,1,1,1}, 12);
+            text_renderer_->render_text(
+                renderer_.get(), "> " + dt.console_input, 6, input_y + 4, render::Color{1, 1, 1, 1}, 12);
         } else if (dt.active_tab == DevToolsState::ELEMENTS) {
             // Show DOM tree as indented text
             if (current_page_.has_value() && current_page_->dom) {
                 std::string dom_text;
-                html::Node* root = current_page_->dom.get();
+                html::Node *root = current_page_->dom.get();
                 dom_text += "<!DOCTYPE html>\n";
-                html::traverse_depth_first(root, [&](html::Node* n) {
+                html::traverse_depth_first(root, [&](html::Node *n) {
                     int depth = 0;
-                    html::Node* p = n->parent;
-                    while (p) { depth++; p = p->parent; }
+                    html::Node *p = n->parent;
+                    while (p) {
+                        depth++;
+                        p = p->parent;
+                    }
                     std::string indent(depth * 2, ' ');
                     if (n->type == html::NodeType::ELEMENT) {
-                        auto* el = static_cast<html::Element*>(n);
+                        auto *el = static_cast<html::Element *>(n);
                         dom_text += indent + "<" + el->tag_name;
-                        if (!el->id().empty()) dom_text += " id=\"" + el->id() + "\"";
+                        if (!el->id().empty())
+                            dom_text += " id=\"" + el->id() + "\"";
                         dom_text += ">\n";
                     } else if (n->type == html::NodeType::TEXT) {
-                        auto* txt = static_cast<html::Text*>(n);
+                        auto *txt = static_cast<html::Text *>(n);
                         std::string t = txt->data;
-                        if (t.length() > 80) t = t.substr(0, 80) + "...";
+                        if (t.length() > 80)
+                            t = t.substr(0, 80) + "...";
                         dom_text += indent + t + "\n";
                     }
                 });
-                text_renderer_->render_text(renderer_.get(), dom_text, 10, content_y,
-                                            render::Color{0.6f, 0.8f, 0.6f, 1.0f}, 11);
+                text_renderer_->render_text(
+                    renderer_.get(), dom_text, 10, content_y, render::Color{0.6f, 0.8f, 0.6f, 1.0f}, 11);
             } else {
-                text_renderer_->render_text(renderer_.get(), "No page loaded", 10, content_y,
-                                            render::Color{0.7f,0.7f,0.7f,1.0f}, 12);
+                text_renderer_->render_text(
+                    renderer_.get(), "No page loaded", 10, content_y, render::Color{0.7f, 0.7f, 0.7f, 1.0f}, 12);
             }
         } else if (dt.active_tab == DevToolsState::NETWORK) {
             // Network entries
             f32 ny = content_y;
-            for (auto& entry : dt.network_entries) {
-                if (ny > devtools_y + devtools_h - 20) break;
+            for (auto &entry : dt.network_entries) {
+                if (ny > devtools_y + devtools_h - 20)
+                    break;
                 char net_text[256];
-                snprintf(net_text, sizeof(net_text), "%s %s [%u] %ums %lluB",
-                         entry.method.c_str(), entry.url.c_str(), entry.status,
-                         (unsigned)entry.duration_ms, (unsigned long long)entry.size);
-                text_renderer_->render_text(renderer_.get(), net_text, 10, ny,
-                                            render::Color{1,1,1,1}, 11);
+                snprintf(net_text,
+                         sizeof(net_text),
+                         "%s %s [%u] %ums %lluB",
+                         entry.method.c_str(),
+                         entry.url.c_str(),
+                         entry.status,
+                         (unsigned)entry.duration_ms,
+                         (unsigned long long)entry.size);
+                text_renderer_->render_text(renderer_.get(), net_text, 10, ny, render::Color{1, 1, 1, 1}, 11);
                 ny += 16;
             }
         }

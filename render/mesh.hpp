@@ -47,6 +47,9 @@ public:
     void add_quad(f32 x, f32 y, f32 w, f32 h, f32 r, f32 g, f32 b, f32 a);
     void add_quad_tex(f32 x, f32 y, f32 w, f32 h, f32 r, f32 g, f32 b, f32 a,
                       f32 u0, f32 v0, f32 u1, f32 v1);
+    void add_quad_tex_skewed(f32 x, f32 y, f32 w, f32 h, f32 skew,
+                             f32 r, f32 g, f32 b, f32 a,
+                             f32 u0, f32 v0, f32 u1, f32 v1);
     void add_line(f32 x1, f32 y1, f32 x2, f32 y2, f32 r, f32 g, f32 b, f32 a, f32 width);
     void clear();
     u32 vertex_count() const { return (u32)vertices_.size(); }

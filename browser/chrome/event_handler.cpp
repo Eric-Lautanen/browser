@@ -284,20 +284,21 @@ namespace browser {
                                         auto *found_el = static_cast<html::Element *>(found);
                                         // Find this element in the styles map and compute its Y position
                                         // Simple approach: search layout tree for matching element
-                                        std::function<f32(html::Element *, css::LayoutNode *, f32)> find_y =
-                                            [&](html::Element *target, css::LayoutNode *node, f32 acc_y) -> f32 {
+                                        struct FindResult { bool found; f32 y; };
+                                        std::function<FindResult(html::Element *, css::LayoutNode *, f32)> find_y =
+                                            [&](html::Element *target, css::LayoutNode *node, f32 acc_y) -> FindResult {
                                             if (node->node() == target)
-                                                return acc_y + node->content.y;
+                                                return {true, acc_y + node->content.y};
                                             for (auto &child : node->children) {
-                                                f32 found_y = find_y(target, child.get(), acc_y + node->content.y);
-                                                if (found_y >= 0)
-                                                    return found_y;
+                                                auto r = find_y(target, child.get(), acc_y + node->content.y);
+                                                if (r.found)
+                                                    return r;
                                             }
-                                            return -1;
+                                            return {false, 0};
                                         };
-                                        f32 target_y = find_y(found_el, current_page_->layout.get(), 0);
-                                        if (target_y >= 0)
-                                            chrome_.scroll_y = static_cast<i32>(target_y);
+                                        auto fr = find_y(found_el, current_page_->layout.get(), 0);
+                                        if (fr.found)
+                                            chrome_.scroll_y = static_cast<i32>(fr.y);
                                     }
                                 }
                             } else {
@@ -396,6 +397,8 @@ namespace browser {
         if (is_in_rect(mx, my, r.download)) {
             chrome_.show_downloads = !chrome_.show_downloads;
             chrome_.show_bookmarks_dropdown = false;
+            chrome_.hovered_bookmark_item = -1;
+            chrome_.bookmark_scroll_offset = 0.0f;
             return;
         }
 
@@ -406,12 +409,16 @@ namespace browser {
 
         if (is_in_rect(mx, my, r.bookmark_chevron)) {
             chrome_.show_bookmarks_dropdown = !chrome_.show_bookmarks_dropdown;
+            chrome_.hovered_bookmark_item = -1;
+            chrome_.bookmark_scroll_offset = 0.0f;
             return;
         }
 
         if (is_in_rect(mx, my, r.menu)) {
             chrome_.show_menu = !chrome_.show_menu;
             chrome_.show_bookmarks_dropdown = false;
+            chrome_.hovered_bookmark_item = -1;
+            chrome_.bookmark_scroll_offset = 0.0f;
             return;
         }
 
@@ -430,6 +437,8 @@ namespace browser {
         }
 
         chrome_.show_bookmarks_dropdown = false;
+        chrome_.hovered_bookmark_item = -1;
+        chrome_.bookmark_scroll_offset = 0.0f;
         chrome_.address_focused = false;
     }
 
@@ -489,17 +498,19 @@ namespace browser {
             }
             return;
         }
-        // Ctrl+Shift+X: copy all page text to clipboard
+        // Ctrl+Shift+X: copy all visible page text to clipboard (from layout tree, not raw DOM)
         if (e.key == platform::KeyCode::X && chrome_.ctrl_down && chrome_.shift_down) {
-            if (current_page_.has_value() && current_page_->dom) {
+            if (current_page_.has_value() && current_page_->layout) {
                 std::string all_text;
-                html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *n) {
-                    if (n->type == html::NodeType::TEXT) {
-                        auto *tx = static_cast<html::Text *>(n);
-                        if (!tx->data.empty())
-                            all_text += tx->data + "\n";
+                auto collect_text = [&](const css::LayoutNode *node, auto &self) -> void {
+                    if (node->is_text() && !node->text().empty()) {
+                        all_text += node->text() + "\n";
                     }
-                });
+                    for (const auto &child : node->children) {
+                        self(child.get(), self);
+                    }
+                };
+                collect_text(current_page_->layout.get(), collect_text);
                 if (!all_text.empty()) {
                     HGLOBAL hglb = GlobalAlloc(GMEM_MOVEABLE, all_text.size() + 1);
                     if (hglb) {

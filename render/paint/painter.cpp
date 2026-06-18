@@ -23,13 +23,15 @@ namespace browser::render {
                               const css::CSSGradient &gradient = {},
                               f32 radius = 0,
                               const css::Mat3x3 &transform = {},
-                              f32 opacity = 1.0f) {
+                              f32 opacity = 1.0f,
+                              u8 font_flags = 0) {
             PaintCommand cmd;
             cmd.type = type;
             cmd.rect = rect;
             cmd.color = color;
             cmd.text = text;
             cmd.font_size = font_size;
+            cmd.font_flags = font_flags;
             cmd.image_id = image_id;
             cmd.gradient = gradient;
             cmd.radius = radius;
@@ -102,7 +104,7 @@ namespace browser::render {
         if (!node)
             return;
 
-        auto *vis = node->style().get("visibility");
+    auto *vis = node->style().get("visibility");
         if (vis && vis->type == css::CSSValue::Type::KEYWORD && vis->keyword == "hidden") {
             for (auto &child : node->children) {
                 if (skip_layer_children && paint_needs_own_layer(child.get()))
@@ -410,6 +412,20 @@ namespace browser::render {
         f32 font_size = resolve_font_size(node->style());
         f32 descender_pad = std::ceil(font_size * 0.25f);
 
+        u8 font_flags = 0;
+        auto *fw = node->style().get("font-weight");
+        if (fw && fw->type == css::CSSValue::Type::KEYWORD) {
+            if (fw->keyword == "bold" || fw->keyword == "bolder")
+                font_flags |= 1;
+        }
+        if (fw && fw->type == css::CSSValue::Type::NUMBER) {
+            if (fw->number >= 700)
+                font_flags |= 1;
+        }
+        auto *fs = node->style().get("font-style");
+        if (fs && fs->type == css::CSSValue::Type::KEYWORD && fs->keyword == "italic")
+            font_flags |= 2;
+
         // Check for text-decoration
         bool has_underline = false;
         auto *dec_val = node->style().get("text-decoration");
@@ -420,7 +436,7 @@ namespace browser::render {
         if (!node->text_lines.empty()) {
             for (auto &li : node->text_lines) {
                 css::Rect line_rect = {ox, oy + li.y, node->content.width, font_size + descender_pad};
-                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, line_rect, text_color, li.text, font_size));
+                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, line_rect, text_color, li.text, font_size, 0, {}, 0, {}, 1.0f, font_flags));
                 if (has_underline) {
                     f32 underline_y = oy + li.y + font_size + 1.0f;
                     f32 thickness = std::max(1.0f, font_size / 14.0f);
@@ -435,7 +451,7 @@ namespace browser::render {
                                {ox, oy, node->content.width, node->content.height + descender_pad},
                                text_color,
                                node->text(),
-                               font_size));
+                               font_size, 0, {}, 0, {}, 1.0f, font_flags));
             if (has_underline) {
                 f32 underline_y = oy + font_size + 1.0f;
                 f32 thickness = std::max(1.0f, font_size / 14.0f);

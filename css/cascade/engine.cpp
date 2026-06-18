@@ -22,14 +22,14 @@ tfoot { display: table-footer-group; }
 th, td { display: table-cell; }
 caption { display: table-caption; }
 pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, optgroup, option, select, button, textarea, input { display: block; }
-style, script, noscript { display: none; }
+head, link, meta, title, style, script, noscript { display: none; }
 b, i, u, s, span, a, strong, em, code, mark, sub, sup, small, label, abbr, cite, dfn, kbd, q, samp, tt, var { display: inline; }
-h1 { font-size: 2em; font-weight: bold; }
-h2 { font-size: 1.5em; font-weight: bold; }
-h3 { font-size: 1.17em; font-weight: bold; }
-h4 { font-size: 1em; font-weight: bold; }
-h5 { font-size: 0.83em; font-weight: bold; }
-h6 { font-size: 0.67em; font-weight: bold; }
+h1 { font-size: 2em; font-weight: bold; margin-top: 0.67em; margin-bottom: 0.67em; }
+h2 { font-size: 1.5em; font-weight: bold; margin-top: 0.83em; margin-bottom: 0.83em; }
+h3 { font-size: 1.17em; font-weight: bold; margin-top: 1em; margin-bottom: 1em; }
+h4 { font-size: 1em; font-weight: bold; margin-top: 1.33em; margin-bottom: 1.33em; }
+h5 { font-size: 0.83em; font-weight: bold; margin-top: 1.67em; margin-bottom: 1.67em; }
+h6 { font-size: 0.67em; font-weight: bold; margin-top: 2.33em; margin-bottom: 2.33em; }
 p { margin-top: 1em; margin-bottom: 1em; }
 ul, ol { padding-left: 40px; }
 a { color: blue; }
@@ -270,15 +270,7 @@ code { font-family: monospace; }
             auto *el = static_cast<html::Element *>(node);
 
             ComputedStyle style;
-            // Set parent pointer before var() resolution (depth-first ensures parent
-            // style is already in the map when processing children)
-            if (el->parent && el->parent->type == html::NodeType::ELEMENT) {
-                auto *parent_el = static_cast<html::Element *>(el->parent);
-                auto pit = styles.find(parent_el);
-                if (pit != styles.end()) {
-                    style.parent = &pit->second;
-                }
-            }
+            style._element = el;
 
             auto &decls = matched[el];
             for (const auto &md : decls) {
@@ -615,10 +607,14 @@ code { font-family: monospace; }
                                     char buf[64];
                                     snprintf(buf, sizeof(buf), "%.0f", val.length.value);
                                     val_str = buf;
-                                    if (val.length.unit == Length::Unit::PX) val_str += "px";
-                                    else if (val.length.unit == Length::Unit::EM) val_str += "em";
-                                    else if (val.length.unit == Length::Unit::REM) val_str += "rem";
-                                    else if (val.length.unit == Length::Unit::PERCENT) val_str += "%";
+                                    if (val.length.unit == Length::Unit::PX)
+                                        val_str += "px";
+                                    else if (val.length.unit == Length::Unit::EM)
+                                        val_str += "em";
+                                    else if (val.length.unit == Length::Unit::REM)
+                                        val_str += "rem";
+                                    else if (val.length.unit == Length::Unit::PERCENT)
+                                        val_str += "%";
                                 } else if (val.type == CSSValue::Type::NUMBER) {
                                     val_str = std::to_string(val.number);
                                 }
@@ -637,10 +633,14 @@ code { font-family: monospace; }
                                     char buf[64];
                                     snprintf(buf, sizeof(buf), "%.0f", val.length.value);
                                     val_str = buf;
-                                    if (val.length.unit == Length::Unit::PX) val_str += "px";
-                                    else if (val.length.unit == Length::Unit::EM) val_str += "em";
-                                    else if (val.length.unit == Length::Unit::REM) val_str += "rem";
-                                    else if (val.length.unit == Length::Unit::PERCENT) val_str += "%";
+                                    if (val.length.unit == Length::Unit::PX)
+                                        val_str += "px";
+                                    else if (val.length.unit == Length::Unit::EM)
+                                        val_str += "em";
+                                    else if (val.length.unit == Length::Unit::REM)
+                                        val_str += "rem";
+                                    else if (val.length.unit == Length::Unit::PERCENT)
+                                        val_str += "%";
                                 }
                                 if (!val_str.empty())
                                     expand_four_sides("padding", val_str);
@@ -659,7 +659,20 @@ code { font-family: monospace; }
                         }
 
                         if (prop == "border-width" && val.type == CSSValue::Type::STRING) {
-                            expand_four_sides("border", val.string_value + "-width");
+                            // Expand "border-width: 1px 2px" → border-top-width, border-right-width, etc.
+                            std::string tmp = val.string_value;
+                            val.string_value = tmp;
+                            expand_four_sides("borderwidth", val.string_value);
+                            // Rename borderwidth-top → border-top-width etc.
+                            for (auto &side : {"-top", "-right", "-bottom", "-left"}) {
+                                std::string old_key = "borderwidth" + std::string(side);
+                                std::string new_key = "border" + std::string(side) + "-width";
+                                auto it = style.properties.find(old_key);
+                                if (it != style.properties.end()) {
+                                    style.properties[new_key] = it->second;
+                                    style.properties.erase(it);
+                                }
+                            }
                         }
 
                         if (prop == "flex" && val.type == CSSValue::Type::STRING) {
@@ -826,6 +839,17 @@ code { font-family: monospace; }
 
             styles[el] = std::move(style);
         });
+
+        // Second pass: set parent pointers now that the map is stable (won't rehash)
+        for (auto &[el, style] : styles) {
+            if (el->parent && el->parent->type == html::NodeType::ELEMENT) {
+                auto *parent_el = static_cast<const html::Element *>(el->parent);
+                auto pit = styles.find(const_cast<html::Element *>(parent_el));
+                if (pit != styles.end()) {
+                    style.parent = &pit->second;
+                }
+            }
+        }
 
         co_return CascadeResult{std::move(styles)};
     }

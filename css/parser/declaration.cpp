@@ -186,8 +186,10 @@ namespace browser::css {
             args.push_back(read_num());
             skip_punct();
             f32 sy = read_num();
-            if (current_.type != CssTokenType::CLOSE_PAREN && sy != 0)
+            if (current_.type != CssTokenType::CLOSE_PAREN)
                 args.push_back(sy);
+            // scale(2) with no second arg → scale(2, 2)
+            if (args.size() == 1) args.push_back(args[0]);
         } else if (func_name == "scalex") {
             tf.type = TransformFunc::Type::SCALE_X;
             args.push_back(read_num());
@@ -281,7 +283,8 @@ namespace browser::css {
                     u8 a = 255;
                     if (fn == "rgba") {
                         skip_ws_punct();
-                        a = (u8)parse_comma_num();
+                        f32 af = parse_comma_num();
+                        a = static_cast<u8>(std::max(0.0f, std::min(255.0f, af * 255.0f)));
                     }
                     stop.color = {r, g, b, a};
                 }
@@ -355,6 +358,7 @@ namespace browser::css {
                     else if (dir == "left")
                         grad.angle = 270;
                     advance();
+                    has_direction = true;
                     skip_ws_punct();
                     if (current_.type == CssTokenType::IDENT) {
                         std::string dir2 = current_.text;

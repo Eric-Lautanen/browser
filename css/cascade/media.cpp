@@ -114,30 +114,60 @@ namespace browser::css {
             return true;
         };
 
-        bool result = true;
+        // Split on commas first (each comma-separated query is an OR)
+        std::vector<std::string> or_parts;
         size_t pos = 0;
         while (pos < lower.size()) {
-            while (pos < lower.size() && (lower[pos] == ' ' || lower[pos] == '(' || lower[pos] == ')')) pos++;
-            if (pos >= lower.size())
+            size_t comma = lower.find(',', pos);
+            if (comma == std::string::npos) {
+                or_parts.push_back(lower.substr(pos));
                 break;
-            size_t and_pos = lower.find(" and ", pos);
-            std::string cond;
-            if (and_pos == std::string::npos) {
-                cond = lower.substr(pos);
-                pos = lower.size();
-            } else {
-                cond = lower.substr(pos, and_pos - pos);
-                pos = and_pos + 5;
             }
-            while (!cond.empty() && (cond.back() == ' ' || cond.back() == ')')) cond.pop_back();
-            while (!cond.empty() && (cond[0] == ' ' || cond[0] == '(')) cond = cond.substr(1);
+            or_parts.push_back(lower.substr(pos, comma - pos));
+            pos = comma + 1;
+        }
 
-            if (!cond.empty() && cond != "and") {
-                result = result && eval_single(cond);
+        for (const auto &part : or_parts) {
+            bool part_result = true;
+            size_t p = 0;
+            bool first_cond = true;
+            while (p < part.size()) {
+                while (p < part.size() && (part[p] == ' ' || part[p] == '(' || part[p] == ')')) p++;
+                if (p >= part.size())
+                    break;
+                // Handle "or" between conditions
+                if (part.substr(p, 3) == "or ") {
+                    p += 3;
+                    if (first_cond) { part_result = false; first_cond = true; }
+                    continue;
+                }
+                size_t and_pos = part.find(" and ", p);
+                std::string cond;
+                if (and_pos == std::string::npos) {
+                    cond = part.substr(p);
+                    p = part.size();
+                } else {
+                    cond = part.substr(p, and_pos - p);
+                    p = and_pos + 5;
+                }
+                while (!cond.empty() && (cond.back() == ' ' || cond.back() == ')')) cond.pop_back();
+                while (!cond.empty() && (cond[0] == ' ' || cond[0] == '(')) cond = cond.substr(1);
+
+                if (!cond.empty() && cond != "and" && cond != "or") {
+                    if (first_cond) {
+                        part_result = eval_single(cond);
+                        first_cond = false;
+                    } else {
+                        part_result = part_result && eval_single(cond);
+                    }
+                }
+            }
+            if (part_result) {
+                return negate ? false : true;
             }
         }
 
-        return negate ? !result : result;
+        return negate ? true : false;
     }
 
 }  // namespace browser::css
