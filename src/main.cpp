@@ -824,18 +824,6 @@ static FontSetup setup_font() {
     FontSetup fs;
     fs.fm = std::make_unique<browser::render::FontManager>();
     fs.tr = std::make_unique<browser::render::TextRenderer>();
-    const char *paths[] = {"C:\\Windows\\Fonts\\arial.ttf",
-                           "C:\\Windows\\Fonts\\consola.ttf",
-                           "C:\\Windows\\Fonts\\cour.ttf",
-                           "C:\\Windows\\Fonts\\lucon.ttf"};
-    for (auto p : paths) {
-        auto r = fs.fm->load_from_file(p);
-        if (r.is_ok()) {
-            fs.tr->set_font_face(r.unwrap(), fs.fm.get());
-            fs.ok = true;
-            return fs;
-        }
-    }
     auto r = fs.fm->load_default_font();
     if (r.is_ok()) {
         fs.tr->set_font_face(r.unwrap(), fs.fm.get());

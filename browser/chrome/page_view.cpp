@@ -2,7 +2,7 @@
 #include "../../html/traversal.hpp"
 #include "../../render/paint_executor.hpp"
 #include <functional>
-#include "../../render/rasterizer.hpp"
+
 #include "../settings.hpp"
 #include "window.hpp"
 

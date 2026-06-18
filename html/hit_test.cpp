@@ -217,6 +217,7 @@ namespace browser::html {
 
         // Last element after sorting is topmost
         const auto &winner = candidates.back();
+        result.layout_node = winner.node;
         auto *n = winner.node->node();
         if (n && n->type == NodeType::ELEMENT) {
             result.element = static_cast<Element *>(n);

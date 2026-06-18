@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 namespace browser::render {
@@ -15,20 +14,21 @@ namespace browser::render {
         i32 bearing_x, bearing_y;
         i32 advance_x;
         bool has_color = false;
+        bool is_sdf = false;
         std::vector<u8> bitmap;
     };
 
     class FontFace {
     public:
-        FontFace();
-        ~FontFace();
+        FontFace() = default;
+        ~FontFace() = default;
         FontFace(const FontFace &) = delete;
         FontFace(FontFace &&) noexcept = default;
         FontFace &operator=(FontFace &&) noexcept = default;
 
         Result<void> load_from_memory(const u8 *data, u32 size);
-        Result<void> load_from_ttc_memory(const u8 *data, u32 size, u32 font_index);
         Result<GlyphBitmap> rasterize_glyph(u32 codepoint, u32 pixel_size);
+        Result<GlyphBitmap> rasterize_glyph_by_gid(u16 gid, u32 pixel_size);
 
         using GlyphMetrics = internal::GlyphMetrics;
         Result<GlyphMetrics> get_metrics(u32 codepoint, u32 pixel_size);
@@ -41,33 +41,9 @@ namespace browser::render {
         u32 glyph_index(u32 codepoint) const;
         i32 get_kerning(u16 left_gid, u16 right_gid) const;
         Result<GlyphMetrics> get_metrics_by_gid(u16 gid, u32 pixel_size) const;
-        const std::string &path() const { return path_; }
-        void set_path(const std::string &p) { path_ = p; }
-        bool has_color_bitmap(u32 codepoint, u32 pixel_size) const;
-        Result<GlyphBitmap> rasterize_color_bitmap(u32 codepoint) const;
-        Result<GlyphBitmap> rasterize_glyph_by_gid(u16 gid, u32 pixel_size);
 
         const u8 *font_data_ptr() const { return font_data_.data(); }
         u32 font_data_size() const { return (u32)font_data_.size(); }
-        u32 gsub_off() const { return gsub_off_; }
-        u32 gsub_len() const { return gsub_len_; }
-        u32 gpos_off() const { return gpos_off_; }
-        u32 gpos_len() const { return gpos_len_; }
-        u32 gdef_off() const { return gdef_off_; }
-        u32 gdef_len() const { return gdef_len_; }
-
-        // Variable font support
-        void set_variation_coord(u32 axis_tag, f32 value);
-        f32 get_variation_coord(u32 axis_tag) const;
-        bool has_variations() const { return !variation_coords_.empty(); }
-        u32 fvar_axis_count() const { return fvar_axis_count_; }
-        struct AxisRecord {
-            u32 tag;
-            f32 min, def, max;
-        };
-        const AxisRecord *get_axis(u32 i) const {
-            return i < fvar_axes_.size() ? &fvar_axes_[i] : nullptr;
-        }
 
     private:
         struct TableRecord {
@@ -76,14 +52,8 @@ namespace browser::render {
             u32 offset;
             u32 length;
         };
-        struct HeadTable {
-            f32 units_per_em;
-            i16 x_min, y_min, x_max, y_max;
-            u16 glyph_data_format;
-        };
 
         std::vector<u8> font_data_;
-        std::string path_;
         u32 font_id_ = 0;
         u32 cmap_off_ = 0;
         u32 cmap_len_ = 0;
@@ -101,22 +71,6 @@ namespace browser::render {
         u32 hhea_len_ = 0;
         u32 kern_off_ = 0;
         u32 kern_len_ = 0;
-        u32 cbdt_off_ = 0;
-        u32 cbdt_len_ = 0;
-        u32 cblc_off_ = 0;
-        u32 cblc_len_ = 0;
-        u32 gsub_off_ = 0;
-        u32 gsub_len_ = 0;
-        u32 gpos_off_ = 0;
-        u32 gpos_len_ = 0;
-        u32 gdef_off_ = 0;
-        u32 gdef_len_ = 0;
-        u32 fvar_off_ = 0;
-        u32 fvar_len_ = 0;
-        u32 gvar_off_ = 0;
-        u32 gvar_len_ = 0;
-        u32 hvar_off_ = 0;
-        u32 hvar_len_ = 0;
 
         f32 units_per_em_ = 0;
         i16 hhea_ascender_ = 0;
@@ -126,69 +80,32 @@ namespace browser::render {
         u16 num_h_metrics_ = 0;
         bool long_loca_ = false;
 
-        // Variable font state
-        u32 fvar_axis_count_ = 0;
-        std::vector<AxisRecord> fvar_axes_;
-        std::unordered_map<u32, f32> variation_coords_;
-
         static u16 read_u16_be(const u8 *data, u32 offset, u32 data_len);
         static u32 read_u32_be(const u8 *data, u32 offset, u32 data_len);
         static i16 read_i16_be(const u8 *data, u32 offset, u32 data_len);
 
         static Result<internal::GlyphOutline> parse_simple_glyph(const u8 *gdata,
-                                                                 u32 gsize,
-                                                                 i16 num_contours,
-                                                                 int bezier_steps = 8);
+                                                                  u32 gsize,
+                                                                  i16 num_contours,
+                                                                  int bezier_steps = 8);
         Result<internal::GlyphOutline> read_outline(u16 glyph_index, int bezier_steps = 8) const;
 
         Result<void> load_tables_from_offset(const u8 *data, u32 total_size, u32 font_offset);
-
-        static std::vector<u8> rasterize_scanline(
-            const internal::GlyphOutline &outline, u32 pw, u32 ph, i32 offset_x, i32 offset_y);
-
-        void apply_gvar_deltas(u16 gid, std::vector<f32> &points, u32 num_contours) const;
     };
 
     class FontManager {
     public:
-        FontManager();
+        FontManager() = default;
         Result<FontFace *> load_default_font();
-        Result<FontFace *> load_from_file(const std::string &path);
         FontFace *load_from_memory(const u8 *data, u32 size);
-        GlyphBitmap *get_or_rasterize(FontFace *face, u32 codepoint, u32 pixel_size);
-        FontFace *find_font_for_codepoint(FontFace *preferred, u32 codepoint) const;
-        FontFace *resolve_family(const std::string &family);
-        FontFace *find_font_by_name(const std::string &name) const;
-        void load_fallback_fonts();
         void add_font(FontFace *face);
-        void register_web_font(const std::string &family, FontFace *face);
         const std::vector<FontFace *> &all_fonts() const { return all_fonts_; }
+        FontFace *default_font() const { return default_font_; }
 
     private:
         FontFace *default_font_ = nullptr;
         std::vector<std::unique_ptr<FontFace>> fonts_;
         std::vector<FontFace *> all_fonts_;
-        struct FallbackEntry {
-            FontFace *face;
-            u32 range_start;
-            u32 range_end;
-        };
-        std::vector<FallbackEntry> fallback_chain_;
-        struct CacheKey {
-            u32 face_id;
-            u32 codepoint;
-            u32 pixel_size;
-            bool operator==(const CacheKey &o) const {
-                return face_id == o.face_id && codepoint == o.codepoint && pixel_size == o.pixel_size;
-            }
-        };
-        struct CacheHash {
-            u64 operator()(const CacheKey &k) const {
-                return (static_cast<u64>(k.face_id) << 48) ^ (static_cast<u64>(k.codepoint) << 16) ^ k.pixel_size;
-            }
-        };
-        std::unordered_map<CacheKey, GlyphBitmap, CacheHash> cache_;
-        std::unordered_map<std::string, FontFace *> web_fonts_;
     };
 
 }  // namespace browser::render

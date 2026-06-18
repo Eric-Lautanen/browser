@@ -31,7 +31,6 @@ namespace browser::render {
         css::Rect rect;
         Color color;
         std::string text;
-        std::string font_family;
         f32 font_size = 16;
         u8 font_flags = 0;  // bit 0=bold, bit 1=italic
         ImageId image_id = 0;

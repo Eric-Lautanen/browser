@@ -78,30 +78,8 @@ Result<void> BrowserWindow::initialize() {
 
     text_renderer_ = std::make_unique<render::TextRenderer>();
     fm_ = std::make_unique<render::FontManager>();
-
-    // Try Windows TTF fonts first (proven to work)
-    bool font_ok = false;
-    const char* font_paths[] = {
-        "C:\\Windows\\Fonts\\arial.ttf",
-        "C:\\Windows\\Fonts\\consola.ttf",
-        "C:\\Windows\\Fonts\\cour.ttf",
-        "C:\\Windows\\Fonts\\lucon.ttf"
-    };
-    for (auto p : font_paths) {
-        auto r = fm_->load_from_file(p);
-        if (r.is_ok()) {
-            text_renderer_->initialize(r.unwrap(), fm_.get());
-            font_ok = true;
-            { static FILE* f = nullptr; if (!f) { f = fopen("font_debug.txt", "w"); } if (f) { std::string msg = "loaded: " + std::string(p) + "\n"; fprintf(f, "%s", msg.c_str()); fflush(f); } }
-            break;
-        } else {
-            { static FILE* f = nullptr; if (!f) { f = fopen("font_debug.txt", "w"); } if (f) { std::string msg = "FAILED: " + std::string(p) + " - " + r.unwrap_err() + "\n"; fprintf(f, "%s", msg.c_str()); fflush(f); } }
-        }
-    }
-    if (!font_ok) {
-        auto font_r = fm_->load_default_font();
-        if (font_r.is_ok()) {
-            text_renderer_->initialize(font_r.unwrap(), fm_.get());
+    text_renderer_ = std::make_unique<render::TextRenderer>();
+    text_renderer_->initialize(fm_.get());
             font_ok = true;
             { static FILE* f = fopen("font_debug.txt", "a"); if (f) { fprintf(f, "using embedded default font\n"); fflush(f); fclose(f); } }
         } else {

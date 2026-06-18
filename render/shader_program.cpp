@@ -102,6 +102,7 @@ Result<void> ShaderProgram::compile(const std::string& vertex_src, const std::st
     uniforms_.texture = pgl::glGetUniformLocation(program_id_, "uTexture");
     uniforms_.use_texture = pgl::glGetUniformLocation(program_id_, "uUseTexture");
     uniforms_.texture_is_rgba = pgl::glGetUniformLocation(program_id_, "uTextureIsRGBA");
+    uniforms_.use_sdf = pgl::glGetUniformLocation(program_id_, "uUseSDF");
 
     return {};
 }

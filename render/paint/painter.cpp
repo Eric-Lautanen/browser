@@ -451,14 +451,6 @@ namespace browser::render {
                 descender_pad = metrics_pad;
         }
 
-        std::string font_family;
-        auto *ff_val = node->style().get("font-family");
-        if (ff_val && ff_val->type == css::CSSValue::Type::STRING) {
-            font_family = ff_val->string_value;
-        } else if (ff_val && ff_val->type == css::CSSValue::Type::KEYWORD) {
-            font_family = ff_val->keyword;
-        }
-
         u8 font_flags = 0;
         auto *fw = node->style().get("font-weight");
         if (fw && fw->type == css::CSSValue::Type::KEYWORD) {
@@ -494,7 +486,6 @@ namespace browser::render {
                                    {},
                                    1.0f,
                                    font_flags);
-                tc.font_family = font_family;
                 list.push(tc);
                 if (has_underline) {
                     f32 underline_y = oy + li.y + font_size + 1.0f;
@@ -516,7 +507,6 @@ namespace browser::render {
                                {},
                                1.0f,
                                font_flags);
-            tc.font_family = font_family;
             list.push(tc);
             if (has_underline) {
                 f32 underline_y = oy + font_size + 1.0f;

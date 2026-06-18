@@ -20,10 +20,12 @@ in vec2 vTexCoord;
 uniform sampler2D uTexture;
 uniform int uUseTexture;
 uniform int uTextureIsRGBA;
+uniform int uUseSDF;
 out vec4 FragColor;
 void main() {
     if (uUseTexture == 0) { FragColor = vColor; }
     else if (uTextureIsRGBA == 1) { vec4 t = texture(uTexture, vTexCoord); FragColor = vec4(vColor.rgb * t.rgb, vColor.a * t.a); }
+    else if (uUseSDF == 1) { float d = texture(uTexture, vTexCoord).r; float w = min(fwidth(d), 0.2); float a = smoothstep(0.5 - w, 0.5 + w, d); FragColor = vec4(vColor.rgb, vColor.a * a); }
     else { float a = texture(uTexture, vTexCoord).r; FragColor = vec4(vColor.rgb, vColor.a * a); }
 }
 )";

@@ -110,15 +110,8 @@ TEST(gpu_text_rendering, {
     ASSERT(renderer->initialize(320, 240).is_ok());
     auto fm = std::make_unique<render::FontManager>();
     auto tr = std::make_unique<render::TextRenderer>();
-    bool font_ok = false;
-    auto try_load = [&](const char* p) {
-        auto r = fm->load_from_file(p);
-        if (r.is_ok()) { tr->initialize(r.unwrap()); font_ok = true; }
-    };
-    try_load("C:\\Windows\\Fonts\\consola.ttf");
-    if (!font_ok) try_load("C:\\Windows\\Fonts\\lucon.ttf");
-    if (!font_ok) { auto r = tr->initialize(fm.get()); font_ok = r.is_ok(); }
-    if (font_ok) {
+    auto r = tr->initialize(fm.get());
+    if (r.is_ok()) {
         renderer->begin_frame();
         tr->render_text(renderer.get(), "GPU Test", 10, 50, render::Color::WHITE, 32);
         renderer->end_frame();

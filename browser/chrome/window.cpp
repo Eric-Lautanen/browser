@@ -88,37 +88,10 @@ namespace browser {
 
         text_renderer_ = std::make_unique<render::TextRenderer>();
         fm_ = std::make_unique<render::FontManager>();
-
-        render::FontFace *primary_face = nullptr;
-        struct FontEntry {
-            const char *path;
-        };
-        FontEntry font_paths[] = {{"C:\\Windows\\Fonts\\arial.ttf"},
-                                  {"C:\\Windows\\Fonts\\consola.ttf"},
-                                  {"C:\\Windows\\Fonts\\cour.ttf"},
-                                  {"C:\\Windows\\Fonts\\lucon.ttf"}};
-        for (auto &fe : font_paths) {
-            auto r = fm_->load_from_file(fe.path);
-            if (r.is_ok()) {
-                if (!primary_face)
-                    primary_face = r.unwrap();
-            }
-        }
-        if (primary_face) {
-            text_renderer_->initialize(primary_face, fm_.get());
-        } else {
-            auto font_r = fm_->load_default_font();
-            if (font_r.is_ok()) {
-                text_renderer_->initialize(font_r.unwrap(), fm_.get());
-                primary_face = font_r.unwrap();
-            } else {
-                text_renderer_->initialize(fm_.get());
-            }
-        }
-        fm_->load_fallback_fonts();
+        text_renderer_->initialize(fm_.get());
 
         page_loader_ = std::make_unique<PageLoader>(
-            telemetry_.get(), settings_.get(), tracker_.get(), fm_.get(), text_renderer_.get());
+            telemetry_.get(), settings_.get(), tracker_.get(), text_renderer_.get());
         render::setup_canvas_bindings();
         page_loader_->set_viewport_size(viewport_width_, viewport_height_);
         page_loader_->set_download_callback(
@@ -129,11 +102,6 @@ namespace browser {
                 }
                 return false;
             });
-
-        compositor_ = std::make_unique<render::Compositor>();
-        compositor_->set_viewport(static_cast<i32>(viewport_width_), static_cast<i32>(viewport_height_));
-        compositor_->start();
-        composited_texture_ = std::make_unique<render::Texture2D>();
 
         bookmarks_ = std::make_unique<BookmarkManager>();
         auto rb = bookmarks_->load_from_file(BookmarkManager::default_path());
@@ -341,18 +309,15 @@ namespace browser {
         QueryPerformanceCounter(&frame_end);
         PerfCounters::instance().record_frame(elapsed_qpc_ms(frame_start, frame_end), 0, 0, 0, 0, 0);
 
-        // Event loop: wait on compositor frame and window messages
-        HANDLE wait_handles[] = {compositor_->frame_ready_event()};
-
         while (!window_->should_close()) {
             QueryPerformanceCounter(&frame_start);
 
-            // 1. Wait for any signal (messages, compositor frame, timers)
-            DWORD wait = MsgWaitForMultipleObjectsEx(
-                ARRAYSIZE(wait_handles), wait_handles, 16, QS_ALLINPUT, MWMO_INPUTAVAILABLE);
-            (void)wait;
+            // Wait for messages
+            if (MsgWaitForMultipleObjectsEx(0, nullptr, 16, QS_ALLINPUT, MWMO_INPUTAVAILABLE) == WAIT_TIMEOUT) {
+                // Timeout — still render next frame
+            }
 
-            // 2. Process pending Windows messages (non-blocking drain)
+            // Process pending Windows messages
             QueryPerformanceCounter(&events_start);
             MSG msg;
             while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
@@ -364,8 +329,6 @@ namespace browser {
 
             if (window_->should_close())
                 break;
-
-            // 3-5. Stubbed: timers, microtasks, rAF
 
             // Cursor blinking for form elements
             {
@@ -408,7 +371,6 @@ namespace browser {
 
             render_find_bar();
 
-            // render_page() handles both compositor and old paths internally
             render_page();
             if (chrome_.show_menu) {
                 render_menu();
@@ -513,17 +475,6 @@ namespace browser {
             page.display_list = std::move(paint_r.unwrap());
         }
 
-        // Re-build layer tree for compositor
-        page.layer_tree = render::LayerTreeBuilder::build(page.layout.get());
-        if (page.layer_tree) {
-            for (auto *layer : page.layer_tree->all_layers) {
-                if (layer->layout_node) {
-                    layer->display_list = painter.build_display_list(layer->layout_node, 0, 0);
-                }
-            }
-        }
-
-        // Signal the main loop to redraw
         renderer_->set_needs_redraw();
         InvalidateRect(static_cast<HWND>(window_->get_native_handle()), nullptr, FALSE);
     }

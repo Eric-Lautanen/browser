@@ -32,13 +32,11 @@ namespace browser {
     PageLoader::PageLoader(Telemetry *telemetry,
                            SettingsManager *settings,
                            net::TrackerBlocker *tracker,
-                           render::FontManager *fm,
                            render::TextRenderer *text_renderer)
         : resource_loader_(&http_),
           telemetry_(telemetry),
           settings_(settings),
           tracker_(tracker),
-          fm_(fm),
           text_renderer_(text_renderer),
           loaded_channel_(1) {}
 
@@ -400,8 +398,6 @@ namespace browser {
                 prio = html::ResourcePriority::CSS;
             else if (preq.as == "script")
                 prio = html::ResourcePriority::JS;
-            else if (preq.as == "font")
-                prio = html::ResourcePriority::FONT;
             resource_loader_.request({preq.url, prio, preq.is_async, preq.is_defer, preq.is_module});
         });
 
@@ -435,12 +431,6 @@ namespace browser {
             }
         }
 
-        // Load fonts from @font-face rules
-        render::FontLoader font_loader(fm_, &http_);
-        font_loader.load_from_stylesheet(sheet);
-        font_loader.load_from_at_rules(sheet.at_rules);
-        co_await font_loader.fetch_all(base_url_str);
-
         // Load and decode images
         collect_resources(page.dom.get(), req.url);
         co_await load_and_decode_images(base_url_str);
@@ -465,14 +455,6 @@ namespace browser {
                 page.display_list = std::move(paint_r.unwrap());
             }
 
-            page.layer_tree = render::LayerTreeBuilder::build(page.layout.get());
-            if (page.layer_tree) {
-                for (auto *layer : page.layer_tree->all_layers) {
-                    if (layer->layout_node) {
-                        layer->display_list = painter.build_display_list(layer->layout_node, 0, 0);
-                    }
-                }
-            }
         }
 
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
@@ -532,14 +514,6 @@ namespace browser {
                 page.display_list = std::move(paint_r.unwrap());
             }
 
-            page.layer_tree = render::LayerTreeBuilder::build(page.layout.get());
-            if (page.layer_tree) {
-                for (auto *layer : page.layer_tree->all_layers) {
-                    if (layer->layout_node) {
-                        layer->display_list = painter.build_display_list(layer->layout_node, 0, 0);
-                    }
-                }
-            }
         }
 
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));

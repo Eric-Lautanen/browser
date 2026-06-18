@@ -6,6 +6,7 @@ namespace browser::html {
 
     struct HitTestResult {
         Element *element = nullptr;
+        const css::LayoutNode *layout_node = nullptr;
         css::Rect bounding_box;
         css::Rect hit_rect;
         f32 z_index = 0;

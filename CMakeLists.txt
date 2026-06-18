@@ -280,34 +280,21 @@ add_library(render STATIC
     render/font/rasterizer.cpp
     render/font/atlas.cpp
     render/font/embedded.cpp
-    render/font/registry.cpp
-    render/font/shaper.cpp
     render/paint/gradient.cpp
     render/paint/shadow.cpp
     render/paint/painter.cpp
     render/paint/executor.cpp
-    render/font_loader.cpp
     render/shaders.hpp
     render/shader_program.hpp
     render/mesh.hpp
     render/renderer.hpp
     render/texture.hpp
     render/font.hpp
-    render/font/registry.hpp
     render/embedded_font.hpp
     render/text_renderer.hpp
     render/paint.hpp
     render/painter.hpp
     render/paint_executor.hpp
-    render/font_loader.hpp
-    render/layer_tree.hpp
-    render/layer_tree.cpp
-    render/compositor.hpp
-    render/compositor.cpp
-    render/rasterizer.hpp
-    render/rasterizer.cpp
-    render/tile_cache.hpp
-    render/tile_cache.cpp
     render/form_controls.hpp
     render/form_controls.cpp
     render/svg_renderer.hpp

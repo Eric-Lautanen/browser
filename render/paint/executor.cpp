@@ -149,7 +149,7 @@ namespace browser::render {
                     Color c = cmd.color;
                     c.a *= current_opacity_;
                     text_renderer_->render_text(
-                        renderer_, cmd.text, x, y, c, static_cast<u32>(cmd.font_size), cmd.font_flags, cmd.font_family);
+                        renderer_, cmd.text, x, y, c, static_cast<u32>(cmd.font_size), cmd.font_flags);
                     break;
                 }
                 case PaintCommand::Type::PUSH_CLIP: {

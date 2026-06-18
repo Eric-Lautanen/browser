@@ -179,6 +179,23 @@ namespace browser::render {
             pgl::glUniform1i(u.use_texture, 1);
         if (u.texture_is_rgba >= 0)
             pgl::glUniform1i(u.texture_is_rgba, texture->is_rgba() ? 1 : 0);
+        if (u.use_sdf >= 0)
+            pgl::glUniform1i(u.use_sdf, 0);
+        texture->bind(0);
+        current_texture_id_ = texture->id();
+        textured_mode_ = true;
+    }
+
+    void Renderer::begin_textured_sdf(Texture2D *texture) {
+        flush();
+        shader_->bind();
+        const auto &u = shader_->uniforms();
+        if (u.use_texture >= 0)
+            pgl::glUniform1i(u.use_texture, 1);
+        if (u.texture_is_rgba >= 0)
+            pgl::glUniform1i(u.texture_is_rgba, 0);
+        if (u.use_sdf >= 0)
+            pgl::glUniform1i(u.use_sdf, 1);
         texture->bind(0);
         current_texture_id_ = texture->id();
         textured_mode_ = true;
@@ -234,6 +251,8 @@ namespace browser::render {
             pgl::glUniform1i(u.use_texture, 0);
         if (u.texture_is_rgba >= 0)
             pgl::glUniform1i(u.texture_is_rgba, 0);
+        if (u.use_sdf >= 0)
+            pgl::glUniform1i(u.use_sdf, 0);
     }
 
 }  // namespace browser::render

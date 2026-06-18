@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <vector>
 
 namespace browser::render {
 
@@ -9,9 +10,9 @@ using internal::GlyphOutline;
 using internal::read_u16_be;
 using internal::read_i16_be;
 
-std::vector<u8> FontFace::rasterize_scanline(const GlyphOutline& outline,
-                                               u32 pw, u32 ph,
-                                               i32 offset_x, i32 offset_y) {
+static std::vector<u8> rasterize_scanline(const GlyphOutline &outline,
+                                           u32 pw, u32 ph,
+                                           i32 offset_x, i32 offset_y) {
     std::vector<u8> bitmap(pw * ph, 0);
     if (outline.num_contours <= 0 || outline.points.empty()) return bitmap;
 
@@ -39,39 +40,35 @@ std::vector<u8> FontFace::rasterize_scanline(const GlyphOutline& outline,
 
     if (edges.empty()) return bitmap;
 
-    std::sort(edges.begin(), edges.end(), [](const SortedEdge& a, const SortedEdge& b) {
+    std::sort(edges.begin(), edges.end(), [](const SortedEdge &a, const SortedEdge &b) {
         return a.y0 < b.y0;
     });
 
     static const f32 subsample_offsets[] = {-0.375f, -0.125f, 0.125f, 0.375f};
-
     const f32 base_y = (f32)offset_y;
-
     struct Crossing { f32 x; i32 dir; };
 
     for (u32 py = 0; py < ph; py++) {
         f32 scan_y = base_y + (f32)py;
-
         std::vector<Crossing> row_crossings[4];
         for (i32 sy = 0; sy < 4; sy++) {
             f32 sample_y = scan_y + subsample_offsets[sy];
-            for (const auto& e : edges) {
+            for (const auto &e : edges) {
                 if (sample_y < e.y0 || sample_y >= e.y1) continue;
                 f32 t = (sample_y - e.y0) / (e.y1 - e.y0);
                 row_crossings[sy].push_back({e.x0 + t * (e.x1 - e.x0), e.dir});
             }
             std::sort(row_crossings[sy].begin(), row_crossings[sy].end(),
-                      [](const Crossing& a, const Crossing& b) { return a.x < b.x; });
+                      [](const Crossing &a, const Crossing &b) { return a.x < b.x; });
         }
 
         for (u32 px = 0; px < pw; px++) {
             u32 pixel_coverage = 0;
             f32 base_x = (f32)(offset_x + (i32)px);
-
             for (i32 sy = 0; sy < 4; sy++) {
                 i32 cidx = 0;
                 i32 winding = 0;
-                const auto& crossings = row_crossings[sy];
+                const auto &crossings = row_crossings[sy];
                 for (i32 sx = 0; sx < 4; sx++) {
                     f32 sample_x = base_x + subsample_offsets[sx];
                     while (cidx < (i32)crossings.size() && crossings[cidx].x <= sample_x) {
@@ -81,47 +78,28 @@ std::vector<u8> FontFace::rasterize_scanline(const GlyphOutline& outline,
                     if (winding != 0) pixel_coverage++;
                 }
             }
-
             bitmap[py * pw + px] = (u8)((pixel_coverage * 255) / 16);
         }
     }
-
     return bitmap;
 }
 
 Result<GlyphBitmap> FontFace::rasterize_glyph(u32 codepoint, u32 pixel_size) {
     u16 gid = (u16)glyph_index(codepoint);
-    if (gid == 0) {
+    if (gid == 0)
         return Result<GlyphBitmap>(std::string("glyph not in font"));
-    }
-
-    // Try color bitmap (emoji) first
-    if (has_color_bitmap(codepoint, pixel_size)) {
-        auto cr = rasterize_color_bitmap(codepoint);
-        if (cr.is_ok()) return cr;
-        // Fall through to outline on failure
-    }
-
-    int bezier_steps = (std::max)(4, (int)(pixel_size) / 4);
+    int bezier_steps = (std::max)(12, (int)(pixel_size) * 3 / 4);
     auto outline_result = read_outline(gid, bezier_steps);
-    if (outline_result.is_err()) {
+    if (outline_result.is_err())
         return Result<GlyphBitmap>(outline_result.unwrap_err());
-    }
-    auto& outline = outline_result.unwrap();
-
-    // Apply variable font gvar deltas if variation coords are set
-    if (!variation_coords_.empty() && outline.num_contours > 0) {
-        apply_gvar_deltas(gid, outline.points, outline.num_contours);
-    }
+    auto &outline = outline_result.unwrap();
 
     auto metrics_result = get_metrics_by_gid(gid, pixel_size);
-    if (metrics_result.is_err()) {
+    if (metrics_result.is_err())
         return Result<GlyphBitmap>(metrics_result.unwrap_err());
-    }
-    auto& metrics = metrics_result.unwrap();
+    auto &metrics = metrics_result.unwrap();
 
     f32 scale = (f32)pixel_size / units_per_em_;
-
     f32 x_min_px = (f32)outline.x_min * scale;
     f32 y_min_px = (f32)outline.y_min * scale;
     f32 x_max_px = (f32)outline.x_max * scale;
@@ -129,11 +107,8 @@ Result<GlyphBitmap> FontFace::rasterize_glyph(u32 codepoint, u32 pixel_size) {
 
     i32 pw = std::max(1, (i32)std::ceil(x_max_px - x_min_px) + 1);
     i32 ph = std::max(1, (i32)std::ceil(y_max_px - y_min_px) + 1);
-    if (pw > 1024)
-        pw = 1024;
-    if (ph > 1024)
-        ph = 1024;
-
+    if (pw > 1024) pw = 1024;
+    if (ph > 1024) ph = 1024;
     GlyphOutline scaled_outline;
     scaled_outline.num_contours = outline.num_contours;
     scaled_outline.contour_end_pts = outline.contour_end_pts;
@@ -161,16 +136,11 @@ Result<GlyphBitmap> FontFace::rasterize_glyph_by_gid(u16 gid, u32 pixel_size) {
     if (gid == 0)
         return Result<GlyphBitmap>(std::string("glyph not in font"));
 
-    int bezier_steps = (std::max)(4, (int)(pixel_size) / 4);
+    int bezier_steps = (std::max)(12, (int)(pixel_size) * 3 / 4);
     auto outline_result = read_outline(gid, bezier_steps);
     if (outline_result.is_err())
         return Result<GlyphBitmap>(outline_result.unwrap_err());
     auto &outline = outline_result.unwrap();
-
-    // Apply variable font gvar deltas if variation coords are set
-    if (!variation_coords_.empty() && outline.num_contours > 0) {
-        apply_gvar_deltas(gid, outline.points, outline.num_contours);
-    }
 
     auto metrics_result = get_metrics_by_gid(gid, pixel_size);
     if (metrics_result.is_err())
@@ -178,7 +148,6 @@ Result<GlyphBitmap> FontFace::rasterize_glyph_by_gid(u16 gid, u32 pixel_size) {
     auto &metrics = metrics_result.unwrap();
 
     f32 scale = (f32)pixel_size / units_per_em_;
-
     f32 x_min_px = (f32)outline.x_min * scale;
     f32 y_min_px = (f32)outline.y_min * scale;
     f32 x_max_px = (f32)outline.x_max * scale;
@@ -208,8 +177,9 @@ Result<GlyphBitmap> FontFace::rasterize_glyph_by_gid(u16 gid, u32 pixel_size) {
     gb.bearing_x = metrics.bearing_x;
     gb.bearing_y = metrics.bearing_y;
     gb.advance_x = metrics.advance_x;
+    gb.is_sdf = false;
     gb.bitmap = std::move(bitmap);
     return Result<GlyphBitmap>(std::move(gb));
 }
 
-} // namespace browser::render
+}  // namespace browser::render

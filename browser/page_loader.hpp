@@ -10,8 +10,6 @@
 #include "../net/http_client.hpp"
 #include "../net/csp.hpp"
 #include "../net/url.hpp"
-#include "../render/font_loader.hpp"
-#include "../render/layer_tree.hpp"
 #include "../render/paint.hpp"
 #include "../tests/utility.hpp"
 
@@ -31,9 +29,6 @@ namespace browser {
         class TrackerBlocker;
     }
     namespace render {
-        class FontManager;
-    }
-    namespace render {
         class TextRenderer;
     }
 
@@ -42,7 +37,6 @@ namespace browser {
         std::unordered_map<const html::Element *, css::ComputedStyle> styles;
         std::unique_ptr<css::LayoutNode> layout;
         std::shared_ptr<render::DisplayList> display_list;
-        std::unique_ptr<render::LayerTree> layer_tree;
         u32 load_time_ms = 0;
         std::string page_title;
         std::unordered_map<std::string, std::shared_ptr<image::Image>> images;
@@ -55,7 +49,6 @@ namespace browser {
         PageLoader(Telemetry *telemetry,
                    SettingsManager *settings,
                    net::TrackerBlocker *tracker,
-                   render::FontManager *fm,
                    render::TextRenderer *text_renderer);
 
         void set_download_callback(DownloadCheckCallback cb) { download_callback_ = std::move(cb); }
@@ -76,7 +69,6 @@ namespace browser {
         Telemetry *telemetry_;
         SettingsManager *settings_;
         net::TrackerBlocker *tracker_;
-        render::FontManager *fm_;
         render::TextRenderer *text_renderer_;
         std::atomic<bool> loading_{false};
         u32 viewport_width_ = 980;

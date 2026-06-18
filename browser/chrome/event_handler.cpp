@@ -143,8 +143,6 @@ namespace browser {
             viewport_width_ = e.width;
             viewport_height_ = e.height;
             renderer_->set_viewport(e.width, e.height);
-            if (compositor_)
-                compositor_->set_viewport(static_cast<i32>(e.width), static_cast<i32>(e.height));
             compute_layout();
             if (page_loader_)
                 page_loader_->set_viewport_size(viewport_width_, viewport_height_);
@@ -304,12 +302,56 @@ namespace browser {
             }
 
             chrome_.address_focused = false;
-            selection_.active = false;
 
-            // Hit test against page content
+            // Hit test against page content — do this FIRST for interactive elements
             if (current_page_.has_value() && current_page_->layout) {
                 f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
                 auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
+
+                // If clicked on an interactive element, don't select text
+                bool on_interactive = false;
+                if (ht.element) {
+                    std::string tag = ht.element->tag_name;
+                    std::string type = ht.element->get_attribute("type");
+                    on_interactive = (tag == "a" || tag == "input" || tag == "button" ||
+                                      tag == "textarea" || tag == "select");
+                }
+
+                if (!on_interactive && current_page_->layout) {
+                    // Walk tree to find text node at click position
+                    f32 gx = static_cast<f32>(mx);
+                    f32 gy = py;
+                    const css::LayoutNode *text_node = nullptr;
+                    std::function<void(const css::LayoutNode *, f32, f32)> find_text =
+                        [&](const css::LayoutNode *node, f32 ox, f32 oy) {
+                            f32 nx = ox + node->content.x + node->padding.left + node->border.left;
+                            f32 ny = oy + node->content.y + node->padding.top + node->border.top;
+                            if (node->is_text() && !node->text().empty() && !text_node) {
+                                if (gx >= nx && gx <= nx + node->content.width &&
+                                    gy >= ny && gy <= ny + node->content.height) {
+                                    text_node = node;
+                                }
+                            }
+                            for (auto &ch : node->children)
+                                find_text(ch.get(), ox + node->content.x, oy + node->content.y);
+                        };
+                    find_text(current_page_->layout.get(), 0, 0);
+                    if (text_node) {
+                        selection_.clear();
+                        selection_.active = true;
+                        selection_.start_node = text_node;
+                        selection_.end_node = text_node;
+                        selection_.start_offset = 0;
+                        selection_.end_offset = static_cast<u32>(text_node->text().size());
+                        selection_.selected_text = text_node->text();
+                        html::g_form_state.hovered_element = nullptr;
+                        return;
+                    }
+                }
+
+                // Clear selection when clicking on non-text area
+                selection_.active = false;
+
                 if (ht.element) {
                     html::g_form_state.hovered_element = ht.element;
                     std::string tag = ht.element->tag_name;
@@ -1252,13 +1294,8 @@ namespace browser {
             }
         }
 
-        if (compositor_enabled_ && compositor_) {
-            f32 dy = static_cast<f32>(-delta * 30);
-            compositor_->set_root_scroll_delta(dy);
-        } else {
-            chrome_.scroll_y =
-                std::max(0, std::min(chrome_.scroll_max, static_cast<i32>(chrome_.scroll_y - delta * 30)));
-        }
+        chrome_.scroll_y =
+            std::max(0, std::min(chrome_.scroll_max, static_cast<i32>(chrome_.scroll_y - delta * 30)));
     }
 
     void BrowserWindow::handle_bookmark_click() {

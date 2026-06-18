@@ -617,7 +617,10 @@ namespace browser::platform {
                 return 0;
 
             case WM_SYSCOMMAND:
-                if (win && (wparam == SC_MAXIMIZE || wparam == SC_RESTORE)) {
+                // SC_RESTORE is sent by the taskbar when clicking the minimized
+                // window icon — must pass through to DefWindowProc for the
+                // standard restore-from-minimize behavior.
+                if (win && wparam == SC_MAXIMIZE) {
                     win->toggle_maximize();
                     return 0;
                 }

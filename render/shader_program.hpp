@@ -30,6 +30,7 @@ public:
         i32 texture = -1;
         i32 use_texture = -1;
         i32 texture_is_rgba = -1;
+        i32 use_sdf = -1;
     };
     const Uniforms& uniforms() const { return uniforms_; }
 

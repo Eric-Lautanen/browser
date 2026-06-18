@@ -2,8 +2,8 @@
 #include "../../css/layout/types.hpp"
 #include "../renderer.hpp"
 #include "../texture.hpp"
+#include "emoji.hpp"
 #include "font.hpp"
-#include "shaper.hpp"
 
 #include <cstdio>
 #include <unordered_map>
@@ -31,8 +31,7 @@ namespace browser::render {
                         f32 y,
                         const Color &color,
                         u32 pixel_size = 16,
-                        u8 font_flags = 0,
-                        const std::string &font_family = {});
+                        u8 font_flags = 0);
         f32 measure_text(const std::string &text, u32 pixel_size = 16);
         css::FontMetrics get_font_metrics(u32 pixel_size) const;
 
@@ -56,26 +55,29 @@ namespace browser::render {
             u32 width, height;
             u32 page;
             bool has_color = false;
+            bool is_sdf = false;
+            u16 glyph_id = 0;
             FontFace *face = nullptr;
         };
-        struct CacheKey {
+
+        // Glyph cache: key = {face, glyph_id, pixel_size}
+        struct GlyphCacheKey {
             FontFace *face;
             u32 glyph_id;
             u32 pixel_size;
-            bool operator==(const CacheKey &o) const {
+            bool operator==(const GlyphCacheKey &o) const {
                 return face == o.face && glyph_id == o.glyph_id && pixel_size == o.pixel_size;
             }
         };
-        struct CacheHash {
-            u64 operator()(const CacheKey &k) const {
-                return (reinterpret_cast<u64>(k.face) << 32) ^ ((u64)k.glyph_id << 4) ^ k.pixel_size;
+        struct GlyphCacheHash {
+            u64 operator()(const GlyphCacheKey &k) const {
+                return (reinterpret_cast<u64>(k.face) << 32) ^ ((u64)k.glyph_id << 16) ^ k.pixel_size;
             }
         };
-        std::unordered_map<CacheKey, GlyphAtlasEntry, CacheHash> glyph_cache_;
-        GlyphAtlasEntry *prepare_glyph(u32 codepoint, u32 pixel_size, FontFace *primary_override = nullptr);
-        GlyphAtlasEntry *prepare_glyph_by_gid(u16 glyph_id, u32 codepoint, u32 pixel_size, FontFace *face);
+        std::unordered_map<GlyphCacheKey, GlyphAtlasEntry, GlyphCacheHash> glyph_cache_;
 
-        Shaper shaper_;
+        GlyphAtlasEntry *prepare_glyph(u16 glyph_id, u32 pixel_size, FontFace *face);
+        GlyphAtlasEntry *prepare_emoji_glyph(u32 codepoint, const u8 *bitmap_data, u32 pixel_size);
     };
 
 }  // namespace browser::render

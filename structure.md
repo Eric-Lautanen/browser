@@ -2,26 +2,26 @@
 
 **Lang:** C++20 | **Build:** CMake 3.20+ / Ninja / GCC 15.2+ | **Platform:** Win32 x86-64
 **Philosophy:** Zero third-party deps, no telemetry, secure by default
-**Totals:** 357 .hpp/.cpp/.h/.inc files, ~62K LOC, 40 test executables
+**Totals:** 340 .hpp/.cpp/.h/.inc files, ~57K LOC (67K with embedded font data), 40 test executables
 
 ---
 
-## Directory Tree (src)
+## Directory Tree
 
 ```
 C:\github\browser\
 ├── .clang-format
 ├── .gitignore
 ├── AGENTS.md
-├── CMakeLists.txt              # 11 lib targets + 40 test exes + browser exe
+├── CMakeLists.txt              # 10 lib targets + 40 test exes + browser exe
 ├── README.md
-├── RESIZE_ROADMAP.md
+├── SDF_ROADMAP.md              # Signed distance field font rendering plan
 ├── current_screenshot.png
 │
 ├── src/
-│   └── main.cpp                # Entry: creates BrowserWindow, navigate, event loop (1285 loc)
+│   └── main.cpp                # Entry: BrowserWindow, CLI, event loop (1273 loc)
 │
-├── async/                      # C++20 coroutine infra (header-only INTERFACE lib, 10 files)
+├── async/                      # C++20 coroutine infra (header-only INTERFACE lib, 10 files, 674 LOC)
 │   ├── task.hpp                # task<T> with Result<T> error propagation
 │   ├── channel.hpp             # Lock-free SPSC ring-buffer channel
 │   ├── executor.hpp            # Awaiters for thread pool / IOCP dispatch
@@ -33,13 +33,13 @@ C:\github\browser\
 │   ├── memory.hpp              # Custom allocator w/ leak detection, per-subsystem tracking
 │   └── this_thread.hpp         # set_name(), yield()
 │
-├── platform/                   # Platform abstraction (Win32, 8 files, ~1.2K LOC)
+├── platform/                   # Win32 platform layer (8 files, ~1200 LOC)
 │   ├── window.hpp / .cpp       # Abstract Window + factory (Win32 → Win32Window)
 │   ├── window_win32.hpp/.cpp   # Win32 impl: creation, WGL, event loop, fullscreen
 │   ├── opengl.hpp / .cpp       # GL 3.3+ function pointer loading via wglGetProcAddress
 │   └── audio.hpp / .cpp        # WAV loading, waveOut* playback
 │
-├── image/                      # Hand-written image decoders (7 files, ~1.3K LOC)
+├── image/                      # Hand-written image decoders (7 files, ~1300 LOC)
 │   ├── format.hpp              # ImageFormat enum, detect_format()
 │   ├── decoder.hpp / .cpp      # Abstract Decoder + factory dispatch
 │   ├── decoder_bmp.cpp         # BMP: 1/4/8/16/24/32 bpp, RLE8
@@ -47,7 +47,7 @@ C:\github\browser\
 │   ├── decoder_gif.cpp         # GIF: LZW, palette, interlace
 │   └── decoder_jpeg.cpp        # JPEG: Huffman, IDCT, YCbCr upsampling
 │
-├── net/                        # Full networking stack (65 files, ~9.1K LOC)
+├── net/                        # Full networking stack (65 files, ~9300 LOC)
 │   ├── socket/                 # Socket abstraction layer
 │   │   ├── types.hpp / .cpp    # Span, IPv4/6Address, Socket/UDPSocket abstract + factory
 │   │   ├── socket_win32.hpp    # Win32 socket structs
@@ -93,7 +93,7 @@ C:\github\browser\
 │       ├── ecc.hpp / .cpp      # EC: secp256r1, secp384r1 point ops
 │       └── x25519.hpp / .cpp   # X25519: Montgomery ladder key exchange
 │
-├── html/                       # HTML5 engine (38 files, ~7.6K LOC)
+├── html/                       # HTML5 engine (38 files, ~7600 LOC)
 │   ├── dom.hpp / .cpp          # Node, Element, Document, Text, Comment types
 │   ├── token.hpp               # Token variants (TagToken, CharacterToken, etc.)
 │   ├── entities.hpp / .cpp     # HTML entity → char mapping (~2200 entries)
@@ -120,18 +120,18 @@ C:\github\browser\
 │   ├── traversal.hpp / .cpp    # DOM traversal: for_each, find by tag
 │   ├── preload_scanner.hpp/.cpp# Token-peeking preload for <img>/<link>/<script>
 │   ├── resource_loader.hpp/.cpp# Priority-queue resource fetcher
-│   ├── hit_test.hpp / .cpp     # Layout tree hit testing for events
+│   ├── hit_test.hpp / .cpp     # Layout tree hit testing for events + text selection
 │   ├── form_state.hpp / .cpp   # Form control state tracking
 │   └── form_submission.hpp/.cpp# URL-encoded/multipart form encoding
 │
-├── css/                        # CSS engine (37 files, ~7.6K LOC)
+├── css/                        # CSS engine (37 files, ~7600 LOC)
 │   ├── tokenizer.hpp / .cpp    # CSS tokenizer: ident, number, string, URL, etc.
 │   ├── parser.hpp              # Forwarding → parser/parser.hpp
 │   ├── parser/
 │   │   ├── parser.hpp / .cpp   # Ruleset/at-rule/declaration parsing
 │   │   ├── selector.cpp        # Compound selectors, combinators, pseudo
 │   │   ├── declaration.cpp     # All property values, functions
-│   │   ├── at_rule.cpp         # @media, @font-face, @keyframes
+│   │   ├── at_rule.cpp         # @media, @font-face(ignored), @keyframes
 │   │   └── property.cpp        # Property-specific helpers
 │   ├── cascade.hpp             # Forwarding → cascade/engine.hpp
 │   ├── cascade/
@@ -143,7 +143,7 @@ C:\github\browser\
 │   ├── css_values.hpp / .cpp   # CSSValue, Length, Color, ComputedStyle
 │   ├── specificity.hpp         # Specificity struct
 │   ├── selector_match.hpp/.cpp # Element-selector matching w/ pseudo-classes
-│   ├── grid.hpp / .cpp         # CSS Grid track definition parsing (top-level)
+│   ├── grid.hpp / .cpp         # CSS Grid track definition parsing
 │   ├── layout.hpp              # Forwarding → layout/engine.cpp declarations
 │   ├── layout/
 │   │   ├── types.hpp           # Rect, EdgeSizes, FlexConfig, GridTrackDef
@@ -151,15 +151,15 @@ C:\github\browser\
 │   │   ├── resolve.cpp         # Length resolution, calc()/clamp()
 │   │   ├── type_check.cpp      # Block/inline/flex/grid/table detection
 │   │   ├── block.cpp           # Block layout: margins, collapsing
-│   │   ├── inline.cpp          # Inline: line boxes, text flow
+│   │   ├── inline.cpp          # Inline: line boxes, text flow, whitespace
 │   │   ├── flex.cpp            # Flexbox: main/cross axis, distribute, wrap
 │   │   ├── grid.cpp            # CSS Grid: track sizing, item placement
 │   │   ├── table.cpp           # Table: table/row/cell sizing
 │   │   └── positioning.cpp     # Static/relative/absolute/fixed/sticky + float
 │   ├── animation.hpp / .cpp    # CSS animation: keyframes, timeline, tick()
-│   └── transition.cpp          # CSS transitions (build system placeholder)
+│   └── transition.cpp          # CSS transitions (stub)
 │
-├── js/                         # JavaScript engine (53 files, ~7.9K LOC)
+├── js/                         # JavaScript engine (52 files, ~7900 LOC)
 │   ├── token.hpp               # Token types
 │   ├── lexer.hpp / .cpp        # ECMAScript lexer: keywords, regex, templates
 │   ├── ast.hpp                 # Full AST: Expr, Stmt, Pattern, Program
@@ -210,58 +210,52 @@ C:\github\browser\
 │   ├── script_runner.hpp / .cpp# Inline/async/deferred script execution
 │   └── module_loader.hpp/.cpp  # ES module fetch + dependency resolution
 │
-├── render/                     # OpenGL rendering engine (64 files, ~10K LOC)
-│   ├── renderer.hpp / .cpp     # Viewport, layer tree traversal, paint dispatch
+├── render/                     # OpenGL rendering engine (48 files, ~16K LOC)
+│   ├── renderer.hpp / .cpp     # Viewport, batched quad rendering, shader uniforms
 │   ├── shader_program.hpp/.cpp # GL shader compile/link + uniform setting
-│   ├── shaders.hpp             # Inline GLSL vertex/fragment shaders
-│   ├── mesh.hpp / .cpp         # VBO/IBO/VAO management, draw calls
-│   ├── texture.hpp / .cpp      # GL texture create/upload/bind
+│   ├── shaders.hpp             # Inline GLSL vertex/fragment shaders (with SDF path)
+│   ├── mesh.hpp / .cpp         # VBO/IBO/VAO management, batching
+│   ├── texture.hpp / .cpp      # GL texture create/upload/bind, GL_UNPACK_ALIGNMENT=1
 │   ├── paint/                  # Paint system
 │   │   ├── commands.hpp        # DisplayCommand variants (rect/text/image/gradient/shadow)
-│   │   ├── painter.hpp / .cpp  # Display list construction
+│   │   ├── painter.hpp / .cpp  # Display list construction from layout tree
 │   │   ├── executor.hpp / .cpp # OpenGL execution of display commands
 │   │   ├── gradient.hpp / .cpp # Linear/radial gradient texture generation
 │   │   └── shadow.hpp / .cpp   # Shadow blur
 │   ├── paint.hpp               # Forwarding → paint/commands.hpp
 │   ├── painter.hpp             # Forwarding → paint/painter.hpp
 │   ├── paint_executor.hpp      # Forwarding → paint/executor.hpp
-│   ├── font/                   # Font system (13 files)
-│   │   ├── font.hpp / .cpp     # Font, Glyph, FontFace types + metrics (194 loc)
-│   │   ├── truetype.cpp        # TrueType: cmap/head/hhea/hmtx/loca/glyf/kern
-│   │   ├── rasterizer.cpp      # Font scan-conversion rasterization
-│   │   ├── atlas.hpp / .cpp    # Glyph atlas: packing, caching, texture upload
-│   │   ├── embedded.hpp / .cpp # Embedded Open Sans font data
-│   │   ├── internal.hpp        # TrueType table structs
-│   │   ├── registry.hpp / .cpp # System font registry (font face discovery)
-│   │   └── shaper.hpp / .cpp   # Text shaping (joining, ligature-aware)
+│   ├── font/                   # Font system (10 files, ~2500 LOC)
+│   │   ├── font.hpp / .cpp     # FontFace, FontManager — stripped to cmap/hhea/hmtx/glyf only
+│   │   ├── truetype.cpp        # TrueType: cmap/head/hhea/hmtx/loca/glyf/kern parsing
+│   │   ├── rasterizer.cpp      # 4x4 supersampled scanline coverage rasterizer + SDF support
+│   │   ├── atlas.hpp / .cpp    # Glyph atlas: packing, caching, texture upload, rendering
+│   │   ├── embedded.hpp / .cpp # Embedded Open Sans Regular (122KB, 1086 glyphs, upem=2048)
+│   │   ├── emoji.hpp           # 30 monochrome 16x16 emoji bitmaps + EMOJI_TOFU sentinel
+│   │   └── internal.hpp        # TrueType table structs, GlyphOutline, GlyphMetrics
 │   ├── font.hpp                # Forwarding → font/font.hpp
 │   ├── embedded_font.hpp       # Forwarding → font/embedded.hpp
-│   ├── font_loader.hpp / .cpp  # @font-face async loading, TTF/WOFF
-│   ├── text_renderer.hpp/.cpp  # Text layout: shaping, wrapping, glyph pos
-│   ├── compositor.hpp / .cpp   # Frame scheduling, layer composition, scroll
-│   ├── layer_tree.hpp / .cpp   # Layer tree from layout
-│   ├── tile_cache.hpp / .cpp   # Rasterized tile cache, invalidation
-│   ├── rasterizer.hpp / .cpp   # Software rasterization fallback
+│   ├── text_renderer.hpp       # Forwarding → font/atlas.hpp
+│   ├── icons.hpp               # Embedded SVG icons for chrome UI
 │   ├── canvas.hpp / .cpp       # Canvas 2D: paths, fills, strokes, text
 │   ├── canvas_bindings.cpp     # Canvas JS bindings
 │   ├── svg_renderer.hpp / .cpp # SVG: rect, circle, path, text
 │   ├── mathml_stub.hpp / .cpp  # MathML basic rendering
 │   ├── form_controls.hpp/.cpp  # Input/button/checkbox/radio/select
 │   ├── audio_element.hpp / .cpp# <audio> element
-│   ├── video_element.hpp / .cpp# <video> element stub
-│   └── icons.hpp               # Embedded SVG icons for chrome UI
+│   └── video_element.hpp / .cpp# <video> element stub
 │
-├── browser/                    # Browser application (31 files, ~6K LOC)
+├── browser/                    # Browser application (31 files, ~5900 LOC)
 │   ├── browser_window.cpp      # Main window: init, nav, event loop, render, FPS
 │   ├── browser_window.hpp      # Forwarding → chrome/window.hpp
 │   ├── paths.hpp               # data_dir() path utility
 │   ├── chrome/
-│   │   ├── window.hpp / .cpp   # Chrome UI: tabs, URL bar, buttons
+│   │   ├── window.hpp / .cpp   # Chrome UI: tabs, URL bar, buttons, text selection
 │   │   ├── navigator.cpp       # Back/forward/refresh/stop/navigate
 │   │   ├── titlebar.cpp        # Custom titlebar with window controls
 │   │   ├── toolbar.cpp         # Toolbar with buttons + URL input
-│   │   ├── page_view.cpp       # Page view area, scroll handling
-│   │   └── event_handler.cpp   # Keyboard shortcuts, click targets, drag
+│   │   ├── page_view.cpp       # Page view area, scroll handling, selection rendering
+│   │   └── event_handler.cpp   # Keyboard shortcuts, click targets, drag, Ctrl+C/V
 │   ├── page_loader.hpp / .cpp  # Async pipeline: fetch→decompress→parse→layout→paint
 │   ├── history.hpp / .cpp      # Navigation back/forward
 │   ├── bookmarks.hpp / .cpp    # Bookmarks w/ file persistence
@@ -270,53 +264,17 @@ C:\github\browser\
 │   ├── perf_counter.hpp / .cpp # QPC-based high-res timers
 │   ├── download_manager.hpp/.cpp# Downloads, progress, blocklist
 │   ├── find_bar.hpp / .cpp     # In-page find
-│   ├── devtools.hpp / .cpp     # DevTools stub
+│   ├── devtools.hpp / .cpp     # DevTools stub (Console, Elements, Network)
 │   ├── session.hpp / .cpp      # Session save/restore (tabs, history)
 │   └── theme.hpp               # Color theme constants
 │
-└── tests/                      # Test suite (custom minimal framework, 43 files, ~9.2K LOC)
+└── tests/                      # Test suite (custom minimal framework, 43 files, ~9100 LOC)
     ├── utility.hpp             # u8..f64 + Result<T,E>
     ├── utility_test.cpp        # Result<T> tests
     ├── test_framework.hpp/.cpp # TEST() / ASSERT() / ASSERT_EQ() macros
-    ├── test_framework_test.cpp # Test framework self-tests
-    ├── test_framework_impl_test.cpp
     ├── main.cpp                # Test runner entry
-    ├── async_test.cpp          # Coroutine task lifecycle
-    ├── channel_test.cpp        # SPSC channel ping-pong
-    ├── thread_pool_test.cpp    # 10K work items
-    ├── iocp_test.cpp           # IOCP TCP echo concurrency
-    ├── net_test.cpp            # HTTP, TLS, DNS, sockets
-    ├── tls_test.cpp            # TLS 1.3 handshake
-    ├── websocket_test.cpp      # Frame encode/decode
-    ├── http_cache_test.cpp     # Store/retrieve/expiration
-    ├── tracker_test.cpp        # Tracker matching
-    ├── cookie_test.cpp         # Domain/path matching
-    ├── storage_test.cpp        # get/set/remove
-    ├── html_test.cpp           # HTML parsing
-    ├── css_test.cpp            # CSS parser + cascade
-    ├── flex_test.cpp           # Flexbox layout
-    ├── grid_test.cpp           # CSS Grid layout
-    ├── css_animation_test.cpp  # Keyframe resolution
-    ├── layout_test.cpp         # Full layout pipeline tests
-    ├── js_test.cpp             # Lexer/parser/bytecode/VM
-    ├── parser_test.cpp         # JS parser
-    ├── compiler_test.cpp       # Bytecode compiler
-    ├── vm_test.cpp             # VM operations
-    ├── gc_test.cpp             # GC mark-sweep
-    ├── jit_test.cpp            # x86-64 JIT
-    ├── dom_bindings_test.cpp   # DOM↔JS bindings
-    ├── web_api_test.cpp        # Web API (fetch, timers, etc.)
-    ├── image_test.cpp          # Image decoder roundtrip
-    ├── mesh_test.cpp           # VBO/IBO/VAO
-    ├── font_test.cpp           # Font loading + glyph raster
-    ├── paint_test.cpp          # Display list paint
-    ├── window_smoke_test.cpp   # Win32 window creation
-    ├── gpu_smoke_test.cpp      # Full render pipeline w/ OpenGL
-    ├── chrome_test.cpp         # Chrome UI
-    ├── bookmark_test.cpp       # Bookmark persistence
-    ├── history_test.cpp        # History back/forward
-    ├── settings_test.cpp       # Settings serialization
-    └── telemetry_test.cpp      # Perf counter dump
+    ├── (40 test executables covering all subsystems)
+    └── tools/tests/            # 258 test HTML/CSS fixtures + expected JSON outputs
 ```
 
 ---
@@ -333,12 +291,16 @@ URL → DNS → TCP → TLS 1.3 → HTTP/1.1 or HTTP/2
                              ↓       ↓
                       Cascade Engine  Bytecode Compiler
                              ↓       ↓
-                       Layout Engine  VM / JIT
+                        Layout Engine  VM / JIT
                              ↓
                         Paint System
                              ↓
-                    Compositor → OpenGL → Win32 Window
+                        OpenGL 3.3 → Win32 Window
 ```
+
+No compositor thread — rendering is single-threaded with direct OpenGL draw calls.
+
+---
 
 ## CMake Targets
 
@@ -350,11 +312,14 @@ URL → DNS → TCP → TLS 1.3 → HTTP/1.1 or HTTP/2
 | `net` | 65 files | async (hdr-only) | Full networking: DNS→TLS→HTTP/1.1→HTTP/2 |
 | `html` | 38 files | async (hdr), net | HTML5 tokenizer, parser, DOM |
 | `css` | 37 files | async (hdr), html | CSS tokenizer, parser, cascade, layout |
-| `js` | 53 files | async (hdr), html | JS lexer→parser→compiler→VM→JIT→builtins |
-| `render` | 64 files | async (hdr), platform, image | OpenGL paint, fonts, compositor, canvas/SVG |
+| `js` | 52 files | async (hdr), html | JS lexer→parser→compiler→VM→JIT→builtins |
+| `render` | 48 files | async (hdr), platform, image | OpenGL paint, fonts, canvas/SVG |
 | `browser_lib` | 31 files | all above | Browser chrome, page pipeline, settings |
-| `test_framework` | test utility | none | Custom min test framework |
-| `browser` (exe) | main.cpp | browser_lib | Final executable |
+| `test_framework` | 2 files | none | Custom minimal test framework |
+
+**Executables:** 40 test executables + `browser` = 41 total
+
+---
 
 ## Key Design Decisions
 
@@ -362,6 +327,23 @@ URL → DNS → TCP → TLS 1.3 → HTTP/1.1 or HTTP/2
 - **No RTTI** — compile-time polymorphism via templates
 - **All async via C++20 coroutines** — `task<T>`, `when_all`, `when_any`, IOCP awaiters
 - **Custom allocators** — per-subsystem tracking with leak detection
-- **Zero third-party dependencies** — every protocol from scratch (TCP, TLS 1.3, HTTP/1.1, HTTP/2, WebSocket, image codecs, crypto primitives, font parsing)
-- **No STL containers** — custom `span<T>`, arena allocators (in hot paths)
+- **Zero third-party dependencies** — every protocol from scratch
+- **Single embedded font** — Open Sans Regular (122KB), no system font dependencies
+- **Monochrome emoji atlas** — 30 hand-drawn 16×16 bitmaps, TOFU sentinel for missing glyphs
+- **No compositor** — single-threaded rendering, no software tile cache
 - **Win32-specific** — IOCP, CreateThreadpool, WGL, CryptoAPI, waveOut
+
+---
+
+## Debug Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+Shift+F | Toggle FPS overlay |
+| Ctrl+Shift+S | Save viewport screenshot to `viewport_screenshot.bmp` |
+| Ctrl+Shift+X | Copy all page text to clipboard |
+| Ctrl+L | Focus address bar |
+| Ctrl+T | New tab |
+| Ctrl+R / F5 | Refresh |
+| F11 | Toggle fullscreen |
+| F12 | DevTools |

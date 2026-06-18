@@ -102,12 +102,15 @@ namespace browser::css {
                 words.push_back({std::move(ch), w});
             }
         } else {
+            auto is_ws = [](char c) -> bool {
+                return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
+            };
             while (start < text.size()) {
-                if (text[start] == ' ' && whitespace != "pre") {
+                if (is_ws(text[start]) && whitespace != "pre") {
                     f32 sp_w =
                         text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, " ", (u32)font_size) : char_width;
                     words.push_back({" ", sp_w});
-                    while (start < text.size() && text[start] == ' ') ++start;
+                    while (start < text.size() && is_ws(text[start])) ++start;
                     continue;
                 }
                 if (start >= text.size()) break;
@@ -131,9 +134,9 @@ namespace browser::css {
                     start += dr.bytes_consumed;
                     continue;
                 }
-                // Accumulate non-CJK, non-space characters into a word
+                // Accumulate non-CJK, non-whitespace characters into a word
                 std::size_t end = start;
-                while (end < text.size() && text[end] != ' ') {
+                while (end < text.size() && !is_ws(text[end])) {
                     auto dr2 = browser::html::decode_utf8(txt + end, txt_len - end);
                     if (dr2.bytes_consumed == 0) { end++; continue; }
                     char32_t cp2 = dr2.codepoint;
