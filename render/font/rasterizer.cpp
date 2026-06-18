@@ -109,11 +109,73 @@ Result<GlyphBitmap> FontFace::rasterize_glyph(u32 codepoint, u32 pixel_size) {
     }
     auto& outline = outline_result.unwrap();
 
+    // Apply variable font gvar deltas if variation coords are set
+    if (!variation_coords_.empty() && outline.num_contours > 0) {
+        apply_gvar_deltas(gid, outline.points, outline.num_contours);
+    }
+
     auto metrics_result = get_metrics_by_gid(gid, pixel_size);
     if (metrics_result.is_err()) {
         return Result<GlyphBitmap>(metrics_result.unwrap_err());
     }
     auto& metrics = metrics_result.unwrap();
+
+    f32 scale = (f32)pixel_size / units_per_em_;
+
+    f32 x_min_px = (f32)outline.x_min * scale;
+    f32 y_min_px = (f32)outline.y_min * scale;
+    f32 x_max_px = (f32)outline.x_max * scale;
+    f32 y_max_px = (f32)outline.y_max * scale;
+
+    i32 pw = std::max(1, (i32)std::ceil(x_max_px - x_min_px) + 1);
+    i32 ph = std::max(1, (i32)std::ceil(y_max_px - y_min_px) + 1);
+    if (pw > 1024)
+        pw = 1024;
+    if (ph > 1024)
+        ph = 1024;
+
+    GlyphOutline scaled_outline;
+    scaled_outline.num_contours = outline.num_contours;
+    scaled_outline.contour_end_pts = outline.contour_end_pts;
+    scaled_outline.points.resize(outline.points.size());
+    for (size_t i = 0; i < outline.points.size(); i += 2) {
+        f32 x = (outline.points[i] - (f32)outline.x_min) * scale;
+        f32 y = ((f32)outline.y_max - outline.points[i + 1]) * scale;
+        scaled_outline.points[i] = x;
+        scaled_outline.points[i + 1] = y;
+    }
+
+    std::vector<u8> bitmap = rasterize_scanline(scaled_outline, (u32)pw, (u32)ph, 0, 0);
+
+    GlyphBitmap gb;
+    gb.width = (u32)pw;
+    gb.height = (u32)ph;
+    gb.bearing_x = metrics.bearing_x;
+    gb.bearing_y = metrics.bearing_y;
+    gb.advance_x = metrics.advance_x;
+    gb.bitmap = std::move(bitmap);
+    return Result<GlyphBitmap>(std::move(gb));
+}
+
+Result<GlyphBitmap> FontFace::rasterize_glyph_by_gid(u16 gid, u32 pixel_size) {
+    if (gid == 0)
+        return Result<GlyphBitmap>(std::string("glyph not in font"));
+
+    int bezier_steps = (std::max)(4, (int)(pixel_size) / 4);
+    auto outline_result = read_outline(gid, bezier_steps);
+    if (outline_result.is_err())
+        return Result<GlyphBitmap>(outline_result.unwrap_err());
+    auto &outline = outline_result.unwrap();
+
+    // Apply variable font gvar deltas if variation coords are set
+    if (!variation_coords_.empty() && outline.num_contours > 0) {
+        apply_gvar_deltas(gid, outline.points, outline.num_contours);
+    }
+
+    auto metrics_result = get_metrics_by_gid(gid, pixel_size);
+    if (metrics_result.is_err())
+        return Result<GlyphBitmap>(metrics_result.unwrap_err());
+    auto &metrics = metrics_result.unwrap();
 
     f32 scale = (f32)pixel_size / units_per_em_;
 

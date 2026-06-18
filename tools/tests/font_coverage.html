@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Font Coverage Test</title>
+<style>
+  body { font-family: sans-serif; margin: 20px; background: #fff; color: #000; }
+  h1 { font-size: 24px; border-bottom: 2px solid #333; }
+  h2 { font-size: 18px; margin-top: 24px; color: #444; }
+  .section { margin: 12px 0; padding: 12px; border: 1px solid #ccc; border-radius: 4px; }
+  .label { font-size: 11px; color: #888; font-family: monospace; }
+  .latin-16  { font-size: 16px; }
+  .latin-24  { font-size: 24px; }
+  .latin-32  { font-size: 32px; }
+  .bold      { font-weight: bold; }
+  .italic    { font-style: italic; }
+  .mono     { font-family: monospace; }
+  .serif    { font-family: serif; }
+  .cjk      { font-family: "Yu Gothic", "MS Gothic", sans-serif; }
+  .cjk-serif { font-family: "MS Mincho", serif; }
+  .emoji    { font-size: 32px; }
+  .symbol   { font-size: 20px; }
+  .small    { font-size: 10px; }
+  .mixed    { font-size: 20px; }
+  .line-break { width: 200px; border: 1px dashed #999; padding: 4px; }
+  .rtl      { direction: rtl; text-align: right; font-size: 24px; }
+</style>
+</head>
+<body>
+
+<h1>Font Coverage Test Page</h1>
+
+<!-- 1. Latin -->
+<section class="section">
+  <h2>1. Latin — Basic, Bold, Italic</h2>
+  <div class="latin-16">The quick brown fox jumps over the lazy dog. 16px</div>
+  <div class="latin-24">The quick brown fox jumps over the lazy dog. 24px</div>
+  <div class="latin-32">The quick brown fox jumps over the lazy dog. 32px</div>
+  <div class="latin-16 bold">Bold: The quick brown fox jumps over the lazy dog.</div>
+  <div class="latin-16 italic">Italic: The quick brown fox jumps over the lazy dog.</div>
+  <div class="latin-16 bold italic">Bold Italic: The quick brown fox jumps over the lazy dog.</div>
+  <div class="small">Tiny text at 10px — should still be legible.</div>
+  <div class="label">sans-serif, 16/24/32px</div>
+</section>
+
+<!-- 2. Serif -->
+<section class="section">
+  <h2>2. Serif</h2>
+  <div class="serif latin-24">The quick brown fox jumps over the lazy dog.</div>
+  <div class="serif latin-24 bold">Bold serif: The quick brown fox jumps over the lazy dog.</div>
+  <div class="serif latin-24 italic">Italic serif: The quick brown fox jumps over the lazy dog.</div>
+  <div class="label">serif, 24px</div>
+</section>
+
+<!-- 3. Monospace -->
+<section class="section">
+  <h2>3. Monospace / Code</h2>
+  <div class="mono latin-16">function fib(n) { return n < 2 ? n : fib(n-1) + fib(n-2); }</div>
+  <div class="mono latin-16 bold">Bold monospace: int main() { return 0; }</div>
+  <div class="mono latin-16 italic">Italic monospace: #define FOO 42</div>
+  <div class="label">monospace, 16px</div>
+</section>
+
+<!-- 4. CJK -->
+<section class="section">
+  <h2>4. CJK — Chinese, Japanese, Korean</h2>
+  <div class="cjk latin-24">汉字测试 — 你好世界！これは日本語のテストです。</div>
+  <div class="cjk latin-24">한글 테스트 — 안녕하세요. 반갑습니다.</div>
+  <div class="cjk-serif latin-24">明朝体：世界の皆さん、こんにちは。</div>
+  <div class="cjk mixed">中英混合 English mixed 测试 test 123</div>
+  <div class="label">Yu Gothic / MS Mincho, 24px</div>
+</section>
+
+<!-- 5. Arabic (RTL) -->
+<section class="section">
+  <h2>5. Arabic — RTL Shaping</h2>
+  <div class="rtl">السلام عليكم ورحمة الله وبركاته</div>
+  <div class="rtl">بسم الله الرحمن الرحيم</div>
+  <div class="rtl">اللغة العربية جميلة</div>
+  <div class="latin-16" style="direction:rtl;text-align:right;">Arabic with Latin: hello سلام world</div>
+  <div class="label">Arabic script, 24px, direction: rtl</div>
+
+  <h2 style="margin-top:20px;">Arabic — Isolated forms reference</h2>
+  <div class="latin-24" style="direction:rtl;text-align:right;">
+    <span>ب ت ث ج ح خ س ش ص ض ط ظ ع غ ف ق ك ل م ن ه و ي</span>
+  </div>
+  <div class="label">Arabic alphabet (isolated forms), 24px</div>
+</section>
+
+<!-- 6. Emoji -->
+<section class="section">
+  <h2>6. Emoji</h2>
+  <div class="emoji">😀😁😂🤣😃😄😅😆😉😊😋😎😍🥰😘😗😙😚🙂🤗</div>
+  <div class="emoji">🤩🤔🤨😐😑😶🙄😏😣😥😮🤐😯😪😫😴😌😛😜😝🤤</div>
+  <div class="emoji">🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐔🐧🐦🐤🐣</div>
+  <div class="emoji">🇺🇳🇺🇸🇨🇦🇬🇧🇯🇵🇰🇷🇨🇳🇮🇳🇫🇷🇩🇪</div>
+  <div class="emoji">❤️🧡💛💚💙💜🖤🤍🤎💕💞💓💗💖💘💝</div>
+  <div class="emoji">⭐🌟✨⚡🔥💥☀️🌙⭐🌈🌊🌍🌋🏔️🏖️🏙️</div>
+  <div class="emoji">🎉🎊🎈🎁🎀🎄🎃🎅🤶🦌☃️❄️⛄🎲🧩🎯🎮</div>
+  <div class="label">Color emoji via Segoe UI Emoji, 32px</div>
+</section>
+
+<!-- 7. Symbols & Punctuation -->
+<section class="section">
+  <h2>7. Symbols and Punctuation</h2>
+  <div class="symbol">© ® ™ ° ± × ÷ → ← ↑ ↓ ↔ ⇒ ⇔ ≈ ≠ ≡ ≤ ≥</div>
+  <div class="symbol">∞ ∴ ∵ ∷ ∶ ∘ ∙ ∥ ∦ ⊕ ⊗ ⊙ ⊚ ⊛ ⊞ ⊟ ⊠ ⊡</div>
+  <div class="symbol">∑ ∏ ∫ ∮ ∂ ∇ ∝ √ ∛ ∜ ∠ ∡ ∢ ∥ ∧ ∨ ∩ ∪ ⊂ ⊃</div>
+  <div class="symbol">♠ ♥ ♦ ♣ ♤ ♧ ♡ ♢ ♔ ♕ ♖ ♗ ♘ ♙ ♚ ♛ ♜ ♝ ♞ ♟</div>
+  <div class="symbol">★ ☆ ✦ ✧ ❖ ◆ ◇ ○ ● ◐ ◑ ◒ ◓ ◔ ◕ ◖ ◗</div>
+  <div class="symbol">“ ” ‘ ’ « » ‹ › „ “ ‚ ‘ – — … · • ‐ ‑ ‒</div>
+  <div class="label">Various Unicode symbol blocks, 20px</div>
+</section>
+
+<!-- 8. Line-breaking -->
+<section class="section">
+  <h2>8. Line-breaking</h2>
+  <div class="label">CJK line-breaking (200px container):</div>
+  <div class="line-break cjk latin-16">
+    这是一个中文段落，用来测试中日韩文字在有限宽度容器内的自动换行行为是否正确。
+  </div>
+  <div class="label" style="margin-top:8px">Latin line-breaking (200px container):</div>
+  <div class="line-break latin-16">
+    This is a long English paragraph that should wrap naturally at word boundaries within a narrow container.
+  </div>
+</section>
+
+<!-- 9. Mixed fonts -->
+<section class="section">
+  <h2>9. Mixed-font text (fallback chain)</h2>
+  <div class="mixed">Hello 世界! مرحبا بالعالم 😊 こんにちは 👋</div>
+  <div class="mixed bold">Bold: Hello 世界! مرحبا بالعالم 😊 こんにちは 👋</div>
+  <div class="label">Latin + CJK + Arabic + Emoji, 20px — fallback should cover each range</div>
+</section>
+
+<!-- 10. @font-face -->
+<section class="section">
+  <h2>10. @font-face (Web Fonts)</h2>
+  <div class="label">If @font-face is working, the text below will use a downloaded font:</div>
+  <div id="web-font-test" class="latin-24" style="font-family: 'WebFontTest', sans-serif;">
+    This text should use an @font-face downloaded web font.
+  </div>
+  <div class="label">If no web font is available, it falls back to sans-serif.</div>
+</section>
+
+<!-- 11. Kerning -->
+<section class="section">
+  <h2>11. Kerning</h2>
+  <div class="latin-24">AV AT AW AY VA WA YA Ta To Tr Tu Ty</div>
+  <div class="latin-16">Kerning pairs: A V A W A Y T o T r L y f i f l f f i f f l</div>
+  <div class="label">Check that VA/Wa/To/etc have tighter spacing than default</div>
+</section>
+
+<!-- 12. Numbers -->
+<section class="section">
+  <h2>12. Numbers</h2>
+  <div class="latin-24">0123456789 123,456,789.00 $1,234.56</div>
+  <div class="mono latin-24">0123456789 1234567890</div>
+  <div class="label">Numbers in sans-serif and monospace, 24px</div>
+</section>
+
+<!-- 13. Line height -->
+<section class="section">
+  <h2>13. Line Height</h2>
+  <div class="latin-16" style="line-height:1.2">
+    Line height 1.2:<br>
+    First line<br>
+    Second line<br>
+    Third line
+  </div>
+  <div class="latin-16" style="line-height:2.0; margin-top:12px;">
+    Line height 2.0:<br>
+    First line<br>
+    Second line<br>
+    Third line
+  </div>
+  <div class="label">Compare spacing between line-height values</div>
+</section>
+
+</body>
+</html>

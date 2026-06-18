@@ -1,7 +1,9 @@
 #pragma once
+#include "../../css/layout/types.hpp"
 #include "../renderer.hpp"
 #include "../texture.hpp"
 #include "font.hpp"
+#include "shaper.hpp"
 
 #include <cstdio>
 #include <unordered_map>
@@ -32,6 +34,7 @@ namespace browser::render {
                         u8 font_flags = 0,
                         const std::string &font_family = {});
         f32 measure_text(const std::string &text, u32 pixel_size = 16);
+        css::FontMetrics get_font_metrics(u32 pixel_size) const;
 
     private:
         static constexpr u32 kAtlasWidth = 1024;
@@ -57,19 +60,22 @@ namespace browser::render {
         };
         struct CacheKey {
             FontFace *face;
-            u32 codepoint;
+            u32 glyph_id;
             u32 pixel_size;
             bool operator==(const CacheKey &o) const {
-                return face == o.face && codepoint == o.codepoint && pixel_size == o.pixel_size;
+                return face == o.face && glyph_id == o.glyph_id && pixel_size == o.pixel_size;
             }
         };
         struct CacheHash {
             u64 operator()(const CacheKey &k) const {
-                return (reinterpret_cast<u64>(k.face) << 32) ^ ((u64)k.codepoint << 4) ^ k.pixel_size;
+                return (reinterpret_cast<u64>(k.face) << 32) ^ ((u64)k.glyph_id << 4) ^ k.pixel_size;
             }
         };
         std::unordered_map<CacheKey, GlyphAtlasEntry, CacheHash> glyph_cache_;
         GlyphAtlasEntry *prepare_glyph(u32 codepoint, u32 pixel_size, FontFace *primary_override = nullptr);
+        GlyphAtlasEntry *prepare_glyph_by_gid(u16 glyph_id, u32 codepoint, u32 pixel_size, FontFace *face);
+
+        Shaper shaper_;
     };
 
 }  // namespace browser::render

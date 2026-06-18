@@ -441,7 +441,15 @@ namespace browser::render {
     void Painter::paint_text(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
         Color text_color = resolve_color(node->style(), "color", Color::BLACK);
         f32 font_size = resolve_font_size(node->style());
+
+        // Descender pad from actual font metrics, fallback: 0.25 * font_size
         f32 descender_pad = std::ceil(font_size * 0.25f);
+        if (text_renderer_) {
+            auto fm = text_renderer_->get_font_metrics((u32)font_size);
+            f32 metrics_pad = std::ceil(std::abs(fm.descender));
+            if (metrics_pad >= 1)
+                descender_pad = metrics_pad;
+        }
 
         std::string font_family;
         auto *ff_val = node->style().get("font-family");

@@ -45,6 +45,29 @@ namespace browser::render {
         void set_path(const std::string &p) { path_ = p; }
         bool has_color_bitmap(u32 codepoint, u32 pixel_size) const;
         Result<GlyphBitmap> rasterize_color_bitmap(u32 codepoint) const;
+        Result<GlyphBitmap> rasterize_glyph_by_gid(u16 gid, u32 pixel_size);
+
+        const u8 *font_data_ptr() const { return font_data_.data(); }
+        u32 font_data_size() const { return (u32)font_data_.size(); }
+        u32 gsub_off() const { return gsub_off_; }
+        u32 gsub_len() const { return gsub_len_; }
+        u32 gpos_off() const { return gpos_off_; }
+        u32 gpos_len() const { return gpos_len_; }
+        u32 gdef_off() const { return gdef_off_; }
+        u32 gdef_len() const { return gdef_len_; }
+
+        // Variable font support
+        void set_variation_coord(u32 axis_tag, f32 value);
+        f32 get_variation_coord(u32 axis_tag) const;
+        bool has_variations() const { return !variation_coords_.empty(); }
+        u32 fvar_axis_count() const { return fvar_axis_count_; }
+        struct AxisRecord {
+            u32 tag;
+            f32 min, def, max;
+        };
+        const AxisRecord *get_axis(u32 i) const {
+            return i < fvar_axes_.size() ? &fvar_axes_[i] : nullptr;
+        }
 
     private:
         struct TableRecord {
@@ -82,6 +105,18 @@ namespace browser::render {
         u32 cbdt_len_ = 0;
         u32 cblc_off_ = 0;
         u32 cblc_len_ = 0;
+        u32 gsub_off_ = 0;
+        u32 gsub_len_ = 0;
+        u32 gpos_off_ = 0;
+        u32 gpos_len_ = 0;
+        u32 gdef_off_ = 0;
+        u32 gdef_len_ = 0;
+        u32 fvar_off_ = 0;
+        u32 fvar_len_ = 0;
+        u32 gvar_off_ = 0;
+        u32 gvar_len_ = 0;
+        u32 hvar_off_ = 0;
+        u32 hvar_len_ = 0;
 
         f32 units_per_em_ = 0;
         i16 hhea_ascender_ = 0;
@@ -90,6 +125,11 @@ namespace browser::render {
         u16 num_glyphs_ = 0;
         u16 num_h_metrics_ = 0;
         bool long_loca_ = false;
+
+        // Variable font state
+        u32 fvar_axis_count_ = 0;
+        std::vector<AxisRecord> fvar_axes_;
+        std::unordered_map<u32, f32> variation_coords_;
 
         static u16 read_u16_be(const u8 *data, u32 offset, u32 data_len);
         static u32 read_u32_be(const u8 *data, u32 offset, u32 data_len);
@@ -105,6 +145,8 @@ namespace browser::render {
 
         static std::vector<u8> rasterize_scanline(
             const internal::GlyphOutline &outline, u32 pw, u32 ph, i32 offset_x, i32 offset_y);
+
+        void apply_gvar_deltas(u16 gid, std::vector<f32> &points, u32 num_contours) const;
     };
 
     class FontManager {
@@ -119,6 +161,7 @@ namespace browser::render {
         FontFace *find_font_by_name(const std::string &name) const;
         void load_fallback_fonts();
         void add_font(FontFace *face);
+        void register_web_font(const std::string &family, FontFace *face);
         const std::vector<FontFace *> &all_fonts() const { return all_fonts_; }
 
     private:
@@ -145,6 +188,7 @@ namespace browser::render {
             }
         };
         std::unordered_map<CacheKey, GlyphBitmap, CacheHash> cache_;
+        std::unordered_map<std::string, FontFace *> web_fonts_;
     };
 
 }  // namespace browser::render

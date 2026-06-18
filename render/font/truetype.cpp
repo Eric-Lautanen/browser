@@ -55,8 +55,49 @@ Result<void> FontFace::load_tables_from_offset(const u8 *data, u32 total_size, u
         else if (std::strcmp(tag, "loca") == 0) { loca_off_ = abs_off; loca_len_ = tab_len; }
         else if (std::strcmp(tag, "glyf") == 0) { glyf_off_ = abs_off; glyf_len_ = tab_len; }
         else if (std::strcmp(tag, "kern") == 0) { kern_off_ = abs_off; kern_len_ = tab_len; }
-        else if (std::strcmp(tag, "CBDT") == 0) { cbdt_off_ = abs_off; cbdt_len_ = tab_len; }
-        else if (std::strcmp(tag, "CBLC") == 0) { cblc_off_ = abs_off; cblc_len_ = tab_len; }
+        else if (std::strcmp(tag, "CBDT") == 0) { cbdt_off_ = abs_off; cbdt_len_ = tab_len;
+        } else if (std::strcmp(tag, "CBLC") == 0) {
+            cblc_off_ = abs_off;
+            cblc_len_ = tab_len;
+        } else if (std::strcmp(tag, "GSUB") == 0) {
+            gsub_off_ = abs_off;
+            gsub_len_ = tab_len;
+        } else if (std::strcmp(tag, "GPOS") == 0) {
+            gpos_off_ = abs_off;
+            gpos_len_ = tab_len;
+        } else if (std::strcmp(tag, "GDEF") == 0) {
+            gdef_off_ = abs_off;
+            gdef_len_ = tab_len;
+        } else if (std::strcmp(tag, "fvar") == 0) {
+            fvar_off_ = abs_off;
+            fvar_len_ = tab_len;
+        } else if (std::strcmp(tag, "gvar") == 0) {
+            gvar_off_ = abs_off;
+            gvar_len_ = tab_len;
+        } else if (std::strcmp(tag, "HVAR") == 0) {
+            hvar_off_ = abs_off;
+            hvar_len_ = tab_len;
+        }
+    }
+
+    // Parse fvar table to discover axes
+    if (fvar_off_) {
+        u32 fo = fvar_off_ - font_offset;
+        if (fl >= fo + 16) {
+            u16 axis_count = read_u16_be(fp, fo + 8, fl);
+            fvar_axis_count_ = axis_count;
+            fvar_axes_.reserve(axis_count);
+            for (u16 i = 0; i < axis_count; i++) {
+                u32 ao = fo + 16 + i * 20;
+                if (ao + 20 > fl) break;
+                AxisRecord ar;
+                ar.tag = read_u32_be(fp, ao, fl);
+                ar.min = (f32)(i16)read_i16_be(fp, ao + 4, fl) + (f32)read_u16_be(fp, ao + 6, fl) / 65536.0f;
+                ar.def = (f32)(i16)read_i16_be(fp, ao + 8, fl) + (f32)read_u16_be(fp, ao + 10, fl) / 65536.0f;
+                ar.max = (f32)(i16)read_i16_be(fp, ao + 12, fl) + (f32)read_u16_be(fp, ao + 14, fl) / 65536.0f;
+                fvar_axes_.push_back(ar);
+            }
+        }
     }
 
     if (!head_off_ || !maxp_off_ || !hhea_off_) {
@@ -475,6 +516,202 @@ Result<GlyphOutline> FontFace::read_outline(u16 glyph_idx, int bezier_steps) con
     }
 
     return Result<GlyphOutline>(std::move(result));
+}
+
+// ── Variable font gvar delta application ────────────────────────────────
+
+static f32 read_f2dot14_be(const u8* data, u32 off, u32 size) {
+    return (f32)(i16)internal::read_u16_be(data, off, size) / 16384.0f;
+}
+
+void FontFace::apply_gvar_deltas(u16 gid, std::vector<f32>& points, u32 num_contours) const {
+    if (!gvar_off_ || gvar_len_ < 20 || variation_coords_.empty())
+        return;
+    if (num_contours == 0 || points.size() < 4)
+        return;
+
+    const u8* fp = font_data_.data();
+    u32 fl = (u32)font_data_.size();
+    u32 go = gvar_off_;
+
+    if (go + 20 > fl) return;
+    u16 axis_count = read_u16_be(fp, go + 4, fl);
+    if (axis_count == 0) return;
+    u16 shared_count = read_u16_be(fp, go + 6, fl);
+    u32 data_off = go + read_u32_be(fp, go + 8, fl);
+
+    // Read glyph offset array
+    u32 off_size = ((data_off - go - 12) / 2 < (u32)(gid + 2)) ? 4 : 2;
+    u32 off_base = go + 12;
+
+    u32 glyph_data_off = 0;
+    u32 next_glyph_off = 0;
+    if (off_size == 4) {
+        if (off_base + (gid + 2) * 4 > fl) return;
+        glyph_data_off = read_u32_be(fp, off_base + gid * 4, fl);
+        next_glyph_off = read_u32_be(fp, off_base + (gid + 1) * 4, fl);
+    } else {
+        if (off_base + (gid + 2) * 2 > fl) return;
+        glyph_data_off = read_u16_be(fp, off_base + gid * 2, fl);
+        next_glyph_off = read_u16_be(fp, off_base + (gid + 1) * 2, fl);
+    }
+    if (glyph_data_off == next_glyph_off) return;
+
+    u32 abs_data_off = go + glyph_data_off;
+    if (abs_data_off + 4 > fl) return;
+
+    u16 tuple_count = read_u16_be(fp, abs_data_off, fl);
+    if (tuple_count == 0) return;
+
+    // Read shared tuples
+    std::vector<f32> shared_coords;
+    if (shared_count > 0) {
+        u32 shared_off = go + 12 + (gid + 2) * off_size;
+        // Round up to 4-byte boundary for shared coords
+        shared_off = (shared_off + 3) & ~3;
+        shared_coords.reserve(shared_count * axis_count);
+        for (u32 i = 0; i < shared_count * axis_count; i++) {
+            if (shared_off + i * 2 + 2 > fl) break;
+            shared_coords.push_back(read_f2dot14_be(fp, shared_off + i * 2, fl));
+        }
+    }
+
+    u32 th_base = abs_data_off + 4;
+    u32 point_count = (u32)(points.size() / 2);
+    u32 num_pts = point_count;
+
+    for (u16 ti = 0; ti < tuple_count; ti++) {
+        if (th_base + 4 > fl) break;
+        u16 var_data_size = read_u16_be(fp, th_base, fl);
+        u16 tuple_index = read_u16_be(fp, th_base + 2, fl);
+        u32 th_size = 4;
+
+        // Extract peak, start, end coordinates
+        f32 peak[4] = {}, start[4] = {}, end[4] = {};
+        u32 used_axes = axis_count > 4 ? 4 : axis_count;
+
+        bool has_peak = (tuple_index & 0x8000) != 0;
+        bool has_intermediate = (tuple_index & 0x4000) != 0;
+        bool has_private_points = (tuple_index & 0x2000) != 0;
+        u16 shared_idx = tuple_index & 0x0FFF;
+
+        bool skip_tuple = false;
+
+        if (has_peak) {
+            for (u32 a = 0; a < used_axes; a++) {
+                if (th_base + th_size + 2 > fl) { skip_tuple = true; break; }
+                peak[a] = read_f2dot14_be(fp, th_base + th_size, fl);
+                th_size += 2;
+            }
+        } else if (shared_idx < shared_count) {
+            for (u32 a = 0; a < used_axes; a++)
+                peak[a] = shared_coords[shared_idx * axis_count + a];
+        } else {
+            skip_tuple = true;
+        }
+
+        if (!skip_tuple && has_intermediate) {
+            for (u32 a = 0; a < used_axes; a++) {
+                if (th_base + th_size + 2 > fl) { skip_tuple = true; break; }
+                start[a] = read_f2dot14_be(fp, th_base + th_size, fl);
+                th_size += 2;
+            }
+            if (!skip_tuple) {
+                for (u32 a = 0; a < used_axes; a++) {
+                    if (th_base + th_size + 2 > fl) { skip_tuple = true; break; }
+                    end[a] = read_f2dot14_be(fp, th_base + th_size, fl);
+                    th_size += 2;
+                }
+            }
+        } else if (!skip_tuple) {
+            for (u32 a = 0; a < used_axes; a++) {
+                start[a] = -1.0f;
+                end[a] = 1.0f;
+            }
+        }
+
+        if (!skip_tuple) {
+            // Compute scalar for each axis, multiply together
+            f32 scalar = 1.0f;
+            for (u32 a = 0; a < used_axes; a++) {
+                auto it = variation_coords_.find(fvar_axes_.size() > a ? fvar_axes_[a].tag : 0);
+                f32 coord = it != variation_coords_.end() ? it->second : 0;
+                if (coord < start[a] || coord > end[a]) { scalar = 0; break; }
+                if (coord != peak[a]) {
+                    if (coord < peak[a])
+                        scalar *= (coord - start[a]) / (peak[a] - start[a]);
+                    else
+                        scalar *= (end[a] - coord) / (end[a] - peak[a]);
+                }
+            }
+            if (scalar != 0) {
+                // Read point numbers
+                u32 serial_off = th_base + th_size;
+                u32 serial_end = th_base + 4 + var_data_size;
+                if (serial_end > fl) serial_end = fl;
+
+                std::vector<u16> point_indices;
+                if (has_private_points) {
+                    u16 pt_count = 0;
+                    if (serial_off + 2 > serial_end) goto skip_apply;
+                    u8 first_byte = fp[serial_off];
+                    if (first_byte & 0x80) {
+                        pt_count = ((u16)(first_byte & 0x7F) << 8) | fp[serial_off + 1];
+                        serial_off += 2;
+                    } else {
+                        pt_count = first_byte;
+                        serial_off += 1;
+                    }
+                    u16 run_count = 0;
+                    u16 cur_pt = 0;
+                    while (point_indices.size() < pt_count && serial_off < serial_end) {
+                        if (run_count == 0) {
+                            u8 cnt = fp[serial_off++];
+                            if (cnt & 0x80) {
+                                run_count = cnt & 0x7F;
+                            } else {
+                                run_count = (cnt >> 4) + 1;
+                                cur_pt += (cnt & 0x0F) + 1;
+                                point_indices.push_back(cur_pt);
+                                run_count--;
+                                while (run_count > 0 && serial_off < serial_end) {
+                                    cur_pt += fp[serial_off++] + 1;
+                                    point_indices.push_back(cur_pt);
+                                    run_count--;
+                                }
+                                continue;
+                            }
+                        }
+                        if (serial_off >= serial_end) break;
+                        u16 delta = fp[serial_off++];
+                        cur_pt += delta;
+                        point_indices.push_back(cur_pt);
+                        run_count--;
+                    }
+                } else {
+                    point_indices.resize(num_pts);
+                    for (u32 p = 0; p < num_pts; p++)
+                        point_indices[p] = (u16)p;
+                }
+
+                if (!point_indices.empty()) {
+                    for (size_t pi = 0; pi < point_indices.size(); pi++) {
+                        u16 pt = point_indices[pi];
+                        if ((u32)(pt * 2 + 1) >= points.size()) break;
+                        if (serial_off + 2 > serial_end) break;
+                        f32 dx = read_f2dot14_be(fp, serial_off, fl);
+                        f32 dy = read_f2dot14_be(fp, serial_off + 2, fl);
+                        serial_off += 4;
+                        points[pt * 2] += dx * scalar;
+                        points[pt * 2 + 1] += dy * scalar;
+                    }
+                }
+            }
+        }
+
+    skip_apply:;
+        th_base += 4 + var_data_size;
+    }
 }
 
 Result<FontFace::GlyphMetrics> FontFace::get_metrics_by_gid(u16 gid, u32 pixel_size) const {

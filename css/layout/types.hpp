@@ -17,6 +17,13 @@ namespace browser::css {
 
     using TextMeasureFn = f32 (*)(void *ctx, const std::string &text, u32 pixel_size);
 
+    struct FontMetrics {
+        f32 ascender;
+        f32 descender;
+        f32 line_gap;
+    };
+    using TextMetricsFn = FontMetrics (*)(void *ctx, u32 pixel_size);
+
     struct Rect {
         f32 x = 0, y = 0, width = 0, height = 0;
         std::optional<Rect> intersect(const Rect &o) const;

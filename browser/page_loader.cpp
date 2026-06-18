@@ -1,5 +1,4 @@
 #include "page_loader.hpp"
-#include "paths.hpp"
 
 #include "../async/executor.hpp"
 #include "../css/cascade.hpp"
@@ -13,6 +12,7 @@
 #include "../net/tracker_blocker.hpp"
 #include "../net/url.hpp"
 #include "../render/painter.hpp"
+#include "paths.hpp"
 #include "settings.hpp"
 #include "telemetry.hpp"
 #include "theme.hpp"
@@ -23,6 +23,10 @@ namespace browser {
 
     static f32 text_measure_cb(void *ctx, const std::string &text, u32 pixel_size) {
         return static_cast<render::TextRenderer *>(ctx)->measure_text(text, pixel_size);
+    }
+
+    static css::FontMetrics text_metrics_cb(void *ctx, u32 pixel_size) {
+        return static_cast<render::TextRenderer *>(ctx)->get_font_metrics(pixel_size);
     }
 
     PageLoader::PageLoader(Telemetry *telemetry,
@@ -445,6 +449,7 @@ namespace browser {
         if (page.dom) {
             css::LayoutEngine layout_engine;
             layout_engine.set_text_measure(text_renderer_, text_measure_cb);
+            layout_engine.set_text_metrics(text_renderer_, text_metrics_cb);
             auto layout_r = co_await layout_engine.layout_async(
                 page.dom.get(), page.styles, static_cast<f32>(viewport_width_), static_cast<f32>(viewport_height_));
             if (layout_r.is_ok()) {
@@ -512,6 +517,7 @@ namespace browser {
         if (page.dom) {
             css::LayoutEngine layout_engine;
             layout_engine.set_text_measure(text_renderer_, text_measure_cb);
+            layout_engine.set_text_metrics(text_renderer_, text_metrics_cb);
             auto layout_r = co_await layout_engine.layout_async(
                 page.dom.get(), page.styles, static_cast<f32>(viewport_width_), static_cast<f32>(viewport_height_));
             if (layout_r.is_ok()) {

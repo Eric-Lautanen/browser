@@ -123,6 +123,7 @@ async::task<bool> FontLoader::fetch_all(const std::string& base_url) {
         auto* face = fm_->load_from_memory(resp.body.data(), static_cast<u32>(resp.body.size()));
         if (face) {
             font_faces_[req.font_family] = face;
+            fm_->register_web_font(req.font_family, face);
         }
     }
 

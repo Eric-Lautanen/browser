@@ -54,11 +54,6 @@ namespace browser::render {
         f32 cursor_x = x;
         bool textured_started = false;
         u32 current_page = 0;
-        const u8 *data = reinterpret_cast<const u8 *>(text.data());
-        u32 offset = 0;
-        u32 len = static_cast<u32>(text.size());
-        u32 prev_gid = 0;
-        FontFace *prev_face = nullptr;
         bool is_bold = (font_flags & 1) != 0;
         bool is_italic = (font_flags & 2) != 0;
 
@@ -75,85 +70,96 @@ namespace browser::render {
             return tw;
         }
 
-        while (offset < len) {
-            auto dr = html::decode_utf8(data + offset, len - offset);
-            if (dr.bytes_consumed == 0) {
-                offset++;
-                continue;
-            }
-            offset += dr.bytes_consumed;
-            GlyphAtlasEntry *gt = prepare_glyph(dr.codepoint, pixel_size, primary);
-            if (!gt) {
-                FontFace *ef = primary;
-                if (ef && ef->glyph_index(dr.codepoint) == 0 && fm_)
-                    ef = fm_->find_font_for_codepoint(ef, dr.codepoint);
-                if (ef && ef->glyph_index(dr.codepoint) != 0) {
-                    auto mr = ef->get_metrics(dr.codepoint, pixel_size);
-                    if (mr.is_ok())
-                        cursor_x += (f32)mr.unwrap().advance_x;
+        // Collect codepoints and detect if Arabic shaping is needed
+        std::vector<u32> codepoints;
+        const u8 *text_data = reinterpret_cast<const u8 *>(text.data());
+        u32 text_offset = 0;
+        u32 text_len = static_cast<u32>(text.size());
+        bool needs_arabic = false;
+        while (text_offset < text_len) {
+            auto dr = html::decode_utf8(text_data + text_offset, text_len - text_offset);
+            if (dr.bytes_consumed == 0) { text_offset++; continue; }
+            text_offset += dr.bytes_consumed;
+            u32 cp = (u32)dr.codepoint;
+            codepoints.push_back(cp);
+            if ((cp >= 0x0600 && cp <= 0x06FF) || (cp >= 0x0750 && cp <= 0x077F) ||
+                (cp >= 0x08A0 && cp <= 0x08FF) || (cp >= 0xFB50 && cp <= 0xFDFF) ||
+                (cp >= 0xFE70 && cp <= 0xFEFF))
+                needs_arabic = true;
+        }
+
+        if (needs_arabic) {
+            // Arabic text: use shaper for positional forms
+            std::vector<ShapedGlyph> shaped;
+            shaper_.shape(primary, codepoints, shaped, pixel_size);
+            for (const auto &sg : shaped) {
+                FontFace *gf = primary; u32 gid = sg.glyph_id; u32 cp = sg.codepoint;
+                if (gid == 0 && fm_) {
+                    FontFace *fb = fm_->find_font_for_codepoint(primary, cp);
+                    if (fb && fb != primary) { gf = fb; gid = (u16)fb->glyph_index(cp); }
                 }
-                continue;
+                if (gid == 0) { cursor_x += (f32)sg.advance_x; continue; }
+                GlyphAtlasEntry *gt = prepare_glyph_by_gid((u16)gid, cp, pixel_size, gf);
+                if (!gt) { cursor_x += (f32)sg.advance_x; continue; }
+                if (!textured_started || gt->page != current_page) {
+                    r->begin_textured(&atlas_pages_[gt->page]); textured_started = true; current_page = gt->page;
+                }
+                Color gc = gt->has_color ? Color::WHITE : color;
+                f32 gx = cursor_x + (f32)gt->bearing_x + (f32)sg.x_offset * ((f32)pixel_size / primary->units_per_em());
+                f32 asc = gf->ascender(pixel_size);
+                f32 gy = y + asc - (f32)gt->bearing_y + (f32)sg.y_offset * ((f32)pixel_size / primary->units_per_em());
+                auto add_glyph = [&](f32 ox) {
+                    if (is_italic) {
+                        r->add_tex_quad_skewed(gx + ox, gy, (f32)gt->width, (f32)gt->height, (f32)pixel_size * 0.2f, gc, gt->u0, gt->v0, gt->u1, gt->v1);
+                    } else {
+                        r->add_tex_quad(gx + ox, gy, (f32)gt->width, (f32)gt->height, gc, gt->u0, gt->v0, gt->u1, gt->v1);
+                    }
+                };
+                if (is_bold) { add_glyph(-0.5f); add_glyph(0.5f); }
+                else { add_glyph(0); }
+                cursor_x += (f32)sg.advance_x;
             }
-
-            FontFace *glyph_face = gt->face ? gt->face : primary;
-            if (glyph_face && prev_face && prev_gid != 0 && prev_face == glyph_face) {
-                u32 gid = glyph_face->glyph_index(dr.codepoint);
-                i32 kern = glyph_face->get_kerning((u16)prev_gid, (u16)gid);
-                cursor_x += (f32)kern * ((f32)pixel_size / glyph_face->units_per_em());
+        } else {
+            // Non-Arabic: fast per-codepoint path with kern table kerning
+            u32 prev_gid = 0; FontFace *prev_face = nullptr;
+            for (u32 cp : codepoints) {
+                u32 gid = primary->glyph_index(cp);
+                FontFace *uf = primary;
+                if (gid == 0 && fm_) {
+                    FontFace *fb = fm_->find_font_for_codepoint(uf, cp);
+                    if (fb) { uf = fb; gid = uf->glyph_index(cp); }
+                }
+                GlyphAtlasEntry *gt = prepare_glyph_by_gid((u16)gid, cp, pixel_size, uf);
+                if (!gt) {
+                    if (gid != 0) {
+                        auto mr = uf->get_metrics_by_gid((u16)gid, pixel_size);
+                        if (mr.is_ok()) cursor_x += (f32)mr.unwrap().advance_x;
+                    }
+                    continue;
+                }
+                if (uf && prev_face && prev_gid != 0 && prev_face == uf) {
+                    i32 kern = uf->get_kerning((u16)prev_gid, (u16)gid);
+                    if (kern) cursor_x += (f32)kern * ((f32)pixel_size / uf->units_per_em());
+                }
+                prev_gid = gid; prev_face = uf;
+                if (!textured_started || gt->page != current_page) {
+                    r->begin_textured(&atlas_pages_[gt->page]); textured_started = true; current_page = gt->page;
+                }
+                Color gc = gt->has_color ? Color::WHITE : color;
+                f32 gx = cursor_x + (f32)gt->bearing_x;
+                f32 asc = uf ? uf->ascender(pixel_size) : (f32)pixel_size * 0.8f;
+                f32 gy = y + asc - (f32)gt->bearing_y;
+                auto add_glyph = [&](f32 ox) {
+                    if (is_italic) {
+                        r->add_tex_quad_skewed(gx + ox, gy, (f32)gt->width, (f32)gt->height, (f32)pixel_size * 0.2f, gc, gt->u0, gt->v0, gt->u1, gt->v1);
+                    } else {
+                        r->add_tex_quad(gx + ox, gy, (f32)gt->width, (f32)gt->height, gc, gt->u0, gt->v0, gt->u1, gt->v1);
+                    }
+                };
+                if (is_bold) { add_glyph(-0.5f); add_glyph(0.5f); }
+                else { add_glyph(0); }
+                cursor_x += (f32)gt->advance_x;
             }
-            if (glyph_face) {
-                prev_gid = glyph_face->glyph_index(dr.codepoint);
-                prev_face = glyph_face;
-            }
-
-            if (!textured_started || gt->page != current_page) {
-                r->begin_textured(&atlas_pages_[gt->page]);
-                textured_started = true;
-                current_page = gt->page;
-            }
-
-            Color glyph_color = gt->has_color ? Color::WHITE : color;
-
-            f32 glyph_x = cursor_x + (f32)gt->bearing_x;
-            f32 asc = glyph_face ? glyph_face->ascender(pixel_size) : (f32)pixel_size * 0.8f;
-            f32 glyph_y = y + asc - static_cast<f32>(gt->bearing_y);
-
-            if (is_bold && is_italic) {
-                f32 skew = pixel_size * 0.2f;
-                r->add_tex_quad_skewed(glyph_x - 0.5f,
-                                       glyph_y,
-                                       (f32)gt->width,
-                                       (f32)gt->height,
-                                       skew,
-                                       glyph_color,
-                                       gt->u0,
-                                       gt->v0,
-                                       gt->u1,
-                                       gt->v1);
-                r->add_tex_quad_skewed(glyph_x + 0.5f,
-                                       glyph_y,
-                                       (f32)gt->width,
-                                       (f32)gt->height,
-                                       skew,
-                                       glyph_color,
-                                       gt->u0,
-                                       gt->v0,
-                                       gt->u1,
-                                       gt->v1);
-            } else if (is_bold) {
-                r->add_tex_quad(
-                    glyph_x - 0.5f, glyph_y, (f32)gt->width, (f32)gt->height, glyph_color, gt->u0, gt->v0, gt->u1, gt->v1);
-                r->add_tex_quad(
-                    glyph_x + 0.5f, glyph_y, (f32)gt->width, (f32)gt->height, glyph_color, gt->u0, gt->v0, gt->u1, gt->v1);
-            } else if (is_italic) {
-                f32 skew = pixel_size * 0.2f;
-                r->add_tex_quad_skewed(
-                    glyph_x, glyph_y, (f32)gt->width, (f32)gt->height, skew, glyph_color, gt->u0, gt->v0, gt->u1, gt->v1);
-            } else {
-                r->add_tex_quad(
-                    glyph_x, glyph_y, (f32)gt->width, (f32)gt->height, glyph_color, gt->u0, gt->v0, gt->u1, gt->v1);
-            }
-            cursor_x += (f32)gt->advance_x;
         }
 
         if (textured_started) {
@@ -171,36 +177,47 @@ namespace browser::render {
         if (use_face && use_face->glyph_index(codepoint) == 0 && fm_) {
             use_face = fm_->find_font_for_codepoint(use_face, codepoint);
         }
-
         if (!use_face)
             return nullptr;
 
-        CacheKey key{use_face, codepoint, pixel_size};
+        u16 gid = (u16)use_face->glyph_index(codepoint);
+        return prepare_glyph_by_gid(gid, codepoint, pixel_size, use_face);
+    }
+
+    TextRenderer::GlyphAtlasEntry *TextRenderer::prepare_glyph_by_gid(u16 glyph_id,
+                                                                      u32 codepoint,
+                                                                      u32 pixel_size,
+                                                                      FontFace *use_face) {
+        if (!use_face || glyph_id == 0)
+            return nullptr;
+
+        CacheKey key{use_face, (u32)glyph_id, pixel_size};
         auto it = glyph_cache_.find(key);
         if (it != glyph_cache_.end())
             return &it->second;
 
-        auto rasterize = [&]() -> Result<GlyphBitmap> {
-            if (fm_) {
-                auto *gb_ptr = fm_->get_or_rasterize(use_face, codepoint, pixel_size);
-                if (gb_ptr)
-                    return Result<GlyphBitmap>(*gb_ptr);
-                return Result<GlyphBitmap>(std::string("glyph not found"));
-            }
-            return use_face->rasterize_glyph(codepoint, pixel_size);
-        };
+        if (glyph_cache_.size() >= 8192)
+            glyph_cache_.clear();
 
+        // Try color bitmap first (emoji)
         GlyphBitmap gb;
-        auto r = rasterize();
-        if (r.is_err()) {
-            return nullptr;
-        } else {
-            gb = std::move(r.unwrap());
+        if (use_face->has_color_bitmap(codepoint, pixel_size)) {
+            auto cr = use_face->rasterize_color_bitmap(codepoint);
+            if (cr.is_ok()) {
+                gb = std::move(cr.unwrap());
+            }
         }
 
-        if (gb.width == 0 || gb.height == 0) {
-            return nullptr;
+        if (gb.bitmap.empty()) {
+            auto rr = use_face->rasterize_glyph_by_gid(glyph_id, pixel_size);
+            if (rr.is_err()) {
+                return nullptr;
+            }
+            gb = std::move(rr.unwrap());
         }
+
+        if (gb.width == 0 || gb.height == 0)
+            return nullptr;
 
         u32 w = gb.width;
         u32 h = gb.height;
@@ -225,7 +242,25 @@ namespace browser::render {
                 atlas_cy_ = 0;
                 atlas_row_h_ = 0;
             } else {
-                return nullptr;
+                // Atlas full: evict oldest page (page 0) via LRU
+                u32 evict_page = 0;
+                for (auto it = glyph_cache_.begin(); it != glyph_cache_.end();) {
+                    if (it->second.page == evict_page) {
+                        it = glyph_cache_.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+                Texture2D page;
+                std::vector<u8> empty(kAtlasWidth * kAtlasHeight, 0);
+                auto r = page.create(kAtlasWidth, kAtlasHeight, empty.data());
+                if (r.is_err())
+                    return nullptr;
+                atlas_pages_[evict_page] = std::move(page);
+                atlas_page_ = evict_page;
+                atlas_cx_ = 0;
+                atlas_cy_ = 0;
+                atlas_row_h_ = 0;
             }
         }
 
@@ -253,6 +288,21 @@ namespace browser::render {
         return &it2->second;
     }
 
+    css::FontMetrics TextRenderer::get_font_metrics(u32 pixel_size) const {
+        css::FontMetrics fm = {};
+        FontFace *f = face_;
+        if (!f) {
+            fm.ascender = (f32)pixel_size * 0.8f;
+            fm.descender = (f32)pixel_size * -0.2f;
+            fm.line_gap = 0;
+            return fm;
+        }
+        fm.ascender = f->ascender(pixel_size);
+        fm.descender = f->descender(pixel_size);
+        fm.line_gap = f->line_gap(pixel_size);
+        return fm;
+    }
+
     f32 TextRenderer::measure_text(const std::string &text, u32 pixel_size) {
         if (!face_) {
             return static_cast<f32>(text.size()) * static_cast<f32>(pixel_size) * 0.6f;
@@ -261,30 +311,36 @@ namespace browser::render {
         const u8 *data = reinterpret_cast<const u8 *>(text.data());
         u32 offset = 0;
         u32 len = static_cast<u32>(text.size());
+        u16 prev_gid = 0;
+        FontFace *prev_face = nullptr;
         while (offset < len) {
             auto dr = html::decode_utf8(data + offset, len - offset);
-            if (dr.bytes_consumed == 0) {
-                offset++;
-                continue;
-            }
+            if (dr.bytes_consumed == 0) { offset++; continue; }
             offset += dr.bytes_consumed;
             u32 cp = dr.codepoint;
             FontFace *use_face = face_;
             if (use_face && use_face->glyph_index(cp) == 0 && fm_) {
                 use_face = fm_->find_font_for_codepoint(use_face, cp);
             }
-            CacheKey ck{use_face, cp, pixel_size};
+            if (!use_face) continue;
+            u16 gid = (u16)use_face->glyph_index(cp);
+            if (gid == 0) continue;
+            CacheKey ck{use_face, (u32)gid, pixel_size};
             auto it = glyph_cache_.find(ck);
             if (it != glyph_cache_.end()) {
                 total += (f32)it->second.advance_x;
-            } else if (use_face) {
-                if (use_face->glyph_index(cp) == 0)
-                    continue;
-                auto mr = use_face->get_metrics(cp, pixel_size);
-                if (mr.is_ok()) {
+            } else {
+                auto mr = use_face->get_metrics_by_gid(gid, pixel_size);
+                if (mr.is_ok())
                     total += (f32)mr.unwrap().advance_x;
-                }
             }
+            if (use_face && prev_face && prev_gid != 0 && prev_face == use_face) {
+                i32 kern = use_face->get_kerning(prev_gid, gid);
+                if (kern != 0)
+                    total += (f32)kern * ((f32)pixel_size / use_face->units_per_em());
+            }
+            prev_gid = gid;
+            prev_face = use_face;
         }
         return total;
     }

@@ -37,6 +37,26 @@ namespace browser::render {
         return (f32)hhea_line_gap_ * (f32)pixel_size / units_per_em_;
     }
 
+    void FontFace::set_variation_coord(u32 axis_tag, f32 value) {
+        // Normalize value to -1..1 using fvar axis range
+        f32 normalized = 0;
+        for (auto &a : fvar_axes_) {
+            if (a.tag == axis_tag) {
+                if (value < a.def)
+                    normalized = (value - a.def) / (a.def - a.min);
+                else if (value > a.def)
+                    normalized = (value - a.def) / (a.max - a.def);
+                break;
+            }
+        }
+        variation_coords_[axis_tag] = normalized;
+    }
+
+    f32 FontFace::get_variation_coord(u32 axis_tag) const {
+        auto it = variation_coords_.find(axis_tag);
+        return it != variation_coords_.end() ? it->second : 0;
+    }
+
     FontManager::FontManager() = default;
 
     Result<FontFace *> FontManager::load_default_font() {
@@ -163,7 +183,17 @@ namespace browser::render {
         }
     }
 
+    void FontManager::register_web_font(const std::string &family, FontFace *face) {
+        if (face) web_fonts_[family] = face;
+    }
+
     FontFace *FontManager::resolve_family(const std::string &family) {
+        // Check web fonts (@font-face) first
+        auto wf = web_fonts_.find(family);
+        if (wf != web_fonts_.end())
+            return wf->second;
+
+        // Fall back to system fonts
         auto &reg = FontRegistry::instance();
         if (!reg.scanned())
             reg.scan();
@@ -191,6 +221,8 @@ namespace browser::render {
         auto it = cache_.find(key);
         if (it != cache_.end())
             return &it->second;
+        if (cache_.size() >= 4096)
+            cache_.clear();
         auto result = face->rasterize_glyph(codepoint, pixel_size);
         if (result.is_err())
             return nullptr;

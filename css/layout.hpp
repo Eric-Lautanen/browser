@@ -69,6 +69,10 @@ namespace browser::css {
             text_measurer_ctx_ = ctx;
             text_measure_fn_ = fn;
         }
+        void set_text_metrics(void *ctx, TextMetricsFn fn) {
+            metrics_ctx_ = ctx;
+            metrics_fn_ = fn;
+        }
         async::task<std::unique_ptr<LayoutNode>> layout_async(
             html::Document *doc,
             const std::unordered_map<const html::Element *, ComputedStyle> &styles,
@@ -89,6 +93,8 @@ namespace browser::css {
         f32 viewport_height_ = 0;
         void *text_measurer_ctx_ = nullptr;
         TextMeasureFn text_measure_fn_ = nullptr;
+        void *metrics_ctx_ = nullptr;
+        TextMetricsFn metrics_fn_ = nullptr;
 
         f32 resolve_length(const Length &len, f32 parent_value, f32 font_size) const;
         f32 resolve_font_size(const ComputedStyle &style, f32 parent_font_size) const;

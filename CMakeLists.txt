@@ -281,6 +281,7 @@ add_library(render STATIC
     render/font/atlas.cpp
     render/font/embedded.cpp
     render/font/registry.cpp
+    render/font/shaper.cpp
     render/paint/gradient.cpp
     render/paint/shadow.cpp
     render/paint/painter.cpp
