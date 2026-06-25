@@ -19,7 +19,6 @@
 #include <windows.h>
 
 namespace browser {
-
     class HistoryManager;
     class BookmarkManager;
     class Telemetry;
@@ -57,7 +56,6 @@ namespace browser {
         }
     };
 
-    class HistoryManager;
     struct TabInfo {
         std::string url;
         render::Texture2D *favicon = nullptr;

@@ -1,5 +1,7 @@
 #include "settings.hpp"
 
+#include "escape.hpp"
+
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -136,19 +138,6 @@ namespace browser {
         replace("DL_ENABLED_CLS", download_behavior_ == "enabled" ? "class=\"sel\"" : "");
 
         return html;
-    }
-
-    static std::string unescape_pipe(const std::string &s) {
-        std::string r;
-        for (size_t i = 0; i < s.size(); i++) {
-            if (s[i] == '\\' && i + 1 < s.size() && s[i + 1] == 'p') {
-                r += '|';
-                i++;
-            } else {
-                r += s[i];
-            }
-        }
-        return r;
     }
 
     static void write_setting_field(std::ofstream &f, const std::string &name, const std::string &value) {

@@ -7,11 +7,11 @@
 #include "../html/preload_scanner.hpp"
 #include "../html/resource_loader.hpp"
 #include "../image/format.hpp"
-#include "../net/http_client.hpp"
 #include "../net/csp.hpp"
+#include "../net/http_client.hpp"
 #include "../net/url.hpp"
 #include "../render/paint.hpp"
-#include "../tests/utility.hpp"
+#include "types.hpp"
 
 #include <atomic>
 #include <chrono>
@@ -44,7 +44,10 @@ namespace browser {
 
     class PageLoader {
     public:
-        using DownloadCheckCallback = std::function<bool(const std::string& url, const std::string& content_disposition, const std::string& mime_type, u64 content_length)>;
+        using DownloadCheckCallback = std::function<bool(const std::string &url,
+                                                         const std::string &content_disposition,
+                                                         const std::string &mime_type,
+                                                         u64 content_length)>;
 
         PageLoader(Telemetry *telemetry,
                    SettingsManager *settings,

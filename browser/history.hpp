@@ -1,8 +1,9 @@
 #pragma once
+#include "types.hpp"
+
+#include <optional>
 #include <string>
 #include <vector>
-#include <optional>
-#include "../tests/utility.hpp"
 
 namespace browser {
 

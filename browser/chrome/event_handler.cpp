@@ -153,23 +153,6 @@ namespace browser {
     }
 
     void BrowserWindow::handle_mouse_click(i32 mx, i32 my) {
-        {
-            static FILE *f = nullptr;
-            if (!f) {
-                f = fopen("click_debug.txt", "w");
-            }
-            if (f) {
-                fprintf(f,
-                        "click: mx=%d my=%d chrome_h=%.0f show_settings=%d show_menu=%d address_focused=%d\n",
-                        mx,
-                        my,
-                        chrome_height(),
-                        (int)chrome_.show_settings,
-                        (int)chrome_.show_menu,
-                        (int)chrome_.address_focused);
-                fflush(f);
-            }
-        }
         if (my > chrome_height()) {
             // Check overlay panels first — prevent clicks from reaching page below
             if (chrome_.show_downloads) {

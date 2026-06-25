@@ -1,6 +1,6 @@
 #pragma once
-#include "../tests/utility.hpp"
 #include "../render/renderer.hpp"
+#include "types.hpp"
 
 namespace browser {
 

@@ -1,7 +1,8 @@
 #pragma once
-#include <string>
-#include "../tests/utility.hpp"
 #include "theme.hpp"
+#include "types.hpp"
+
+#include <string>
 
 namespace browser {
 

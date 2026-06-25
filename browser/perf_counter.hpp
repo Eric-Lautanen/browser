@@ -1,6 +1,6 @@
 #pragma once
 #include "../js/vm/gc.hpp"
-#include "../tests/utility.hpp"
+#include "types.hpp"
 
 #include <atomic>
 #include <string>

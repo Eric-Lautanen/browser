@@ -331,6 +331,8 @@ add_library(browser_lib STATIC
     browser/devtools.cpp
     browser/session.cpp
     browser/browser_window.hpp
+    browser/types.hpp
+    browser/escape.hpp
     browser/history.hpp
     browser/bookmarks.hpp
     browser/telemetry.hpp
@@ -338,6 +340,7 @@ add_library(browser_lib STATIC
     browser/theme.hpp
     browser/page_loader.hpp
     browser/chrome/window.hpp
+    browser/paths.hpp
 )
 target_include_directories(browser_lib PUBLIC .)
 target_link_libraries(browser_lib net platform render js html image psapi)

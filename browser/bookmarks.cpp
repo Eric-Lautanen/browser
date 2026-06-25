@@ -1,4 +1,6 @@
 #include "bookmarks.hpp"
+
+#include "escape.hpp"
 #include "paths.hpp"
 
 #include <chrono>
@@ -44,30 +46,6 @@ namespace browser {
 
     std::vector<Bookmark> BookmarkManager::all() const {
         return bookmarks_;
-    }
-
-    static std::string escape_pipe(const std::string &s) {
-        std::string r;
-        for (char c : s) {
-            if (c == '|')
-                r += "\\p";
-            else
-                r += c;
-        }
-        return r;
-    }
-
-    static std::string unescape_pipe(const std::string &s) {
-        std::string r;
-        for (size_t i = 0; i < s.size(); i++) {
-            if (s[i] == '\\' && i + 1 < s.size() && s[i + 1] == 'p') {
-                r += '|';
-                i++;
-            } else {
-                r += s[i];
-            }
-        }
-        return r;
     }
 
     Result<void> BookmarkManager::save_to_file(const std::string &path) {

@@ -1,6 +1,6 @@
 #pragma once
 #include "paths.hpp"
-#include "../tests/utility.hpp"
+#include "types.hpp"
 
 #include <string>
 #include <vector>
