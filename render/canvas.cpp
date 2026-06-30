@@ -1,5 +1,7 @@
 #include "canvas.hpp"
 
+#include "../html/utf8.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -111,8 +113,17 @@ namespace browser::render {
 
         FontFace *face = resolve_font();
         f32 cur_x = x;
-        for (char ch : text) {
-            u32 cp = static_cast<unsigned char>(ch);
+        const u8 *text_data = reinterpret_cast<const u8 *>(text.data());
+        u32 text_offset = 0;
+        u32 text_len = static_cast<u32>(text.size());
+        while (text_offset < text_len) {
+            auto dr = html::decode_utf8(text_data + text_offset, text_len - text_offset);
+            if (dr.bytes_consumed == 0) {
+                text_offset++;
+                continue;
+            }
+            text_offset += dr.bytes_consumed;
+            u32 cp = dr.codepoint;
             f32 gx = cur_x, gy = y;
             apply_transform(gx, gy);
             rasterize_glyph(cp, gx, gy, static_cast<u32>(size), true);
@@ -142,8 +153,17 @@ namespace browser::render {
 
         FontFace *face = resolve_font();
         f32 cur_x = x;
-        for (char ch : text) {
-            u32 cp = static_cast<unsigned char>(ch);
+        const u8 *text_data = reinterpret_cast<const u8 *>(text.data());
+        u32 text_offset = 0;
+        u32 text_len = static_cast<u32>(text.size());
+        while (text_offset < text_len) {
+            auto dr = html::decode_utf8(text_data + text_offset, text_len - text_offset);
+            if (dr.bytes_consumed == 0) {
+                text_offset++;
+                continue;
+            }
+            text_offset += dr.bytes_consumed;
+            u32 cp = dr.codepoint;
             f32 gx = cur_x, gy = y;
             apply_transform(gx, gy);
             rasterize_glyph(cp, gx, gy, static_cast<u32>(size), false);
@@ -517,7 +537,10 @@ namespace browser::render {
         FontFace *face = resolve_font();
         if (!face)
             return;
-        auto glyph = face->rasterize_glyph(codepoint, static_cast<u32>(size));
+        u16 gid = static_cast<u16>(face->glyph_index(codepoint));
+        if (gid == 0)
+            return;
+        auto glyph = face->rasterize_glyph_by_gid(gid, static_cast<u32>(size));
         if (glyph.is_err())
             return;
         auto &gb = glyph.unwrap();
@@ -536,7 +559,7 @@ namespace browser::render {
                 u32 dy = static_cast<u32>(std::max(0, py + static_cast<i32>(row)));
                 if (dx >= width_ || dy >= height_)
                     continue;
-                u8 final_a = static_cast<u8>(glyph_alpha * alpha_scale);
+                u8 final_a = static_cast<u8>(std::min(255.0f, glyph_alpha * alpha_scale));
                 set_pixel(dx, dy, fr, fg, fb, final_a);
             }
         }
@@ -583,7 +606,6 @@ namespace browser::render {
     std::string Canvas2D::to_data_url() const {
         std::string result = "data:image/png;base64,";
 
-        // Simple PNG encoder (minimal valid PNG with IDAT - uncompressed filter data)
         auto write_u32 = [](std::vector<u8> &buf, u32 val) {
             buf.push_back(static_cast<u8>((val >> 24) & 0xFF));
             buf.push_back(static_cast<u8>((val >> 16) & 0xFF));
@@ -600,9 +622,52 @@ namespace browser::render {
             write_u32(buf, crc ^ 0xFFFFFFFF);
         };
 
-        u32 raw_row_size = width_ * 4 + 1;
-        u32 raw_size = raw_row_size * height_;
-        u32 idat_size = 2 + raw_size;  // zlib header + raw data (stored mode, no compression)
+        // Build raw image data with filter bytes (None filter = 0x00 per row)
+        std::vector<u8> raw_data;
+        raw_data.reserve(height_ * (width_ * 4 + 1));
+        for (u32 y = 0; y < height_; y++) {
+            raw_data.push_back(0x00);  // filter byte: None
+            u32 row_start = y * width_ * 4;
+            for (u32 x = 0; x < width_ * 4; x++)
+                raw_data.push_back(pixels_[row_start + x]);
+        }
+
+        // Compute Adler-32 of raw data
+        u32 a1 = 1, a2 = 0;
+        for (u8 b : raw_data) {
+            a1 = (a1 + b) % 65521;
+            a2 = (a2 + a1) % 65521;
+        }
+        u32 adler = (a2 << 16) | a1;
+
+        // Build DEFLATE stored blocks interleaved with data
+        std::vector<u8> deflate_data;
+        // zlib header
+        deflate_data.push_back(0x78);
+        deflate_data.push_back(0x01);
+        // Stored blocks: each block is header (5 bytes) + data
+        u32 raw_offset = 0;
+        u32 remaining = static_cast<u32>(raw_data.size());
+        while (remaining > 0) {
+            u32 chunk = remaining > 65535 ? 65535 : remaining;
+            bool is_final = (remaining - chunk == 0);
+            deflate_data.push_back(is_final ? 0x01 : 0x00);
+            deflate_data.push_back(static_cast<u8>(chunk & 0xFF));
+            deflate_data.push_back(static_cast<u8>((chunk >> 8) & 0xFF));
+            u16 nlen = static_cast<u16>(~chunk & 0xFFFF);
+            deflate_data.push_back(static_cast<u8>(nlen & 0xFF));
+            deflate_data.push_back(static_cast<u8>((nlen >> 8) & 0xFF));
+            deflate_data.insert(deflate_data.end(),
+                                raw_data.data() + raw_offset,
+                                raw_data.data() + raw_offset + chunk);
+            raw_offset += chunk;
+            remaining -= chunk;
+        }
+        // Adler-32 checksum
+        deflate_data.push_back(static_cast<u8>((adler >> 24) & 0xFF));
+        deflate_data.push_back(static_cast<u8>((adler >> 16) & 0xFF));
+        deflate_data.push_back(static_cast<u8>((adler >> 8) & 0xFF));
+        deflate_data.push_back(static_cast<u8>(adler & 0xFF));
 
         // Build PNG file
         std::vector<u8> png;
@@ -623,53 +688,12 @@ namespace browser::render {
         png.push_back(0);  // interlace
         write_crc(png, &png[ihdr_start + 4], png.size() - ihdr_start - 4);
 
-        // IDAT chunk (stored/uncompressed zlib format)
+        // IDAT chunk
         u32 idat_start = static_cast<u32>(png.size());
-        write_u32(png, idat_size);
+        write_u32(png, static_cast<u32>(deflate_data.size()));
         const char idat_type[] = "IDAT";
         png.insert(png.end(), idat_type, idat_type + 4);
-
-        // zlib header (deflate, stored mode, window bits=0)
-        png.push_back(0x78);
-        png.push_back(0x01);
-
-        // DEFLATE stored block headers
-        u32 block_size = raw_row_size;
-        u32 remaining = block_size * height_;
-        bool final_block = (remaining <= 65535);
-        while (remaining > 0) {
-            u32 chunk = remaining > 65535 ? 65535 : remaining;
-            png.push_back(final_block ? 0x01 : 0x00);             // BFINAL=1/0, BTYPE=00 (stored)
-            png.push_back(static_cast<u8>(chunk & 0xFF));         // LEN (lower byte)
-            png.push_back(static_cast<u8>((chunk >> 8) & 0xFF));  // LEN (upper byte)
-            u16 nlen = static_cast<u16>(~chunk & 0xFFFF);
-            png.push_back(static_cast<u8>(nlen & 0xFF));         // NLEN (lower byte)
-            png.push_back(static_cast<u8>((nlen >> 8) & 0xFF));  // NLEN (upper byte)
-            remaining -= chunk;
-            final_block = (remaining == 0);
-        }
-
-        // Raw data with filter bytes (None filter = 0x00)
-        for (u32 y = 0; y < height_; y++) {
-            png.push_back(0x00);  // filter byte: None
-            u32 row_start = y * width_ * 4;
-            for (u32 x = 0; x < width_ * 4; x++) png.push_back(pixels_[row_start + x]);
-        }
-
-        // zlib check value (Adler-32 of raw data)
-        u32 a1 = 1, a2 = 0;
-        for (u32 y = 0; y < height_; y++) {
-            a1 = (a1 + 0) % 65521;
-            a2 = (a2 + a1) % 65521;  // filter byte (0)
-            for (u32 x = 0; x < width_ * 4; x++) {
-                u32 val = pixels_[y * width_ * 4 + x];
-                a1 = (a1 + val) % 65521;
-                a2 = (a2 + a1) % 65521;
-            }
-        }
-        u32 adler = (a2 << 16) | a1;
-        write_u32(png, adler);
-
+        png.insert(png.end(), deflate_data.data(), deflate_data.data() + deflate_data.size());
         write_crc(png, &png[idat_start + 4], png.size() - idat_start - 4);
 
         // IEND chunk

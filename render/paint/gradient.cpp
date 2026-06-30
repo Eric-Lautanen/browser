@@ -41,14 +41,16 @@ void generate_linear_gradient_colors(const css::CSSGradient& grad, f32 w, f32 h,
                 auto& s = grad.stops[0];
                 result = css_to_render_color(s.color);
             } else {
+                // Find the two stops that bracket t
                 size_t i = 0;
+                bool found = false;
                 while (i + 1 < grad.stops.size()) {
                     f32 p0 = grad.stops[i].position >= 0 ? grad.stops[i].position :
                              (i == 0 ? 0.0f : 1.0f);
                     f32 p1 = grad.stops[i + 1].position >= 0 ? grad.stops[i + 1].position : 1.0f;
-                    if (t >= p0 && t <= p1) {
+                    if (t <= p1) {
                         f32 range = p1 - p0;
-                        f32 local_t = range > 0 ? (t - p0) / range : 0.5f;
+                        f32 local_t = range > 0 ? std::max(0.0f, std::min(1.0f, (t - p0) / range)) : 0.5f;
                         auto& c0 = grad.stops[i].color;
                         auto& c1 = grad.stops[i + 1].color;
                         f32 r = static_cast<f32>(c0.r) / 255.0f + (static_cast<f32>(c1.r) / 255.0f - static_cast<f32>(c0.r) / 255.0f) * local_t;
@@ -56,11 +58,12 @@ void generate_linear_gradient_colors(const css::CSSGradient& grad, f32 w, f32 h,
                         f32 b = static_cast<f32>(c0.b) / 255.0f + (static_cast<f32>(c1.b) / 255.0f - static_cast<f32>(c0.b) / 255.0f) * local_t;
                         f32 a = static_cast<f32>(c0.a) / 255.0f + (static_cast<f32>(c1.a) / 255.0f - static_cast<f32>(c0.a) / 255.0f) * local_t;
                         result = {r, g, b, a};
+                        found = true;
                         break;
                     }
                     i++;
                 }
-                if (i + 1 >= grad.stops.size()) {
+                if (!found) {
                     auto& last = grad.stops.back().color;
                     result = css_to_render_color(last);
                 }

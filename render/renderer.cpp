@@ -212,15 +212,6 @@ namespace browser::render {
     void Renderer::end_textured() {
         if (textured_mode_)
             flush();
-        shader_->bind();
-        const auto &u = shader_->uniforms();
-        if (u.texture >= 0)
-            pgl::glUniform1i(u.texture, 0);
-        if (u.use_texture >= 0)
-            pgl::glUniform1i(u.use_texture, 0);
-        if (u.texture_is_rgba >= 0)
-            pgl::glUniform1i(u.texture_is_rgba, 0);
-        flush();
         textured_mode_ = false;
         current_texture_id_ = 0;
     }
