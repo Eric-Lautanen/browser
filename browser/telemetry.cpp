@@ -79,7 +79,7 @@ namespace browser {
         f32 max_fps_graph = 120.0f;
         html << "<polyline points='";
         for (u32 i = 0; i < 120; i++) {
-            f32 val = pc.fps_history[i];
+            f32 val = pc.fps_history[i].load(std::memory_order_relaxed);
             if (val <= 0)
                 val = 0;
             f32 x = (f32)i * 5.0f;

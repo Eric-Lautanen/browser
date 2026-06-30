@@ -25,6 +25,8 @@ class DownloadManager {
 public:
     DownloadManager();
 
+    ~DownloadManager();
+
     bool should_download(const std::string& url, const std::string& content_disposition,
                          const std::string& mime_type, u64 content_length);
 

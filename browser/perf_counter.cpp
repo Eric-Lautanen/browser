@@ -34,8 +34,9 @@ namespace browser {
         }
 
         // Update FPS history ring buffer
-        fps_history[fps_history_idx % 120] = current_fps.load(std::memory_order_relaxed);
-        fps_history_idx = (fps_history_idx + 1) % 120;
+        u32 idx = fps_history_idx.load(std::memory_order_relaxed);
+        fps_history[idx % 120].store(current_fps.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        fps_history_idx.store((idx + 1) % 120, std::memory_order_relaxed);
 
         // Live memory pull from Mallocator
         heap_allocated_bytes.store((u64)async::Mallocator::instance().total_allocated(), std::memory_order_relaxed);
@@ -78,8 +79,8 @@ namespace browser {
         paint_time_ms = 0;
         composite_time_ms = 0;
         gpu_time_ms = 0;
-        fps_history_idx = 0;
-        for (auto &v : fps_history) v = 0;
+        fps_history_idx.store(0, std::memory_order_relaxed);
+        for (auto &v : fps_history) v.store(0, std::memory_order_relaxed);
 
         working_set_bytes = 0;
         heap_allocated_bytes = 0;

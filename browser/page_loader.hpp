@@ -74,6 +74,7 @@ namespace browser {
         net::TrackerBlocker *tracker_;
         render::TextRenderer *text_renderer_;
         std::atomic<bool> loading_{false};
+        std::atomic<bool> cancelled_{false};
         u32 viewport_width_ = 980;
         u32 viewport_height_ = 980;
         async::channel<LoadedPage> loaded_channel_;

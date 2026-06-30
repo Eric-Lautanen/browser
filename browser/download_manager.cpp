@@ -17,6 +17,10 @@ namespace browser {
         InitializeCriticalSection(&items_mutex_);
     }
 
+    DownloadManager::~DownloadManager() {
+        DeleteCriticalSection(&items_mutex_);
+    }
+
     bool DownloadManager::should_download(const std::string &url,
                                           const std::string &content_disposition,
                                           const std::string &mime_type,

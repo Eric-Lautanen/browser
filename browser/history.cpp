@@ -11,6 +11,7 @@ void HistoryManager::push(const std::string& url, const std::string& title) {
     }
     if (entries_.size() >= max_) {
         entries_.erase(entries_.begin());
+        if (index_ > 0) index_--;
     }
     entries_.push_back({url, title});
     index_ = static_cast<u32>(entries_.size()) - 1;

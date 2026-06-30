@@ -21,8 +21,8 @@ namespace browser {
         std::atomic<f32> paint_time_ms{0};
         std::atomic<f32> composite_time_ms{0};
         std::atomic<f32> gpu_time_ms{0};
-        f32 fps_history[120] = {};
-        u32 fps_history_idx = 0;
+        std::atomic<f32> fps_history[120] = {};
+        std::atomic<u32> fps_history_idx{0};
 
         // Memory
         std::atomic<u64> working_set_bytes{0};

@@ -41,8 +41,9 @@ namespace browser {
           loaded_channel_(1) {}
 
     void PageLoader::start_load(const std::string &url_str) {
-        if (loading_.exchange(true))
+        if (loading_.exchange(true, std::memory_order_acq_rel))
             return;
+        cancelled_.store(false, std::memory_order_release);
         load_task_ = load(url_str);
         load_task_.start();
     }
@@ -78,6 +79,11 @@ namespace browser {
         co_await async::thread_pool_executor{};
         auto start = std::chrono::steady_clock::now();
 
+        if (cancelled_.load(std::memory_order_acquire)) {
+            loading_.store(false, std::memory_order_release);
+            co_return;
+        }
+
         if (url_str.rfind("view-source:", 0) == 0) {
             std::string inner_url = url_str.substr(12);
             // Fetch the inner URL as plain text
@@ -89,7 +95,7 @@ namespace browser {
             auto parsed = net::URL::parse(normal_url);
             if (parsed.is_err()) {
                 co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()));
-                loading_ = false;
+                loading_.store(false, std::memory_order_release);
                 co_return;
             }
 
@@ -107,15 +113,23 @@ namespace browser {
             req.headers.set("Accept-Encoding", "gzip, deflate");
 
             auto resp_r = co_await http_.fetch_async(req);
+            if (cancelled_.load(std::memory_order_acquire)) {
+                loading_.store(false, std::memory_order_release);
+                co_return;
+            }
             if (resp_r.is_err()) {
                 co_await load_html(error_page(url_str, resp_r.unwrap_err()));
-                loading_ = false;
+                loading_.store(false, std::memory_order_release);
                 co_return;
             }
             auto resp = std::move(resp_r.unwrap());
 
             if (resp.headers.has("content-encoding")) {
                 co_await async::thread_pool_executor{};
+                if (cancelled_.load(std::memory_order_acquire)) {
+                    loading_.store(false, std::memory_order_release);
+                    co_return;
+                }
                 std::string ce = resp.headers.get("content-encoding");
                 if (ce.find("gzip") != std::string::npos) {
                     resp.body = net::gzip_decompress(resp.body.data(), static_cast<u32>(resp.body.size()));
@@ -218,7 +232,7 @@ namespace browser {
             html += highlighted;
             html += "</code></pre></body></html>";
             co_await load_html(html);
-            loading_ = false;
+            loading_.store(false, std::memory_order_release);
             co_return;
         }
 
@@ -237,7 +251,7 @@ namespace browser {
                 html = error_page(url_str, "Unknown about: page");
             }
             co_await load_html(html);
-            loading_ = false;
+            loading_.store(false, std::memory_order_release);
             co_return;
         }
 
@@ -246,12 +260,12 @@ namespace browser {
             std::ifstream f(path);
             if (!f.is_open()) {
                 co_await load_html(error_page(url_str, "Cannot open file: " + path));
-                loading_ = false;
+                loading_.store(false, std::memory_order_release);
                 co_return;
             }
             std::string html((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
             co_await load_html(html);
-            loading_ = false;
+            loading_.store(false, std::memory_order_release);
             co_return;
         }
 
@@ -263,7 +277,7 @@ namespace browser {
         auto parsed = net::URL::parse(normal_url);
         if (parsed.is_err()) {
             co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()));
-            loading_ = false;
+            loading_.store(false, std::memory_order_release);
             co_return;
         }
 
@@ -271,7 +285,7 @@ namespace browser {
             telemetry_->record({TelemetryEvent::TRACKER_BLOCKED, url_str, 0});
             telemetry_->set_trackers_blocked(tracker_->blocked_count());
             co_await load_html(error_page(url_str, "Blocked by tracker blocker"));
-            loading_ = false;
+            loading_.store(false, std::memory_order_release);
             co_return;
         }
 
@@ -301,9 +315,13 @@ namespace browser {
         req.headers.set("Accept-Encoding", "gzip, deflate");
 
         auto resp_r = co_await http_.fetch_async(req);
+        if (cancelled_.load(std::memory_order_acquire)) {
+            loading_.store(false, std::memory_order_release);
+            co_return;
+        }
         if (resp_r.is_err()) {
             co_await load_html(error_page(url_str, resp_r.unwrap_err()));
-            loading_ = false;
+            loading_.store(false, std::memory_order_release);
             co_return;
         }
         auto resp = std::move(resp_r.unwrap());
@@ -312,6 +330,10 @@ namespace browser {
         while ((resp.status.code == 301 || resp.status.code == 302 || resp.status.code == 303 ||
                 resp.status.code == 307 || resp.status.code == 308) &&
                redirect_count < 5) {
+            if (cancelled_.load(std::memory_order_acquire)) {
+                loading_.store(false, std::memory_order_release);
+                co_return;
+            }
             std::string loc = resp.headers.get("Location");
             if (loc.empty())
                 break;
@@ -346,7 +368,7 @@ namespace browser {
                         content_length = parsed;
                 }
                 if (download_callback_ && download_callback_(req.url.to_string(), cd, mime_type, content_length)) {
-                    loading_ = false;
+                    loading_.store(false, std::memory_order_release);
                     co_return;
                 }
             }
@@ -377,6 +399,10 @@ namespace browser {
 
         if (resp.headers.has("content-encoding")) {
             co_await async::thread_pool_executor{};
+            if (cancelled_.load(std::memory_order_acquire)) {
+                loading_.store(false, std::memory_order_release);
+                co_return;
+            }
             std::string ce = resp.headers.get("content-encoding");
             if (ce.find("gzip") != std::string::npos) {
                 resp.body = net::gzip_decompress(resp.body.data(), static_cast<u32>(resp.body.size()));
@@ -402,8 +428,12 @@ namespace browser {
         });
 
         auto doc_r = co_await html::parse_async(body_str, &preload_scanner_, base_url_str);
+        if (cancelled_.load(std::memory_order_acquire)) {
+            loading_.store(false, std::memory_order_release);
+            co_return;
+        }
         if (doc_r.is_err()) {
-            loading_ = false;
+            loading_.store(false, std::memory_order_release);
             co_return;
         }
 
@@ -460,13 +490,19 @@ namespace browser {
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
         telemetry_->record({TelemetryEvent::PAGE_LOAD, url_str, static_cast<f64>(page.load_time_ms)});
 
-        loaded_channel_.send(std::move(page));
-        loading_ = false;
+        if (!cancelled_.load(std::memory_order_acquire)) {
+            loaded_channel_.send(std::move(page));
+        }
+        loading_.store(false, std::memory_order_release);
         co_return;
     }
 
     async::task<void> PageLoader::load_html(std::string html) {
         co_await async::thread_pool_executor{};
+        if (cancelled_.load(std::memory_order_acquire)) {
+            loading_.store(false, std::memory_order_release);
+            co_return;
+        }
         auto start = std::chrono::steady_clock::now();
 
         auto doc_r = co_await browser::html::parse_async(html);
@@ -517,16 +553,20 @@ namespace browser {
         }
 
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
-        loaded_channel_.send(std::move(page));
+        if (!cancelled_.load(std::memory_order_acquire)) {
+            loaded_channel_.send(std::move(page));
+        }
+        loading_.store(false, std::memory_order_release);
         co_return;
     }
 
     void PageLoader::cancel() {
-        loading_ = false;
+        cancelled_.store(true, std::memory_order_release);
+        loading_.store(false, std::memory_order_release);
     }
 
     bool PageLoader::is_loading() const {
-        return loading_;
+        return loading_.load(std::memory_order_acquire);
     }
 
     void PageLoader::handle_settings_query(const std::string &url_str) {
