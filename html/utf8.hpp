@@ -21,7 +21,12 @@ inline bool is_emoji(char32_t cp) {
 
 inline std::string encode_utf8(char32_t cp) {
     std::string r;
-    if (cp < 0x80) {
+    if (cp >= 0xD800 && cp <= 0xDFFF) {
+        // Surrogates are invalid Unicode scalar values
+        r += static_cast<char>(0xEF);
+        r += static_cast<char>(0xBF);
+        r += static_cast<char>(0xBD);  // U+FFFD
+    } else if (cp < 0x80) {
         r += static_cast<char>(cp);
     } else if (cp < 0x800) {
         r += static_cast<char>(0xC0 | (cp >> 6));
@@ -35,6 +40,11 @@ inline std::string encode_utf8(char32_t cp) {
         r += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
         r += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
         r += static_cast<char>(0x80 | (cp & 0x3F));
+    } else {
+        // Beyond Unicode max — encode as U+FFFD
+        r += static_cast<char>(0xEF);
+        r += static_cast<char>(0xBF);
+        r += static_cast<char>(0xBD);
     }
     return r;
 }

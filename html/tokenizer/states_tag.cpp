@@ -528,6 +528,7 @@ namespace browser::html {
                     emit_eof();
                 } else if (c == '\0') {
                     current_doctype_.name = encode_utf8(0xFFFD);
+                    current_doctype_.force_quirks = true;
                     state_ = State::DOCTYPE_NAME;
                 } else {
                     std::string n;

@@ -12,17 +12,20 @@ namespace browser::html {
         auto it = attributes.find("class");
         if (it == attributes.end())
             return result;
-        std::string remaining = it->second;
+        const std::string &remaining = it->second;
         std::size_t pos = 0;
         while (pos < remaining.size()) {
-            while (pos < remaining.size() && remaining[pos] == ' ') pos++;
+            while (pos < remaining.size() && (remaining[pos] == ' ' || remaining[pos] == '\t' ||
+                   remaining[pos] == '\n' || remaining[pos] == '\f' || remaining[pos] == '\r'))
+                pos++;
             if (pos >= remaining.size())
                 break;
-            std::size_t end = remaining.find(' ', pos);
-            if (end == std::string::npos)
-                end = remaining.size();
+            std::size_t end = pos;
+            while (end < remaining.size() && remaining[end] != ' ' && remaining[end] != '\t' &&
+                   remaining[end] != '\n' && remaining[end] != '\f' && remaining[end] != '\r')
+                end++;
             result.push_back(remaining.substr(pos, end - pos));
-            pos = end + 1;
+            pos = end;
         }
         return result;
     }
@@ -62,14 +65,33 @@ namespace browser::html {
 
     void insert_before(Node *parent, std::unique_ptr<Node> child, Node *ref) {
         child->parent = parent;
+
+        if (!ref) {
+            // Insert before the last child (i.e. new child becomes second-to-last)
+            if (parent->children.empty()) {
+                child->next_sibling = nullptr;
+                child->prev_sibling = nullptr;
+                parent->children.push_back(std::move(child));
+                return;
+            }
+            Node *last = parent->children.back().get();
+            child->prev_sibling = last->prev_sibling;
+            child->next_sibling = last;
+            if (last->prev_sibling)
+                last->prev_sibling->next_sibling = child.get();
+            last->prev_sibling = child.get();
+            auto it = parent->children.end();
+            parent->children.insert(it - 1, std::move(child));
+            return;
+        }
+
         child->next_sibling = ref;
-        child->prev_sibling = ref ? ref->prev_sibling : parent->children.back().get();
+        child->prev_sibling = ref->prev_sibling;
         if (child->prev_sibling)
             child->prev_sibling->next_sibling = child.get();
-        if (ref)
-            ref->prev_sibling = child.get();
+        ref->prev_sibling = child.get();
         for (auto it = parent->children.begin(); it != parent->children.end(); ++it) {
-            if (it->get() == ref || (!ref && it == parent->children.end() - 1)) {
+            if (it->get() == ref) {
                 parent->children.insert(it, std::move(child));
                 return;
             }
