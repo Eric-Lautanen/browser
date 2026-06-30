@@ -121,7 +121,7 @@ namespace browser::net::tls {
     }
 
     Result<void> TLSConnection::send_encrypted_record(
-        u8 inner_type, const std::vector<u8> &data, const u8 key[16], const u8 iv[12], u64 &seq) {
+        u8 inner_type, const std::vector<u8> &data, const u8 key[32], const u8 iv[12], u64 &seq) {
         auto ct = aead_encrypt(key, iv, seq, data.data(), static_cast<u32>(data.size()), inner_type);
         seq++;
         auto r = send_raw_record(APPLICATION_DATA, ct);
@@ -130,7 +130,7 @@ namespace browser::net::tls {
         return {};
     }
 
-    Result<std::vector<u8>> TLSConnection::read_encrypted_record(const u8 key[16], const u8 iv[12], u64 &seq) {
+    Result<std::vector<u8>> TLSConnection::read_encrypted_record(const u8 key[32], const u8 iv[12], u64 &seq) {
         u8 type = 0;
         auto r = read_raw_record(&type);
         if (r.is_err())
@@ -156,7 +156,7 @@ namespace browser::net::tls {
     }
 
     async::task<bool> TLSConnection::send_encrypted_record_async(
-        u8 inner_type, const std::vector<u8> &data, const u8 key[16], const u8 iv[12], u64 &seq) {
+        u8 inner_type, const std::vector<u8> &data, const u8 key[32], const u8 iv[12], u64 &seq) {
         auto ct = aead_encrypt(key, iv, seq, data.data(), static_cast<u32>(data.size()), inner_type);
         seq++;
         auto r = co_await send_raw_record_async(APPLICATION_DATA, ct);

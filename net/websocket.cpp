@@ -41,12 +41,11 @@ namespace sha1 {
         }
 
         std::vector<u8> digest() {
-            u8 bits[8];
+            u64 bit_count = count << 3;
             u32 idx = static_cast<u32>(count & 63);
-            u32 pad_len = (idx < 56) ? (56 - idx) : (120 - idx);
-            count += pad_len + 8;
+            u8 bits[8];
             for (int i = 0; i < 8; i++)
-                bits[i] = static_cast<u8>((count >> (56 - i * 8)) & 0xFF);
+                bits[i] = static_cast<u8>((bit_count >> (56 - i * 8)) & 0xFF);
             buffer[idx] = 0x80;
             if (idx >= 56) {
                 std::memset(buffer + idx + 1, 0, 64 - idx - 1);

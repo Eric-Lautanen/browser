@@ -26,16 +26,20 @@ static const u32 RCON[11] = {0, 0x01000000, 0x02000000, 0x04000000, 0x08000000, 
 AES::AES() : nk_(0), nr_(0) {}
 
 void AES::set_key(const u8* key, std::size_t key_len) {
-    key_len_ = key_len < 32 ? key_len : 32;
-    std::memcpy(key_, key, key_len_);
-
-    if (key_len_ == 32) {
+    if (key_len == 16) {
+        nk_ = 4;
+        nr_ = 10;
+    } else if (key_len == 24) {
+        nk_ = 6;
+        nr_ = 12;
+    } else if (key_len == 32) {
         nk_ = 8;
         nr_ = 14;
     } else {
-        nk_ = 4;
-        nr_ = 10;
+        return;
     }
+    key_len_ = key_len;
+    std::memcpy(key_, key, key_len_);
     key_expansion();
 }
 
@@ -248,7 +252,25 @@ std::vector<u8> AES::encrypt_gcm(const u8* data, std::size_t len,
         std::memcpy(J0, iv_, 12);
         J0[15] = 1;
     } else {
-        std::memcpy(J0, iv_, iv_len_ < 16 ? iv_len_ : 16);
+        // For non-96-bit IVs, J0 = GHASH(H, IV || 0^s || len(IV)*8)
+        u8 H[16] = {0};
+        encrypt_block(H, H);
+        // Compute GHASH of IV || zero-pad || 8-byte length
+        std::vector<u8> iv_input;
+        iv_input.insert(iv_input.end(), iv_, iv_ + iv_len_);
+        std::size_t iv_pad = (16 - (iv_len_ % 16)) % 16;
+        iv_input.insert(iv_input.end(), iv_pad, 0);
+        u64 iv_bits = static_cast<u64>(iv_len_) * 8;
+        for (int i = 7; i >= 0; i--) iv_input.push_back(static_cast<u8>(iv_bits >> (i * 8)));
+        u8 y[16] = {0};
+        for (std::size_t i = 0; i < iv_input.size(); i += 16) {
+            u8 block[16];
+            std::memcpy(block, iv_input.data() + i, 16);
+            u8 tmp[16];
+            xor_block(y, block, tmp);
+            gf128_mul(tmp, H, y);
+        }
+        std::memcpy(J0, y, 16);
     }
 
     u8 incr_j0[16];
@@ -280,7 +302,23 @@ bool AES::decrypt_gcm(const u8* data, std::size_t len,
         std::memcpy(J0, iv_, 12);
         J0[15] = 1;
     } else {
-        std::memcpy(J0, iv_, iv_len_ < 16 ? iv_len_ : 16);
+        u8 H[16] = {0};
+        encrypt_block(H, H);
+        std::vector<u8> iv_input;
+        iv_input.insert(iv_input.end(), iv_, iv_ + iv_len_);
+        std::size_t iv_pad = (16 - (iv_len_ % 16)) % 16;
+        iv_input.insert(iv_input.end(), iv_pad, 0);
+        u64 iv_bits = static_cast<u64>(iv_len_) * 8;
+        for (int i = 7; i >= 0; i--) iv_input.push_back(static_cast<u8>(iv_bits >> (i * 8)));
+        u8 y[16] = {0};
+        for (std::size_t i = 0; i < iv_input.size(); i += 16) {
+            u8 block[16];
+            std::memcpy(block, iv_input.data() + i, 16);
+            u8 tmp[16];
+            xor_block(y, block, tmp);
+            gf128_mul(tmp, H, y);
+        }
+        std::memcpy(J0, y, 16);
     }
 
     u8 S[16];
@@ -311,7 +349,23 @@ std::vector<u8> AES::decrypt_gcm_return(const u8* data, std::size_t len,
         std::memcpy(J0, iv_, 12);
         J0[15] = 1;
     } else {
-        std::memcpy(J0, iv_, iv_len_ < 16 ? iv_len_ : 16);
+        u8 H[16] = {0};
+        encrypt_block(H, H);
+        std::vector<u8> iv_input;
+        iv_input.insert(iv_input.end(), iv_, iv_ + iv_len_);
+        std::size_t iv_pad = (16 - (iv_len_ % 16)) % 16;
+        iv_input.insert(iv_input.end(), iv_pad, 0);
+        u64 iv_bits = static_cast<u64>(iv_len_) * 8;
+        for (int i = 7; i >= 0; i--) iv_input.push_back(static_cast<u8>(iv_bits >> (i * 8)));
+        u8 y[16] = {0};
+        for (std::size_t i = 0; i < iv_input.size(); i += 16) {
+            u8 block[16];
+            std::memcpy(block, iv_input.data() + i, 16);
+            u8 tmp[16];
+            xor_block(y, block, tmp);
+            gf128_mul(tmp, H, y);
+        }
+        std::memcpy(J0, y, 16);
     }
 
     u8 S[16];

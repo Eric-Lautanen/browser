@@ -35,6 +35,7 @@ public:
     channel& operator=(const channel&) = delete;
 
     bool try_send(T value) {
+        if (closed_.load(std::memory_order_acquire)) return false;
         size_t t = tail_.load(std::memory_order_relaxed);
         size_t h = head_.load(std::memory_order_acquire);
         size_t next = (t + 1) & mask_;
@@ -45,6 +46,7 @@ public:
     }
 
     std::optional<T> try_receive() {
+        if (closed_.load(std::memory_order_acquire)) return std::nullopt;
         size_t h = head_.load(std::memory_order_relaxed);
         size_t t = tail_.load(std::memory_order_acquire);
         if (h == t) return std::nullopt;
@@ -56,6 +58,7 @@ public:
 
     void send(T value) {
         for (;;) {
+            if (closed_.load(std::memory_order_acquire)) return;
             size_t t = tail_.load(std::memory_order_relaxed);
             size_t h = head_.load(std::memory_order_acquire);
             size_t next = (t + 1) & mask_;
@@ -70,6 +73,17 @@ public:
 
     T receive() {
         for (;;) {
+            if (closed_.load(std::memory_order_acquire)) {
+                size_t h = head_.load(std::memory_order_acquire);
+                size_t t = tail_.load(std::memory_order_acquire);
+                if (h != t) {
+                    T val(std::move(buffer_[h]));
+                    buffer_[h].~T();
+                    head_.store((h + 1) & mask_, std::memory_order_release);
+                    return val;
+                }
+                return T{};
+            }
             size_t h = head_.load(std::memory_order_relaxed);
             size_t t = tail_.load(std::memory_order_acquire);
             if (h != t) {

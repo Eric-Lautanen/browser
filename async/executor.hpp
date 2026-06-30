@@ -56,11 +56,26 @@ struct iocp_awaiter {
     void await_resume() noexcept {}
 };
 
-// A simple awaitable that suspends unconditionally.
-// Used when the coroutine needs to yield control back to the executor.
+// A simple awaitable that suspends unconditionally and reschedules
+// on the thread pool. Used when the coroutine needs to yield control
+// back to the executor.
 struct task_yield {
     bool await_ready() const noexcept { return false; }
-    void await_suspend(std::coroutine_handle<> h) noexcept { (void)h; }
+    bool await_suspend(std::coroutine_handle<> h) noexcept {
+        auto cb = [](PTP_CALLBACK_INSTANCE, PVOID ctx, PTP_WORK) noexcept {
+            auto* handle = static_cast<std::coroutine_handle<>*>(ctx);
+            handle->resume();
+            delete handle;
+        };
+        auto* ctx = new std::coroutine_handle<>(h);
+        auto* work = CreateThreadpoolWork(cb, ctx, nullptr);
+        if (work) {
+            SubmitThreadpoolWork(work);
+        } else {
+            delete ctx;
+        }
+        return true;
+    }
     void await_resume() noexcept {}
 };
 

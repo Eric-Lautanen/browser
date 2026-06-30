@@ -21,8 +21,9 @@ namespace browser::net::tls {
         cc_poly.set_key(key);
         cc_poly.set_nonce(nonce);
         cc_poly.set_counter(0);
-        u8 poly_key[32];
-        cc_poly.encrypt(poly_key, 32, poly_key);
+        u8 poly_key[32] = {};
+        u8 zero_block[32] = {};
+        cc_poly.encrypt(zero_block, 32, poly_key);
 
         crypto::ChaCha20 cc_enc;
         cc_enc.set_key(key);
@@ -87,8 +88,9 @@ namespace browser::net::tls {
         cc_poly.set_key(key);
         cc_poly.set_nonce(nonce);
         cc_poly.set_counter(0);
-        u8 poly_key[32];
-        cc_poly.encrypt(poly_key, 32, poly_key);
+        u8 poly_key[32] = {};
+        u8 zero_block[32] = {};
+        cc_poly.encrypt(zero_block, 32, poly_key);
 
         u8 aad[5];
         aad[0] = 0x17;
