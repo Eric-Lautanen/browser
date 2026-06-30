@@ -89,9 +89,9 @@ namespace browser::css {
             tf.type = TransformFunc::Type::SCALE;
             args.push_back(read_num());
             skip_punct();
-            f32 sy = read_num();
-            if (current_.type != CssTokenType::CLOSE_PAREN)
-                args.push_back(sy);
+            if (current_.type != CssTokenType::CLOSE_PAREN && current_.type != CssTokenType::EOF_TOKEN) {
+                args.push_back(read_num());
+            }
             // scale(2) with no second arg → scale(2, 2)
             if (args.size() == 1) args.push_back(args[0]);
         } else if (func_name == "scalex") {

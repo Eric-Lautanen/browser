@@ -43,19 +43,23 @@ namespace browser::css {
                         return val == ss.value;
                     }
                     if (ss.match_operator == '~') {
-                        std::string remaining = val;
+                        const std::string &remaining = val;
                         size_t pos = 0;
                         while (pos < remaining.size()) {
-                            while (pos < remaining.size() && remaining[pos] == ' ') pos++;
+                            while (pos < remaining.size() && (remaining[pos] == ' ' || remaining[pos] == '\t' ||
+                                   remaining[pos] == '\n' || remaining[pos] == '\f' || remaining[pos] == '\r'))
+                                pos++;
                             if (pos >= remaining.size())
                                 break;
-                            size_t end = remaining.find(' ', pos);
-                            if (end == std::string::npos)
-                                end = remaining.size();
+                            size_t end = pos;
+                            while (end < remaining.size() && remaining[end] != ' ' && remaining[end] != '\t' &&
+                                   remaining[end] != '\n' && remaining[end] != '\f' && remaining[end] != '\r')
+                                end++;
                             if (remaining.substr(pos, end - pos) == ss.value)
                                 return true;
-                            pos = end + 1;
+                            pos = end;
                         }
+                        return false;
                         return false;
                     }
                     if (ss.match_operator == '|') {
@@ -149,9 +153,11 @@ namespace browser::css {
                             return idx % 2 == 0;
                         if (ss.nth_args.a == 0)
                             return idx == ss.nth_args.b;
-                        if (idx < ss.nth_args.b)
+                        if ((idx - ss.nth_args.b) % ss.nth_args.a != 0)
                             return false;
-                        return (idx - ss.nth_args.b) % ss.nth_args.a == 0;
+                        if (ss.nth_args.a > 0)
+                            return idx >= ss.nth_args.b;
+                        return idx <= ss.nth_args.b;
                     }
                     if (ss.name == "nth-last-child") {
                         if (!el->parent)
@@ -171,11 +177,13 @@ namespace browser::css {
                         idx = total - idx;
                         if (ss.nth_args.is_odd)
                             return idx % 2 == 1;
-                        if (ss.nth_args.is_even)
-                            return idx % 2 == 0;
                         if (ss.nth_args.a == 0)
                             return idx == ss.nth_args.b;
-                        if (idx < ss.nth_args.b)
+                        if ((idx - ss.nth_args.b) % ss.nth_args.a != 0)
+                            return false;
+                        if (ss.nth_args.a > 0)
+                            return idx >= ss.nth_args.b;
+                        return idx <= ss.nth_args.b;
                             return false;
                         return (idx - ss.nth_args.b) % ss.nth_args.a == 0;
                     }
