@@ -489,8 +489,9 @@ namespace browser::platform {
 
             case WM_SIZE:
                 if (win) {
-                    win->extent_.width = (u32)GET_X_LPARAM(lparam);
-                    win->extent_.height = (u32)GET_Y_LPARAM(lparam);
+                    if (wparam == SIZE_MINIMIZED) break;
+                    win->extent_.width = (u32)(LOWORD(lparam));
+                    win->extent_.height = (u32)(HIWORD(lparam));
                     Event e;
                     e.type = Event::Type::WINDOW_RESIZE;
                     e.width = win->extent_.width;

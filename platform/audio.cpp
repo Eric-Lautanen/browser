@@ -180,6 +180,7 @@ void AudioPlayer::resume() {
     if (state_ != AudioState::PAUSED) return;
     if (impl_->hwo) waveOutRestart(impl_->hwo);
     state_ = AudioState::PLAYING;
+    paused_ = false;
 }
 
 void AudioPlayer::stop() {
