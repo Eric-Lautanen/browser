@@ -27,6 +27,13 @@ namespace browser::css {
         f32 font_size = resolve_font_size(node->style(), parent_font_size);
         f32 char_width = char_width_factor * font_size;
 
+        // Letter-spacing: extra spacing added between characters
+        f32 letter_spacing = 0;
+        auto *ls = node->style().get("letter-spacing");
+        if (ls && ls->type == CSSValue::Type::LENGTH) {
+            letter_spacing = resolve_length(ls->length, 0, font_size);
+        }
+
         auto *lh = node->style().get("line-height");
 
         // Default line-height: query font metrics for "normal", fallback to 1.2
@@ -99,6 +106,7 @@ namespace browser::css {
                 std::string ch(text.data() + off, dr.bytes_consumed);
                 off += dr.bytes_consumed;
                 f32 w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ch, (u32)font_size) : char_width;
+                w += letter_spacing;
                 words.push_back({std::move(ch), w});
             }
         } else {
@@ -130,6 +138,7 @@ namespace browser::css {
                 if (is_cjk || is_soft_hyphen) {
                     std::string ch(text.data() + start, dr.bytes_consumed);
                     f32 w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ch, (u32)font_size) : char_width;
+                    w += letter_spacing;
                     words.push_back({std::move(ch), w});
                     start += dr.bytes_consumed;
                     continue;
@@ -152,6 +161,7 @@ namespace browser::css {
                 std::string word_text = text.substr(start, end - start);
                 f32 word_width = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, word_text, (u32)font_size)
                                                   : static_cast<f32>(count_codepoints(word_text)) * char_width;
+                word_width += letter_spacing * static_cast<f32>(count_codepoints(word_text));
                 words.push_back({std::move(word_text), word_width});
                 start = end;
             }

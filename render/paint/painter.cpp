@@ -521,13 +521,33 @@ namespace browser::render {
 
         bool any_deco = has_underline || has_overline || has_line_through;
 
+        // Text transform (uppercase, lowercase, capitalize)
+        auto apply_text_transform = [&](std::string s) -> std::string {
+            auto *tt = node->style().get("text-transform");
+            if (!tt || tt->type != css::CSSValue::Type::KEYWORD)
+                return s;
+            if (tt->keyword == "uppercase") {
+                for (char &c : s) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            } else if (tt->keyword == "lowercase") {
+                for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            } else if (tt->keyword == "capitalize") {
+                bool new_word = true;
+                for (char &c : s) {
+                    if (c == ' ' || c == '\t' || c == '\n') { new_word = true; continue; }
+                    if (new_word) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); new_word = false; }
+                }
+            }
+            return s;
+        };
+
         if (!node->text_lines.empty()) {
             for (auto &li : node->text_lines) {
+                std::string transformed = apply_text_transform(li.text);
                 css::Rect line_rect = {ox, oy + li.y, node->content.width, font_size + descender_pad};
                 auto tc = make_cmd(PaintCommand::Type::DRAW_TEXT,
                                    line_rect,
                                    text_color,
-                                   li.text,
+                                   transformed,
                                    font_size,
                                    0,
                                    {},
@@ -542,10 +562,11 @@ namespace browser::render {
             }
         } else {
             // No wrapping info — single line fallback
+            std::string transformed = apply_text_transform(node->text());
             auto tc = make_cmd(PaintCommand::Type::DRAW_TEXT,
                                {ox, oy, node->content.width, node->content.height + descender_pad},
                                text_color,
-                               node->text(),
+                               transformed,
                                font_size,
                                0,
                                {},
