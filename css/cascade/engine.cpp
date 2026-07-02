@@ -466,6 +466,31 @@ code { font-family: monospace; }
                                         case Length::Unit::MS:
                                             combined.string_value += "ms";
                                             break;
+                                        case Length::Unit::CH:
+                                            combined.string_value += "ch";
+                                            break;
+                                        case Length::Unit::EX:
+                                            combined.string_value += "ex";
+                                            break;
+                                        case Length::Unit::CM_UNIT:
+                                            combined.string_value += "cm";
+                                            break;
+                                        case Length::Unit::MM_UNIT:
+                                            combined.string_value += "mm";
+                                            break;
+                                        case Length::Unit::IN_UNIT:
+                                            combined.string_value += "in";
+                                            break;
+                                        case Length::Unit::PT:
+                                            combined.string_value += "pt";
+                                            break;
+                                        case Length::Unit::PC:
+                                            combined.string_value += "pc";
+                                            break;
+                                        case Length::Unit::DPCM:
+                                        case Length::Unit::DPI:
+                                        case Length::Unit::FR:
+                                            break;
                                     }
                                     break;
                                 }
@@ -830,6 +855,745 @@ code { font-family: monospace; }
                                     first.substr(0, 6) != "steps(" && first.find("ms") == std::string::npos &&
                                     first.find('s') == std::string::npos) {
                                     set_anim("animation-name", first);
+                                }
+                            }
+                        }
+
+                        // overflow: <value> → overflow-x + overflow-y
+                        if (prop == "overflow" && val.type == CSSValue::Type::KEYWORD) {
+                            if (!style.has("overflow-x"))
+                                style.properties["overflow-x"] = val;
+                            if (!style.has("overflow-y"))
+                                style.properties["overflow-y"] = val;
+                        }
+
+                        // border-radius: <value> → four corners
+                        if (prop == "border-radius") {
+                            if (val.type == CSSValue::Type::LENGTH || val.type == CSSValue::Type::STRING) {
+                                std::string val_str;
+                                if (val.type == CSSValue::Type::LENGTH) {
+                                    char buf[64];
+                                    snprintf(buf, sizeof(buf), "%.2f", val.length.value);
+                                    val_str = buf;
+                                    if (val.length.unit == Length::Unit::PX) val_str += "px";
+                                    else if (val.length.unit == Length::Unit::EM) val_str += "em";
+                                    else if (val.length.unit == Length::Unit::REM) val_str += "rem";
+                                    else if (val.length.unit == Length::Unit::PERCENT) val_str += "%";
+                                } else {
+                                    val_str = val.string_value;
+                                }
+                                if (!val_str.empty())
+                                    expand_four_sides("border-radius", val_str);
+                                // Rename border-radius-top → border-top-left-radius etc.
+                                auto rename_br = [&](const std::string &old_key, const std::string &new_key) {
+                                    auto it = style.properties.find(old_key);
+                                    if (it != style.properties.end()) {
+                                        style.properties[new_key] = it->second;
+                                        style.properties.erase(it);
+                                    }
+                                };
+                                rename_br("border-radius-top", "border-top-left-radius");
+                                rename_br("border-radius-right", "border-top-right-radius");
+                                rename_br("border-radius-bottom", "border-bottom-right-radius");
+                                rename_br("border-radius-left", "border-bottom-left-radius");
+                            }
+                        }
+
+                        // outline: <width> <style> <color>
+                        if (prop == "outline" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            for (const auto &p : parts) {
+                                if (p == "none" || p == "dotted" || p == "dashed" || p == "solid" ||
+                                    p == "double" || p == "groove" || p == "ridge" || p == "inset" || p == "outset") {
+                                    if (!style.has("outline-style")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["outline-style"] = cv;
+                                    }
+                                } else if (p == "invert") {
+                                    if (!style.has("outline-color")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["outline-color"] = cv;
+                                    }
+                                } else {
+                                    char *endp = nullptr;
+                                    f32 num = std::strtof(p.c_str(), &endp);
+                                    if (endp != p.c_str()) {
+                                        std::string unit = endp;
+                                        if (!style.has("outline-width")) {
+                                            CSSValue cv;
+                                            cv.type = CSSValue::Type::LENGTH;
+                                            cv.length.value = num;
+                                            if (unit == "px") cv.length.unit = Length::Unit::PX;
+                                            else if (unit == "em") cv.length.unit = Length::Unit::EM;
+                                            else if (unit == "rem") cv.length.unit = Length::Unit::REM;
+                                            else cv.length.unit = Length::Unit::PX;
+                                            style.properties["outline-width"] = cv;
+                                        }
+                                    } else if (!style.has("outline-color")) {
+                                        auto named = Color::from_name(p);
+                                        if (named.a != 0 || p == "transparent") {
+                                            CSSValue cv;
+                                            cv.type = CSSValue::Type::COLOR;
+                                            cv.color = named;
+                                            style.properties["outline-color"] = cv;
+                                        } else {
+                                            CSSValue cv;
+                                            cv.type = CSSValue::Type::KEYWORD;
+                                            cv.keyword = p;
+                                            style.properties["outline-color"] = cv;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // text-decoration: <line> <style> <color>
+                        if (prop == "text-decoration" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            for (const auto &p : parts) {
+                                if (p == "underline" || p == "overline" || p == "line-through" || p == "none") {
+                                    if (!style.has("text-decoration-line")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["text-decoration-line"] = cv;
+                                    }
+                                } else if (p == "solid" || p == "double" || p == "dotted" || p == "dashed" || p == "wavy") {
+                                    if (!style.has("text-decoration-style")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["text-decoration-style"] = cv;
+                                    }
+                                } else if (!style.has("text-decoration-color")) {
+                                    auto named = Color::from_name(p);
+                                    if (named.a != 0 || p == "transparent") {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::COLOR;
+                                        cv.color = named;
+                                        style.properties["text-decoration-color"] = cv;
+                                    }
+                                }
+                            }
+                        }
+
+                        // flex-flow: <direction> <wrap>
+                        if (prop == "flex-flow" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            for (const auto &p : parts) {
+                                if (p == "row" || p == "row-reverse" || p == "column" || p == "column-reverse") {
+                                    if (!style.has("flex-direction")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["flex-direction"] = cv;
+                                    }
+                                } else if (p == "wrap" || p == "wrap-reverse" || p == "nowrap") {
+                                    if (!style.has("flex-wrap")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["flex-wrap"] = cv;
+                                    }
+                                }
+                            }
+                        }
+
+                        // transition: <property> <duration> <timing> <delay>
+                        if (prop == "transition" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            int time_count = 0;
+                            for (const auto &p : parts) {
+                                if (!p.empty() && (std::isdigit(static_cast<unsigned char>(p[0])) || p[0] == '.')) {
+                                    char *end = nullptr;
+                                    std::strtof(p.c_str(), &end);
+                                    if (end && *end != '\0') {
+                                        // Has a unit — it's a time value
+                                        if (time_count == 0) {
+                                            if (!style.has("transition-duration")) {
+                                                CSSValue cv;
+                                                cv.type = CSSValue::Type::KEYWORD;
+                                                cv.keyword = p;
+                                                style.properties["transition-duration"] = cv;
+                                            }
+                                        } else if (time_count == 1) {
+                                            if (!style.has("transition-delay")) {
+                                                CSSValue cv;
+                                                cv.type = CSSValue::Type::KEYWORD;
+                                                cv.keyword = p;
+                                                style.properties["transition-delay"] = cv;
+                                            }
+                                        }
+                                        time_count++;
+                                    }
+                                } else if (p == "ease" || p == "linear" || p == "ease-in" || p == "ease-out" || p == "ease-in-out") {
+                                    if (!style.has("transition-timing-function")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["transition-timing-function"] = cv;
+                                    }
+                                } else {
+                                    // Assume it's the property name
+                                    if (!style.has("transition-property")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["transition-property"] = cv;
+                                    }
+                                }
+                            }
+                        }
+
+                        // list-style: <type> <position> <image>
+                        if (prop == "list-style" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            for (const auto &p : parts) {
+                                if (p == "inside" || p == "outside") {
+                                    if (!style.has("list-style-position")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["list-style-position"] = cv;
+                                    }
+                                } else if (p.substr(0, 4) == "url(" || p == "none") {
+                                    if (!style.has("list-style-image")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["list-style-image"] = cv;
+                                    }
+                                } else {
+                                    if (!style.has("list-style-type")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["list-style-type"] = cv;
+                                    }
+                                }
+                            }
+                        }
+
+                        // gap: <row-gap> <column-gap>
+                        if (prop == "gap" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            auto parse_gap_val = [&](const std::string &pv) -> CSSValue {
+                                CSSValue cv;
+                                char *endp = nullptr;
+                                f32 num = std::strtof(pv.c_str(), &endp);
+                                if (endp != pv.c_str()) {
+                                    cv.type = CSSValue::Type::LENGTH;
+                                    cv.length.value = num;
+                                    std::string unit = endp;
+                                    if (unit == "px") cv.length.unit = Length::Unit::PX;
+                                    else if (unit == "em") cv.length.unit = Length::Unit::EM;
+                                    else if (unit == "rem") cv.length.unit = Length::Unit::REM;
+                                    else if (unit == "%") cv.length.unit = Length::Unit::PERCENT;
+                                    else cv.length.unit = Length::Unit::PX;
+                                } else {
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = pv;
+                                }
+                                return cv;
+                            };
+                            if (!parts.empty()) {
+                                if (!style.has("row-gap"))
+                                    style.properties["row-gap"] = parse_gap_val(parts[0]);
+                                if (!style.has("column-gap"))
+                                    style.properties["column-gap"] = parts.size() > 1 ? parse_gap_val(parts[1]) : parse_gap_val(parts[0]);
+                            }
+                        }
+                        if (prop == "gap" && val.type == CSSValue::Type::LENGTH) {
+                            if (!style.has("row-gap"))
+                                style.properties["row-gap"] = val;
+                            if (!style.has("column-gap"))
+                                style.properties["column-gap"] = val;
+                        }
+
+                        // place-content: <align-content> <justify-content>
+                        if (prop == "place-content" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto sp = s.find(' ');
+                            if (sp != std::string::npos) {
+                                if (!style.has("align-content")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s.substr(0, sp);
+                                    style.properties["align-content"] = cv;
+                                }
+                                if (!style.has("justify-content")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s.substr(sp + 1);
+                                    style.properties["justify-content"] = cv;
+                                }
+                            } else {
+                                if (!style.has("align-content")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s;
+                                    style.properties["align-content"] = cv;
+                                }
+                                if (!style.has("justify-content")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s;
+                                    style.properties["justify-content"] = cv;
+                                }
+                            }
+                        }
+
+                        // place-items: <align-items> <justify-items>
+                        if (prop == "place-items" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto sp = s.find(' ');
+                            if (sp != std::string::npos) {
+                                if (!style.has("align-items")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s.substr(0, sp);
+                                    style.properties["align-items"] = cv;
+                                }
+                                if (!style.has("justify-items")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s.substr(sp + 1);
+                                    style.properties["justify-items"] = cv;
+                                }
+                            } else {
+                                if (!style.has("align-items")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s;
+                                    style.properties["align-items"] = cv;
+                                }
+                                if (!style.has("justify-items")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s;
+                                    style.properties["justify-items"] = cv;
+                                }
+                            }
+                        }
+
+                        // place-self: <align-self> <justify-self>
+                        if (prop == "place-self" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto sp = s.find(' ');
+                            if (sp != std::string::npos) {
+                                if (!style.has("align-self")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s.substr(0, sp);
+                                    style.properties["align-self"] = cv;
+                                }
+                                if (!style.has("justify-self")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s.substr(sp + 1);
+                                    style.properties["justify-self"] = cv;
+                                }
+                            } else {
+                                if (!style.has("align-self")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s;
+                                    style.properties["align-self"] = cv;
+                                }
+                                if (!style.has("justify-self")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s;
+                                    style.properties["justify-self"] = cv;
+                                }
+                            }
+                        }
+
+                        // inset: <top> <right> <bottom> <left>
+                        if (prop == "inset" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            expand_four_sides("inset", s);
+                            auto rename_inset = [&](const std::string &old_key, const std::string &new_key) {
+                                auto it = style.properties.find(old_key);
+                                if (it != style.properties.end()) {
+                                    style.properties[new_key] = it->second;
+                                    style.properties.erase(it);
+                                }
+                            };
+                            rename_inset("inset-top", "top");
+                            rename_inset("inset-right", "right");
+                            rename_inset("inset-bottom", "bottom");
+                            rename_inset("inset-left", "left");
+                        }
+
+                        // columns: <column-width> <column-count>
+                        if (prop == "columns" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            for (const auto &p : parts) {
+                                char *endp = nullptr;
+                                f32 num = std::strtof(p.c_str(), &endp);
+                                if (endp != p.c_str()) {
+                                    std::string unit = endp;
+                                    if (unit == "auto" || p == "auto") {
+                                        // auto width or count
+                                    } else if (unit.empty()) {
+                                        // Bare number = column-count
+                                        if (!style.has("column-count")) {
+                                            CSSValue cv;
+                                            cv.type = CSSValue::Type::NUMBER;
+                                            cv.number = num;
+                                            style.properties["column-count"] = cv;
+                                        }
+                                    } else {
+                                        // Has unit = column-width
+                                        if (!style.has("column-width")) {
+                                            CSSValue cv;
+                                            cv.type = CSSValue::Type::LENGTH;
+                                            cv.length.value = num;
+                                            if (unit == "px") cv.length.unit = Length::Unit::PX;
+                                            else if (unit == "em") cv.length.unit = Length::Unit::EM;
+                                            else if (unit == "rem") cv.length.unit = Length::Unit::REM;
+                                            else cv.length.unit = Length::Unit::PX;
+                                            style.properties["column-width"] = cv;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // column-rule: <width> <style> <color>
+                        if (prop == "column-rule" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find(' ', pp);
+                                if (end == std::string::npos) end = s.size();
+                                parts.push_back(s.substr(pp, end - pp));
+                                pp = end + 1;
+                            }
+                            for (const auto &p : parts) {
+                                if (p == "none" || p == "solid" || p == "dotted" || p == "dashed" || p == "double") {
+                                    if (!style.has("column-rule-style")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = p;
+                                        style.properties["column-rule-style"] = cv;
+                                    }
+                                } else {
+                                    char *endp = nullptr;
+                                    f32 num = std::strtof(p.c_str(), &endp);
+                                    if (endp != p.c_str()) {
+                                        if (!style.has("column-rule-width")) {
+                                            CSSValue cv;
+                                            cv.type = CSSValue::Type::LENGTH;
+                                            cv.length.value = num;
+                                            cv.length.unit = Length::Unit::PX;
+                                            style.properties["column-rule-width"] = cv;
+                                        }
+                                    } else if (!style.has("column-rule-color")) {
+                                        auto named = Color::from_name(p);
+                                        if (named.a != 0 || p == "transparent") {
+                                            CSSValue cv;
+                                            cv.type = CSSValue::Type::COLOR;
+                                            cv.color = named;
+                                            style.properties["column-rule-color"] = cv;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // grid-row: <start> / <end>
+                        if (prop == "grid-row" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto slash = s.find('/');
+                            if (slash != std::string::npos) {
+                                std::string start = s.substr(0, slash);
+                                std::string end = s.substr(slash + 1);
+                                while (!start.empty() && start.back() == ' ') start.pop_back();
+                                while (!end.empty() && end[0] == ' ') end = end.substr(1);
+                                if (!style.has("grid-row-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = start;
+                                    style.properties["grid-row-start"] = cv;
+                                }
+                                if (!style.has("grid-row-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = end;
+                                    style.properties["grid-row-end"] = cv;
+                                }
+                            }
+                        }
+
+                        // grid-column: <start> / <end>
+                        if (prop == "grid-column" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto slash = s.find('/');
+                            if (slash != std::string::npos) {
+                                std::string start = s.substr(0, slash);
+                                std::string end = s.substr(slash + 1);
+                                while (!start.empty() && start.back() == ' ') start.pop_back();
+                                while (!end.empty() && end[0] == ' ') end = end.substr(1);
+                                if (!style.has("grid-column-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = start;
+                                    style.properties["grid-column-start"] = cv;
+                                }
+                                if (!style.has("grid-column-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = end;
+                                    style.properties["grid-column-end"] = cv;
+                                }
+                            }
+                        }
+
+                        // grid-area: <row-start> / <col-start> / <row-end> / <col-end>
+                        if (prop == "grid-area" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            std::vector<std::string> parts;
+                            size_t pp = 0;
+                            while (pp < s.size()) {
+                                while (pp < s.size() && s[pp] == ' ') pp++;
+                                if (pp >= s.size()) break;
+                                size_t end = s.find('/', pp);
+                                if (end == std::string::npos) end = s.size();
+                                std::string part = s.substr(pp, end - pp);
+                                while (!part.empty() && part.back() == ' ') part.pop_back();
+                                if (!part.empty()) parts.push_back(part);
+                                if (end != std::string::npos) pp = end + 1; else break;
+                            }
+                            auto set_grid_area = [&](const std::string &subprop, const std::string &v) {
+                                if (!style.has(subprop)) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = v;
+                                    style.properties[subprop] = cv;
+                                }
+                            };
+                            if (parts.size() >= 1) set_grid_area("grid-row-start", parts[0]);
+                            if (parts.size() >= 2) set_grid_area("grid-column-start", parts[1]);
+                            if (parts.size() >= 3) set_grid_area("grid-row-end", parts[2]);
+                            if (parts.size() >= 4) set_grid_area("grid-column-end", parts[3]);
+                        }
+
+                        // scroll-margin: <four-sides>
+                        if (prop == "scroll-margin" && val.type == CSSValue::Type::STRING) {
+                            expand_four_sides("scroll-margin", val.string_value);
+                        }
+                        // scroll-padding: <four-sides>
+                        if (prop == "scroll-padding" && val.type == CSSValue::Type::STRING) {
+                            expand_four_sides("scroll-padding", val.string_value);
+                        }
+
+                        // margin-block: <start> <end>
+                        if (prop == "margin-block" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto sp = s.find(' ');
+                            if (sp != std::string::npos) {
+                                if (!style.has("margin-block-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(0, sp);
+                                    style.properties["margin-block-start"] = cv;
+                                }
+                                if (!style.has("margin-block-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(sp + 1);
+                                    style.properties["margin-block-end"] = cv;
+                                }
+                            } else {
+                                if (!style.has("margin-block-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["margin-block-start"] = cv;
+                                }
+                                if (!style.has("margin-block-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["margin-block-end"] = cv;
+                                }
+                            }
+                        }
+
+                        // margin-inline: <start> <end>
+                        if (prop == "margin-inline" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto sp = s.find(' ');
+                            if (sp != std::string::npos) {
+                                if (!style.has("margin-inline-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(0, sp);
+                                    style.properties["margin-inline-start"] = cv;
+                                }
+                                if (!style.has("margin-inline-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(sp + 1);
+                                    style.properties["margin-inline-end"] = cv;
+                                }
+                            } else {
+                                if (!style.has("margin-inline-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["margin-inline-start"] = cv;
+                                }
+                                if (!style.has("margin-inline-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["margin-inline-end"] = cv;
+                                }
+                            }
+                        }
+
+                        // padding-block: <start> <end>
+                        if (prop == "padding-block" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto sp = s.find(' ');
+                            if (sp != std::string::npos) {
+                                if (!style.has("padding-block-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(0, sp);
+                                    style.properties["padding-block-start"] = cv;
+                                }
+                                if (!style.has("padding-block-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(sp + 1);
+                                    style.properties["padding-block-end"] = cv;
+                                }
+                            } else {
+                                if (!style.has("padding-block-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["padding-block-start"] = cv;
+                                }
+                                if (!style.has("padding-block-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["padding-block-end"] = cv;
+                                }
+                            }
+                        }
+
+                        // padding-inline: <start> <end>
+                        if (prop == "padding-inline" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            auto sp = s.find(' ');
+                            if (sp != std::string::npos) {
+                                if (!style.has("padding-inline-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(0, sp);
+                                    style.properties["padding-inline-start"] = cv;
+                                }
+                                if (!style.has("padding-inline-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s.substr(sp + 1);
+                                    style.properties["padding-inline-end"] = cv;
+                                }
+                            } else {
+                                if (!style.has("padding-inline-start")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["padding-inline-start"] = cv;
+                                }
+                                if (!style.has("padding-inline-end")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::STRING;
+                                    cv.string_value = s;
+                                    style.properties["padding-inline-end"] = cv;
                                 }
                             }
                         }

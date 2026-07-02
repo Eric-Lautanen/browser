@@ -354,6 +354,12 @@ static std::string css_val_type_str(browser::css::CSSValue::Type t) {
             return "GRADIENT";
         case browser::css::CSSValue::Type::TRANSFORM:
             return "TRANSFORM";
+        case browser::css::CSSValue::Type::SHADOW_LIST:
+            return "SHADOW_LIST";
+        case browser::css::CSSValue::Type::FILTER_LIST:
+            return "FILTER_LIST";
+        case browser::css::CSSValue::Type::TRANSITION_LIST:
+            return "TRANSITION_LIST";
     }
     return "UNKNOWN";
 }

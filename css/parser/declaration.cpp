@@ -111,6 +111,38 @@ namespace browser::css {
         } else if (func_name == "skewy") {
             tf.type = TransformFunc::Type::SKEW_Y;
             args.push_back(read_num());
+        } else if (func_name == "translatez") {
+            tf.type = TransformFunc::Type::TRANSLATE_Z;
+            args.push_back(read_num());
+        } else if (func_name == "translate3d") {
+            tf.type = TransformFunc::Type::TRANSLATE_3D;
+            args.push_back(read_num());
+            skip_punct();
+            args.push_back(read_num());
+            skip_punct();
+            args.push_back(read_num());
+        } else if (func_name == "rotatex") {
+            tf.type = TransformFunc::Type::ROTATE_X;
+            args.push_back(read_num());
+        } else if (func_name == "rotatey") {
+            tf.type = TransformFunc::Type::ROTATE_Y;
+            args.push_back(read_num());
+        } else if (func_name == "rotate3d") {
+            tf.type = TransformFunc::Type::ROTATE_3D;
+            for (int i = 0; i < 4; i++) {
+                skip_punct();
+                args.push_back(read_num());
+            }
+        } else if (func_name == "scale3d") {
+            tf.type = TransformFunc::Type::SCALE_3D;
+            args.push_back(read_num());
+            skip_punct();
+            args.push_back(read_num());
+            skip_punct();
+            args.push_back(read_num());
+        } else if (func_name == "perspective") {
+            tf.type = TransformFunc::Type::PERSPECTIVE;
+            args.push_back(read_num());
         }
 
         tf.args = args;

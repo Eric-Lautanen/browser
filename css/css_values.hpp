@@ -8,7 +8,7 @@
 namespace browser::css {
 
 struct Length {
-    enum class Unit { PX, EM, REM, PERCENT, VW, VH, NONE, DEG, S, MS };
+    enum class Unit { PX, EM, REM, PERCENT, VW, VH, NONE, DEG, S, MS, CH, EX, CM_UNIT, MM_UNIT, IN_UNIT, PT, PC, DPCM, DPI, FR };
     f32 value = 0;
     Unit unit = Unit::PX;
 };
@@ -21,7 +21,11 @@ struct Color {
 };
 
 struct TransformFunc {
-    enum class Type { MATRIX, TRANSLATE, TRANSLATE_X, TRANSLATE_Y, ROTATE, SCALE, SCALE_X, SCALE_Y, SKEW, SKEW_X, SKEW_Y };
+    enum class Type { MATRIX, TRANSLATE, TRANSLATE_X, TRANSLATE_Y, TRANSLATE_Z, TRANSLATE_3D,
+                      ROTATE, ROTATE_X, ROTATE_Y, ROTATE_3D,
+                      SCALE, SCALE_X, SCALE_Y, SCALE_3D,
+                      SKEW, SKEW_X, SKEW_Y,
+                      PERSPECTIVE };
     Type type;
     std::vector<f32> args;
 };
@@ -53,8 +57,37 @@ struct CalcExpr {
     std::unique_ptr<Node> root;
 };
 
+// Shadow value (box-shadow, text-shadow)
+struct CSSShadow {
+    f32 offset_x = 0;
+    f32 offset_y = 0;
+    f32 blur_radius = 0;
+    f32 spread_radius = 0;
+    Color color = {0, 0, 0, 128};  // default: semi-transparent black
+    bool inset = false;
+};
+
+// Filter function value
+struct CSSFilterFunc {
+    enum class Type { BLUR, BRIGHTNESS, CONTRAST, DROP_SHADOW, GRAYSCALE,
+                      HUE_ROTATE, INVERT, OPACITY, SATURATE, SEPIA };
+    Type type;
+    f32 amount = 0;          // numeric parameter
+    Length length_param;     // for blur(), drop-shadow offset
+    Color color_param;       // for drop-shadow color
+};
+
+// Transition value
+struct CSSTransition {
+    std::string property;    // transition-property
+    f32 duration = 0;       // in seconds
+    f32 delay = 0;          // in seconds
+    std::string timing_function; // "ease", "linear", "ease-in", etc.
+};
+
 struct CSSValue {
-    enum class Type { KEYWORD, LENGTH, COLOR, STRING, NUMBER, PERCENTAGE, URL, FUNCTION, GRADIENT, TRANSFORM };
+    enum class Type { KEYWORD, LENGTH, COLOR, STRING, NUMBER, PERCENTAGE, URL, FUNCTION,
+                      GRADIENT, TRANSFORM, SHADOW_LIST, FILTER_LIST, TRANSITION_LIST };
     Type type;
     std::string keyword;
     Length length;
@@ -63,6 +96,9 @@ struct CSSValue {
     std::string string_value;
     CSSGradient gradient;
     std::vector<TransformFunc> transforms;
+    std::vector<CSSShadow> shadows;
+    std::vector<CSSFilterFunc> filters;
+    std::vector<CSSTransition> transitions;
 };
 
 struct Selector;

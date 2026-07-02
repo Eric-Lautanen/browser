@@ -67,6 +67,20 @@ namespace browser::css {
                     return val / 100.0f * viewport_width_;
                 if (unit == "vh")
                     return val / 100.0f * viewport_height_;
+                if (unit == "ch")
+                    return val * font_size * 0.5f;
+                if (unit == "ex")
+                    return val * font_size * 0.5f;
+                if (unit == "cm")
+                    return val * 96.0f / 2.54f;
+                if (unit == "mm")
+                    return val * 96.0f / 25.4f;
+                if (unit == "in")
+                    return val * 96.0f;
+                if (unit == "pt")
+                    return val * 96.0f / 72.0f;
+                if (unit == "pc")
+                    return val * 96.0f / 6.0f;
                 return val;
             }
             return 0;
@@ -114,6 +128,20 @@ namespace browser::css {
                     return v->length.value * root_font_size_;
                 case Length::Unit::PX:
                     return v->length.value;
+                case Length::Unit::CH:
+                    return v->length.value * parent_font_size * 0.5f;
+                case Length::Unit::EX:
+                    return v->length.value * parent_font_size * 0.5f;
+                case Length::Unit::CM_UNIT:
+                    return v->length.value * 96.0f / 2.54f;
+                case Length::Unit::MM_UNIT:
+                    return v->length.value * 96.0f / 25.4f;
+                case Length::Unit::IN_UNIT:
+                    return v->length.value * 96.0f;
+                case Length::Unit::PT:
+                    return v->length.value * 96.0f / 72.0f;
+                case Length::Unit::PC:
+                    return v->length.value * 96.0f / 6.0f;
                 default:
                     return parent_font_size;
             }
@@ -186,6 +214,20 @@ namespace browser::css {
                     return num / 100.0f * viewport_width_;
                 if (unit == "vh")
                     return num / 100.0f * viewport_height_;
+                if (unit == "ch")
+                    return num * font_size * 0.5f;
+                if (unit == "ex")
+                    return num * font_size * 0.5f;
+                if (unit == "cm")
+                    return num * 96.0f / 2.54f;
+                if (unit == "mm")
+                    return num * 96.0f / 25.4f;
+                if (unit == "in")
+                    return num * 96.0f;
+                if (unit == "pt")
+                    return num * 96.0f / 72.0f;
+                if (unit == "pc")
+                    return num * 96.0f / 6.0f;
                 return num;
             }
             return 0;
@@ -280,6 +322,25 @@ namespace browser::css {
                 return len.value * 1000.0f;
             case Length::Unit::MS:
                 return len.value;
+            case Length::Unit::CH:
+                return len.value * font_size * 0.5f;  // approx 0.5em
+            case Length::Unit::EX:
+                return len.value * font_size * 0.5f;  // approx 0.5em
+            case Length::Unit::CM_UNIT:
+                return len.value * 96.0f / 2.54f;
+            case Length::Unit::MM_UNIT:
+                return len.value * 96.0f / 25.4f;
+            case Length::Unit::IN_UNIT:
+                return len.value * 96.0f;
+            case Length::Unit::PT:
+                return len.value * 96.0f / 72.0f;
+            case Length::Unit::PC:
+                return len.value * 96.0f / 6.0f;
+            case Length::Unit::FR:
+                return len.value;  // fr handled at grid level
+            case Length::Unit::DPCM:
+            case Length::Unit::DPI:
+                return len.value;
         }
         return 0.0f;
     }
@@ -321,6 +382,13 @@ namespace browser::css {
                 if (unit == "%") return num / 100.0f * parent_value;
                 if (unit == "vw") return num / 100.0f * viewport_width_;
                 if (unit == "vh") return num / 100.0f * viewport_height_;
+                if (unit == "ch") return num * font_size * 0.5f;
+                if (unit == "ex") return num * font_size * 0.5f;
+                if (unit == "cm") return num * 96.0f / 2.54f;
+                if (unit == "mm") return num * 96.0f / 25.4f;
+                if (unit == "in") return num * 96.0f;
+                if (unit == "pt") return num * 96.0f / 72.0f;
+                if (unit == "pc") return num * 96.0f / 6.0f;
                 if (unit.empty()) return num;
             }
             return 0;
@@ -359,6 +427,13 @@ namespace browser::css {
                 if (unit == "%") return num / 100.0f * containing;
                 if (unit == "vw") return num / 100.0f * viewport_width_;
                 if (unit == "vh") return num / 100.0f * viewport_height_;
+                if (unit == "ch") return num * font_size * 0.5f;
+                if (unit == "ex") return num * font_size * 0.5f;
+                if (unit == "cm") return num * 96.0f / 2.54f;
+                if (unit == "mm") return num * 96.0f / 25.4f;
+                if (unit == "in") return num * 96.0f;
+                if (unit == "pt") return num * 96.0f / 72.0f;
+                if (unit == "pc") return num * 96.0f / 6.0f;
                 if (unit.empty()) return num;
             }
             return 0.0f;
@@ -404,6 +479,13 @@ namespace browser::css {
                 if (unit == "%") return num / 100.0f * containing;
                 if (unit == "vw") return num / 100.0f * viewport_width_;
                 if (unit == "vh") return num / 100.0f * viewport_height_;
+                if (unit == "ch") return num * font_size * 0.5f;
+                if (unit == "ex") return num * font_size * 0.5f;
+                if (unit == "cm") return num * 96.0f / 2.54f;
+                if (unit == "mm") return num * 96.0f / 25.4f;
+                if (unit == "in") return num * 96.0f;
+                if (unit == "pt") return num * 96.0f / 72.0f;
+                if (unit == "pc") return num * 96.0f / 6.0f;
                 if (unit.empty()) return num;
             }
             return 0.0f;

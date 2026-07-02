@@ -94,6 +94,21 @@ namespace browser::css {
                 case TransformFunc::Type::MATRIX:
                     node->transform_matrix = node->transform_matrix.multiply(Mat3x3::from_values(a, b, c, d, e, f));
                     break;
+                case TransformFunc::Type::TRANSLATE_Z:
+                case TransformFunc::Type::TRANSLATE_3D:
+                    // 2D matrix can't represent Z translation, skip
+                    break;
+                case TransformFunc::Type::ROTATE_X:
+                case TransformFunc::Type::ROTATE_Y:
+                case TransformFunc::Type::ROTATE_3D:
+                    // 2D matrix can't fully represent 3D rotations, skip
+                    break;
+                case TransformFunc::Type::SCALE_3D:
+                    // 2D matrix can't represent Z scale, skip
+                    break;
+                case TransformFunc::Type::PERSPECTIVE:
+                    // 2D matrix can't represent perspective, skip
+                    break;
             }
         }
 
