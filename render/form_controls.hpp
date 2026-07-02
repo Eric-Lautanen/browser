@@ -41,4 +41,10 @@ namespace browser::render::form_controls {
                           f32 x, f32 y, f32 w, f32 h,
                           const std::string &filename, bool focused);
 
+    void paint_progress(CommandList &commands,
+                        f32 x, f32 y, f32 w, f32 h, f32 value, f32 max_val);
+
+    void paint_color_input(CommandList &commands,
+                           f32 x, f32 y, f32 w, f32 h, const std::string &value, bool focused);
+
 }  // namespace browser::render::form_controls

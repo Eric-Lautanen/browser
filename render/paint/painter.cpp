@@ -270,6 +270,14 @@ namespace browser::render {
                 if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
                 f32 cur = std::strtof(value.c_str(), nullptr);
                 form_controls::paint_range(list, fx, fy, fw, fh, cur, min_val, max_val, focused);
+            } else if (el->tag_name == "input" && type == "color") {
+                form_controls::paint_color_input(list, fx, fy, fw, fh, value, focused);
+            } else if (el->tag_name == "progress") {
+                f32 max_val = 1.0f;
+                std::string max_str = el->get_attribute("max");
+                if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
+                f32 cur = std::strtof(value.c_str(), nullptr);
+                form_controls::paint_progress(list, fx, fy, fw, fh, cur, max_val);
             }
         } else {
             paint_background(list, node, ox, oy);
@@ -317,6 +325,22 @@ namespace browser::render {
         for (auto &child : node->children) {
             if (skip_layer_children && paint_needs_own_layer(child.get()))
                 continue;
+
+            // <details> without "open": only show <summary> children
+            if (!node->is_text() && node->node() && node->node()->type == html::NodeType::ELEMENT) {
+                auto *parent_el = static_cast<html::Element *>(node->node());
+                if (parent_el->tag_name == "details" && !parent_el->has_attribute("open")) {
+                    bool is_summary = false;
+                    if (!child->is_text() && child->node() && child->node()->type == html::NodeType::ELEMENT) {
+                        auto *child_el = static_cast<html::Element *>(child->node());
+                        if (child_el->tag_name == "summary")
+                            is_summary = true;
+                    }
+                    if (!is_summary)
+                        continue;
+                }
+            }
+
             f32 zi = css::LayoutEngine::get_z_index(child->style());
             bool creates_stack = css::LayoutEngine::creates_stacking_context(child->style());
 

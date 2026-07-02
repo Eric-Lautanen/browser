@@ -311,4 +311,56 @@ namespace browser::render::form_controls {
         }
     }
 
+    void paint_progress(CommandList &commands,
+                        f32 x, f32 y, f32 w, f32 h, f32 value, f32 max_val) {
+        f32 frac = (max_val > 0) ? value / max_val : 0;
+        if (frac < 0) frac = 0;
+        if (frac > 1) frac = 1;
+
+        // Background track
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, {0.88f, 0.88f, 0.88f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, {0.5f, 0.5f, 0.5f, 1}));
+
+        // Filled bar
+        f32 fill_w = w * frac;
+        if (fill_w > 0) {
+            commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + 1, y + 1, fill_w - 2, h - 2}, {0.2f, 0.5f, 0.9f, 1}));
+        }
+    }
+
+    void paint_color_input(CommandList &commands,
+                           f32 x, f32 y, f32 w, f32 h, const std::string &value, bool focused) {
+        // Parse color value (#RRGGBB or named)
+        Color swatch = {0, 0, 0, 1};
+        if (!value.empty() && value[0] == '#' && value.size() >= 7) {
+            auto c = css::Color::from_hex(value);
+            swatch = {static_cast<f32>(c.r) / 255.0f, static_cast<f32>(c.g) / 255.0f,
+                      static_cast<f32>(c.b) / 255.0f, 1.0f};
+        } else if (!value.empty()) {
+            auto named = css::Color::from_name(value);
+            if (named.a != 0 || value == "transparent")
+                swatch = {static_cast<f32>(named.r) / 255.0f, static_cast<f32>(named.g) / 255.0f,
+                          static_cast<f32>(named.b) / 255.0f, static_cast<f32>(named.a) / 255.0f};
+        }
+
+        f32 pad = 2.0f;
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, {1, 1, 1, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, {0.5f, 0.5f, 0.5f, 1}));
+
+        // Color swatch
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + pad, y + pad, w - pad * 2, h - pad * 2}, swatch));
+
+        // Focus indicator
+        if (focused) {
+            commands.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                {x + 1, y + 1, 2, 2}, {0.3f, 0.5f, 0.9f, 1}));
+        }
+    }
+
 }  // namespace browser::render::form_controls

@@ -453,6 +453,28 @@ namespace browser {
                                 html::g_form_state.set_value(ht.element, path);
                             }
                         }
+                    } else if (tag == "input" && type == "color") {
+                        html::g_form_state.focus(ht.element);
+                        // Parse current color or use black
+                        std::string cur_val = html::g_form_state.get_value(ht.element);
+                        COLORREF cust_colors[16] = {0};
+                        COLORREF cur_rgb = RGB(0, 0, 0);
+                        if (!cur_val.empty() && cur_val[0] == '#' && cur_val.size() >= 7) {
+                            auto c = css::Color::from_hex(cur_val);
+                            cur_rgb = RGB(c.r, c.g, c.b);
+                        }
+                        CHOOSECOLORW cc = {};
+                        cc.lStructSize = sizeof(cc);
+                        cc.hwndOwner = GetActiveWindow();
+                        cc.rgbResult = cur_rgb;
+                        cc.lpCustColors = cust_colors;
+                        cc.Flags = CC_RGBINIT | CC_FULLOPEN;
+                        if (ChooseColorW(&cc)) {
+                            char buf[16];
+                            snprintf(buf, sizeof(buf), "#%02x%02x%02x",
+                                GetRValue(cc.rgbResult), GetGValue(cc.rgbResult), GetBValue(cc.rgbResult));
+                            html::g_form_state.set_value(ht.element, buf);
+                        }
                     } else if (tag == "input" && type == "checkbox") {
                         html::g_form_state.toggle_checkbox(ht.element);
                         html::g_form_state.focus(ht.element);
@@ -479,6 +501,31 @@ namespace browser {
                     } else if (tag == "select") {
                         html::g_form_state.focus(ht.element);
                         html::g_form_state.toggle_select(ht.element);
+                    } else if (tag == "summary") {
+                        // Toggle parent <details> open attribute
+                        html::Node *p = ht.element->parent;
+                        while (p) {
+                            if (p->type == html::NodeType::ELEMENT) {
+                                auto *pe = static_cast<html::Element *>(p);
+                                if (pe->tag_name == "details") {
+                                    if (pe->has_attribute("open"))
+                                        pe->attributes.erase("open");
+                                    else
+                                        pe->attributes["open"] = "";
+                                    renderer_->set_needs_redraw();
+                                    break;
+                                }
+                            }
+                            p = p->parent;
+                        }
+                    } else if (tag == "label") {
+                        std::string for_id = ht.element->get_attribute("for");
+                        if (!for_id.empty() && current_page_ && current_page_->dom) {
+                            html::Node *target = html::find_element_by_id(current_page_->dom.get(), for_id);
+                            if (target && target->type == html::NodeType::ELEMENT) {
+                                html::g_form_state.focus(static_cast<html::Element *>(target));
+                            }
+                        }
                     } else if (tag == "a") {
                         std::string href = ht.element->get_attribute("href");
                         if (!href.empty()) {
