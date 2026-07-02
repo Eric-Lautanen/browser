@@ -278,6 +278,51 @@ namespace browser::render {
                 if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
                 f32 cur = std::strtof(value.c_str(), nullptr);
                 form_controls::paint_progress(list, fx, fy, fw, fh, cur, max_val);
+            } else if (el->tag_name == "fieldset") {
+                // Paint fieldset border with legend gap
+                // Find legend element
+                std::string legend_text;
+                f32 legend_w = 0;
+                for (auto &child : el->children) {
+                    if (child->type == html::NodeType::ELEMENT) {
+                        auto *ch_el = static_cast<html::Element *>(child.get());
+                        if (ch_el->tag_name == "legend") {
+                            for (auto &tc : ch_el->children) {
+                                if (tc->type == html::NodeType::TEXT)
+                                    legend_text += static_cast<html::Text *>(tc.get())->data;
+                            }
+                            legend_w = static_cast<f32>(legend_text.size()) * 7.0f;
+                            break;
+                        }
+                    }
+                }
+                // Fieldset border (inset style, with gap for legend)
+                f32 field_pad = 8.0f;
+                f32 fbx = fx + field_pad;
+                f32 fby = fy + field_pad;
+                f32 fbw = fw - 2 * field_pad;
+                f32 fbh = fh - 2 * field_pad;
+                // Top border — left part (before legend), right part (after legend)
+                f32 legend_gap_start = fbx + 10;
+                f32 legend_gap_end = legend_gap_start + legend_w + 6;
+                if (legend_text.empty()) {
+                    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby, fbw, 1}, {0.5f, 0.5f, 0.5f, 1}));
+                } else {
+                    f32 left_w = legend_gap_start - fbx;
+                    if (left_w > 0) list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby, left_w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+                    f32 right_start = legend_gap_end;
+                    f32 right_w = fbx + fbw - right_start;
+                    if (right_w > 0) list.push(make_cmd(PaintCommand::Type::FILL_RECT, {right_start, fby, right_w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+                    // Legend text
+                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                        {legend_gap_start + 2, fby - 6, legend_w + 2, 14.0f}, {0, 0, 0, 1}, legend_text, 14));
+                }
+                // Bottom border
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby + fbh - 1, fbw, 1}, {0.5f, 0.5f, 0.5f, 1}));
+                // Left border
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby, 1, fbh}, {0.5f, 0.5f, 0.5f, 1}));
+                // Right border
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx + fbw - 1, fby, 1, fbh}, {0.5f, 0.5f, 0.5f, 1}));
             }
         } else {
             paint_background(list, node, ox, oy);
@@ -770,13 +815,84 @@ namespace browser::render {
             return;
 
         auto *img = it->second.get();
-        ImageId id = reinterpret_cast<ImageId>(img);
-        f32 bx = ox;
-        f32 by = oy;
-        f32 bw = node->content.width > 0 ? node->content.width : static_cast<f32>(img->width);
-        f32 bh = node->content.height > 0 ? node->content.height : static_cast<f32>(img->height);
+        f32 img_w = static_cast<f32>(img->width);
+        f32 img_h = static_cast<f32>(img->height);
+        if (img_w <= 0 || img_h <= 0)
+            return;
 
-        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {bx, by, bw, bh}, Color::WHITE, "", 0, id));
+        ImageId id = reinterpret_cast<ImageId>(img);
+        f32 box_w = node->content.width > 0 ? node->content.width : img_w;
+        f32 box_h = node->content.height > 0 ? node->content.height : img_h;
+
+        // object-fit: fill (default), contain, cover, none, scale-down
+        std::string ofit = "fill";
+        auto *of = node->style().get("object-fit");
+        if (of && of->type == css::CSSValue::Type::KEYWORD)
+            ofit = of->keyword;
+
+        f32 img_aspect = img_w / img_h;
+        f32 box_aspect = box_w / box_h;
+        f32 draw_w = box_w;
+        f32 draw_h = box_h;
+        f32 draw_x = ox;
+        f32 draw_y = oy;
+        bool needs_clip = false;
+
+        if (ofit == "contain") {
+            if (img_aspect > box_aspect) {
+                draw_w = box_w;
+                draw_h = box_w / img_aspect;
+            } else {
+                draw_h = box_h;
+                draw_w = box_h * img_aspect;
+            }
+            draw_x = ox + (box_w - draw_w) / 2.0f;
+            draw_y = oy + (box_h - draw_h) / 2.0f;
+        } else if (ofit == "cover") {
+            if (img_aspect > box_aspect) {
+                draw_h = box_h;
+                draw_w = box_h * img_aspect;
+            } else {
+                draw_w = box_w;
+                draw_h = box_w / img_aspect;
+            }
+            draw_x = ox + (box_w - draw_w) / 2.0f;
+            draw_y = oy + (box_h - draw_h) / 2.0f;
+            needs_clip = true;
+        } else if (ofit == "none") {
+            draw_w = img_w;
+            draw_h = img_h;
+            draw_x = ox + (box_w - draw_w) / 2.0f;
+            draw_y = oy + (box_h - draw_h) / 2.0f;
+        } else if (ofit == "scale-down") {
+            // Like none or contain, whichever gives smaller image
+            if (img_w <= box_w && img_h <= box_h) {
+                draw_w = img_w;
+                draw_h = img_h;
+                draw_x = ox + (box_w - draw_w) / 2.0f;
+                draw_y = oy + (box_h - draw_h) / 2.0f;
+            } else {
+                if (img_aspect > box_aspect) {
+                    draw_w = box_w;
+                    draw_h = box_w / img_aspect;
+                } else {
+                    draw_h = box_h;
+                    draw_w = box_h * img_aspect;
+                }
+                draw_x = ox + (box_w - draw_w) / 2.0f;
+                draw_y = oy + (box_h - draw_h) / 2.0f;
+            }
+        }
+
+        if (needs_clip) {
+            list.push(make_cmd(PaintCommand::Type::PUSH_CLIP, {ox, oy, box_w, box_h}, Color::TRANSPARENT));
+        }
+
+        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {draw_x, draw_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
+
+        if (needs_clip) {
+            list.push(make_cmd(PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT));
+        }
     }
 
     void Painter::paint_canvas(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
@@ -856,12 +972,127 @@ namespace browser::render {
         f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
                  node->border.bottom + 2 * outline_offset + 2 * outline_width;
 
-        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, outline_width}, outline_color));
-        list.push(
-            make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, outline_color));
-        list.push(
-            make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, outline_color));
-        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, outline_width, bh}, outline_color));
+        // Determine outline style
+        std::string ostyle = "solid";
+        if (os && os->type == css::CSSValue::Type::KEYWORD) ostyle = os->keyword;
+
+        if (ostyle == "dotted") {
+            // Draw dots along each edge
+            f32 dot_size = outline_width;
+            f32 gap = outline_width * 2.0f;
+            f32 step = dot_size + gap;
+            // Top edge
+            for (f32 dx = bx; dx < bx + bw; dx += step) {
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {dx, by, std::min(dot_size, bx + bw - dx), dot_size}, outline_color));
+            }
+            // Bottom edge
+            for (f32 dx = bx; dx < bx + bw; dx += step) {
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {dx, by + bh - dot_size, std::min(dot_size, bx + bw - dx), dot_size}, outline_color));
+            }
+            // Left edge
+            for (f32 dy = by + step; dy < by + bh - step; dy += step) {
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {bx, dy, dot_size, std::min(dot_size, by + bh - dy)}, outline_color));
+            }
+            // Right edge
+            for (f32 dy = by + step; dy < by + bh - step; dy += step) {
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {bx + bw - dot_size, dy, dot_size, std::min(dot_size, by + bh - dy)}, outline_color));
+            }
+        } else if (ostyle == "dashed") {
+            // Draw dashes along each edge
+            f32 dash_len = outline_width * 4.0f;
+            f32 gap = outline_width * 2.0f;
+            f32 step = dash_len + gap;
+            // Top edge
+            for (f32 dx = bx; dx < bx + bw; dx += step) {
+                f32 len = std::min(dash_len, bx + bw - dx);
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {dx, by, len, outline_width}, outline_color));
+            }
+            // Bottom edge
+            for (f32 dx = bx; dx < bx + bw; dx += step) {
+                f32 len = std::min(dash_len, bx + bw - dx);
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {dx, by + bh - outline_width, len, outline_width}, outline_color));
+            }
+            // Left edge
+            for (f32 dy = by + step; dy < by + bh - step; dy += step) {
+                f32 len = std::min(dash_len, by + bh - dy);
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {bx, dy, outline_width, len}, outline_color));
+            }
+            // Right edge
+            for (f32 dy = by + step; dy < by + bh - step; dy += step) {
+                f32 len = std::min(dash_len, by + bh - dy);
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                    {bx + bw - outline_width, dy, outline_width, len}, outline_color));
+            }
+        } else if (ostyle == "double") {
+            f32 db_order = outline_width / 3.0f;
+            if (db_order < 1.0f) db_order = 1.0f;
+            // Outer
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, db_order}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - db_order, by, db_order, bh}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - db_order, bw, db_order}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, db_order, bh}, outline_color));
+            // Inner
+            f32 inner_off = db_order * 2;
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                {bx + inner_off, by + inner_off, bw - 2 * inner_off, db_order}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                {bx + bw - db_order - inner_off, by + inner_off, db_order, bh - 2 * inner_off}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                {bx + inner_off, by + bh - db_order - inner_off, bw - 2 * inner_off, db_order}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                {bx + inner_off, by + inner_off, db_order, bh - 2 * inner_off}, outline_color));
+        } else if (ostyle == "groove" || ostyle == "ridge") {
+            Color c1 = outline_color;
+            Color c2 = {c1.r * 0.5f, c1.g * 0.5f, c1.b * 0.5f, c1.a};
+            bool dark_first = (ostyle == "groove");
+            Color outer_c = dark_first ? c2 : c1;
+            Color inner_c = dark_first ? c1 : c2;
+            f32 hw = outline_width / 2.0f;
+            if (hw < 1.0f) hw = 1.0f;
+            // Outer half
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, hw}, outer_c));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - hw, by, hw, bh}, outer_c));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - hw, bw, hw}, outer_c));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, hw, bh}, outer_c));
+            // Inner half
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + hw, by + hw, bw - 2 * hw, hw}, inner_c));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - hw - hw, by + hw, hw, bh - 2 * hw}, inner_c));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + hw, by + bh - hw - hw, bw - 2 * hw, hw}, inner_c));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + hw, by + hw, hw, bh - 2 * hw}, inner_c));
+        } else if (ostyle == "inset" || ostyle == "outset") {
+            bool dark_inner = (ostyle == "inset");
+            Color c_top, c_bottom, c_s1, c_s2;
+            if (dark_inner) {
+                c_top = {outline_color.r * 0.5f, outline_color.g * 0.5f, outline_color.b * 0.5f, outline_color.a};
+                c_s1 = {outline_color.r * 0.7f, outline_color.g * 0.7f, outline_color.b * 0.7f, outline_color.a};
+                c_s2 = {outline_color.r * 1.3f, outline_color.g * 1.3f, outline_color.b * 1.3f, outline_color.a};
+                c_bottom = {std::min(outline_color.r * 1.6f, 1.0f), std::min(outline_color.g * 1.6f, 1.0f),
+                            std::min(outline_color.b * 1.6f, 1.0f), outline_color.a};
+            } else {
+                c_top = {std::min(outline_color.r * 1.5f, 1.0f), std::min(outline_color.g * 1.5f, 1.0f),
+                         std::min(outline_color.b * 1.5f, 1.0f), outline_color.a};
+                c_s1 = {outline_color.r * 1.2f, outline_color.g * 1.2f, outline_color.b * 1.2f, outline_color.a};
+                c_s2 = {outline_color.r * 0.7f, outline_color.g * 0.7f, outline_color.b * 0.7f, outline_color.a};
+                c_bottom = {outline_color.r * 0.5f, outline_color.g * 0.5f, outline_color.b * 0.5f, outline_color.a};
+            }
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, outline_width}, c_top));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, outline_width, bh}, c_s1));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, c_s2));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, c_bottom));
+        } else {
+            // solid (default)
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, outline_width}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, outline_color));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, outline_width, bh}, outline_color));
+        }
     }
 
     Color Painter::resolve_color(const css::ComputedStyle &style,
