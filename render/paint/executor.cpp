@@ -476,12 +476,20 @@ namespace browser::render {
                             u32 tex_id = entry.fbo_state.fbo->texture_id();
 
                             if (entry.fbo_state.has_drop_shadow) {
-                                // Draw shadow: blurred version at offset position
+                                // Shadow color tint
+                                Color shadow_tint = {
+                                    static_cast<f32>(entry.fbo_state.ds_color.r) / 255.0f,
+                                    static_cast<f32>(entry.fbo_state.ds_color.g) / 255.0f,
+                                    static_cast<f32>(entry.fbo_state.ds_color.b) / 255.0f,
+                                    static_cast<f32>(entry.fbo_state.ds_color.a) / 255.0f
+                                };
+                                // Draw shadow: blurred version at offset position, tinted
                                 f32 sx = ex + entry.fbo_state.ds_offset_x - pad / 2.0f;
                                 f32 sy = ey + entry.fbo_state.ds_offset_y - pad / 2.0f;
                                 renderer_->draw_blurred_texture(
                                     sx, sy, ew + pad, eh + pad, tex_id,
-                                    entry.fbo_state.blur_radius > 0 ? entry.fbo_state.blur_radius : 0.0f);
+                                    entry.fbo_state.blur_radius > 0 ? entry.fbo_state.blur_radius : 0.0f,
+                                    shadow_tint);
                                 // Re-apply scissor after draw
                                 if (!clip_stack_.empty()) {
                                     apply_clip_rect(clip_stack_.back());
@@ -490,10 +498,10 @@ namespace browser::render {
                                 } else {
                                     pgl::glDisable(GL_SCISSOR_TEST);
                                 }
-                                // Draw original unblurred on top
+                                // Draw original unblurred on top (no tint = white = identity)
                                 renderer_->draw_blurred_texture(
                                     ex - pad / 2.0f, ey - pad / 2.0f,
-                                    ew + pad, eh + pad, tex_id, 0.0f);
+                                    ew + pad, eh + pad, tex_id, 0.0f, Color::WHITE);
                             } else if (entry.fbo_state.blur_radius > 0.0f) {
                                 renderer_->draw_blurred_texture(
                                     ex - pad / 2.0f, ey - pad / 2.0f,

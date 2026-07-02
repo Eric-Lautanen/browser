@@ -360,12 +360,13 @@ namespace browser::render {
             pgl::glUniform1f(u.filter_opacity, 1.0f);
     }
 
-    void Renderer::draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius) {
+    void Renderer::draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius,
+                                      const Color &tint) {
         if (texture_id == 0)
             return;
 
         if (blur_radius <= 0.0f) {
-            // No blur: draw directly with main shader as a textured quad
+            // No blur: draw directly with main shader as a textured quad with tint
             flush();
             pgl::glDisable(GL_SCISSOR_TEST);
             shader_->bind();
@@ -377,7 +378,7 @@ namespace browser::render {
             pgl::glBindTexture(GL_TEXTURE_2D, texture_id);
 
             batch_mesh_->clear();
-            batch_mesh_->add_quad_tex(x, y, w, h, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+            batch_mesh_->add_quad_tex(x, y, w, h, tint.r, tint.g, tint.b, tint.a, 0.0f, 0.0f, 1.0f, 1.0f);
             batch_mesh_->upload();
             batch_mesh_->draw();
             batch_mesh_->clear();
@@ -412,9 +413,9 @@ namespace browser::render {
         pgl::glActiveTexture(GL_TEXTURE0);
         pgl::glBindTexture(GL_TEXTURE_2D, texture_id);
 
-        // Draw quad and flush immediately
+        // Draw quad with tint and flush immediately
         batch_mesh_->clear();
-        batch_mesh_->add_quad_tex(x, y, w, h, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+        batch_mesh_->add_quad_tex(x, y, w, h, tint.r, tint.g, tint.b, tint.a, 0.0f, 0.0f, 1.0f, 1.0f);
         batch_mesh_->upload();
         batch_mesh_->draw();
         batch_mesh_->clear();

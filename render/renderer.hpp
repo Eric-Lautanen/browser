@@ -59,8 +59,9 @@ namespace browser::render {
         void set_filter_uniforms(const std::vector<css::CSSFilterFunc> &filters);
         void clear_filter_uniforms();
 
-        // Post-process: draw a texture with Gaussian blur applied
-        void draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius);
+        // Post-process: draw a texture with Gaussian blur applied, optionally tinted
+        void draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius,
+                                  const Color &tint = Color::WHITE);
 
         // FPS overlay
         void toggle_fps_overlay();

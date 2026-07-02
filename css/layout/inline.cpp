@@ -182,6 +182,16 @@ namespace browser::css {
         size_t line_word_start = 0;
         f32 pending_space = 0;
 
+        // text-indent: indent the first formatted line
+        f32 text_indent = 0;
+        auto *ti = node->style().get("text-indent");
+        if (ti && ti->type == CSSValue::Type::LENGTH) {
+            text_indent = resolve_length(ti->length, containing_width, font_size);
+            if (text_indent != 0) {
+                line_x = text_indent;
+            }
+        }
+
         auto flush_line = [&](size_t word_start, size_t word_end) {
             f32 line_width = line_x + pending_space;
             if (line_width > max_line_width)
