@@ -165,6 +165,31 @@ namespace browser::render {
             std::string value = html::g_form_state.get_value(el);
             std::string placeholder = el->get_attribute("placeholder");
             bool disabled = el->has_attribute("disabled");
+            // Resolve accent-color and caret-color from computed style (inherited)
+            Color accent = {0.2f, 0.4f, 0.9f, 1};  // default blue
+            Color caret_col = {0, 0, 0, 1};           // default black
+            auto *acc = node->style().get("accent-color");
+            if (acc && acc->type == css::CSSValue::Type::COLOR) {
+                accent = {static_cast<f32>(acc->color.r) / 255.0f,
+                          static_cast<f32>(acc->color.g) / 255.0f,
+                          static_cast<f32>(acc->color.b) / 255.0f, 1.0f};
+            } else if (acc && acc->type == css::CSSValue::Type::KEYWORD) {
+                auto named = css::Color::from_name(acc->keyword);
+                if (named.a != 0 || acc->keyword == "transparent")
+                    accent = {static_cast<f32>(named.r) / 255.0f, static_cast<f32>(named.g) / 255.0f,
+                              static_cast<f32>(named.b) / 255.0f, static_cast<f32>(named.a) / 255.0f};
+            }
+            auto *caret_css = node->style().get("caret-color");
+            if (caret_css && caret_css->type == css::CSSValue::Type::COLOR) {
+                caret_col = {static_cast<f32>(caret_css->color.r) / 255.0f,
+                             static_cast<f32>(caret_css->color.g) / 255.0f,
+                             static_cast<f32>(caret_css->color.b) / 255.0f, 1.0f};
+            } else if (caret_css && caret_css->type == css::CSSValue::Type::KEYWORD) {
+                auto named = css::Color::from_name(caret_css->keyword);
+                if (named.a != 0 || caret_css->keyword == "transparent")
+                    caret_col = {static_cast<f32>(named.r) / 255.0f, static_cast<f32>(named.g) / 255.0f,
+                                 static_cast<f32>(named.b) / 255.0f, static_cast<f32>(named.a) / 255.0f};
+            }
             bool focused = (html::g_form_state.focused_element == el);
             bool hovered = (html::g_form_state.hovered_element == el);
             u32 caret = focused ? html::g_form_state.caret_position : 0;
@@ -178,19 +203,19 @@ namespace browser::render {
             if (el->tag_name == "input" && type == "hidden") {
                 // Hidden inputs are not rendered
             } else if (el->tag_name == "input" && (type.empty() || type == "text" || type == "email" || type == "search" || type == "url")) {
-                form_controls::paint_text_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, disabled);
+                form_controls::paint_text_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, disabled, caret_col);
             } else if (el->tag_name == "input" && type == "number") {
                 f32 spin_active = 0;
-                form_controls::paint_number_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, spin_active, disabled);
+                form_controls::paint_number_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, spin_active, disabled, caret_col);
             } else if (el->tag_name == "input" && type == "password") {
                 std::string display(value.size(), '*');
-                form_controls::paint_text_input(list, fx, fy, fw, fh, display, placeholder, caret, focused, disabled);
+                form_controls::paint_text_input(list, fx, fy, fw, fh, display, placeholder, caret, focused, disabled, caret_col);
             } else if (el->tag_name == "input" && type == "checkbox") {
                 bool checked = html::g_form_state.is_checked(el);
-                form_controls::paint_checkbox(list, fx, fy, 13, checked);
+                form_controls::paint_checkbox(list, fx, fy, 13, checked, accent);
             } else if (el->tag_name == "input" && type == "radio") {
                 bool checked = html::g_form_state.is_checked(el);
-                form_controls::paint_radio(list, fx, fy, 13, checked);
+                form_controls::paint_radio(list, fx, fy, 13, checked, accent);
             } else if (el->tag_name == "button" || (el->tag_name == "input" && (type == "submit" || type == "reset"))) {
                 std::string label = value.empty() ? (type == "reset" ? "Reset" : (el->tag_name == "button" ? "Button" : "Submit")) : value;
                 form_controls::paint_button(list, fx, fy, fw, fh, label, hovered, focused);
@@ -290,7 +315,7 @@ namespace browser::render {
                 if (!min_str.empty()) min_val = std::strtof(min_str.c_str(), nullptr);
                 if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
                 f32 cur = std::strtof(value.c_str(), nullptr);
-                form_controls::paint_range(list, fx, fy, fw, fh, cur, min_val, max_val, focused);
+                form_controls::paint_range(list, fx, fy, fw, fh, cur, min_val, max_val, focused, accent);
             } else if (el->tag_name == "input" && type == "color") {
                 form_controls::paint_color_input(list, fx, fy, fw, fh, value, focused);
             } else if (el->tag_name == "progress") {
@@ -298,7 +323,7 @@ namespace browser::render {
                 std::string max_str = el->get_attribute("max");
                 if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
                 f32 cur = std::strtof(value.c_str(), nullptr);
-                form_controls::paint_progress(list, fx, fy, fw, fh, cur, max_val);
+                form_controls::paint_progress(list, fx, fy, fw, fh, cur, max_val, accent);
             } else if (el->tag_name == "fieldset") {
                 // Paint fieldset border with legend gap
                 // Find legend element
@@ -507,9 +532,92 @@ namespace browser::render {
                 if (!url.empty() && images_) {
                     auto it = images_->find(url);
                     if (it != images_->end() && it->second) {
-                        ImageId id = reinterpret_cast<ImageId>(it->second.get());
-                        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {bx, by, bw, bh}, Color::WHITE, "", 0, id));
-                        // Fall through to paint background color under the image
+                        auto *img = it->second.get();
+                        f32 img_w = static_cast<f32>(img->width);
+                        f32 img_h = static_cast<f32>(img->height);
+                        if (img_w <= 0) img_w = bw;
+                        if (img_h <= 0) img_h = bh;
+                        ImageId id = reinterpret_cast<ImageId>(img);
+
+                        // Check background-repeat
+                        std::string repeat = "repeat";
+                        auto *bg_rep = node->style().get("background-repeat");
+                        if (bg_rep && bg_rep->type == css::CSSValue::Type::KEYWORD)
+                            repeat = bg_rep->keyword;
+
+                        // Check background-size
+                        f32 draw_w = img_w;
+                        f32 draw_h = img_h;
+                        auto *bg_size = node->style().get("background-size");
+                        if (bg_size && bg_size->type == css::CSSValue::Type::KEYWORD) {
+                            if (bg_size->keyword == "cover") {
+                                f32 scale = std::max(bw / img_w, bh / img_h);
+                                draw_w = img_w * scale;
+                                draw_h = img_h * scale;
+                            } else if (bg_size->keyword == "contain") {
+                                f32 scale = std::min(bw / img_w, bh / img_h);
+                                draw_w = img_w * scale;
+                                draw_h = img_h * scale;
+                            }
+                        }
+
+                        // Check background-position
+                        f32 pos_x = bx;
+                        f32 pos_y = by;
+                        auto *bg_pos = node->style().get("background-position");
+                        if (bg_pos && bg_pos->type == css::CSSValue::Type::KEYWORD) {
+                            if (bg_pos->keyword == "center" || bg_pos->keyword == "center center") {
+                                pos_x = bx + (bw - draw_w) / 2.0f;
+                                pos_y = by + (bh - draw_h) / 2.0f;
+                            } else if (bg_pos->keyword == "top") {
+                                pos_x = bx + (bw - draw_w) / 2.0f;
+                                pos_y = by;
+                            } else if (bg_pos->keyword == "bottom") {
+                                pos_x = bx + (bw - draw_w) / 2.0f;
+                                pos_y = by + bh - draw_h;
+                            } else if (bg_pos->keyword == "left") {
+                                pos_x = bx;
+                                pos_y = by + (bh - draw_h) / 2.0f;
+                            } else if (bg_pos->keyword == "right") {
+                                pos_x = bx + bw - draw_w;
+                                pos_y = by + (bh - draw_h) / 2.0f;
+                            } else if (bg_pos->keyword == "top left" || bg_pos->keyword == "left top") {
+                                pos_x = bx;
+                                pos_y = by;
+                            } else if (bg_pos->keyword == "top right" || bg_pos->keyword == "right top") {
+                                pos_x = bx + bw - draw_w;
+                                pos_y = by;
+                            } else if (bg_pos->keyword == "bottom left" || bg_pos->keyword == "left bottom") {
+                                pos_x = bx;
+                                pos_y = by + bh - draw_h;
+                            } else if (bg_pos->keyword == "bottom right" || bg_pos->keyword == "right bottom") {
+                                pos_x = bx + bw - draw_w;
+                                pos_y = by + bh - draw_h;
+                            }
+                        }
+
+                        if (repeat == "no-repeat") {
+                            list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
+                                {pos_x, pos_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                        } else if (repeat == "repeat-x") {
+                            for (f32 tx = pos_x; tx < bx + bw; tx += draw_w) {
+                                list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
+                                    {tx, pos_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                            }
+                        } else if (repeat == "repeat-y") {
+                            for (f32 ty = pos_y; ty < by + bh; ty += draw_h) {
+                                list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
+                                    {pos_x, ty, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                            }
+                        } else {
+                            // repeat: tile both directions
+                            for (f32 tx = pos_x - std::fmod(pos_x - bx, draw_w); tx < bx + bw; tx += draw_w) {
+                                for (f32 ty = pos_y - std::fmod(pos_y - by, draw_h); ty < by + bh; ty += draw_h) {
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
+                                        {tx, ty, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                                }
+                            }
+                        }
                     }
                 }
             }

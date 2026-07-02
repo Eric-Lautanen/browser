@@ -34,7 +34,7 @@ namespace browser::render::form_controls {
     void paint_text_input(
         CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, const std::string &placeholder,
         u32 caret_pos, bool focused,
-        bool disabled) {
+        bool disabled, const Color &caret_color) {
         Color bg = disabled ? Color{0.95f, 0.95f, 0.95f, 1} : Color{1, 1, 1, 1};
         Color border_c = disabled ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.6f, 0.6f, 0.6f, 1};
         Color text_c = disabled ? Color{0.55f, 0.55f, 0.55f, 1} : Color{0, 0, 0, 1};
@@ -59,14 +59,14 @@ namespace browser::render::form_controls {
         if (focused && !disabled) {
             f32 cx = text_x + static_cast<f32>(caret_pos) * 7.0f;
             if (cx < x + w - 2)
-                commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, y + 2, 1, h - 4}, {0, 0, 0, 1}));
+                commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, y + 2, 1, h - 4}, caret_color));
         }
     }
 
     void paint_number_input(
         CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, const std::string &placeholder,
         u32 caret_pos, bool focused,
-        f32 spin_active, bool disabled) {
+        f32 spin_active, bool disabled, const Color &caret_color) {
         f32 spin_w = 18.0f;
         f32 text_w = w - spin_w;
         if (text_w < 10.0f) text_w = 10.0f;
@@ -127,7 +127,7 @@ namespace browser::render::form_controls {
         if (focused && !disabled) {
             f32 cx = text_x + static_cast<f32>(caret_pos) * 7.0f;
             if (cx < x + text_w - 2)
-                commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, y + 2, 1, h - 4}, {0, 0, 0, 1}));
+                commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, y + 2, 1, h - 4}, caret_color));
         }
     }
 
@@ -162,7 +162,8 @@ namespace browser::render::form_controls {
         commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {tx, ty, w, h}, {0, 0, 0, 1}, label, 14));
     }
 
-    void paint_checkbox(CommandList &commands, f32 x, f32 y, f32 size, bool checked) {
+    void paint_checkbox(CommandList &commands, f32 x, f32 y, f32 size, bool checked,
+                        const Color &accent) {
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, size, size}, {1, 1, 1, 1}));
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, size, 1}, {0.4f, 0.4f, 0.4f, 1}));
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + size - 1, size, 1}, {0.4f, 0.4f, 0.4f, 1}));
@@ -171,11 +172,12 @@ namespace browser::render::form_controls {
 
         if (checked) {
             commands.push(
-                make_cmd(PaintCommand::Type::DRAW_TEXT, {x + 2, y, size, size}, {0, 0, 0, 1}, "\xe2\x9c\x93", 12));
+                make_cmd(PaintCommand::Type::DRAW_TEXT, {x + 2, y, size, size}, accent, "\xe2\x9c\x93", 12));
         }
     }
 
-    void paint_radio(CommandList &commands, f32 x, f32 y, f32 size, bool checked) {
+    void paint_radio(CommandList &commands, f32 x, f32 y, f32 size, bool checked,
+                     const Color &accent) {
         commands.push(make_cmd(
             PaintCommand::Type::DRAW_ROUNDED_RECT, {x, y, size, size}, {1, 1, 1, 1}, "", 0, 0, {}, size / 2.0f));
         commands.push(make_cmd(PaintCommand::Type::DRAW_ROUNDED_RECT,
@@ -193,7 +195,7 @@ namespace browser::render::form_controls {
             f32 iy = y + (size - inner) / 2.0f;
             commands.push(make_cmd(PaintCommand::Type::DRAW_ROUNDED_RECT,
                                    {ix, iy, inner, inner},
-                                   {0.3f, 0.3f, 0.3f, 1},
+                                   accent,
                                    "",
                                    0,
                                    0,
@@ -270,7 +272,8 @@ namespace browser::render::form_controls {
 
     void paint_range(CommandList &commands,
                      f32 x, f32 y, f32 w, f32 h,
-                     f32 value, f32 min_val, f32 max_val, bool focused) {
+                     f32 value, f32 min_val, f32 max_val, bool focused,
+                     const Color &accent) {
         f32 track_h = 4.0f;
         f32 track_y = y + (h - track_h) / 2.0f;
         f32 thumb_r = 7.0f;
@@ -285,7 +288,7 @@ namespace browser::render::form_controls {
         if (frac > 1) frac = 1;
         f32 fill_w = w * frac;
         if (fill_w > 0) {
-            commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, track_y, fill_w, track_h}, {0.3f, 0.5f, 0.9f, 1}));
+            commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, track_y, fill_w, track_h}, accent));
         }
 
         // Track border
@@ -299,7 +302,7 @@ namespace browser::render::form_controls {
         if (thumb_x < x) thumb_x = x;
         if (thumb_x > x + w - thumb_r * 2) thumb_x = x + w - thumb_r * 2;
         f32 thumb_y = y + (h - thumb_r * 2) / 2.0f;
-        Color thumb_color = focused ? Color{0.2f, 0.4f, 0.9f, 1} : Color{0.5f, 0.5f, 0.5f, 1};
+        Color thumb_color = focused ? accent : Color{0.5f, 0.5f, 0.5f, 1};
         commands.push(make_cmd(PaintCommand::Type::DRAW_ROUNDED_RECT,
             {thumb_x, thumb_y, thumb_r * 2, thumb_r * 2}, thumb_color, "", 0, 0, {}, thumb_r));
     }
@@ -338,7 +341,8 @@ namespace browser::render::form_controls {
     }
 
     void paint_progress(CommandList &commands,
-                        f32 x, f32 y, f32 w, f32 h, f32 value, f32 max_val) {
+                        f32 x, f32 y, f32 w, f32 h, f32 value, f32 max_val,
+                        const Color &accent) {
         f32 frac = (max_val > 0) ? value / max_val : 0;
         if (frac < 0) frac = 0;
         if (frac > 1) frac = 1;
@@ -353,7 +357,7 @@ namespace browser::render::form_controls {
         // Filled bar
         f32 fill_w = w * frac;
         if (fill_w > 0) {
-            commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + 1, y + 1, fill_w - 2, h - 2}, {0.2f, 0.5f, 0.9f, 1}));
+            commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + 1, y + 1, fill_w - 2, h - 2}, accent));
         }
     }
 

@@ -25,7 +25,7 @@ namespace browser::css {
 
         // Visibility & cursor
         if (property == "visibility" || property == "cursor" || property == "pointer-events" ||
-            property == "user-select")
+            property == "user-select" || property == "accent-color" || property == "caret-color")
             return true;
 
         // List
