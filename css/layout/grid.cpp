@@ -196,14 +196,20 @@ namespace browser::css {
             container_width = 0;
 
         auto *wv = node->style().get("width");
-        if (wv && wv->type == CSSValue::Type::LENGTH) {
-            container_width = resolve_length(wv->length, containing_width, font_size);
+        if (wv) {
+            if (wv->type == CSSValue::Type::LENGTH)
+                container_width = resolve_length(wv->length, containing_width, font_size);
+            else if (wv->type == CSSValue::Type::STRING || wv->type == CSSValue::Type::FUNCTION)
+                container_width = resolve_func_length(node->style(), wv, containing_width, font_size);
         }
 
         f32 container_height = containing_height;
         auto *hv = node->style().get("height");
-        if (hv && hv->type == CSSValue::Type::LENGTH) {
-            container_height = resolve_length(hv->length, containing_height, font_size);
+        if (hv) {
+            if (hv->type == CSSValue::Type::LENGTH)
+                container_height = resolve_length(hv->length, containing_height, font_size);
+            else if (hv->type == CSSValue::Type::STRING || hv->type == CSSValue::Type::FUNCTION)
+                container_height = resolve_func_length(node->style(), hv, containing_height, font_size);
         }
 
         node->content.width = container_width;

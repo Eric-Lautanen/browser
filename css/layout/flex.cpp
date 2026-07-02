@@ -301,10 +301,20 @@ namespace browser::css {
                 effective_align = static_cast<AlignSelf>(static_cast<int>(config.align_items));
             }
 
+            auto resolve_item_dim = [&](css::LayoutNode *ln, const std::string &prop, f32 containing) -> f32 {
+                auto *v = ln->style().get(prop);
+                if (!v) return -1;
+                if (v->type == CSSValue::Type::LENGTH)
+                    return resolve_length(v->length, containing, font_size);
+                if (v->type == CSSValue::Type::STRING || v->type == CSSValue::Type::FUNCTION)
+                    return resolve_func_length(ln->style(), v, containing, font_size);
+                return -1;
+            };
+
             if (effective_align == AlignSelf::STRETCH) {
-                auto *cross_size_prop = item->node->style().get(is_row ? "height" : "width");
-                if (cross_size_prop && cross_size_prop->type == CSSValue::Type::LENGTH) {
-                    item->cross_size = resolve_length(cross_size_prop->length, container_cross, font_size);
+                f32 dim = resolve_item_dim(item->node, is_row ? "height" : "width", container_cross);
+                if (dim >= 0) {
+                    item->cross_size = dim;
                 } else {
                     item->cross_size = container_cross - item->cross_margin_start - item->cross_margin_end -
                                        item->cross_border_padding;
@@ -312,9 +322,9 @@ namespace browser::css {
                         item->cross_size = 0;
                 }
             } else {
-                auto *cross_size_prop = item->node->style().get(is_row ? "height" : "width");
-                if (cross_size_prop && cross_size_prop->type == CSSValue::Type::LENGTH) {
-                    item->cross_size = resolve_length(cross_size_prop->length, container_cross, font_size);
+                f32 dim = resolve_item_dim(item->node, is_row ? "height" : "width", container_cross);
+                if (dim >= 0) {
+                    item->cross_size = dim;
                 } else {
                     f32 main_content = item->target_main - item->main_border_padding;
                     if (is_row) {
@@ -447,38 +457,34 @@ namespace browser::css {
 
         bool is_row = is_row_direction(config.direction);
 
+        auto resolve_dim = [&](const std::string &prop_name, f32 containing_val) -> f32 {
+            auto *v = node->style().get(prop_name);
+            if (!v) return -1;
+            if (v->type == CSSValue::Type::LENGTH)
+                return resolve_length(v->length, containing_val, font_size);
+            if (v->type == CSSValue::Type::STRING || v->type == CSSValue::Type::FUNCTION)
+                return resolve_func_length(node->style(), v, containing_val, font_size);
+            if (v->type == CSSValue::Type::PERCENTAGE)
+                return v->number / 100.0f * containing_val;
+            return -1;
+        };
+
         f32 container_main;
         if (is_row) {
-            auto *wv = node->style().get("width");
-            if (wv && wv->type == CSSValue::Type::LENGTH) {
-                container_main = resolve_length(wv->length, containing_width, font_size);
-            } else {
-                container_main = node->content.width;
-            }
+            f32 w = resolve_dim("width", containing_width);
+            container_main = (w >= 0) ? w : node->content.width;
         } else {
-            auto *hv = node->style().get("height");
-            if (hv && hv->type == CSSValue::Type::LENGTH) {
-                container_main = resolve_length(hv->length, containing_height, font_size);
-            } else {
-                container_main = containing_height;
-            }
+            f32 h = resolve_dim("height", containing_height);
+            container_main = (h >= 0) ? h : containing_height;
         }
 
         f32 container_cross;
         if (is_row) {
-            auto *hv = node->style().get("height");
-            if (hv && hv->type == CSSValue::Type::LENGTH) {
-                container_cross = resolve_length(hv->length, containing_height, font_size);
-            } else {
-                container_cross = containing_height;
-            }
+            f32 h = resolve_dim("height", containing_height);
+            container_cross = (h >= 0) ? h : containing_height;
         } else {
-            auto *wv = node->style().get("width");
-            if (wv && wv->type == CSSValue::Type::LENGTH) {
-                container_cross = resolve_length(wv->length, containing_width, font_size);
-            } else {
-                container_cross = node->content.width;
-            }
+            f32 w = resolve_dim("width", containing_width);
+            container_cross = (w >= 0) ? w : node->content.width;
         }
 
         std::vector<FlexItem> items;

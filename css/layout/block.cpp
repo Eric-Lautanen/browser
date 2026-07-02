@@ -86,17 +86,27 @@ namespace browser::css {
 
         auto *maxw = node->style().get("max-width");
         bool had_maxw = false;
-        if (maxw && maxw->type == CSSValue::Type::LENGTH) {
-            f32 mw = resolve_length(maxw->length, containing_width, font_size);
-            if (node->content.width > mw) {
+        if (maxw) {
+            f32 mw = 0;
+            if (maxw->type == CSSValue::Type::LENGTH)
+                mw = resolve_length(maxw->length, containing_width, font_size);
+            else if (maxw->type == CSSValue::Type::STRING || maxw->type == CSSValue::Type::FUNCTION)
+                mw = resolve_func_length(node->style(), maxw, containing_width, font_size);
+            if (mw > 0 && node->content.width > mw) {
                 node->content.width = mw;
                 had_maxw = true;
             }
         }
         auto *minw = node->style().get("min-width");
-        if (minw && minw->type == CSSValue::Type::LENGTH) {
-            f32 mw = resolve_length(minw->length, containing_width, font_size);
-            if (node->content.width < mw)
+        if (minw) {
+            f32 mw = 0;
+            if (minw->type == CSSValue::Type::LENGTH)
+                mw = resolve_length(minw->length, containing_width, font_size);
+            else if (minw->type == CSSValue::Type::STRING || minw->type == CSSValue::Type::FUNCTION)
+                mw = resolve_func_length(node->style(), minw, containing_width, font_size);
+            else if (minw->type == CSSValue::Type::PERCENTAGE)
+                mw = minw->number / 100.0f * containing_width;
+            if (mw > 0 && node->content.width < mw)
                 node->content.width = mw;
         }
 
@@ -104,7 +114,9 @@ namespace browser::css {
         auto *mr = node->style().get("margin-right");
         bool ml_auto = !ml || (ml->type == CSSValue::Type::KEYWORD && ml->keyword == "auto");
         bool mr_auto = !mr || (mr->type == CSSValue::Type::KEYWORD && mr->keyword == "auto");
-        bool has_fixed_width = wv && wv->type == CSSValue::Type::LENGTH;
+        bool has_fixed_width = wv && (wv->type == CSSValue::Type::LENGTH ||
+                                       wv->type == CSSValue::Type::STRING ||
+                                       wv->type == CSSValue::Type::FUNCTION);
         if ((ml_auto || mr_auto) && (has_fixed_width || had_maxw)) {
             f32 used_w = node->content.width + h_padding + h_border;
             f32 remaining = containing_width - used_w;
@@ -311,8 +323,16 @@ namespace browser::css {
         layout_children(node, node->content.width, containing_height);
 
         auto *hv = node->style().get("height");
-        if (hv && hv->type == CSSValue::Type::LENGTH) {
-            node->content.height = resolve_length(hv->length, containing_height, font_size);
+        if (hv) {
+            f32 h = 0;
+            if (hv->type == CSSValue::Type::LENGTH)
+                h = resolve_length(hv->length, containing_height, font_size);
+            else if (hv->type == CSSValue::Type::STRING || hv->type == CSSValue::Type::FUNCTION)
+                h = resolve_func_length(node->style(), hv, containing_height, font_size);
+            else if (hv->type == CSSValue::Type::PERCENTAGE)
+                h = hv->number / 100.0f * containing_height;
+            if (h > 0)
+                node->content.height = h;
         } else {
             f32 max_y = 0;
             for (auto &child : node->children) {
@@ -329,15 +349,25 @@ namespace browser::css {
         }
 
         auto *maxh = node->style().get("max-height");
-        if (maxh && maxh->type == CSSValue::Type::LENGTH) {
-            f32 mh = resolve_length(maxh->length, containing_height, font_size);
-            if (node->content.height > mh)
+        if (maxh) {
+            f32 mh = 0;
+            if (maxh->type == CSSValue::Type::LENGTH)
+                mh = resolve_length(maxh->length, containing_height, font_size);
+            else if (maxh->type == CSSValue::Type::STRING || maxh->type == CSSValue::Type::FUNCTION)
+                mh = resolve_func_length(node->style(), maxh, containing_height, font_size);
+            if (mh > 0 && node->content.height > mh)
                 node->content.height = mh;
         }
         auto *minh = node->style().get("min-height");
-        if (minh && minh->type == CSSValue::Type::LENGTH) {
-            f32 mh = resolve_length(minh->length, containing_height, font_size);
-            if (node->content.height < mh)
+        if (minh) {
+            f32 mh = 0;
+            if (minh->type == CSSValue::Type::LENGTH)
+                mh = resolve_length(minh->length, containing_height, font_size);
+            else if (minh->type == CSSValue::Type::STRING || minh->type == CSSValue::Type::FUNCTION)
+                mh = resolve_func_length(node->style(), minh, containing_height, font_size);
+            else if (minh->type == CSSValue::Type::PERCENTAGE)
+                mh = minh->number / 100.0f * containing_height;
+            if (mh > 0 && node->content.height < mh)
                 node->content.height = mh;
         }
 
