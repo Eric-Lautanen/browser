@@ -163,6 +163,8 @@ namespace browser::render {
         if (is_form_control && el) {
             std::string type = el->get_attribute("type");
             std::string value = html::g_form_state.get_value(el);
+            std::string placeholder = el->get_attribute("placeholder");
+            bool disabled = el->has_attribute("disabled");
             bool focused = (html::g_form_state.focused_element == el);
             bool hovered = (html::g_form_state.hovered_element == el);
             u32 caret = focused ? html::g_form_state.caret_position : 0;
@@ -176,13 +178,13 @@ namespace browser::render {
             if (el->tag_name == "input" && type == "hidden") {
                 // Hidden inputs are not rendered
             } else if (el->tag_name == "input" && (type.empty() || type == "text" || type == "email" || type == "search" || type == "url")) {
-                form_controls::paint_text_input(list, fx, fy, fw, fh, value, caret, focused);
+                form_controls::paint_text_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, disabled);
             } else if (el->tag_name == "input" && type == "number") {
                 f32 spin_active = 0;
-                form_controls::paint_number_input(list, fx, fy, fw, fh, value, caret, focused, spin_active);
+                form_controls::paint_number_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, spin_active, disabled);
             } else if (el->tag_name == "input" && type == "password") {
                 std::string display(value.size(), '*');
-                form_controls::paint_text_input(list, fx, fy, fw, fh, display, caret, focused);
+                form_controls::paint_text_input(list, fx, fy, fw, fh, display, placeholder, caret, focused, disabled);
             } else if (el->tag_name == "input" && type == "checkbox") {
                 bool checked = html::g_form_state.is_checked(el);
                 form_controls::paint_checkbox(list, fx, fy, 13, checked);
@@ -197,18 +199,22 @@ namespace browser::render {
                 int sel_idx = html::g_form_state.get_selected_index(el);
                 form_controls::paint_select(list, fx, fy, fw, fh, value, is_open);
                 if (is_open) {
+                    // Count visible options (including those in optgroups)
+                    std::function<int(html::Node*)> count_options = [&](html::Node *parent) -> int {
+                        int n = 0;
+                        for (auto &c : parent->children) {
+                            if (c->type == html::NodeType::ELEMENT) {
+                                auto *ch = static_cast<html::Element*>(c.get());
+                                if (ch->tag_name == "option") n++;
+                                else if (ch->tag_name == "optgroup") n += count_options(ch);
+                            }
+                        }
+                        return n;
+                    };
+                    int opt_count = count_options(el);
                     // Render dropdown options
                     f32 opt_y = fy + fh;
                     f32 opt_w = fw;
-                    int opt_count = 0;
-                    for (auto &child : el->children) {
-                        if (child->type == html::NodeType::ELEMENT) {
-                            auto *opt = static_cast<html::Element *>(child.get());
-                            if (opt->tag_name == "option") {
-                                opt_count++;
-                            }
-                        }
-                    }
                     if (opt_count > 0) {
                         f32 opt_h = std::min(static_cast<f32>(opt_count) * 20.0f, 200.0f);
                         // Store dropdown rect for hit testing
@@ -221,29 +227,44 @@ namespace browser::render {
                         list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + opt_w - 1, opt_y, 1, opt_h}, Color{0.5f, 0.5f, 0.5f, 1}));
 
                         int idx = 0;
-                        for (auto &child : el->children) {
-                            if (child->type == html::NodeType::ELEMENT) {
-                                auto *opt = static_cast<html::Element *>(child.get());
+                        std::function<void(html::Node*, f32&)> render_opts = [&](html::Node *parent, f32 &ypos) {
+                            for (auto &child : parent->children) {
+                                if (child->type != html::NodeType::ELEMENT) continue;
+                                auto *opt = static_cast<html::Element*>(child.get());
                                 if (opt->tag_name == "option") {
                                     std::string opt_text = opt->get_attribute("label");
                                     if (opt_text.empty()) {
-                                        // Get text content
                                         for (auto &tc : opt->children) {
-                                            if (tc->type == html::NodeType::TEXT) {
-                                                opt_text += static_cast<html::Text *>(tc.get())->data;
-                                            }
+                                            if (tc->type == html::NodeType::TEXT)
+                                                opt_text += static_cast<html::Text*>(tc.get())->data;
                                         }
                                     }
                                     if (opt_text.empty()) opt_text = opt->get_attribute("value");
                                     Color opt_color = (idx == sel_idx) ? Color{0.2f, 0.4f, 0.9f, 1} : Color{0, 0, 0, 1};
                                     if (idx == sel_idx) {
-                                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + 1, opt_y + idx * 20.0f, opt_w - 2, 20.0f}, Color{0.8f, 0.85f, 1.0f, 1}));
+                                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.8f, 0.85f, 1.0f, 1}));
                                     }
-                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {fx + 4, opt_y + idx * 20.0f + 2, opt_w - 8, 18.0f}, opt_color, opt_text, 14));
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {fx + 4, opt_y + ypos + 2, opt_w - 8, 18.0f}, opt_color, opt_text, 14));
                                     idx++;
+                                    ypos += 20.0f;
+                                } else if (opt->tag_name == "optgroup") {
+                                    // Render optgroup label
+                                    std::string grp_label = opt->get_attribute("label");
+                                    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.94f, 0.94f, 0.94f, 1}));
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {fx + 8, opt_y + ypos + 2, opt_w - 12, 18.0f}, Color{0.35f, 0.35f, 0.35f, 1}, grp_label, 13));
+                                    ypos += 20.0f;
+                                    // Render children with indent
+                                    f32 saved_x = fx;
+                                    fx += 14.0f;
+                                    opt_w -= 14.0f;
+                                    render_opts(opt, ypos);
+                                    fx = saved_x;
+                                    opt_w += 14.0f;
                                 }
                             }
-                        }
+                        };
+                        f32 yy = 0;
+                        render_opts(el, yy);
                     }
                 } else {
                     html::g_form_state.select_dropdown_rect = {0, 0, 0, 0};

@@ -8,11 +8,14 @@ namespace browser::render::form_controls {
     using CommandList = DisplayList;
 
     void paint_text_input(
-        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, u32 caret_pos, bool focused);
+        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, const std::string &placeholder,
+        u32 caret_pos, bool focused,
+        bool disabled = false);
 
     void paint_number_input(
-        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, u32 caret_pos, bool focused,
-        f32 spin_active);  // spin_active: -1=down, 0=none, 1=up
+        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, const std::string &placeholder,
+        u32 caret_pos, bool focused,
+        f32 spin_active, bool disabled = false);  // spin_active: -1=down, 0=none, 1=up
 
     void paint_button(
         CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &label, bool hovered, bool active);

@@ -318,11 +318,42 @@ namespace browser {
                 f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
                 auto &dr = html::g_form_state.select_dropdown_rect;
                 if (mx >= dr.x && mx <= dr.x + dr.width && py >= dr.y && py <= dr.y + dr.height) {
-                    // Click is inside dropdown - select the option
+                    // Click is inside dropdown - find which visible row was clicked
                     f32 rel_y = py - dr.y;
-                    int idx = static_cast<int>(rel_y / 20.0f);
-                    if (idx >= 0) {
-                        html::g_form_state.set_selected_index(html::g_form_state.open_select, idx);
+                    int row = static_cast<int>(rel_y / 20.0f);
+                    if (row >= 0) {
+                        // Walk options including optgroups to find the nth selectable option
+                        int target_option = 0;
+                        int running_idx = 0;
+                        bool found = false;
+                        std::function<void(html::Node*, int&, int&)> walk =
+                            [&](html::Node *parent, int &row_idx, int &opt_idx) {
+                                if (found) return;
+                                for (auto &c : parent->children) {
+                                    if (found) return;
+                                    if (c->type != html::NodeType::ELEMENT) continue;
+                                    auto *ch = static_cast<html::Element*>(c.get());
+                                    if (ch->tag_name == "option") {
+                                        if (row_idx == row) {
+                                            target_option = opt_idx;
+                                            found = true;
+                                            return;
+                                        }
+                                        row_idx++;
+                                        opt_idx++;
+                                    } else if (ch->tag_name == "optgroup") {
+                                        // Optgroup header is a row too (non-selectable)
+                                        if (row_idx == row) { found = true; return; }
+                                        row_idx++;
+                                        walk(ch, row_idx, opt_idx);
+                                    }
+                                }
+                            };
+                        walk(const_cast<html::Element*>(html::g_form_state.open_select), running_idx, target_option);
+                        if (found) {
+                            html::g_form_state.set_selected_index(
+                                const_cast<html::Element*>(html::g_form_state.open_select), target_option);
+                        }
                     }
                     html::g_form_state.close_select();
                     return;
@@ -391,6 +422,10 @@ namespace browser {
                 selection_.active = false;
 
                 if (ht.element) {
+                    // Skip disabled form controls
+                    if (ht.element->has_attribute("disabled")) {
+                        // Don't focus or interact with disabled elements
+                    } else {
                     html::g_form_state.hovered_element = ht.element;
                     std::string tag = ht.element->tag_name;
                     std::string type = ht.element->get_attribute("type");
@@ -577,6 +612,7 @@ namespace browser {
                     } else {
                         html::g_form_state.blur();
                     }
+                    } // end of 'if (!disabled)'
                 } else {
                     html::g_form_state.blur();
                 }
@@ -1064,6 +1100,11 @@ namespace browser {
                 }
             }
         } else if (html::g_form_state.focused_element) {
+            // Silently blur if element became disabled
+            if (html::g_form_state.focused_element->has_attribute("disabled")) {
+                html::g_form_state.blur();
+                return;
+            }
             // Route keyboard to focused form element
             auto *el = html::g_form_state.focused_element;
             std::string tag = el->tag_name;

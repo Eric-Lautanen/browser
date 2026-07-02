@@ -32,18 +32,31 @@ namespace browser::render::form_controls {
     }  // namespace
 
     void paint_text_input(
-        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, u32 caret_pos, bool focused) {
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, {1, 1, 1, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, const std::string &placeholder,
+        u32 caret_pos, bool focused,
+        bool disabled) {
+        Color bg = disabled ? Color{0.95f, 0.95f, 0.95f, 1} : Color{1, 1, 1, 1};
+        Color border_c = disabled ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.6f, 0.6f, 0.6f, 1};
+        Color text_c = disabled ? Color{0.55f, 0.55f, 0.55f, 1} : Color{0, 0, 0, 1};
+        Color placeholder_c = Color{0.55f, 0.55f, 0.55f, 1};
+
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, bg));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, border_c));
 
         f32 text_x = x + 3;
         f32 text_y = y + (h - 14) / 2.0f;
-        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {text_x, text_y, w - 6, h}, {0, 0, 0, 1}, value, 14));
+        std::string display = value;
+        Color display_color = text_c;
+        if (display.empty() && !placeholder.empty() && !focused) {
+            display = placeholder;
+            display_color = placeholder_c;
+        }
+        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {text_x, text_y, w - 6, h}, display_color, display, 14));
 
-        if (focused) {
+        if (focused && !disabled) {
             f32 cx = text_x + static_cast<f32>(caret_pos) * 7.0f;
             if (cx < x + w - 2)
                 commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, y + 2, 1, h - 4}, {0, 0, 0, 1}));
@@ -51,54 +64,67 @@ namespace browser::render::form_controls {
     }
 
     void paint_number_input(
-        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, u32 caret_pos, bool focused,
-        f32 spin_active) {
+        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, const std::string &placeholder,
+        u32 caret_pos, bool focused,
+        f32 spin_active, bool disabled) {
         f32 spin_w = 18.0f;
         f32 text_w = w - spin_w;
         if (text_w < 10.0f) text_w = 10.0f;
 
+        Color bg = disabled ? Color{0.95f, 0.95f, 0.95f, 1} : Color{1, 1, 1, 1};
+        Color border_c = disabled ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.6f, 0.6f, 0.6f, 1};
+        Color text_c = disabled ? Color{0.55f, 0.55f, 0.55f, 1} : Color{0, 0, 0, 1};
+
         // Input background and border
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, {1, 1, 1, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, bg));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, border_c));
 
         // Spin button divider
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w, y, 1, h}, border_c));
 
         // Spin up button
         f32 half_h = h / 2.0f;
-        Color up_bg = spin_active == 1 ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.92f, 0.92f, 0.92f, 1};
+        Color spin_arrow = disabled ? Color{0.65f, 0.65f, 0.65f, 1} : Color{0.2f, 0.2f, 0.2f, 1};
+        Color up_bg = disabled ? Color{0.95f, 0.95f, 0.95f, 1} :
+                     (spin_active == 1 ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.92f, 0.92f, 0.92f, 1});
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w + 1, y, spin_w - 1, half_h}, up_bg));
-        // Up arrow (triangle approximation)
         {
             f32 cx = x + text_w + spin_w / 2.0f;
             f32 cy = y + half_h / 2.0f;
             commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                {cx - 3, cy - 4, 8, 8}, {0.2f, 0.2f, 0.2f, 1}, "\xe2\x96\xb2", 8));
+                {cx - 3, cy - 4, 8, 8}, spin_arrow, "\xe2\x96\xb2", 8));
         }
 
         // Spin down button
-        Color dn_bg = spin_active == -1 ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.92f, 0.92f, 0.92f, 1};
+        Color dn_bg = disabled ? Color{0.95f, 0.95f, 0.95f, 1} :
+                      (spin_active == -1 ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.92f, 0.92f, 0.92f, 1});
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w + 1, y + half_h, spin_w - 1, half_h}, dn_bg));
         {
             f32 cx = x + text_w + spin_w / 2.0f;
             f32 cy = y + half_h + half_h / 2.0f;
             commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                {cx - 3, cy - 4, 8, 8}, {0.2f, 0.2f, 0.2f, 1}, "\xe2\x96\xbc", 8));
+                {cx - 3, cy - 4, 8, 8}, spin_arrow, "\xe2\x96\xbc", 8));
         }
 
         // Separator between spin buttons
-        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w + 1, y + half_h, spin_w - 1, 1}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w + 1, y + half_h, spin_w - 1, 1}, border_c));
 
         // Text value
         f32 text_x = x + 3;
         f32 text_y = y + (h - 14) / 2.0f;
-        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {text_x, text_y, text_w - 6, h}, {0, 0, 0, 1}, value, 14));
+        std::string display = value;
+        Color display_color = text_c;
+        if (display.empty() && !placeholder.empty() && !focused) {
+            display = placeholder;
+            display_color = Color{0.55f, 0.55f, 0.55f, 1};
+        }
+        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {text_x, text_y, text_w - 6, h}, display_color, display, 14));
 
         // Caret
-        if (focused) {
+        if (focused && !disabled) {
             f32 cx = text_x + static_cast<f32>(caret_pos) * 7.0f;
             if (cx < x + text_w - 2)
                 commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, y + 2, 1, h - 4}, {0, 0, 0, 1}));
