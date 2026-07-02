@@ -34,6 +34,13 @@ namespace browser::css {
             letter_spacing = resolve_length(ls->length, 0, font_size);
         }
 
+        // Word-spacing: extra spacing added between words
+        f32 word_spacing = 0;
+        auto *ws2 = node->style().get("word-spacing");
+        if (ws2 && ws2->type == CSSValue::Type::LENGTH) {
+            word_spacing = resolve_length(ws2->length, 0, font_size);
+        }
+
         auto *lh = node->style().get("line-height");
 
         // Default line-height: query font metrics for "normal", fallback to 1.2
@@ -117,6 +124,7 @@ namespace browser::css {
                 if (is_ws(text[start]) && whitespace != "pre") {
                     f32 sp_w =
                         text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, " ", (u32)font_size) : char_width;
+                    sp_w += word_spacing;
                     words.push_back({" ", sp_w});
                     while (start < text.size() && is_ws(text[start])) ++start;
                     continue;
