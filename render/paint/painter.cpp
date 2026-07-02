@@ -466,11 +466,60 @@ namespace browser::render {
             font_flags |= 2;
 
         // Check for text-decoration
+        Color dec_color = text_color;
         bool has_underline = false;
-        auto *dec_val = node->style().get("text-decoration");
-        if (dec_val && dec_val->type == css::CSSValue::Type::KEYWORD) {
-            has_underline = (dec_val->keyword.find("underline") != std::string::npos);
+        bool has_overline = false;
+        bool has_line_through = false;
+        f32 dec_thickness = std::max(1.0f, font_size / 14.0f);
+
+        // text-decoration-line takes priority
+        auto *dec_line = node->style().get("text-decoration-line");
+        if (dec_line && dec_line->type == css::CSSValue::Type::KEYWORD) {
+            const std::string &dl = dec_line->keyword;
+            if (dl.find("underline") != std::string::npos) has_underline = true;
+            if (dl.find("overline") != std::string::npos) has_overline = true;
+            if (dl.find("line-through") != std::string::npos) has_line_through = true;
+            if (dl == "none") { has_underline = false; has_overline = false; has_line_through = false; }
         }
+        // Fallback to text-decoration shorthand
+        if (!has_underline && !has_overline && !has_line_through) {
+            auto *dec_val = node->style().get("text-decoration");
+            if (dec_val && dec_val->type == css::CSSValue::Type::KEYWORD) {
+                const std::string &dk = dec_val->keyword;
+                if (dk.find("underline") != std::string::npos) has_underline = true;
+                if (dk.find("overline") != std::string::npos) has_overline = true;
+                if (dk.find("line-through") != std::string::npos) has_line_through = true;
+                if (dk == "none") { has_underline = false; has_overline = false; has_line_through = false; }
+            }
+        }
+        // text-decoration-color
+        auto *dec_color_val = node->style().get("text-decoration-color");
+        if (dec_color_val) {
+            Color c = resolve_color(node->style(), "text-decoration-color", text_color);
+            if (c.r != 0 || c.g != 0 || c.b != 0 || c.a != 0) dec_color = c;
+        }
+        // text-decoration-thickness
+        auto *dec_thick = node->style().get("text-decoration-thickness");
+        if (dec_thick && dec_thick->type == css::CSSValue::Type::LENGTH) {
+            dec_thickness = dec_thick->length.value;
+        }
+
+        auto paint_decorations = [&](f32 line_y, f32 line_w) {
+            if (has_underline) {
+                f32 y = line_y + font_size + 1.0f;
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y, line_w, dec_thickness}, dec_color));
+            }
+            if (has_overline) {
+                f32 y = line_y - descender_pad * 0.3f;
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y, line_w, dec_thickness}, dec_color));
+            }
+            if (has_line_through) {
+                f32 y = line_y + font_size * 0.4f;
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y, line_w, dec_thickness}, dec_color));
+            }
+        };
+
+        bool any_deco = has_underline || has_overline || has_line_through;
 
         if (!node->text_lines.empty()) {
             for (auto &li : node->text_lines) {
@@ -487,11 +536,8 @@ namespace browser::render {
                                    1.0f,
                                    font_flags);
                 list.push(tc);
-                if (has_underline) {
-                    f32 underline_y = oy + li.y + font_size + 1.0f;
-                    f32 thickness = std::max(1.0f, font_size / 14.0f);
-                    list.push(make_cmd(
-                        PaintCommand::Type::FILL_RECT, {ox, underline_y, node->content.width, thickness}, text_color));
+                if (any_deco) {
+                    paint_decorations(oy + li.y, node->content.width);
                 }
             }
         } else {
@@ -508,11 +554,8 @@ namespace browser::render {
                                1.0f,
                                font_flags);
             list.push(tc);
-            if (has_underline) {
-                f32 underline_y = oy + font_size + 1.0f;
-                f32 thickness = std::max(1.0f, font_size / 14.0f);
-                list.push(make_cmd(
-                    PaintCommand::Type::FILL_RECT, {ox, underline_y, node->content.width, thickness}, text_color));
+            if (any_deco) {
+                paint_decorations(oy, node->content.width);
             }
         }
     }
