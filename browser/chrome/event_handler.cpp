@@ -16,6 +16,17 @@ namespace browser {
 
     namespace {
 
+        // Helper: check if a layout node or any ancestor has user-select: none
+        static bool has_user_select_none(const css::LayoutNode *node) {
+            while (node) {
+                auto *us = node->style().get("user-select");
+                if (us && us->type == css::CSSValue::Type::KEYWORD && us->keyword == "none")
+                    return true;
+                node = node->parent;
+            }
+            return false;
+        }
+
         // Helper: adjust a number input's value by +step or -step, clamping to min/max
         static void adjust_number_value(html::Element *el, f32 delta) {
             std::string step_str = el->get_attribute("step");
@@ -396,7 +407,8 @@ namespace browser {
                             f32 nx = ox + node->content.x + node->padding.left + node->border.left;
                             f32 ny = oy + node->content.y + node->padding.top + node->border.top;
                             if (node->is_text() && !node->text().empty() && !text_node) {
-                                if (gx >= nx && gx <= nx + node->content.width &&
+                                if (!has_user_select_none(node) &&
+                                    gx >= nx && gx <= nx + node->content.width &&
                                     gy >= ny && gy <= ny + node->content.height) {
                                     text_node = node;
                                 }
@@ -590,8 +602,19 @@ namespace browser {
                                             return {false, 0};
                                         };
                                         auto fr = find_y(found_el, current_page_->layout.get(), 0);
-                                        if (fr.found)
-                                            chrome_.scroll_y = static_cast<i32>(fr.y);
+                                        if (fr.found) {
+                                            i32 target = static_cast<i32>(fr.y);
+                                            // Check for scroll-behavior: smooth on root element
+                                            bool smooth = false;
+                                            auto *sb = current_page_->layout->style().get("scroll-behavior");
+                                            if (sb && sb->type == css::CSSValue::Type::KEYWORD && sb->keyword == "smooth")
+                                                smooth = true;
+                                            if (smooth) {
+                                                chrome_.scroll_target_y = target;
+                                            } else {
+                                                chrome_.scroll_y = target;
+                                            }
+                                        }
                                     }
                                 }
                             } else {
@@ -844,6 +867,8 @@ namespace browser {
                 const css::LayoutNode *first = nullptr;
                 const css::LayoutNode *last = nullptr;
                 std::function<void(const css::LayoutNode *)> find_text = [&](const css::LayoutNode *node) {
+                    if (has_user_select_none(node))
+                        return;
                     if (node->is_text() && !node->text().empty()) {
                         if (!first)
                             first = node;
@@ -863,6 +888,8 @@ namespace browser {
                     selection_.all_text = true;
                     bool collecting = false;
                     std::function<void(const css::LayoutNode *)> collect = [&](const css::LayoutNode *node) {
+                        if (has_user_select_none(node))
+                            return;
                         if (node == selection_.start_node)
                             collecting = true;
                         if (collecting && node->is_text() && !node->text().empty()) {

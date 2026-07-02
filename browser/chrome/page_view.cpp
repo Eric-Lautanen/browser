@@ -27,9 +27,29 @@ namespace browser {
         if (page.layout)
             page_h = static_cast<i32>(page.layout->content.height);
         chrome_.scroll_max = std::max(0, page_h - static_cast<i32>(content_h));
+
+        // Smooth scroll animation: move toward target by easing
+        if (chrome_.scroll_target_y >= 0) {
+            i32 diff = chrome_.scroll_target_y - chrome_.scroll_y;
+            if (std::abs(diff) <= 2) {
+                chrome_.scroll_y = chrome_.scroll_target_y;
+                chrome_.scroll_target_y = -1;
+            } else {
+                chrome_.scroll_y += diff / 3;
+            }
+        }
+
         chrome_.scroll_y = std::max(0, std::min(chrome_.scroll_max, chrome_.scroll_y));
 
         f32 sb_w = 10.0f;
+        // Check for CSS scrollbar-width from root element
+        if (page.layout) {
+            auto *sbw = page.layout->style().get("scrollbar-width");
+            if (sbw && sbw->type == css::CSSValue::Type::KEYWORD) {
+                if (sbw->keyword == "thin") sb_w = 6.0f;
+                else if (sbw->keyword == "none") sb_w = 0.0f;
+            }
+        }
         chrome_.rects.scrollbar = {static_cast<f32>(viewport_width_) - sb_w, content_y, sb_w, content_h};
 
         namespace pgl = browser::platform;
@@ -74,11 +94,53 @@ namespace browser {
         if (chrome_.scroll_max <= 0)
             return;
         auto &sb = chrome_.rects.scrollbar;
+        if (sb.w <= 0) return;
         f32 content_h = sb.h;
-        renderer_->fill_rect(sb.x, sb.y, sb.w, sb.h, {0.85f, 0.85f, 0.85f, 1.0f});
+
+        render::Color track_color = {0.85f, 0.85f, 0.85f, 1.0f};
+        render::Color thumb_color = {0.5f, 0.5f, 0.5f, 1.0f};
+
+        // Check for CSS scrollbar-color from root element
+        if (current_page_.has_value() && current_page_->layout) {
+            auto *sbc = current_page_->layout->style().get("scrollbar-color");
+            if (sbc && sbc->type == css::CSSValue::Type::STRING) {
+                // Format: <thumb-color> <track-color>
+                std::string s = sbc->string_value;
+                size_t sp = s.find(' ');
+                if (sp != std::string::npos) {
+                    std::string thumb_str = s.substr(0, sp);
+                    std::string track_str = s.substr(sp + 1);
+                    while (!track_str.empty() && track_str[0] == ' ') track_str = track_str.substr(1);
+
+                    auto parse_scroll_color = [](const std::string &cs) -> std::optional<render::Color> {
+                        if (cs == "auto") return {};
+                        auto named = css::Color::from_name(cs);
+                        if (named.a != 0 || cs == "transparent") {
+                            return render::Color{static_cast<f32>(named.r) / 255.0f,
+                                                 static_cast<f32>(named.g) / 255.0f,
+                                                 static_cast<f32>(named.b) / 255.0f, 1.0f};
+                        }
+                        if (!cs.empty() && cs[0] == '#') {
+                            auto c = css::Color::from_hex(cs);
+                            return render::Color{static_cast<f32>(c.r) / 255.0f,
+                                                 static_cast<f32>(c.g) / 255.0f,
+                                                 static_cast<f32>(c.b) / 255.0f, 1.0f};
+                        }
+                        return {};
+                    };
+
+                    auto thumb = parse_scroll_color(thumb_str);
+                    auto track = parse_scroll_color(track_str);
+                    if (thumb) thumb_color = *thumb;
+                    if (track) track_color = *track;
+                }
+            }
+        }
+
+        renderer_->fill_rect(sb.x, sb.y, sb.w, sb.h, track_color);
         f32 thumb_h = std::max(20.0f, sb.h * (content_h / (content_h + chrome_.scroll_max)));
         f32 thumb_y = sb.y + (static_cast<f32>(chrome_.scroll_y) / std::max(1, chrome_.scroll_max)) * (sb.h - thumb_h);
-        renderer_->fill_rect(sb.x, thumb_y, sb.w, thumb_h, {0.5f, 0.5f, 0.5f, 1.0f});
+        renderer_->fill_rect(sb.x, thumb_y, sb.w, thumb_h, thumb_color);
     }
 
     void BrowserWindow::render_download_panel() {

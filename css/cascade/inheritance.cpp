@@ -24,7 +24,8 @@ namespace browser::css {
             return true;
 
         // Visibility & cursor
-        if (property == "visibility" || property == "cursor" || property == "pointer-events")
+        if (property == "visibility" || property == "cursor" || property == "pointer-events" ||
+            property == "user-select")
             return true;
 
         // List

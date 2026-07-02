@@ -91,6 +91,7 @@ namespace browser {
         bool all_selected = false;
         i32 scroll_y = 0;
         i32 scroll_max = 0;
+        i32 scroll_target_y = -1;  // -1 = no pending smooth scroll
         bool scroll_dragging = false;
         i32 scroll_drag_start_y = 0;
         i32 scroll_drag_start_pos = 0;
