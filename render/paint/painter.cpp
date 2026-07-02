@@ -105,23 +105,10 @@ namespace browser::render {
             return;
 
         auto *vis = node->style().get("visibility");
-        if (vis && vis->type == css::CSSValue::Type::KEYWORD && vis->keyword == "hidden") {
-            // Push clip to the hidden node's padding box so children are clipped
-            f32 px = ox - node->padding.left;
-            f32 py = oy - node->padding.top;
-            f32 pw = node->content.width + node->padding.left + node->padding.right;
-            f32 ph = node->content.height + node->padding.top + node->padding.bottom;
-            list.push(make_cmd(PaintCommand::Type::PUSH_CLIP, {px, py, pw, ph}, Color::TRANSPARENT));
-            for (auto &child : node->children) {
-                if (skip_layer_children && paint_needs_own_layer(child.get()))
-                    continue;
-                paint_node(list,
-                           child.get(),
-                           ox + child->content.x + child->scroll_offset_x,
-                           oy + child->content.y + child->scroll_offset_y,
-                           skip_layer_children);
-            }
-            list.push(make_cmd(PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT));
+        if (vis && vis->type == css::CSSValue::Type::KEYWORD &&
+            (vis->keyword == "hidden" || vis->keyword == "collapse")) {
+            // visibility: hidden/collapse — element is invisible but still takes up space
+            // Don't paint the element or its children, just return
             return;
         }
 
@@ -140,6 +127,25 @@ namespace browser::render {
         if (node->has_transform) {
             list.push(make_cmd(
                 PaintCommand::Type::PUSH_TRANSFORM, {}, Color::TRANSPARENT, "", 0, 0, {}, 0, node->transform_matrix));
+        }
+
+        // Check for filter property
+        bool has_filter = false;
+        auto *filter_val = node->style().get("filter");
+        if (filter_val && filter_val->type == css::CSSValue::Type::FILTER_LIST && !filter_val->filters.empty()) {
+            has_filter = true;
+            PaintCommand push_cmd;
+            push_cmd.type = PaintCommand::Type::PUSH_FILTER;
+            push_cmd.filters = filter_val->filters;
+            // Set the element's border box rect for FBO sizing (executor adds blur padding)
+            f32 bx = ox - node->padding.left - node->border.left;
+            f32 by = oy - node->padding.top - node->border.top;
+            f32 bw = node->content.width + node->padding.left + node->padding.right +
+                     node->border.left + node->border.right;
+            f32 bh = node->content.height + node->padding.top + node->padding.bottom +
+                     node->border.top + node->border.bottom;
+            push_cmd.rect = {bx, by, bw, bh};
+            list.push(push_cmd);
         }
 
         // Check if this is a form control
@@ -167,21 +173,103 @@ namespace browser::render {
             f32 fh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
                      node->border.bottom;
 
-            if (el->tag_name == "input" && (type.empty() || type == "text")) {
+            if (el->tag_name == "input" && type == "hidden") {
+                // Hidden inputs are not rendered
+            } else if (el->tag_name == "input" && (type.empty() || type == "text" || type == "email" || type == "search" || type == "url")) {
                 form_controls::paint_text_input(list, fx, fy, fw, fh, value, caret, focused);
+            } else if (el->tag_name == "input" && type == "number") {
+                f32 spin_active = 0;
+                form_controls::paint_number_input(list, fx, fy, fw, fh, value, caret, focused, spin_active);
+            } else if (el->tag_name == "input" && type == "password") {
+                std::string display(value.size(), '*');
+                form_controls::paint_text_input(list, fx, fy, fw, fh, display, caret, focused);
             } else if (el->tag_name == "input" && type == "checkbox") {
                 bool checked = html::g_form_state.is_checked(el);
                 form_controls::paint_checkbox(list, fx, fy, 13, checked);
             } else if (el->tag_name == "input" && type == "radio") {
                 bool checked = html::g_form_state.is_checked(el);
                 form_controls::paint_radio(list, fx, fy, 13, checked);
-            } else if (el->tag_name == "button" || (el->tag_name == "input" && type == "submit")) {
-                std::string label = value.empty() ? (el->tag_name == "button" ? "Button" : "Submit") : value;
+            } else if (el->tag_name == "button" || (el->tag_name == "input" && (type == "submit" || type == "reset"))) {
+                std::string label = value.empty() ? (type == "reset" ? "Reset" : (el->tag_name == "button" ? "Button" : "Submit")) : value;
                 form_controls::paint_button(list, fx, fy, fw, fh, label, hovered, focused);
             } else if (el->tag_name == "select") {
-                form_controls::paint_select(list, fx, fy, fw, fh, value, false);
+                bool is_open = (html::g_form_state.open_select == el);
+                int sel_idx = html::g_form_state.get_selected_index(el);
+                form_controls::paint_select(list, fx, fy, fw, fh, value, is_open);
+                if (is_open) {
+                    // Render dropdown options
+                    f32 opt_y = fy + fh;
+                    f32 opt_w = fw;
+                    int opt_count = 0;
+                    for (auto &child : el->children) {
+                        if (child->type == html::NodeType::ELEMENT) {
+                            auto *opt = static_cast<html::Element *>(child.get());
+                            if (opt->tag_name == "option") {
+                                opt_count++;
+                            }
+                        }
+                    }
+                    if (opt_count > 0) {
+                        f32 opt_h = std::min(static_cast<f32>(opt_count) * 20.0f, 200.0f);
+                        // Store dropdown rect for hit testing
+                        html::g_form_state.select_dropdown_rect = {fx, opt_y, opt_w, opt_h};
+                        // Dropdown background
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, opt_h}, Color{1, 1, 1, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y + opt_h - 1, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, 1, opt_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + opt_w - 1, opt_y, 1, opt_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+
+                        int idx = 0;
+                        for (auto &child : el->children) {
+                            if (child->type == html::NodeType::ELEMENT) {
+                                auto *opt = static_cast<html::Element *>(child.get());
+                                if (opt->tag_name == "option") {
+                                    std::string opt_text = opt->get_attribute("label");
+                                    if (opt_text.empty()) {
+                                        // Get text content
+                                        for (auto &tc : opt->children) {
+                                            if (tc->type == html::NodeType::TEXT) {
+                                                opt_text += static_cast<html::Text *>(tc.get())->data;
+                                            }
+                                        }
+                                    }
+                                    if (opt_text.empty()) opt_text = opt->get_attribute("value");
+                                    Color opt_color = (idx == sel_idx) ? Color{0.2f, 0.4f, 0.9f, 1} : Color{0, 0, 0, 1};
+                                    if (idx == sel_idx) {
+                                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + 1, opt_y + idx * 20.0f, opt_w - 2, 20.0f}, Color{0.8f, 0.85f, 1.0f, 1}));
+                                    }
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {fx + 4, opt_y + idx * 20.0f + 2, opt_w - 8, 18.0f}, opt_color, opt_text, 14));
+                                    idx++;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    html::g_form_state.select_dropdown_rect = {0, 0, 0, 0};
+                }
             } else if (el->tag_name == "textarea") {
-                form_controls::paint_textarea(list, fx, fy, fw, fh, value, 0, caret, focused);
+                // Compute line and column from caret position for multi-line support
+                u32 line = 0, col = caret;
+                size_t last_newline = 0;
+                for (size_t i = 0; i < value.size() && i < caret; i++) {
+                    if (value[i] == '\n') {
+                        line++;
+                        last_newline = i + 1;
+                    }
+                }
+                col = static_cast<u32>(caret - last_newline);
+                form_controls::paint_textarea(list, fx, fy, fw, fh, value, line, col, focused);
+            } else if (el->tag_name == "input" && type == "file") {
+                form_controls::paint_file_input(list, fx, fy, fw, fh, value, focused);
+            } else if (el->tag_name == "input" && type == "range") {
+                f32 min_val = 0, max_val = 100;
+                std::string min_str = el->get_attribute("min");
+                std::string max_str = el->get_attribute("max");
+                if (!min_str.empty()) min_val = std::strtof(min_str.c_str(), nullptr);
+                if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
+                f32 cur = std::strtof(value.c_str(), nullptr);
+                form_controls::paint_range(list, fx, fy, fw, fh, cur, min_val, max_val, focused);
             }
         } else {
             paint_background(list, node, ox, oy);
@@ -290,6 +378,10 @@ namespace browser::render {
             list.push(make_cmd(PaintCommand::Type::POP_TRANSFORM, {}, Color::TRANSPARENT));
         }
 
+        if (has_filter) {
+            list.push(make_cmd(PaintCommand::Type::POP_FILTER, {}, Color::TRANSPARENT));
+        }
+
         if (needs_opacity_layer) {
             list.push(make_cmd(PaintCommand::Type::POP_OPACITY, {}, Color::TRANSPARENT));
         }
@@ -297,34 +389,60 @@ namespace browser::render {
 
     void Painter::paint_background(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
         auto *bg_img = node->style().get("background-image");
-        if (bg_img && bg_img->type == css::CSSValue::Type::GRADIENT) {
-            f32 bx = ox - node->padding.left;
-            f32 by = oy - node->padding.top;
-            f32 bw =
-                node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
-            f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
-                     node->border.bottom;
+        f32 bx = ox - node->padding.left;
+        f32 by = oy - node->padding.top;
+        f32 bw =
+            node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
+        f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
+                 node->border.bottom;
 
+        if (bg_img && bg_img->type == css::CSSValue::Type::GRADIENT) {
             list.push(make_cmd(
                 PaintCommand::Type::DRAW_GRADIENT, {bx, by, bw, bh}, Color::TRANSPARENT, "", 0, 0, bg_img->gradient));
             return;
+        }
+
+        // Handle background-image from shorthand (KEYWORD with url() or gradient string)
+        if (bg_img && (bg_img->type == css::CSSValue::Type::KEYWORD || bg_img->type == css::CSSValue::Type::STRING ||
+                       bg_img->type == css::CSSValue::Type::URL)) {
+            std::string val = (bg_img->type == css::CSSValue::Type::URL) ? bg_img->string_value : bg_img->keyword;
+            if (val.empty()) val = bg_img->string_value;
+
+            // url() background image
+            if (val.size() >= 4 && val.substr(0, 4) == "url(" && val.back() == ')') {
+                std::string url = val.substr(4, val.size() - 5);
+                // Strip quotes
+                if (url.size() >= 2 && (url[0] == '"' || url[0] == '\'') && url.back() == url[0])
+                    url = url.substr(1, url.size() - 2);
+                if (!url.empty() && images_) {
+                    auto it = images_->find(url);
+                    if (it != images_->end() && it->second) {
+                        ImageId id = reinterpret_cast<ImageId>(it->second.get());
+                        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {bx, by, bw, bh}, Color::WHITE, "", 0, id));
+                        // Fall through to paint background color under the image
+                    }
+                }
+            }
+            // Gradient strings from shorthand are handled here if needed — but direct gradient
+            // declarations use GRADIENT type and are handled above
         }
 
         Color bg = resolve_color(node->style(), "background-color", Color::TRANSPARENT);
         if (bg.a == 0.0f)
             return;
 
-        f32 bx = ox - node->padding.left;
-        f32 by = oy - node->padding.top;
-        f32 bw =
-            node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
-        f32 bh =
-            node->content.height + node->padding.top + node->padding.bottom + node->border.top + node->border.bottom;
-
-        auto *br = node->style().get("border-radius");
+        auto *br = node->style().get("border-top-left-radius");
+        if (!br) br = node->style().get("border-radius");
         f32 radius = 0;
         if (br && br->type == css::CSSValue::Type::LENGTH) {
             radius = br->length.value;
+        } else if (br && br->type == css::CSSValue::Type::STRING) {
+            // Try parsing a single value from combined string
+            char *end = nullptr;
+            f32 num = std::strtof(br->string_value.c_str(), &end);
+            if (end != br->string_value.c_str() && num > 0) {
+                radius = num;
+            }
         }
 
         if (radius > 0) {
@@ -334,63 +452,25 @@ namespace browser::render {
         }
     }
 
-    static f32 parse_shadow_len(const std::string &s, size_t &pos) {
-        while (pos < s.size() && s[pos] == ' ') pos++;
-        if (pos >= s.size())
-            return 0;
-        char *end = nullptr;
-        f32 val = std::strtof(s.c_str() + pos, &end);
-        if (end && end != s.c_str() + pos) {
-            pos = static_cast<size_t>(end - s.c_str());
-            // Skip unit suffix (px, em, etc.)
-            while (pos < s.size() &&
-                   (s[pos] == 'p' || s[pos] == 'x' || s[pos] == 'e' || s[pos] == 'm' || s[pos] == 'r' ||
-                    s[pos] == 'v' || s[pos] == 'h' || s[pos] == 'w' || s[pos] == '%' || s[pos] == 'c' || s[pos] == 't'))
-                pos++;
-            return val;
-        }
-        return 0;
-    }
-
     void Painter::paint_shadow(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
         auto *bs = node->style().get("box-shadow");
-        if (bs && bs->type == css::CSSValue::Type::STRING && !bs->string_value.empty()) {
-            std::string s = bs->string_value;
-            // Ignore inset keyword
-            size_t pos = 0;
-            while (pos < s.size() && s[pos] == ' ') pos++;
-            if (s.substr(pos, 5) == "inset") {
-                pos += 5;
-                while (pos < s.size() && s[pos] == ' ') pos++;
-            }
+        if (!bs || bs->type != css::CSSValue::Type::SHADOW_LIST || bs->shadows.empty())
+            return;
 
-            f32 off_x = parse_shadow_len(s, pos);
-            f32 off_y = parse_shadow_len(s, pos);
-            f32 blur = parse_shadow_len(s, pos);
-            // Skip spread radius if present
-            parse_shadow_len(s, pos);
+        for (const auto &sh : bs->shadows) {
+            f32 off_x = sh.offset_x;
+            f32 off_y = sh.offset_y;
+            f32 blur = sh.blur_radius;
+            f32 spread = sh.spread_radius;
+            Color shadow_color = css_to_render_color(sh.color);
 
-            Color shadow_color = {0, 0, 0, 0.5f};
-            while (pos < s.size() && s[pos] == ' ') pos++;
-            if (pos < s.size()) {
-                std::string color_str = s.substr(pos);
-                // Try named color first
-                auto css_c = css::Color::from_name(color_str);
-                if (css_c.a != 0 || color_str == "transparent") {
-                    shadow_color = css_to_render_color(css_c);
-                } else {
-                    // Try rgba(r,g,b,a) or rgb(r,g,b)
-                    // (simplified: actual CSS color parsing is done by the cascade layer)
-                    // Fallback: just use default shadow color
-                }
-            }
-
-            f32 bx = ox - node->padding.left + off_x;
-            f32 by = oy - node->padding.top + off_y;
+            f32 bx = ox - node->padding.left + off_x - spread;
+            f32 by = oy - node->padding.top + off_y - spread;
             f32 bw =
-                node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
+                node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right +
+                2 * spread;
             f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
-                     node->border.bottom;
+                     node->border.bottom + 2 * spread;
 
             if (blur > 0) {
                 list.push(make_cmd(PaintCommand::Type::DRAW_SHADOW,
@@ -403,6 +483,69 @@ namespace browser::render {
                                    blur));
             } else {
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, bh}, shadow_color));
+            }
+        }
+    }
+
+    void Painter::paint_text_shadow(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
+        auto *ts = node->style().get("text-shadow");
+        if (!ts || ts->type != css::CSSValue::Type::SHADOW_LIST || ts->shadows.empty())
+            return;
+
+        f32 font_size = resolve_font_size(node->style());
+
+        for (const auto &sh : ts->shadows) {
+            f32 off_x = sh.offset_x;
+            f32 off_y = sh.offset_y;
+            Color shadow_color = css_to_render_color(sh.color);
+
+            // Paint shadow text at offset position
+            if (!node->text_lines.empty()) {
+                for (auto &li : node->text_lines) {
+                    // Apply text-transform for shadow too
+                    auto *tt = node->style().get("text-transform");
+                    std::string text = li.text;
+                    if (tt && tt->type == css::CSSValue::Type::KEYWORD) {
+                        if (tt->keyword == "uppercase") {
+                            for (char &c : text) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                        } else if (tt->keyword == "lowercase") {
+                            for (char &c : text) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                        } else if (tt->keyword == "capitalize") {
+                            bool new_word = true;
+                            for (char &c : text) {
+                                if (c == ' ' || c == '\t' || c == '\n') { new_word = true; continue; }
+                                if (new_word) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); new_word = false; }
+                            }
+                        }
+                    }
+                    css::Rect line_rect = {ox + off_x, oy + li.y + off_y, node->content.width, font_size};
+                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                       line_rect,
+                                       shadow_color,
+                                       text,
+                                       font_size));
+                }
+            } else {
+                std::string text = node->text();
+                auto *tt = node->style().get("text-transform");
+                if (tt && tt->type == css::CSSValue::Type::KEYWORD) {
+                    if (tt->keyword == "uppercase") {
+                        for (char &c : text) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                    } else if (tt->keyword == "lowercase") {
+                        for (char &c : text) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    } else if (tt->keyword == "capitalize") {
+                        bool new_word = true;
+                        for (char &c : text) {
+                            if (c == ' ' || c == '\t' || c == '\n') { new_word = true; continue; }
+                            if (new_word) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); new_word = false; }
+                        }
+                    }
+                }
+                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                   {ox + off_x, oy + off_y, node->content.width, node->content.height},
+                                   shadow_color,
+                                   text,
+                                   font_size));
             }
         }
     }
@@ -439,6 +582,9 @@ namespace browser::render {
     }
 
     void Painter::paint_text(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
+        // Paint text-shadow first (behind the text)
+        paint_text_shadow(list, node, ox, oy);
+
         Color text_color = resolve_color(node->style(), "color", Color::BLACK);
         f32 font_size = resolve_font_size(node->style());
 

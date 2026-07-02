@@ -16,6 +16,33 @@ namespace browser {
 
     namespace {
 
+        // Helper: adjust a number input's value by +step or -step, clamping to min/max
+        static void adjust_number_value(html::Element *el, f32 delta) {
+            std::string step_str = el->get_attribute("step");
+            f32 step = step_str.empty() ? 1.0f : std::strtof(step_str.c_str(), nullptr);
+            if (step <= 0) step = 1.0f;
+
+            std::string val = html::g_form_state.get_value(el);
+            f32 cur = std::strtof(val.c_str(), nullptr);
+            cur += delta * step;
+
+            std::string min_str = el->get_attribute("min");
+            if (!min_str.empty()) {
+                f32 min_val = std::strtof(min_str.c_str(), nullptr);
+                if (cur < min_val) cur = min_val;
+            }
+            std::string max_str = el->get_attribute("max");
+            if (!max_str.empty()) {
+                f32 max_val = std::strtof(max_str.c_str(), nullptr);
+                if (cur > max_val) cur = max_val;
+            }
+
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%g", cur);
+            html::g_form_state.set_value(el, buf);
+            html::g_form_state.caret_position = static_cast<u32>(std::string(buf).size());
+        }
+
         char keycode_to_char(platform::KeyCode key, bool shifted) {
             int base = static_cast<int>(platform::KeyCode::A);
             if (key >= platform::KeyCode::A && key <= platform::KeyCode::Z) {
@@ -286,10 +313,38 @@ namespace browser {
 
             chrome_.address_focused = false;
 
+            // Handle open select dropdown clicks
+            if (html::g_form_state.open_select && current_page_.has_value()) {
+                f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                auto &dr = html::g_form_state.select_dropdown_rect;
+                if (mx >= dr.x && mx <= dr.x + dr.width && py >= dr.y && py <= dr.y + dr.height) {
+                    // Click is inside dropdown - select the option
+                    f32 rel_y = py - dr.y;
+                    int idx = static_cast<int>(rel_y / 20.0f);
+                    if (idx >= 0) {
+                        html::g_form_state.set_selected_index(html::g_form_state.open_select, idx);
+                    }
+                    html::g_form_state.close_select();
+                    return;
+                }
+                // Click outside dropdown - close it
+                html::g_form_state.close_select();
+                // Don't return - let the click also do whatever else it would do
+            }
+
             // Hit test against page content — do this FIRST for interactive elements
             if (current_page_.has_value() && current_page_->layout) {
                 f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
                 auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
+
+                // Check for pointer-events: none — skip elements that don't accept pointer input
+                if (ht.element && ht.layout_node) {
+                    auto *pe = ht.layout_node->style().get("pointer-events");
+                    if (pe && pe->type == css::CSSValue::Type::KEYWORD && pe->keyword == "none") {
+                        ht.element = nullptr;
+                        ht.layout_node = nullptr;
+                    }
+                }
 
                 // If clicked on an interactive element, don't select text
                 bool on_interactive = false;
@@ -340,8 +395,64 @@ namespace browser {
                     std::string tag = ht.element->tag_name;
                     std::string type = ht.element->get_attribute("type");
 
-                    if (tag == "input" && (type.empty() || type == "text")) {
+                    if (tag == "input" && (type.empty() || type == "text" || type == "password" || type == "email" || type == "search" || type == "url")) {
                         html::g_form_state.focus(ht.element);
+                    } else if (tag == "input" && type == "number") {
+                        html::g_form_state.focus(ht.element);
+                        // Check if click is on spin buttons
+                        if (ht.layout_node) {
+                            css::Rect box = ht.layout_node->get_border_box();
+                            f32 spin_w = 18.0f;
+                            f32 spin_x = box.x + box.width - spin_w;
+                            if (static_cast<f32>(mx) >= spin_x && static_cast<f32>(mx) <= box.x + box.width) {
+                                f32 click_y = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                                f32 half_h = box.height / 2.0f;
+                                if (click_y < box.y + half_h) {
+                                    // Spin up
+                                    adjust_number_value(ht.element, 1);
+                                } else {
+                                    // Spin down
+                                    adjust_number_value(ht.element, -1);
+                                }
+                            }
+                        }
+                    } else if (tag == "input" && type == "range") {
+                        html::g_form_state.focus(ht.element);
+                        // Set value based on click position
+                        if (ht.layout_node) {
+                            css::Rect box = ht.layout_node->get_border_box();
+                            f32 min_val = 0, max_val = 100;
+                            std::string min_str = ht.element->get_attribute("min");
+                            std::string max_str = ht.element->get_attribute("max");
+                            if (!min_str.empty()) min_val = std::strtof(min_str.c_str(), nullptr);
+                            if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
+                            f32 frac = (static_cast<f32>(mx) - box.x) / box.width;
+                            if (frac < 0) frac = 0;
+                            if (frac > 1) frac = 1;
+                            f32 val = min_val + (max_val - min_val) * frac;
+                            char buf[64];
+                            snprintf(buf, sizeof(buf), "%g", val);
+                            html::g_form_state.set_value(ht.element, buf);
+                        }
+                    } else if (tag == "input" && type == "file") {
+                        html::g_form_state.focus(ht.element);
+                        // Open Win32 file picker dialog
+                        wchar_t wbuf[260 * 64] = {0};
+                        OPENFILENAMEW ofn = {};
+                        ofn.lStructSize = sizeof(ofn);
+                        ofn.hwndOwner = GetActiveWindow();
+                        ofn.lpstrFilter = L"All Files\0*.*\0";
+                        ofn.lpstrFile = wbuf;
+                        ofn.nMaxFile = 260 * 64;
+                        ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+                        if (GetOpenFileNameW(&ofn)) {
+                            int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, nullptr, 0, nullptr, nullptr);
+                            if (len > 0) {
+                                std::string path(len - 1, '\0');
+                                WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, &path[0], len, nullptr, nullptr);
+                                html::g_form_state.set_value(ht.element, path);
+                            }
+                        }
                     } else if (tag == "input" && type == "checkbox") {
                         html::g_form_state.toggle_checkbox(ht.element);
                         html::g_form_state.focus(ht.element);
@@ -367,6 +478,7 @@ namespace browser {
                         html::g_form_state.focus(ht.element);
                     } else if (tag == "select") {
                         html::g_form_state.focus(ht.element);
+                        html::g_form_state.toggle_select(ht.element);
                     } else if (tag == "a") {
                         std::string href = ht.element->get_attribute("href");
                         if (!href.empty()) {
@@ -919,7 +1031,9 @@ namespace browser {
                 return;
             }
 
-            if (tag == "input" && (type.empty() || type == "text")) {
+            if (tag == "input" && (type.empty() || type == "text" || type == "password" || type == "email" || type == "search" || type == "url" || type == "number")) {
+                auto maxlen_attr = el->get_attribute("maxlength");
+                int maxlen = maxlen_attr.empty() ? -1 : std::atoi(maxlen_attr.c_str());
                 if (e.key == platform::KeyCode::ENTER) {
                     {
                         std::string nav_url = html::handle_form_submission(el);
@@ -941,6 +1055,10 @@ namespace browser {
                     std::string val = html::g_form_state.get_value(el);
                     if (html::g_form_state.caret_position < val.size())
                         html::g_form_state.caret_position++;
+                } else if (e.key == platform::KeyCode::UP && type == "number") {
+                    adjust_number_value(el, 1);
+                } else if (e.key == platform::KeyCode::DOWN && type == "number") {
+                    adjust_number_value(el, -1);
                 } else if (e.key == platform::KeyCode::HOME) {
                     html::g_form_state.caret_position = 0;
                 } else if (e.key == platform::KeyCode::END) {
@@ -950,9 +1068,17 @@ namespace browser {
                     std::string paste = clipboard_paste();
                     if (!paste.empty()) {
                         std::string val = html::g_form_state.get_value(el);
-                        val.insert(html::g_form_state.caret_position, paste);
-                        html::g_form_state.caret_position += static_cast<u32>(paste.size());
-                        html::g_form_state.set_value(el, val);
+                        if (maxlen >= 0) {
+                            int available = maxlen - static_cast<int>(val.size());
+                            if (available <= 0) paste.clear();
+                            else if (static_cast<int>(paste.size()) > available)
+                                paste = paste.substr(0, static_cast<size_t>(available));
+                        }
+                        if (!paste.empty()) {
+                            val.insert(html::g_form_state.caret_position, paste);
+                            html::g_form_state.caret_position += static_cast<u32>(paste.size());
+                            html::g_form_state.set_value(el, val);
+                        }
                     }
                 } else if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
                     std::string val = html::g_form_state.get_value(el);
@@ -960,12 +1086,47 @@ namespace browser {
                 } else {
                     char c = keycode_to_char(e.key, chrome_.shift_down);
                     if (c) {
-                        std::string val = html::g_form_state.get_value(el);
-                        val.insert(html::g_form_state.caret_position, 1, c);
-                        html::g_form_state.caret_position++;
-                        html::g_form_state.set_value(el, val);
+                        // For number inputs, only allow valid number characters
+                        if (type == "number") {
+                            if (!(std::isdigit(static_cast<unsigned char>(c)) ||
+                                  c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E'))
+                                c = '\0';
+                        }
+                        if (c) {
+                            std::string val = html::g_form_state.get_value(el);
+                            if (maxlen < 0 || static_cast<int>(val.size()) < maxlen) {
+                                val.insert(html::g_form_state.caret_position, 1, c);
+                                html::g_form_state.caret_position++;
+                                html::g_form_state.set_value(el, val);
+                            }
+                        }
                     }
                 }
+            } else if (tag == "input" && type == "range") {
+                f32 min_val = 0, max_val = 100;
+                std::string min_str = el->get_attribute("min");
+                std::string max_str = el->get_attribute("max");
+                std::string step_str = el->get_attribute("step");
+                if (!min_str.empty()) min_val = std::strtof(min_str.c_str(), nullptr);
+                if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
+                f32 step = step_str.empty() ? 1.0f : std::strtof(step_str.c_str(), nullptr);
+                if (step <= 0) step = 1.0f;
+                std::string val = html::g_form_state.get_value(el);
+                f32 cur = std::strtof(val.c_str(), nullptr);
+                if (e.key == platform::KeyCode::LEFT) {
+                    cur -= step;
+                } else if (e.key == platform::KeyCode::RIGHT) {
+                    cur += step;
+                } else if (e.key == platform::KeyCode::UP) {
+                    cur += step;
+                } else if (e.key == platform::KeyCode::DOWN) {
+                    cur -= step;
+                }
+                if (cur < min_val) cur = min_val;
+                if (cur > max_val) cur = max_val;
+                char buf[64];
+                snprintf(buf, sizeof(buf), "%g", cur);
+                html::g_form_state.set_value(el, buf);
             } else if (tag == "textarea") {
                 if (e.key == platform::KeyCode::ENTER) {
                     std::string val = html::g_form_state.get_value(el);
@@ -1171,7 +1332,43 @@ namespace browser {
                 auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
                 if (ht.element) {
                     std::string tag = ht.element->tag_name;
-                    if (tag == "a")
+
+                    // Check CSS cursor property first (inherited)
+                    HCURSOR css_cursor = nullptr;
+                    if (ht.layout_node) {
+                        auto *cursor_val = ht.layout_node->style().get("cursor");
+                        if (cursor_val && cursor_val->type == css::CSSValue::Type::KEYWORD) {
+                            const std::string &c = cursor_val->keyword;
+                            if (c == "pointer") css_cursor = LoadCursor(nullptr, IDC_HAND);
+                            else if (c == "text" || c == "vertical-text") css_cursor = LoadCursor(nullptr, IDC_IBEAM);
+                            else if (c == "default" || c == "auto") css_cursor = LoadCursor(nullptr, IDC_ARROW);
+                            else if (c == "crosshair") css_cursor = LoadCursor(nullptr, IDC_CROSS);
+                            else if (c == "move") css_cursor = LoadCursor(nullptr, IDC_SIZEALL);
+                            else if (c == "wait" || c == "progress") css_cursor = LoadCursor(nullptr, IDC_WAIT);
+                            else if (c == "help") css_cursor = LoadCursor(nullptr, IDC_HELP);
+                            else if (c == "not-allowed" || c == "no-drop") css_cursor = LoadCursor(nullptr, IDC_NO);
+                            else if (c == "col-resize") css_cursor = LoadCursor(nullptr, IDC_SIZEWE);
+                            else if (c == "row-resize" || c == "ns-resize") css_cursor = LoadCursor(nullptr, IDC_SIZENS);
+                            else if (c == "e-resize" || c == "w-resize" || c == "ew-resize")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZEWE);
+                            else if (c == "n-resize" || c == "s-resize")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZENS);
+                            else if (c == "ne-resize" || c == "sw-resize")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZENESW);
+                            else if (c == "nw-resize" || c == "se-resize")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZENWSE);
+                            else if (c == "grab" || c == "grabbing")
+                                css_cursor = LoadCursor(nullptr, IDC_HAND);
+                            else if (c == "zoom-in" || c == "zoom-out")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZEALL);
+                            else if (c == "none")
+                                css_cursor = LoadCursor(nullptr, IDC_ARROW);  // hide not supported
+                        }
+                    }
+
+                    if (css_cursor) {
+                        SetCursor(css_cursor);
+                    } else if (tag == "a")
                         SetCursor(LoadCursor(nullptr, IDC_HAND));
                     else if (tag == "input" || tag == "textarea")
                         SetCursor(LoadCursor(nullptr, IDC_IBEAM));

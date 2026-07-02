@@ -93,6 +93,13 @@ GLDisableFunc glDisable = nullptr;
 GLBlendFuncFunc glBlendFunc = nullptr;
 GLScissorFunc glScissor = nullptr;
 
+// Framebuffer objects
+GLGenFramebuffersFunc glGenFramebuffers = nullptr;
+GLDeleteFramebuffersFunc glDeleteFramebuffers = nullptr;
+GLBindFramebufferFunc glBindFramebuffer = nullptr;
+GLFramebufferTexture2DFunc glFramebufferTexture2D = nullptr;
+GLCheckFramebufferStatusFunc glCheckFramebufferStatus = nullptr;
+
 bool load_opengl_functions() {
     LOAD_GL_FUNC(glGenBuffers);
     LOAD_GL_FUNC(glBindBuffer);
@@ -148,6 +155,12 @@ bool load_opengl_functions() {
     LOAD_GL_FUNC(glDisable);
     LOAD_GL_FUNC(glBlendFunc);
     LOAD_GL_FUNC(glScissor);
+
+    LOAD_GL_FUNC(glGenFramebuffers);
+    LOAD_GL_FUNC(glDeleteFramebuffers);
+    LOAD_GL_FUNC(glBindFramebuffer);
+    LOAD_GL_FUNC(glFramebufferTexture2D);
+    LOAD_GL_FUNC(glCheckFramebufferStatus);
 
     return true;
 }

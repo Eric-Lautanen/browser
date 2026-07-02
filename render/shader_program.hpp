@@ -31,6 +31,15 @@ public:
         i32 use_texture = -1;
         i32 texture_is_rgba = -1;
         i32 use_sdf = -1;
+        i32 filter_active = -1;
+        i32 filter_brightness = -1;
+        i32 filter_contrast = -1;
+        i32 filter_grayscale = -1;
+        i32 filter_invert = -1;
+        i32 filter_sepia = -1;
+        i32 filter_saturate = -1;
+        i32 filter_hue_rotate = -1;
+        i32 filter_opacity = -1;
     };
     const Uniforms& uniforms() const { return uniforms_; }
 

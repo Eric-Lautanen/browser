@@ -58,4 +58,16 @@ namespace browser::html {
         set_checked(el, !current);
     }
 
+    void FormState::toggle_select(const Element *el) {
+        if (open_select == el) {
+            open_select = nullptr;
+        } else {
+            open_select = el;
+        }
+    }
+
+    void FormState::close_select() {
+        open_select = nullptr;
+    }
+
 }  // namespace browser::html

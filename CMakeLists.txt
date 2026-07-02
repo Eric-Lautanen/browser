@@ -275,6 +275,7 @@ add_library(render STATIC
     render/mesh.cpp
     render/renderer.cpp
     render/texture.cpp
+    render/offscreen_target.cpp
     render/font/font.cpp
     render/font/truetype.cpp
     render/font/rasterizer.cpp
@@ -289,6 +290,7 @@ add_library(render STATIC
     render/mesh.hpp
     render/renderer.hpp
     render/texture.hpp
+    render/offscreen_target.hpp
     render/font.hpp
     render/embedded_font.hpp
     render/text_renderer.hpp

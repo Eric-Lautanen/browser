@@ -86,8 +86,9 @@ namespace browser::css {
         bool break_words = (wb && wb->type == CSSValue::Type::KEYWORD && wb->keyword == "break-all") ||
                            (ow && ow->type == CSSValue::Type::KEYWORD && ow->keyword == "break-word");
 
-        bool nowrap = (whitespace == "nowrap");
+        bool nowrap = (whitespace == "nowrap" || whitespace == "pre");
         bool preserve_ws = (whitespace == "pre" || whitespace == "pre-wrap" || whitespace == "pre-line");
+        bool preserve_newlines = (whitespace == "pre" || whitespace == "pre-wrap" || whitespace == "pre-line");
 
         if (node->text().empty())
             return;
@@ -216,6 +217,14 @@ namespace browser::css {
         };
         for (size_t wi = 0; wi < words.size(); wi++) {
             auto &word = words[wi];
+            // Handle forced newline breaks
+            if (preserve_newlines && (word.text == "\n" || word.text == "\r")) {
+                flush_line(line_word_start, wi);
+                line_word_start = wi + 1;
+                pending_space = 0;
+                line_x = 0;
+                continue;
+            }
             if (word.text == " ") {
                 pending_space += word.width;
                 continue;
@@ -244,6 +253,52 @@ namespace browser::css {
         }
 
         f32 total_height = line_y;
+
+        // text-overflow: ellipsis — truncate overflowing lines and append "..."
+        auto *overflow = node->style().get("overflow");
+        std::string ov_keyword = (overflow && overflow->type == CSSValue::Type::KEYWORD) ? overflow->keyword : "";
+        if (ov_keyword.empty()) {
+            auto *ox = node->style().get("overflow-x");
+            if (ox && ox->type == CSSValue::Type::KEYWORD) ov_keyword = ox->keyword;
+        }
+        bool has_ellipsis = false;
+        auto *to = node->style().get("text-overflow");
+        if (to && to->type == CSSValue::Type::KEYWORD && to->keyword == "ellipsis")
+            has_ellipsis = true;
+
+        if (has_ellipsis && (ov_keyword == "hidden" || ov_keyword == "scroll" || ov_keyword == "auto" || ov_keyword == "clip")) {
+            f32 line_w = containing_width > 0 ? containing_width : max_line_width;
+            for (auto &li : node->text_lines) {
+                f32 tw = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, li.text, (u32)font_size) : 0;
+                if (!text_measure_fn_) {
+                    tw = static_cast<f32>(count_codepoints(li.text)) * char_width_factor * font_size;
+                }
+                if (tw <= line_w || li.text.empty())
+                    continue;
+                // Truncate and append ellipsis "..."
+                std::string ellipsis = "\xe2\x80\xa6"; // U+2026 HORIZONTAL ELLIPSIS
+                f32 ell_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ellipsis, (u32)font_size) : font_size * 0.6f;
+                f32 target = line_w - ell_w;
+                if (target < 0) target = 0;
+                // Binary search truncation point by codepoints
+                std::string truncated;
+                f32 truncated_w = 0;
+                const u8 *tbuf = reinterpret_cast<const u8 *>(li.text.data());
+                u32 tlen = static_cast<u32>(li.text.size());
+                u32 off = 0;
+                while (off < tlen) {
+                    auto dr = browser::html::decode_utf8(tbuf + off, tlen - off);
+                    if (dr.bytes_consumed == 0) break;
+                    std::string ch(li.text.data() + off, dr.bytes_consumed);
+                    f32 cw = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ch, (u32)font_size) : char_width;
+                    if (truncated_w + cw > target) break;
+                    truncated += ch;
+                    truncated_w += cw;
+                    off += dr.bytes_consumed;
+                }
+                li.text = truncated + ellipsis;
+            }
+        }
 
         node->content.width = text_align == "center"  ? containing_width
                               : text_align == "right" ? containing_width

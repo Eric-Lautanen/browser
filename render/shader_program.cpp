@@ -103,6 +103,15 @@ Result<void> ShaderProgram::compile(const std::string& vertex_src, const std::st
     uniforms_.use_texture = pgl::glGetUniformLocation(program_id_, "uUseTexture");
     uniforms_.texture_is_rgba = pgl::glGetUniformLocation(program_id_, "uTextureIsRGBA");
     uniforms_.use_sdf = pgl::glGetUniformLocation(program_id_, "uUseSDF");
+    uniforms_.filter_active = pgl::glGetUniformLocation(program_id_, "uFilterActive");
+    uniforms_.filter_brightness = pgl::glGetUniformLocation(program_id_, "uFilterBrightness");
+    uniforms_.filter_contrast = pgl::glGetUniformLocation(program_id_, "uFilterContrast");
+    uniforms_.filter_grayscale = pgl::glGetUniformLocation(program_id_, "uFilterGrayscale");
+    uniforms_.filter_invert = pgl::glGetUniformLocation(program_id_, "uFilterInvert");
+    uniforms_.filter_sepia = pgl::glGetUniformLocation(program_id_, "uFilterSepia");
+    uniforms_.filter_saturate = pgl::glGetUniformLocation(program_id_, "uFilterSaturate");
+    uniforms_.filter_hue_rotate = pgl::glGetUniformLocation(program_id_, "uFilterHueRotate");
+    uniforms_.filter_opacity = pgl::glGetUniformLocation(program_id_, "uFilterOpacity");
 
     return {};
 }

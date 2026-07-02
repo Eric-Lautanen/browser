@@ -1,8 +1,10 @@
 #pragma once
 #include "mesh.hpp"
 #include "shader_program.hpp"
+#include "../css/css_values.hpp"
 
 #include <memory>
+#include <vector>
 
 // windows.h defines TRANSPARENT as a brush mode macro; undefine to avoid Color enum conflict
 #ifdef TRANSPARENT
@@ -53,6 +55,13 @@ namespace browser::render {
         void draw_icon(Icon icon, f32 x, f32 y, f32 size, const Color &color);
         void draw_icon_centered(Icon icon, f32 bx, f32 by, f32 bw, f32 bh, f32 icon_size, const Color &color);
 
+        // Filter uniforms
+        void set_filter_uniforms(const std::vector<css::CSSFilterFunc> &filters);
+        void clear_filter_uniforms();
+
+        // Post-process: draw a texture with Gaussian blur applied
+        void draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius);
+
         // FPS overlay
         void toggle_fps_overlay();
         void set_fps_data(
@@ -70,6 +79,9 @@ namespace browser::render {
 
     private:
         std::unique_ptr<ShaderProgram> shader_;
+        std::unique_ptr<ShaderProgram> blur_shader_;
+        i32 blur_uniform_texture_ = -1;
+        i32 blur_uniform_radius_ = -1;
         std::unique_ptr<Mesh2D> batch_mesh_;
         u32 width_ = 0, height_ = 0;
         bool initialized_ = false;

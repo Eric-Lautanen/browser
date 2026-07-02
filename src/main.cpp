@@ -761,6 +761,10 @@ static std::string paint_cmd_type_str(browser::render::PaintCommand::Type t) {
             return "DRAW_ROUNDED_RECT";
         case browser::render::PaintCommand::Type::DRAW_CANVAS:
             return "DRAW_CANVAS";
+        case browser::render::PaintCommand::Type::PUSH_FILTER:
+            return "PUSH_FILTER";
+        case browser::render::PaintCommand::Type::POP_FILTER:
+            return "POP_FILTER";
     }
     return "UNKNOWN";
 }

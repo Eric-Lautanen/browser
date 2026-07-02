@@ -9,7 +9,8 @@ namespace browser::css {
         // Text & font
         if (property == "color" || property == "font-size" || property == "font-family" ||
             property == "font-weight" || property == "font-style" || property == "font-variant" ||
-            property == "line-height" || property == "letter-spacing" || property == "word-spacing" ||
+            property == "font" || property == "line-height" ||
+            property == "letter-spacing" || property == "word-spacing" ||
             property == "text-indent" || property == "text-align" || property == "text-transform" ||
             property == "text-decoration" || property == "text-decoration-line" ||
             property == "text-decoration-color" || property == "text-decoration-style" ||
@@ -18,7 +19,7 @@ namespace browser::css {
             property == "direction" || property == "unicode-bidi" || property == "writing-mode" ||
             property == "hyphens" || property == "tab-size" || property == "text-align-last" ||
             property == "text-justify" || property == "word-wrap" || property == "text-wrap" ||
-            property == "text-wrap-mode" || property == "text-wrap-style" ||
+            property == "text-wrap-mode" || property == "text-wrap-style" || property == "text-overflow" ||
             property == "hanging-punctuation" || property == "line-break")
             return true;
 

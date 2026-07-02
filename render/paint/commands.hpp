@@ -25,7 +25,9 @@ namespace browser::render {
             PUSH_OPACITY,
             POP_OPACITY,
             DRAW_ROUNDED_RECT,
-            DRAW_CANVAS
+            DRAW_CANVAS,
+            PUSH_FILTER,
+            POP_FILTER
         };
         Type type;
         css::Rect rect;
@@ -41,6 +43,7 @@ namespace browser::render {
         std::vector<u8> canvas_pixels;
         u32 canvas_data_w = 0;
         u32 canvas_data_h = 0;
+        std::vector<css::CSSFilterFunc> filters;
     };
 
     class DisplayList {

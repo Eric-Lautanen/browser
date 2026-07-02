@@ -1,6 +1,7 @@
 #include "executor.hpp"
 
 #include "../../platform/opengl.hpp"
+#include "../offscreen_target.hpp"
 #include "../texture.hpp"
 
 #include <algorithm>
@@ -371,6 +372,160 @@ namespace browser::render {
                     }
                     break;
                 }
+                case PaintCommand::Type::PUSH_FILTER: {
+                    renderer_->flush();
+
+                    FilterStackEntry entry;
+                    entry.filters = cmd.filters;
+
+                    // Check if we need an FBO for blur or drop-shadow
+                    bool needs_fbo = false;
+                    f32 max_blur = 0;
+                    bool has_drop_shadow = false;
+                    f32 ds_off_x = 0, ds_off_y = 0;
+                    css::Color ds_color = {0, 0, 0, 255};
+                    for (const auto& f : cmd.filters) {
+                        if (f.type == css::CSSFilterFunc::Type::BLUR) {
+                            needs_fbo = true;
+                            f32 r = f.length_param.value;
+                            if (r > max_blur) max_blur = r;
+                        } else if (f.type == css::CSSFilterFunc::Type::DROP_SHADOW) {
+                            needs_fbo = true;
+                            has_drop_shadow = true;
+                            f32 r = f.amount;
+                            if (r > max_blur) max_blur = r;
+                            ds_off_x = f.length_param.value;
+                            ds_off_y = f.length_param2.value;
+                            ds_color = f.color_param;
+                        }
+                    }
+
+                    // Only create FBO if there isn't already one active
+                    bool has_active_fbo = false;
+                    for (auto& se : filter_stack_) {
+                        if (se.fbo_state.fbo) { has_active_fbo = true; break; }
+                    }
+
+                    if (needs_fbo && !has_active_fbo) {
+                        f32 pad = std::ceil(max_blur) * 2.0f;
+                        f32 fb_w = cmd.rect.width + pad;
+                        f32 fb_h = cmd.rect.height + pad;
+                        if (fb_w < 1) fb_w = 1;
+                        if (fb_h < 1) fb_h = 1;
+                        u32 fbo_w = static_cast<u32>(fb_w);
+                        u32 fbo_h = static_cast<u32>(fb_h);
+
+                        auto fbo = std::make_unique<OffscreenTarget>();
+                        if (fbo->create(fbo_w, fbo_h).is_ok()) {
+                            entry.fbo_state.fbo = std::move(fbo);
+                            entry.fbo_state.element_rect = cmd.rect;
+                            entry.fbo_state.saved_offset_x = offset_x_;
+                            entry.fbo_state.saved_offset_y = offset_y_;
+                            entry.fbo_state.blur_radius = max_blur;
+                            entry.fbo_state.has_drop_shadow = has_drop_shadow;
+                            entry.fbo_state.ds_offset_x = ds_off_x;
+                            entry.fbo_state.ds_offset_y = ds_off_y;
+                            entry.fbo_state.ds_color = ds_color;
+
+                            entry.fbo_state.fbo->bind();
+                            pgl::glViewport(0, 0, (GLsizei)fbo_w, (GLsizei)fbo_h);
+                            pgl::glClearColor(0, 0, 0, 0);
+                            pgl::glClear(GL_COLOR_BUFFER_BIT);
+                            // Disable scissor while rendering to FBO; clips would use wrong viewport height
+                            pgl::glDisable(GL_SCISSOR_TEST);
+
+                            offset_x_ = pad / 2.0f - cmd.rect.x;
+                            offset_y_ = pad / 2.0f - cmd.rect.y;
+                        }
+                    }
+
+                    filter_stack_.push_back(std::move(entry));
+                    renderer_->set_filter_uniforms(cmd.filters);
+                    break;
+                }
+                case PaintCommand::Type::POP_FILTER: {
+                    renderer_->flush();
+
+                    if (!filter_stack_.empty()) {
+                        auto &entry = filter_stack_.back();
+
+                        if (entry.fbo_state.fbo) {
+                            // Unbind FBO, restore main framebuffer
+                            entry.fbo_state.fbo->unbind();
+                            pgl::glViewport(0, 0, (GLsizei)renderer_->width(), (GLsizei)renderer_->height());
+
+                            // Restore offset
+                            offset_x_ = entry.fbo_state.saved_offset_x;
+                            offset_y_ = entry.fbo_state.saved_offset_y;
+
+                            // Restore scissor based on current clip state
+                            if (!clip_stack_.empty()) {
+                                apply_clip_rect(clip_stack_.back());
+                            } else if (has_base_clip_) {
+                                apply_clip_rect(base_clip_);
+                            } else {
+                                pgl::glDisable(GL_SCISSOR_TEST);
+                            }
+
+                            // Composite FBO texture to main framebuffer
+                            f32 ex = entry.fbo_state.element_rect.x + offset_x_;
+                            f32 ey = entry.fbo_state.element_rect.y + offset_y_;
+                            f32 ew = entry.fbo_state.element_rect.width;
+                            f32 eh = entry.fbo_state.element_rect.height;
+                            f32 pad = std::ceil(entry.fbo_state.blur_radius) * 2.0f;
+                            u32 tex_id = entry.fbo_state.fbo->texture_id();
+
+                            if (entry.fbo_state.has_drop_shadow) {
+                                // Draw shadow: blurred version at offset position
+                                f32 sx = ex + entry.fbo_state.ds_offset_x - pad / 2.0f;
+                                f32 sy = ey + entry.fbo_state.ds_offset_y - pad / 2.0f;
+                                renderer_->draw_blurred_texture(
+                                    sx, sy, ew + pad, eh + pad, tex_id,
+                                    entry.fbo_state.blur_radius > 0 ? entry.fbo_state.blur_radius : 0.0f);
+                                // Re-apply scissor after draw
+                                if (!clip_stack_.empty()) {
+                                    apply_clip_rect(clip_stack_.back());
+                                } else if (has_base_clip_) {
+                                    apply_clip_rect(base_clip_);
+                                } else {
+                                    pgl::glDisable(GL_SCISSOR_TEST);
+                                }
+                                // Draw original unblurred on top
+                                renderer_->draw_blurred_texture(
+                                    ex - pad / 2.0f, ey - pad / 2.0f,
+                                    ew + pad, eh + pad, tex_id, 0.0f);
+                            } else if (entry.fbo_state.blur_radius > 0.0f) {
+                                renderer_->draw_blurred_texture(
+                                    ex - pad / 2.0f, ey - pad / 2.0f,
+                                    ew + pad, eh + pad, tex_id,
+                                    entry.fbo_state.blur_radius);
+                            } else {
+                                // FBO with no blur and no drop-shadow: just draw as-is
+                                renderer_->draw_blurred_texture(
+                                    ex - pad / 2.0f, ey - pad / 2.0f,
+                                    ew + pad, eh + pad, tex_id, 0.0f);
+                            }
+                            // Re-apply scissor after blur draw (which disables it internally)
+                            if (!clip_stack_.empty()) {
+                                apply_clip_rect(clip_stack_.back());
+                            } else if (has_base_clip_) {
+                                apply_clip_rect(base_clip_);
+                            } else {
+                                pgl::glDisable(GL_SCISSOR_TEST);
+                            }
+                        }
+
+                        filter_stack_.pop_back();
+                    }
+
+                    // Restore previous filter uniforms
+                    if (filter_stack_.empty()) {
+                        renderer_->clear_filter_uniforms();
+                    } else {
+                        renderer_->set_filter_uniforms(filter_stack_.back().filters);
+                    }
+                    break;
+                }
             }
         }
 
@@ -381,5 +536,4 @@ namespace browser::render {
             pgl::glDisable(GL_SCISSOR_TEST);
         }
     }
-
 }  // namespace browser::render

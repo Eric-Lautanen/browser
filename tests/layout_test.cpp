@@ -1417,8 +1417,8 @@ TEST(paint_background_rect_origin, {
     using namespace browser::render;
 
     ComputedStyle style;
-    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {255,0,0,255}, 0, "", {}, {}};
-    style.properties["overflow"] = {CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}};
+    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {255,0,0,255}, 0, "", {}, {}, {}, {}, {}};
+    style.properties["overflow"] = {CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}, {}, {}, {}};
 
     LayoutNode node(nullptr, style);
     node.content = {100, 200, 300, 150};
@@ -1450,7 +1450,7 @@ TEST(paint_border_rect_origin, {
     using namespace browser::render;
 
     ComputedStyle style;
-    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {255,255,255,255}, 0, "", {}, {}};
+    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {255,255,255,255}, 0, "", {}, {}, {}, {}, {}};
 
     LayoutNode node(nullptr, style);
     node.content = {50, 100, 200, 150};
@@ -1480,8 +1480,8 @@ TEST(paint_root_offset_not_zero, {
 
     // Painter starts at root->content.x, root->content.y
     ComputedStyle style;
-    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {0,128,0,255}, 0, "", {}, {}};
-    style.properties["overflow"] = {CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}};
+    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {0,128,0,255}, 0, "", {}, {}, {}, {}, {}};
+    style.properties["overflow"] = {CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}, {}, {}, {}};
 
     LayoutNode node(nullptr, style);
     node.content = {100, 200, 400, 300};
@@ -1513,8 +1513,8 @@ TEST(paint_centered_block_background_x, {
 
     // Simulate a centered block: content.x reflects auto-margin centering
     ComputedStyle style;
-    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {255,0,0,255}, 0, "", {}, {}};
-    style.properties["overflow"] = {CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}};
+    style.properties["background-color"] = {CSSValue::Type::COLOR, "", {}, {255,0,0,255}, 0, "", {}, {}, {}, {}, {}};
+    style.properties["overflow"] = {CSSValue::Type::KEYWORD, "hidden", {}, {}, 0, "", {}, {}, {}, {}, {}};
 
     LayoutNode node(nullptr, style);
     // Viewport 800, block width 200, centered → content.x = 300

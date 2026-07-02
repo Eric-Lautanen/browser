@@ -72,8 +72,9 @@ struct CSSFilterFunc {
     enum class Type { BLUR, BRIGHTNESS, CONTRAST, DROP_SHADOW, GRAYSCALE,
                       HUE_ROTATE, INVERT, OPACITY, SATURATE, SEPIA };
     Type type;
-    f32 amount = 0;          // numeric parameter
-    Length length_param;     // for blur(), drop-shadow offset
+    f32 amount = 0;          // numeric parameter (blur radius for blur/drop-shadow)
+    Length length_param;     // for blur() radius, drop-shadow offset-x
+    Length length_param2;    // for drop-shadow offset-y
     Color color_param;       // for drop-shadow color
 };
 

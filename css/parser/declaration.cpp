@@ -37,6 +37,14 @@ namespace browser::css {
                 }
                 continue;
             }
+            if (current_.type == CssTokenType::COMMA) {
+                CSSValue comma_val;
+                comma_val.type = CSSValue::Type::KEYWORD;
+                comma_val.keyword = ",";
+                decl.values.push_back(comma_val);
+                advance();
+                continue;
+            }
             decl.values.push_back(parse_value());
         }
         return decl;

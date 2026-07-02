@@ -206,7 +206,73 @@ namespace browser::html {
         if (!form)
             return {};
 
+        // Validate all fields in the form
+        bool has_error = false;
+        traverse_depth_first(const_cast<Element *>(form), [&](Node *n) {
+            if (has_error || n->type != NodeType::ELEMENT) return;
+            auto *el = static_cast<Element *>(n);
+            std::string tag = el->tag_name;
+            if (tag == "input" || tag == "textarea" || tag == "select") {
+                std::string err = validate_field(el);
+                if (!err.empty()) {
+                    has_error = true;
+                    // TODO: show validation error UI (tooltip, red border)
+                }
+            }
+        });
+        if (has_error) return {};
+
         return submit_form(form, http);
+    }
+
+    std::string validate_field(const Element *el) {
+        std::string tag = el->tag_name;
+        std::string type = el->get_attribute("type");
+        std::string value = g_form_state.get_value(el);
+
+        // required: value must be non-empty
+        if (el->has_attribute("required")) {
+            if (value.empty() || value.find_first_not_of(" \t\n\r") == std::string::npos) {
+                return "This field is required";
+            }
+        }
+
+        // minlength
+        std::string minlen_attr = el->get_attribute("minlength");
+        if (!minlen_attr.empty()) {
+            int minlen = std::atoi(minlen_attr.c_str());
+            if (static_cast<int>(value.size()) < minlen) {
+                return "Too short (minimum " + minlen_attr + " characters)";
+            }
+        }
+
+        // Number-specific validation
+        if (tag == "input" && type == "number") {
+            if (!value.empty()) {
+                char *end = nullptr;
+                f32 num = std::strtof(value.c_str(), &end);
+
+                // min
+                std::string min_attr = el->get_attribute("min");
+                if (!min_attr.empty()) {
+                    f32 min_val = std::strtof(min_attr.c_str(), nullptr);
+                    if (num < min_val) {
+                        return "Value must be at least " + min_attr;
+                    }
+                }
+
+                // max
+                std::string max_attr = el->get_attribute("max");
+                if (!max_attr.empty()) {
+                    f32 max_val = std::strtof(max_attr.c_str(), nullptr);
+                    if (num > max_val) {
+                        return "Value must be at most " + max_attr;
+                    }
+                }
+            }
+        }
+
+        return {};
     }
 
 }  // namespace browser::html

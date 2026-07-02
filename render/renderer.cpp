@@ -38,6 +38,14 @@ namespace browser::render {
         if (r.is_err())
             return r;
 
+        // Compile blur post-process shader
+        blur_shader_ = std::make_unique<ShaderProgram>();
+        auto r2 = blur_shader_->compile(BASIC_VERTEX_SHADER, BLUR_FRAGMENT_SHADER);
+        if (r2.is_err())
+            return r2;
+        blur_uniform_texture_ = blur_shader_->get_uniform_location("uBlurTexture");
+        blur_uniform_radius_ = blur_shader_->get_uniform_location("uBlurRadius");
+
         width_ = window_width;
         height_ = window_height;
 
@@ -258,6 +266,166 @@ namespace browser::render {
             pgl::glUniform1i(u.texture_is_rgba, 0);
         if (u.use_sdf >= 0)
             pgl::glUniform1i(u.use_sdf, 0);
+    }
+
+    void Renderer::set_filter_uniforms(const std::vector<css::CSSFilterFunc> &filters) {
+        shader_->bind();
+        const auto &u = shader_->uniforms();
+        bool active = !filters.empty();
+        if (u.filter_active >= 0)
+            pgl::glUniform1i(u.filter_active, active ? 1 : 0);
+        if (!active)
+            return;
+
+        f32 brightness = 1.0f;
+        f32 contrast = 1.0f;
+        f32 grayscale = 0.0f;
+        f32 invert = 0.0f;
+        f32 sepia = 0.0f;
+        f32 saturate = 1.0f;
+        f32 hue_rotate = 0.0f;
+        f32 opacity = 1.0f;
+
+        for (const auto &ff : filters) {
+            switch (ff.type) {
+                case css::CSSFilterFunc::Type::BLUR:
+                    break;
+                case css::CSSFilterFunc::Type::BRIGHTNESS:
+                    brightness = ff.amount;
+                    break;
+                case css::CSSFilterFunc::Type::CONTRAST:
+                    contrast = ff.amount;
+                    break;
+                case css::CSSFilterFunc::Type::GRAYSCALE:
+                    grayscale = ff.amount > 0 ? ff.amount : 1.0f;
+                    break;
+                case css::CSSFilterFunc::Type::INVERT:
+                    invert = ff.amount > 0 ? ff.amount : 1.0f;
+                    break;
+                case css::CSSFilterFunc::Type::SEPIA:
+                    sepia = ff.amount > 0 ? ff.amount : 1.0f;
+                    break;
+                case css::CSSFilterFunc::Type::SATURATE:
+                    saturate = ff.amount;
+                    break;
+                case css::CSSFilterFunc::Type::HUE_ROTATE:
+                    hue_rotate = ff.amount;
+                    break;
+                case css::CSSFilterFunc::Type::OPACITY:
+                    opacity = ff.amount;
+                    break;
+                case css::CSSFilterFunc::Type::DROP_SHADOW:
+                    break;
+            }
+        }
+
+        if (u.filter_brightness >= 0)
+            pgl::glUniform1f(u.filter_brightness, brightness);
+        if (u.filter_contrast >= 0)
+            pgl::glUniform1f(u.filter_contrast, contrast);
+        if (u.filter_grayscale >= 0)
+            pgl::glUniform1f(u.filter_grayscale, grayscale);
+        if (u.filter_invert >= 0)
+            pgl::glUniform1f(u.filter_invert, invert);
+        if (u.filter_sepia >= 0)
+            pgl::glUniform1f(u.filter_sepia, sepia);
+        if (u.filter_saturate >= 0)
+            pgl::glUniform1f(u.filter_saturate, saturate);
+        if (u.filter_hue_rotate >= 0)
+            pgl::glUniform1f(u.filter_hue_rotate, hue_rotate);
+        if (u.filter_opacity >= 0)
+            pgl::glUniform1f(u.filter_opacity, opacity);
+    }
+
+    void Renderer::clear_filter_uniforms() {
+        shader_->bind();
+        const auto &u = shader_->uniforms();
+        if (u.filter_active >= 0)
+            pgl::glUniform1i(u.filter_active, 0);
+        if (u.filter_brightness >= 0)
+            pgl::glUniform1f(u.filter_brightness, 1.0f);
+        if (u.filter_contrast >= 0)
+            pgl::glUniform1f(u.filter_contrast, 1.0f);
+        if (u.filter_grayscale >= 0)
+            pgl::glUniform1f(u.filter_grayscale, 0.0f);
+        if (u.filter_invert >= 0)
+            pgl::glUniform1f(u.filter_invert, 0.0f);
+        if (u.filter_sepia >= 0)
+            pgl::glUniform1f(u.filter_sepia, 0.0f);
+        if (u.filter_saturate >= 0)
+            pgl::glUniform1f(u.filter_saturate, 1.0f);
+        if (u.filter_hue_rotate >= 0)
+            pgl::glUniform1f(u.filter_hue_rotate, 0.0f);
+        if (u.filter_opacity >= 0)
+            pgl::glUniform1f(u.filter_opacity, 1.0f);
+    }
+
+    void Renderer::draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius) {
+        if (texture_id == 0)
+            return;
+
+        if (blur_radius <= 0.0f) {
+            // No blur: draw directly with main shader as a textured quad
+            flush();
+            pgl::glDisable(GL_SCISSOR_TEST);
+            shader_->bind();
+            const auto &u = shader_->uniforms();
+            if (u.use_texture >= 0) pgl::glUniform1i(u.use_texture, 1);
+            if (u.texture_is_rgba >= 0) pgl::glUniform1i(u.texture_is_rgba, 1);
+            if (u.use_sdf >= 0) pgl::glUniform1i(u.use_sdf, 0);
+            pgl::glActiveTexture(GL_TEXTURE0);
+            pgl::glBindTexture(GL_TEXTURE_2D, texture_id);
+
+            batch_mesh_->clear();
+            batch_mesh_->add_quad_tex(x, y, w, h, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+            batch_mesh_->upload();
+            batch_mesh_->draw();
+            batch_mesh_->clear();
+
+            // Reset to non-textured mode
+            if (u.use_texture >= 0) pgl::glUniform1i(u.use_texture, 0);
+            return;
+        }
+
+        if (!blur_shader_)
+            return;
+        flush();
+
+        blur_shader_->bind();
+
+        // Set projection (same ortho as main shader)
+        Mat4 proj = Mat4::ortho(0.0f, (f32)width_, (f32)height_, 0.0f);
+        i32 blur_proj = blur_shader_->get_uniform_location("uProjection");
+        if (blur_proj >= 0)
+            pgl::glUniformMatrix4fv(blur_proj, 1, GL_FALSE, proj.data);
+
+        // Set blur-specific uniforms
+        if (blur_uniform_texture_ >= 0)
+            pgl::glUniform1i(blur_uniform_texture_, 0);
+        if (blur_uniform_radius_ >= 0)
+            pgl::glUniform1f(blur_uniform_radius_, blur_radius);
+
+        // Disable scissor during post-process draw (caller must restore)
+        pgl::glDisable(GL_SCISSOR_TEST);
+
+        // Bind source texture
+        pgl::glActiveTexture(GL_TEXTURE0);
+        pgl::glBindTexture(GL_TEXTURE_2D, texture_id);
+
+        // Draw quad and flush immediately
+        batch_mesh_->clear();
+        batch_mesh_->add_quad_tex(x, y, w, h, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f);
+        batch_mesh_->upload();
+        batch_mesh_->draw();
+        batch_mesh_->clear();
+
+        // Restore main shader state
+        shader_->bind();
+        const auto &u = shader_->uniforms();
+        if (u.projection >= 0)
+            pgl::glUniformMatrix4fv(u.projection, 1, GL_FALSE, proj.data);
+        if (u.use_texture >= 0)
+            pgl::glUniform1i(u.use_texture, 0);
     }
 
 }  // namespace browser::render

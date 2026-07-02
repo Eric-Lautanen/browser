@@ -4,13 +4,32 @@
 #include "../renderer.hpp"
 #include "../text_renderer.hpp"
 #include "../texture.hpp"
+#include "../offscreen_target.hpp"
 #include "commands.hpp"
 #include "gradient.hpp"
 
+#include <memory>
 #include <unordered_map>
 #include <vector>
 
 namespace browser::render {
+
+    struct FilterFBOState {
+        std::unique_ptr<OffscreenTarget> fbo;
+        css::Rect element_rect;   // element rect in screen space (with offset applied)
+        f32 saved_offset_x = 0;
+        f32 saved_offset_y = 0;
+        f32 blur_radius = 0;      // for blur filter
+        bool has_drop_shadow = false;
+        f32 ds_offset_x = 0;      // drop-shadow horizontal offset
+        f32 ds_offset_y = 0;      // drop-shadow vertical offset
+        css::Color ds_color = {0, 0, 0, 255}; // drop-shadow color
+    };
+
+    struct FilterStackEntry {
+        std::vector<css::CSSFilterFunc> filters;
+        FilterFBOState fbo_state;  // valid only if fbo_state.fbo != nullptr
+    };
 
     class PaintExecutor {
     public:
@@ -38,6 +57,9 @@ namespace browser::render {
         std::unordered_map<uint64_t, std::unique_ptr<class Texture2D>> gradient_cache_;
         std::unordered_map<void *, std::unique_ptr<class Texture2D>> canvas_cache_;
         class Texture2D *get_or_create_gradient_texture(const css::CSSGradient &grad, f32 w, f32 h);
+
+        // Filter state stack
+        std::vector<FilterStackEntry> filter_stack_;
 
         void apply_clip_rect(const css::Rect &r);
         void transform_rect(f32 &x, f32 &y, f32 &w, f32 &h) const;

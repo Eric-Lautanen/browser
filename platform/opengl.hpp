@@ -21,6 +21,20 @@ typedef void GLvoid;
 typedef GLfloat GLclampf;
 #endif
 
+// MinGW's gl.h is missing FBO-related constants; define them if absent
+#ifndef GL_FRAMEBUFFER
+#define GL_FRAMEBUFFER 0x8D40
+#endif
+#ifndef GL_FRAMEBUFFER_BINDING
+#define GL_FRAMEBUFFER_BINDING 0x8CA6
+#endif
+#ifndef GL_COLOR_ATTACHMENT0
+#define GL_COLOR_ATTACHMENT0 0x8CE0
+#endif
+#ifndef GL_FRAMEBUFFER_COMPLETE
+#define GL_FRAMEBUFFER_COMPLETE 0x8CD5
+#endif
+
 namespace browser::platform {
 
 // NOTE: The extern declarations below (glGenBuffers, glGenTextures, etc.)
@@ -88,6 +102,13 @@ using GLEnableFunc = void (APIENTRY*)(GLenum);
 using GLDisableFunc = void (APIENTRY*)(GLenum);
 using GLBlendFuncFunc = void (APIENTRY*)(GLenum, GLenum);
 using GLScissorFunc = void (APIENTRY*)(GLint, GLint, GLsizei, GLsizei);
+
+// Framebuffer objects
+using GLGenFramebuffersFunc = void (APIENTRY*)(GLsizei, GLuint*);
+using GLDeleteFramebuffersFunc = void (APIENTRY*)(GLsizei, const GLuint*);
+using GLBindFramebufferFunc = void (APIENTRY*)(GLenum, GLuint);
+using GLFramebufferTexture2DFunc = void (APIENTRY*)(GLenum, GLenum, GLenum, GLuint, GLint);
+using GLCheckFramebufferStatusFunc = GLenum (APIENTRY*)(GLenum);
 
 // Vertex buffer objects
 extern GLGenBuffersFunc glGenBuffers;
@@ -157,5 +178,12 @@ extern GLEnableFunc glEnable;
 extern GLDisableFunc glDisable;
 extern GLBlendFuncFunc glBlendFunc;
 extern GLScissorFunc glScissor;
+
+// Framebuffer objects
+extern GLGenFramebuffersFunc glGenFramebuffers;
+extern GLDeleteFramebuffersFunc glDeleteFramebuffers;
+extern GLBindFramebufferFunc glBindFramebuffer;
+extern GLFramebufferTexture2DFunc glFramebufferTexture2D;
+extern GLCheckFramebufferStatusFunc glCheckFramebufferStatus;
 
 } // namespace browser::platform

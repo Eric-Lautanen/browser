@@ -32,7 +32,7 @@ h5 { font-size: 0.83em; font-weight: bold; margin-top: 1.67em; margin-bottom: 1.
 h6 { font-size: 0.67em; font-weight: bold; margin-top: 2.33em; margin-bottom: 2.33em; }
 p { margin-top: 1em; margin-bottom: 1em; }
 ul, ol { padding-left: 40px; }
-a { color: blue; }
+a { color: blue; cursor: pointer; }
 strong { font-weight: bold; }
 em { font-style: italic; }
 code { font-family: monospace; }
@@ -507,9 +507,17 @@ code { font-family: monospace; }
                                         combined.string_value += val.keyword + "(...)";
                                     }
                                     break;
-                                case CSSValue::Type::COLOR:
+                                case CSSValue::Type::COLOR: {
+                                    char buf[16];
+                                    snprintf(buf, sizeof(buf), "#%02x%02x%02x%02x", val.color.r, val.color.g, val.color.b, val.color.a);
+                                    combined.string_value += buf;
+                                    break;
+                                }
                                 case CSSValue::Type::PERCENTAGE:
+                                    combined.string_value += std::to_string(val.number) + "%";
+                                    break;
                                 case CSSValue::Type::URL:
+                                    combined.string_value += "url(" + val.string_value + ")";
                                     break;
                                 default:
                                     break;
@@ -803,8 +811,364 @@ code { font-family: monospace; }
 
                         if (prop == "background" &&
                             (val.type == CSSValue::Type::STRING || val.type == CSSValue::Type::COLOR)) {
-                            if (!style.has("background-color"))
-                                style.properties["background-color"] = val;
+                            // Full background shorthand parser
+                            if (val.type == CSSValue::Type::COLOR) {
+                                if (!style.has("background-color"))
+                                    style.properties["background-color"] = val;
+                            } else {
+                                std::string s = val.string_value;
+                                // Split by spaces, respecting parenthesized groups
+                                std::vector<std::string> tokens;
+                                size_t tp = 0;
+                                while (tp < s.size()) {
+                                    while (tp < s.size() && s[tp] == ' ') tp++;
+                                    if (tp >= s.size()) break;
+                                    if (s[tp] == '(') {
+                                        size_t te = s.find(')', tp);
+                                        if (te == std::string::npos) { tokens.push_back(s.substr(tp)); break; }
+                                        tokens.push_back(s.substr(tp, te - tp + 1));
+                                        tp = te + 1;
+                                    } else {
+                                        size_t te = s.find(' ', tp);
+                                        if (te == std::string::npos) te = s.size();
+                                        // Also split on '/' for position/size
+                                        size_t slash = s.find('/', tp);
+                                        if (slash != std::string::npos && slash < te) te = slash;
+                                        tokens.push_back(s.substr(tp, te - tp));
+                                        tp = te;
+                                        while (tp < s.size() && s[tp] == '/') tp++;
+                                    }
+                                }
+
+                                // Known values for each sub-property
+                                auto is_color = [](const std::string &t) -> bool {
+                                    if (t.empty()) return false;
+                                    if (t[0] == '#') return true;
+                                    if (t.substr(0, 4) == "rgb(" || t.substr(0, 5) == "rgba(" ||
+                                        t.substr(0, 4) == "hsl(" || t.substr(0, 5) == "hsla(") return true;
+                                    auto named = css::Color::from_name(t);
+                                    return named.a != 0 || t == "transparent";
+                                };
+                                auto is_repeat = [](const std::string &t) -> bool {
+                                    return t == "repeat" || t == "no-repeat" || t == "repeat-x" || t == "repeat-y" ||
+                                           t == "space" || t == "round";
+                                };
+                                auto is_attachment = [](const std::string &t) -> bool {
+                                    return t == "scroll" || t == "fixed" || t == "local";
+                                };
+                                auto is_origin_clip = [](const std::string &t) -> bool {
+                                    return t == "border-box" || t == "padding-box" || t == "content-box" || t == "text";
+                                };
+                                auto is_position_keyword = [](const std::string &t) -> bool {
+                                    return t == "top" || t == "bottom" || t == "left" || t == "right" || t == "center";
+                                };
+                                auto is_size_keyword = [](const std::string &t) -> bool {
+                                    return t == "cover" || t == "contain" || t == "auto";
+                                };
+
+                                std::string bg_color, bg_image, bg_repeat, bg_attachment, bg_position, bg_size, bg_origin, bg_clip;
+
+                                // Process tokens: separate color/image/repeat/attachment/origin/clip/position/size
+                                for (size_t i = 0; i < tokens.size(); i++) {
+                                    const auto &t = tokens[i];
+                                    if (t == "/") {
+                                        // Next tokens are background-size
+                                        i++;
+                                        while (i < tokens.size()) {
+                                            if (bg_size.empty()) bg_size = tokens[i];
+                                            else bg_size += " " + tokens[i];
+                                            i++;
+                                        }
+                                        break;
+                                    }
+                                    if (is_color(t)) {
+                                        bg_color = t;
+                                    } else if (t.substr(0, 4) == "url(" || t.substr(0, 9) == "linear-gra" ||
+                                               t.substr(0, 10) == "radial-gra" || t.substr(0, 12) == "conic-gra" ||
+                                               t == "none") {
+                                        bg_image = t;
+                                    } else if (is_repeat(t)) {
+                                        bg_repeat = t;
+                                    } else if (is_attachment(t)) {
+                                        bg_attachment = t;
+                                    } else if (is_origin_clip(t)) {
+                                        if (bg_origin.empty()) bg_origin = t;
+                                        else bg_clip = t;
+                                    } else if (is_position_keyword(t) || is_size_keyword(t) ||
+                                               (t.size() > 0 && (std::isdigit(static_cast<unsigned char>(t[0])) || t[0] == '-'))) {
+                                        // Position or size
+                                        if (bg_position.empty()) bg_position = t;
+                                        else bg_position += " " + t;
+                                    }
+                                }
+
+                                // Apply extracted values
+                                auto set_str_prop = [&](const std::string &pn, const std::string &pv) {
+                                    if (pv.empty() || pv == "none") return;
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = pv;
+                                    style.properties[pn] = cv;
+                                };
+                                if (!bg_color.empty() && !style.has("background-color")) {
+                                    if (bg_color[0] == '#') {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::COLOR;
+                                        cv.color = css::Color::from_hex(bg_color);
+                                        style.properties["background-color"] = cv;
+                                    } else {
+                                        auto named = css::Color::from_name(bg_color);
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::COLOR;
+                                        cv.color = named;
+                                        style.properties["background-color"] = cv;
+                                    }
+                                }
+                                if (!bg_image.empty() && !style.has("background-image")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = bg_image;
+                                    style.properties["background-image"] = cv;
+                                }
+                                set_str_prop("background-repeat", bg_repeat);
+                                set_str_prop("background-attachment", bg_attachment);
+                                set_str_prop("background-position", bg_position);
+                                set_str_prop("background-size", bg_size);
+                                set_str_prop("background-origin", bg_origin);
+                                set_str_prop("background-clip", bg_clip);
+                            }
+                        }
+
+                        // font shorthand: [font-style||font-variant||font-weight]? font-size[/line-height]? font-family
+                        if (prop == "font" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            // keyword-only fonts (caption, icon, menu, message-box, small-caption, status-bar)
+                            if (s == "caption" || s == "icon" || s == "menu" || s == "message-box" ||
+                                s == "small-caption" || s == "status-bar" || s == "inherit" || s == "initial") {
+                                if (!style.has("font-family")) {
+                                    CSSValue cv;
+                                    cv.type = CSSValue::Type::KEYWORD;
+                                    cv.keyword = s;
+                                    style.properties["font-family"] = cv;
+                                }
+                            } else {
+                                // Split by spaces, but keep font family quoted strings together
+                                std::vector<std::string> parts;
+                                size_t pp = 0;
+                                while (pp < s.size()) {
+                                    while (pp < s.size() && s[pp] == ' ') pp++;
+                                    if (pp >= s.size()) break;
+                                    if (s[pp] == '"' || s[pp] == '\'') {
+                                        char quote = s[pp];
+                                        size_t end = s.find(quote, pp + 1);
+                                        if (end == std::string::npos) { parts.push_back(s.substr(pp)); break; }
+                                        parts.push_back(s.substr(pp, end - pp + 1));
+                                        pp = end + 1;
+                                    } else {
+                                        size_t end = s.find(' ', pp);
+                                        if (end == std::string::npos) end = s.size();
+                                        parts.push_back(s.substr(pp, end - pp));
+                                        pp = end + 1;
+                                    }
+                                }
+
+                                // Walk parts looking for font-style, font-variant, font-weight keywords first
+                                int idx = 0;
+                                int n = (int)parts.size();
+                                auto is_font_style = [](const std::string &s) {
+                                    return s == "normal" || s == "italic" || s == "oblique";
+                                };
+                                auto is_font_variant = [](const std::string &s) {
+                                    return s == "normal" || s == "small-caps";
+                                };
+                                auto is_font_weight = [](const std::string &s) {
+                                    return s == "normal" || s == "bold" || s == "bolder" || s == "lighter" ||
+                                           (s.size() >= 1 && std::isdigit(static_cast<unsigned char>(s[0])) &&
+                                            std::atoi(s.c_str()) >= 1 && std::atoi(s.c_str()) <= 1000);
+                                };
+                                auto is_length_or_percent = [](const std::string &s) -> bool {
+                                    if (s.empty()) return false;
+                                    char *end = nullptr;
+                                    std::strtof(s.c_str(), &end);
+                                    if (end == s.c_str()) return false;
+                                    std::string u = end;
+                                    return u == "px" || u == "em" || u == "rem" || u == "pt" || u == "%" ||
+                                           u.empty();
+                                };
+
+                                // font-style
+                                if (idx < n && is_font_style(parts[idx]) && parts[idx] != "normal") {
+                                    if (!style.has("font-style")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = parts[idx];
+                                        style.properties["font-style"] = cv;
+                                    }
+                                    idx++;
+                                }
+                                // font-variant
+                                if (idx < n && is_font_variant(parts[idx]) && parts[idx] != "normal") {
+                                    if (!style.has("font-variant")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = parts[idx];
+                                        style.properties["font-variant"] = cv;
+                                    }
+                                    idx++;
+                                }
+                                // font-weight
+                                if (idx < n && is_font_weight(parts[idx]) && parts[idx] != "normal") {
+                                    if (!style.has("font-weight")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::KEYWORD;
+                                        cv.keyword = parts[idx];
+                                        style.properties["font-weight"] = cv;
+                                    }
+                                    idx++;
+                                }
+                                // font-size (required) followed by optional /line-height
+                                if (idx < n && (is_length_or_percent(parts[idx]) || parts[idx] == "xx-small" ||
+                                                parts[idx] == "x-small" || parts[idx] == "small" ||
+                                                parts[idx] == "medium" || parts[idx] == "large" ||
+                                                parts[idx] == "x-large" || parts[idx] == "xx-large" ||
+                                                parts[idx] == "xxx-large" || parts[idx] == "larger" ||
+                                                parts[idx] == "smaller")) {
+                                    if (!style.has("font-size")) {
+                                        CSSValue cv;
+                                        cv.type = CSSValue::Type::STRING;
+                                        cv.string_value = parts[idx];
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(parts[idx].c_str(), &end);
+                                        if (end != parts[idx].c_str()) {
+                                            cv.type = CSSValue::Type::LENGTH;
+                                            cv.length.value = num;
+                                            std::string unit = end;
+                                            if (unit == "px") cv.length.unit = Length::Unit::PX;
+                                            else if (unit == "em") cv.length.unit = Length::Unit::EM;
+                                            else if (unit == "rem") cv.length.unit = Length::Unit::REM;
+                                            else if (unit == "pt") cv.length.unit = Length::Unit::PT;
+                                            else if (unit == "%") cv.length.unit = Length::Unit::PERCENT;
+                                            else cv.type = CSSValue::Type::KEYWORD;
+                                        } else {
+                                            cv.type = CSSValue::Type::KEYWORD;
+                                        }
+                                        cv.keyword = parts[idx];
+                                        style.properties["font-size"] = cv;
+                                    }
+                                    idx++;
+                                    // Check for /line-height
+                                    if (idx < n && parts[idx] == "/") {
+                                        idx++;
+                                        if (idx < n && (is_length_or_percent(parts[idx]) ||
+                                                        parts[idx] == "normal")) {
+                                            if (!style.has("line-height")) {
+                                                CSSValue lh;
+                                                lh.type = CSSValue::Type::STRING;
+                                                lh.string_value = parts[idx];
+                                                char *end = nullptr;
+                                                f32 num = std::strtof(parts[idx].c_str(), &end);
+                                                if (end != parts[idx].c_str()) {
+                                                    lh.type = CSSValue::Type::NUMBER;
+                                                    lh.number = num;
+                                                } else if (parts[idx] == "normal") {
+                                                    lh.type = CSSValue::Type::KEYWORD;
+                                                    lh.keyword = "normal";
+                                                }
+                                                style.properties["line-height"] = lh;
+                                            }
+                                            idx++;
+                                        }
+                                    }
+                                }
+                                // Remaining parts are font-family (join with commas)
+                                std::string family;
+                                for (int i = idx; i < n; i++) {
+                                    if (i > idx) family += ", ";
+                                    std::string fp = parts[i];
+                                    // Remove quotes
+                                    if (fp.size() >= 2 && (fp[0] == '"' || fp[0] == '\'') && fp.back() == fp[0])
+                                        fp = fp.substr(1, fp.size() - 2);
+                                    family += fp;
+                                }
+                                if (!family.empty() && !style.has("font-family")) {
+                                    CSSValue fv;
+                                    fv.type = CSSValue::Type::KEYWORD;
+                                    fv.keyword = family;
+                                    style.properties["font-family"] = fv;
+                                }
+                            }
+                        }
+
+                        // border-style shorthand (4-value expansion)
+                        if (prop == "border-style" && val.type == CSSValue::Type::STRING) {
+                            expand_four_sides("border", val.string_value);
+                            // The expand_four_sides sets border-side values; rename them to border-side-style
+                            for (const auto &side : {"-top", "-right", "-bottom", "-left"}) {
+                                std::string sk = std::string("border") + side;
+                                auto it = style.properties.find(sk);
+                                if (it != style.properties.end()) {
+                                    style.properties[sk + "-style"] = it->second;
+                                    style.properties.erase(it);
+                                }
+                            }
+                        }
+
+                        // border-color shorthand (4-value expansion)
+                        if (prop == "border-color" && (val.type == CSSValue::Type::STRING || val.type == CSSValue::Type::COLOR)) {
+                            if (val.type == CSSValue::Type::COLOR) {
+                                for (const auto &side : {"-top", "-right", "-bottom", "-left"}) {
+                                    std::string sk = std::string("border") + side + "-color";
+                                    if (!style.has(sk)) style.properties[sk] = val;
+                                }
+                            } else {
+                                std::vector<std::string> parts;
+                                std::string cs = val.string_value;
+                                size_t cp = 0;
+                                while (cp < cs.size()) {
+                                    while (cp < cs.size() && cs[cp] == ' ') cp++;
+                                    if (cp >= cs.size()) break;
+                                    size_t ce = cs.find(' ', cp);
+                                    if (ce == std::string::npos) ce = cs.size();
+                                    parts.push_back(cs.substr(cp, ce - cp));
+                                    cp = ce + 1;
+                                }
+                                auto set_bc = [&](const std::string &sk, const std::string &cv) {
+                                    CSSValue bcv;
+                                    auto named = css::Color::from_name(cv);
+                                    if (named.a != 0 || cv == "transparent") {
+                                        bcv.type = CSSValue::Type::COLOR;
+                                        bcv.color = named;
+                                    } else if (!cv.empty() && cv[0] == '#') {
+                                        bcv.type = CSSValue::Type::COLOR;
+                                        bcv.color = css::Color::from_hex(cv);
+                                    } else {
+                                        bcv.type = CSSValue::Type::KEYWORD;
+                                        bcv.keyword = cv;
+                                    }
+                                    style.properties[sk] = bcv;
+                                };
+                                if (parts.size() == 1) {
+                                    set_bc("border-top-color", parts[0]);
+                                    set_bc("border-right-color", parts[0]);
+                                    set_bc("border-bottom-color", parts[0]);
+                                    set_bc("border-left-color", parts[0]);
+                                } else if (parts.size() == 2) {
+                                    set_bc("border-top-color", parts[0]);
+                                    set_bc("border-right-color", parts[1]);
+                                    set_bc("border-bottom-color", parts[0]);
+                                    set_bc("border-left-color", parts[1]);
+                                } else if (parts.size() == 3) {
+                                    set_bc("border-top-color", parts[0]);
+                                    set_bc("border-right-color", parts[1]);
+                                    set_bc("border-bottom-color", parts[2]);
+                                    set_bc("border-left-color", parts[1]);
+                                } else if (parts.size() >= 4) {
+                                    set_bc("border-top-color", parts[0]);
+                                    set_bc("border-right-color", parts[1]);
+                                    set_bc("border-bottom-color", parts[2]);
+                                    set_bc("border-left-color", parts[3]);
+                                }
+                            }
                         }
 
                         if (prop == "animation" && val.type == CSSValue::Type::STRING) {
@@ -1595,6 +1959,340 @@ code { font-family: monospace; }
                                     cv.string_value = s;
                                     style.properties["padding-inline-end"] = cv;
                                 }
+                            }
+                        }
+
+                        // box-shadow: parse into CSSShadow list
+                        if (prop == "box-shadow" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            // Trim
+                            while (!s.empty() && s[0] == ' ') s = s.substr(1);
+                            while (!s.empty() && s.back() == ' ') s.pop_back();
+                            if (s == "none") {
+                                CSSValue none_val;
+                                none_val.type = CSSValue::Type::SHADOW_LIST;
+                                style.properties["box-shadow"] = none_val;
+                            } else {
+                                CSSValue shadow_val;
+                                shadow_val.type = CSSValue::Type::SHADOW_LIST;
+                                // Split by commas (now preserved as ", " in combined string)
+                                size_t pos = 0;
+                                while (pos < s.size()) {
+                                    while (pos < s.size() && s[pos] == ' ') pos++;
+                                    if (pos >= s.size()) break;
+                                    // Find end of this shadow (comma or end)
+                                    size_t comma = s.find(',', pos);
+                                    std::string shadow_str;
+                                    if (comma != std::string::npos) {
+                                        shadow_str = s.substr(pos, comma - pos);
+                                        pos = comma + 1;
+                                    } else {
+                                        shadow_str = s.substr(pos);
+                                        pos = s.size();
+                                    }
+                                    while (!shadow_str.empty() && shadow_str.back() == ' ') shadow_str.pop_back();
+
+                                    CSSShadow sh;
+                                    // Check for "inset" keyword
+                                    std::vector<std::string> tokens;
+                                    {
+                                        size_t tp = 0;
+                                        while (tp < shadow_str.size()) {
+                                            while (tp < shadow_str.size() && shadow_str[tp] == ' ') tp++;
+                                            if (tp >= shadow_str.size()) break;
+                                            size_t te = shadow_str.find(' ', tp);
+                                            if (te == std::string::npos) te = shadow_str.size();
+                                            tokens.push_back(shadow_str.substr(tp, te - tp));
+                                            tp = te + 1;
+                                        }
+                                    }
+                                    int idx = 0;
+                                    if (!tokens.empty() && tokens[0] == "inset") {
+                                        sh.inset = true;
+                                        idx = 1;
+                                    }
+                                    // Read numeric values
+                                    auto read_len = [&]() -> std::optional<f32> {
+                                        if (idx >= (int)tokens.size()) return {};
+                                        const std::string &t = tokens[idx];
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(t.c_str(), &end);
+                                        if (end != t.c_str()) {
+                                            idx++;
+                                            return num;
+                                        }
+                                        return {};
+                                    };
+                                    auto r1 = read_len();  // offset-x
+                                    auto r2 = read_len();  // offset-y
+                                    auto r3 = read_len();  // blur-radius
+                                    auto r4 = read_len();  // spread-radius
+                                    if (r1.has_value()) sh.offset_x = *r1;
+                                    if (r2.has_value()) sh.offset_y = *r2;
+                                    if (r3.has_value()) sh.blur_radius = *r3;
+                                    if (r4.has_value()) sh.spread_radius = *r4;
+                                    // Remaining token is color
+                                    if (idx < (int)tokens.size()) {
+                                        std::string color_str = tokens[idx];
+                                        // Check for hex
+                                        if (!color_str.empty() && color_str[0] == '#') {
+                                            sh.color = Color::from_hex(color_str);
+                                        } else if (color_str.size() >= 5 && color_str.substr(0, 5) == "rgba(") {
+                                            // Try to extract rgba values
+                                            f32 cr = 0, cg = 0, cb = 0, ca = 1;
+                                            std::string inner = color_str.substr(5);
+                                            while (!inner.empty() && inner.back() == ')') inner.pop_back();
+                                            // Simple comma-split
+                                            std::vector<f32> comps;
+                                            size_t cp = 0;
+                                            while (cp < inner.size()) {
+                                                while (cp < inner.size() && (inner[cp] == ' ' || inner[cp] == ',')) cp++;
+                                                if (cp >= inner.size()) break;
+                                                char *e = nullptr;
+                                                f32 v = std::strtof(inner.c_str() + cp, &e);
+                                                if (e != inner.c_str() + cp) {
+                                                    comps.push_back(v);
+                                                    cp = (size_t)(e - inner.c_str());
+                                                } else { cp++; }
+                                            }
+                                            if (comps.size() >= 3) { cr = comps[0]; cg = comps[1]; cb = comps[2]; }
+                                            if (comps.size() >= 4) ca = comps[3];
+                                            sh.color = Color::from_rgba(
+                                                (u8)std::max(0.0f, std::min(255.0f, cr)),
+                                                (u8)std::max(0.0f, std::min(255.0f, cg)),
+                                                (u8)std::max(0.0f, std::min(255.0f, cb)),
+                                                (u8)std::max(0.0f, std::min(255.0f, ca * 255.0f)));
+                                        } else {
+                                            auto named = Color::from_name(color_str);
+                                            if (named.a != 0 || color_str == "transparent") {
+                                                sh.color = named;
+                                            }
+                                        }
+                                    }
+                                    shadow_val.shadows.push_back(sh);
+                                }
+                                style.properties["box-shadow"] = shadow_val;
+                            }
+                        }
+
+                        // text-shadow: parse into CSSShadow list (no inset, no spread)
+                        if (prop == "text-shadow" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            while (!s.empty() && s[0] == ' ') s = s.substr(1);
+                            while (!s.empty() && s.back() == ' ') s.pop_back();
+                            if (s == "none") {
+                                CSSValue none_val;
+                                none_val.type = CSSValue::Type::SHADOW_LIST;
+                                style.properties["text-shadow"] = none_val;
+                            } else {
+                                CSSValue shadow_val;
+                                shadow_val.type = CSSValue::Type::SHADOW_LIST;
+                                size_t pos = 0;
+                                while (pos < s.size()) {
+                                    while (pos < s.size() && s[pos] == ' ') pos++;
+                                    if (pos >= s.size()) break;
+                                    size_t comma = s.find(',', pos);
+                                    std::string shadow_str;
+                                    if (comma != std::string::npos) {
+                                        shadow_str = s.substr(pos, comma - pos);
+                                        pos = comma + 1;
+                                    } else {
+                                        shadow_str = s.substr(pos);
+                                        pos = s.size();
+                                    }
+                                    while (!shadow_str.empty() && shadow_str.back() == ' ') shadow_str.pop_back();
+
+                                    CSSShadow sh;
+                                    std::vector<std::string> tokens;
+                                    {
+                                        size_t tp = 0;
+                                        while (tp < shadow_str.size()) {
+                                            while (tp < shadow_str.size() && shadow_str[tp] == ' ') tp++;
+                                            if (tp >= shadow_str.size()) break;
+                                            size_t te = shadow_str.find(' ', tp);
+                                            if (te == std::string::npos) te = shadow_str.size();
+                                            tokens.push_back(shadow_str.substr(tp, te - tp));
+                                            tp = te + 1;
+                                        }
+                                    }
+                                    int idx = 0;
+                                    auto read_len = [&]() -> std::optional<f32> {
+                                        if (idx >= (int)tokens.size()) return {};
+                                        const std::string &t = tokens[idx];
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(t.c_str(), &end);
+                                        if (end != t.c_str()) {
+                                            idx++;
+                                            return num;
+                                        }
+                                        return {};
+                                    };
+                                    auto r1 = read_len();
+                                    auto r2 = read_len();
+                                    auto r3 = read_len();
+                                    if (r1.has_value()) sh.offset_x = *r1;
+                                    if (r2.has_value()) sh.offset_y = *r2;
+                                    if (r3.has_value()) sh.blur_radius = *r3;
+                                    if (idx < (int)tokens.size()) {
+                                        std::string color_str = tokens[idx];
+                                        if (!color_str.empty() && color_str[0] == '#') {
+                                            sh.color = Color::from_hex(color_str);
+                                        } else {
+                                            auto named = Color::from_name(color_str);
+                                            if (named.a != 0 || color_str == "transparent") {
+                                                sh.color = named;
+                                            }
+                                        }
+                                    }
+                                    shadow_val.shadows.push_back(sh);
+                                }
+                                style.properties["text-shadow"] = shadow_val;
+                            }
+                        }
+
+                        // filter: parse into CSSFilterFunc list
+                        if (prop == "filter" && val.type == CSSValue::Type::STRING) {
+                            std::string s = val.string_value;
+                            while (!s.empty() && s[0] == ' ') s = s.substr(1);
+                            while (!s.empty() && s.back() == ' ') s.pop_back();
+                            if (s == "none") {
+                                CSSValue none_val;
+                                none_val.type = CSSValue::Type::FILTER_LIST;
+                                style.properties["filter"] = none_val;
+                            } else {
+                                CSSValue filter_val;
+                                filter_val.type = CSSValue::Type::FILTER_LIST;
+                                size_t pos = 0;
+                                while (pos < s.size()) {
+                                    while (pos < s.size() && s[pos] == ' ') pos++;
+                                    if (pos >= s.size()) break;
+                                    // Find the function name
+                                    size_t paren = s.find('(', pos);
+                                    if (paren == std::string::npos) break;
+                                    std::string func_name = s.substr(pos, paren - pos);
+                                    while (!func_name.empty() && func_name.back() == ' ') func_name.pop_back();
+                                    // Find closing paren
+                                    size_t close = s.find(')', paren);
+                                    if (close == std::string::npos) break;
+                                    std::string arg_str = s.substr(paren + 1, close - paren - 1);
+                                    pos = close + 1;
+
+                                    // Convert func_name to lowercase
+                                    for (auto &c : func_name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+                                    CSSFilterFunc ff;
+                                    if (func_name == "blur") {
+                                        ff.type = CSSFilterFunc::Type::BLUR;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) {
+                                            ff.length_param.value = num;
+                                            ff.length_param.unit = Length::Unit::PX;
+                                        }
+                                    } else if (func_name == "brightness") {
+                                        ff.type = CSSFilterFunc::Type::BRIGHTNESS;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                        else if (arg_str.find('%') != std::string::npos) {
+                                            num = std::strtof(arg_str.c_str(), &end);
+                                            ff.amount = num / 100.0f;
+                                        }
+                                    } else if (func_name == "contrast") {
+                                        ff.type = CSSFilterFunc::Type::CONTRAST;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                        else if (arg_str.find('%') != std::string::npos) {
+                                            num = std::strtof(arg_str.c_str(), &end);
+                                            ff.amount = num / 100.0f;
+                                        }
+                                    } else if (func_name == "drop-shadow") {
+                                        ff.type = CSSFilterFunc::Type::DROP_SHADOW;
+                                        // Parse like a box-shadow minus inset/spread
+                                        std::vector<std::string> dparts;
+                                        size_t dp = 0;
+                                        while (dp < arg_str.size()) {
+                                            while (dp < arg_str.size() && arg_str[dp] == ' ') dp++;
+                                            if (dp >= arg_str.size()) break;
+                                            size_t de = arg_str.find(' ', dp);
+                                            if (de == std::string::npos) de = arg_str.size();
+                                            dparts.push_back(arg_str.substr(dp, de - dp));
+                                            dp = de + 1;
+                                        }
+                                        int di = 0;
+                                        auto dread = [&]() -> std::optional<f32> {
+                                            if (di >= (int)dparts.size()) return {};
+                                            char *e = nullptr;
+                                            f32 n = std::strtof(dparts[di].c_str(), &e);
+                                            if (e != dparts[di].c_str()) { di++; return n; }
+                                            return {};
+                                        };
+                                        auto dx = dread();
+                                        auto dy = dread();
+                                        auto dblur = dread();
+                                        if (dx.has_value()) ff.length_param.value = *dx;
+                                        if (dy.has_value()) ff.length_param2.value = *dy;
+                                        if (dblur.has_value()) ff.amount = *dblur;
+                                        if (di < (int)dparts.size()) {
+                                            auto named = Color::from_name(dparts[di]);
+                                            if (named.a != 0 || dparts[di] == "transparent")
+                                                ff.color_param = named;
+                                        }
+                                    } else if (func_name == "grayscale") {
+                                        ff.type = CSSFilterFunc::Type::GRAYSCALE;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                        else if (arg_str.find('%') != std::string::npos) {
+                                            num = std::strtof(arg_str.c_str(), &end);
+                                            ff.amount = num / 100.0f;
+                                        } else ff.amount = 1.0f;
+                                    } else if (func_name == "hue-rotate") {
+                                        ff.type = CSSFilterFunc::Type::HUE_ROTATE;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                    } else if (func_name == "invert") {
+                                        ff.type = CSSFilterFunc::Type::INVERT;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                        else if (arg_str.find('%') != std::string::npos) {
+                                            num = std::strtof(arg_str.c_str(), &end);
+                                            ff.amount = num / 100.0f;
+                                        } else ff.amount = 1.0f;
+                                    } else if (func_name == "opacity") {
+                                        ff.type = CSSFilterFunc::Type::OPACITY;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                        else if (arg_str.find('%') != std::string::npos) {
+                                            num = std::strtof(arg_str.c_str(), &end);
+                                            ff.amount = num / 100.0f;
+                                        } else ff.amount = 1.0f;
+                                    } else if (func_name == "saturate") {
+                                        ff.type = CSSFilterFunc::Type::SATURATE;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                        else if (arg_str.find('%') != std::string::npos) {
+                                            num = std::strtof(arg_str.c_str(), &end);
+                                            ff.amount = num / 100.0f;
+                                        }
+                                    } else if (func_name == "sepia") {
+                                        ff.type = CSSFilterFunc::Type::SEPIA;
+                                        char *end = nullptr;
+                                        f32 num = std::strtof(arg_str.c_str(), &end);
+                                        if (end != arg_str.c_str()) ff.amount = num;
+                                        else if (arg_str.find('%') != std::string::npos) {
+                                            num = std::strtof(arg_str.c_str(), &end);
+                                            ff.amount = num / 100.0f;
+                                        } else ff.amount = 1.0f;
+                                    }
+                                    filter_val.filters.push_back(ff);
+                                }
+                                style.properties["filter"] = filter_val;
                             }
                         }
                     }

@@ -1,5 +1,6 @@
 #pragma once
 #include "../tests/utility.hpp"
+#include "../css/layout/types.hpp"
 #include "dom.hpp"
 
 #include <string>
@@ -13,6 +14,8 @@ namespace browser::html {
         std::unordered_map<const Element *, int> select_indices;
         Element *focused_element = nullptr;
         Element *hovered_element = nullptr;
+        const Element *open_select = nullptr;  // which <select> has its dropdown open
+        css::Rect select_dropdown_rect;        // screen-space rect of open dropdown
         u32 caret_position = 0;
         bool caret_visible = true;
 
@@ -25,6 +28,8 @@ namespace browser::html {
         void focus(Element *el);
         void blur();
         void toggle_checkbox(Element *el);
+        void toggle_select(const Element *el);
+        void close_select();
     };
 
     extern FormState g_form_state;

@@ -50,6 +50,61 @@ namespace browser::render::form_controls {
         }
     }
 
+    void paint_number_input(
+        CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &value, u32 caret_pos, bool focused,
+        f32 spin_active) {
+        f32 spin_w = 18.0f;
+        f32 text_w = w - spin_w;
+        if (text_w < 10.0f) text_w = 10.0f;
+
+        // Input background and border
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, {1, 1, 1, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+
+        // Spin button divider
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+
+        // Spin up button
+        f32 half_h = h / 2.0f;
+        Color up_bg = spin_active == 1 ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.92f, 0.92f, 0.92f, 1};
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w + 1, y, spin_w - 1, half_h}, up_bg));
+        // Up arrow (triangle approximation)
+        {
+            f32 cx = x + text_w + spin_w / 2.0f;
+            f32 cy = y + half_h / 2.0f;
+            commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                {cx - 3, cy - 4, 8, 8}, {0.2f, 0.2f, 0.2f, 1}, "\xe2\x96\xb2", 8));
+        }
+
+        // Spin down button
+        Color dn_bg = spin_active == -1 ? Color{0.75f, 0.75f, 0.75f, 1} : Color{0.92f, 0.92f, 0.92f, 1};
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w + 1, y + half_h, spin_w - 1, half_h}, dn_bg));
+        {
+            f32 cx = x + text_w + spin_w / 2.0f;
+            f32 cy = y + half_h + half_h / 2.0f;
+            commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                {cx - 3, cy - 4, 8, 8}, {0.2f, 0.2f, 0.2f, 1}, "\xe2\x96\xbc", 8));
+        }
+
+        // Separator between spin buttons
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + text_w + 1, y + half_h, spin_w - 1, 1}, {0.6f, 0.6f, 0.6f, 1}));
+
+        // Text value
+        f32 text_x = x + 3;
+        f32 text_y = y + (h - 14) / 2.0f;
+        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {text_x, text_y, text_w - 6, h}, {0, 0, 0, 1}, value, 14));
+
+        // Caret
+        if (focused) {
+            f32 cx = text_x + static_cast<f32>(caret_pos) * 7.0f;
+            if (cx < x + text_w - 2)
+                commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, y + 2, 1, h - 4}, {0, 0, 0, 1}));
+        }
+    }
+
     void paint_button(
         CommandList &commands, f32 x, f32 y, f32 w, f32 h, const std::string &label, bool hovered, bool active) {
         Color bg = {0.94f, 0.94f, 0.94f, 1.0f};
@@ -184,6 +239,75 @@ namespace browser::render::form_controls {
                 if (ly > y + h - 3)
                     break;
             }
+        }
+    }
+
+    void paint_range(CommandList &commands,
+                     f32 x, f32 y, f32 w, f32 h,
+                     f32 value, f32 min_val, f32 max_val, bool focused) {
+        f32 track_h = 4.0f;
+        f32 track_y = y + (h - track_h) / 2.0f;
+        f32 thumb_r = 7.0f;
+
+        // Track background
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, track_y, w, track_h}, {0.7f, 0.7f, 0.7f, 1}));
+
+        // Filled track
+        f32 range = max_val - min_val;
+        f32 frac = (range > 0) ? (value - min_val) / range : 0;
+        if (frac < 0) frac = 0;
+        if (frac > 1) frac = 1;
+        f32 fill_w = w * frac;
+        if (fill_w > 0) {
+            commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, track_y, fill_w, track_h}, {0.3f, 0.5f, 0.9f, 1}));
+        }
+
+        // Track border
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, track_y, w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, track_y + track_h - 1, w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, track_y, 1, track_h}, {0.5f, 0.5f, 0.5f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, track_y, 1, track_h}, {0.5f, 0.5f, 0.5f, 1}));
+
+        // Thumb
+        f32 thumb_x = x + fill_w - thumb_r;
+        if (thumb_x < x) thumb_x = x;
+        if (thumb_x > x + w - thumb_r * 2) thumb_x = x + w - thumb_r * 2;
+        f32 thumb_y = y + (h - thumb_r * 2) / 2.0f;
+        Color thumb_color = focused ? Color{0.2f, 0.4f, 0.9f, 1} : Color{0.5f, 0.5f, 0.5f, 1};
+        commands.push(make_cmd(PaintCommand::Type::DRAW_ROUNDED_RECT,
+            {thumb_x, thumb_y, thumb_r * 2, thumb_r * 2}, thumb_color, "", 0, 0, {}, thumb_r));
+    }
+
+    void paint_file_input(CommandList &commands,
+                          f32 x, f32 y, f32 w, f32 h,
+                          const std::string &filename, bool focused) {
+        f32 btn_w = 80.0f;
+        // Button
+        Color btn_bg = focused ? Color{0.85f, 0.85f, 0.85f, 1} : Color{0.94f, 0.94f, 0.94f, 1};
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, btn_w, h}, btn_bg));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, btn_w, 1}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, btn_w, 1}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + btn_w - 1, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+
+        std::string label = filename.empty() ? "Choose File" : filename;
+        f32 max_label_w = btn_w - 8;
+        f32 approx_w = std::min(static_cast<f32>(label.size()) * 7.0f, max_label_w);
+        f32 tx = x + (btn_w - approx_w) / 2.0f;
+        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {tx, y + (h - 14) / 2.0f, btn_w - 2, h}, {0, 0, 0, 1},
+            label.size() > 12 ? label.substr(0, 10) + "..." : label, 12));
+
+        // Filename display area
+        f32 fn_x = x + btn_w + 4;
+        f32 fn_w = w - btn_w - 4;
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {fn_x, y, fn_w, h}, {1, 1, 1, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {fn_x, y, fn_w, 1}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {fn_x, y + h - 1, fn_w, 1}, {0.6f, 0.6f, 0.6f, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {fn_x + fn_w - 1, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+
+        if (!filename.empty()) {
+            commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                {fn_x + 3, y + (h - 14) / 2.0f, fn_w - 6, h}, {0.4f, 0.4f, 0.4f, 1}, filename, 13));
         }
     }
 

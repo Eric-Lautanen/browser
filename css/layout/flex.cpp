@@ -196,6 +196,18 @@ namespace browser::css {
             }
         }
 
+        // Apply box-sizing: if border-box, the specified size includes border+padding
+        bool border_box = false;
+        auto *bs = child->style().get("box-sizing");
+        if (bs && bs->type == CSSValue::Type::KEYWORD && bs->keyword == "border-box") {
+            border_box = true;
+        }
+        if (border_box && item.base_size > 0) {
+            item.base_size -= item.main_border_padding;
+            if (item.base_size < 0)
+                item.base_size = 0;
+        }
+
         item.hypothetical_main = item.base_size + item.main_border_padding;
         return item;
     }
