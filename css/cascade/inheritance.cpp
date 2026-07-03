@@ -14,7 +14,8 @@ namespace browser::css {
             property == "text-indent" || property == "text-align" || property == "text-transform" ||
             property == "text-decoration" || property == "text-decoration-line" ||
             property == "text-decoration-color" || property == "text-decoration-style" ||
-            property == "text-decoration-thickness" || property == "text-shadow" ||
+            property == "text-decoration-thickness" || property == "text-underline-offset" ||
+            property == "text-shadow" ||
             property == "white-space" || property == "word-break" || property == "overflow-wrap" ||
             property == "direction" || property == "unicode-bidi" || property == "writing-mode" ||
             property == "hyphens" || property == "tab-size" || property == "text-align-last" ||

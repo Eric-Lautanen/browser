@@ -439,11 +439,23 @@ namespace browser::css {
                     bool va_middle = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "middle";
                     bool va_top = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "top";
                     bool va_bottom = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "bottom";
+                    bool va_sub = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "sub";
+                    bool va_super = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "super";
+                    bool va_text_top = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "text-top";
+                    bool va_text_bottom = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "text-bottom";
                     if (va_middle) {
                         child->content.y = line_y + (cur_line_height - child_height) / 2.0f;
                     } else if (va_top) {
                         child->content.y = line_y;
                     } else if (va_bottom) {
+                        child->content.y = line_y + cur_line_height - child_height;
+                    } else if (va_sub) {
+                        child->content.y = line_y + cur_line_height * 0.2f;
+                    } else if (va_super) {
+                        child->content.y = line_y - cur_line_height * 0.3f;
+                    } else if (va_text_top) {
+                        child->content.y = line_y;
+                    } else if (va_text_bottom) {
                         child->content.y = line_y + cur_line_height - child_height;
                     } else {
                         // baseline: align bottom of inline-block with text baseline

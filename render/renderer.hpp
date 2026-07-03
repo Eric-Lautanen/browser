@@ -40,7 +40,7 @@ namespace browser::render {
         void stroke_rect(f32 x, f32 y, f32 w, f32 h, const Color &color, f32 line_width = 1.0f);
         void draw_line(f32 x1, f32 y1, f32 x2, f32 y2, const Color &color, f32 line_width = 1.0f);
         void fill_rect_tex(f32 x, f32 y, f32 w, f32 h, const Color &color, class Texture2D *texture);
-        void draw_textured_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, class Texture2D *texture);
+        void draw_textured_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, class Texture2D *texture, bool nearest = false);
         void begin_textured(class Texture2D *texture);
         void begin_textured_sdf(class Texture2D *texture);
         void add_tex_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, f32 u0, f32 v0, f32 u1, f32 v1);

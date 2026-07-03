@@ -198,18 +198,19 @@ namespace browser::render {
                         transform_rect(x, y, w, h);
                     }
                     ImageId id = cmd.image_id;
+                    bool nearest = (cmd.image_flags & 1) != 0;
                     auto it = texture_cache_.find(id);
                     if (it != texture_cache_.end() && it->second) {
                         Color c = cmd.color;
                         c.a *= current_opacity_;
-                        renderer_->draw_textured_quad(x, y, w, h, c, it->second.get());
+                        renderer_->draw_textured_quad(x, y, w, h, c, it->second.get(), nearest);
                     } else if (images_ && id) {
                         auto img = reinterpret_cast<const image::Image *>(id);
                         auto tex = get_or_create_texture(*img);
                         if (tex) {
                             Color c = cmd.color;
                             c.a *= current_opacity_;
-                            renderer_->draw_textured_quad(x, y, w, h, c, tex);
+                            renderer_->draw_textured_quad(x, y, w, h, c, tex, nearest);
                         }
                     }
                     break;

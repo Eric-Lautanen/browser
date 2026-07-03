@@ -36,7 +36,8 @@ namespace browser::render::form_controls {
                         const std::string &value,
                         u32 cursor_line,
                         u32 cursor_col,
-                        bool focused);
+                        bool focused,
+                        const std::string &resize = "both");
 
     void paint_range(CommandList &commands,
                      f32 x, f32 y, f32 w, f32 h,

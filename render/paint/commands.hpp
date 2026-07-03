@@ -40,6 +40,7 @@ namespace browser::render {
         f32 radius = 0;
         css::Mat3x3 transform;
         f32 opacity = 1.0f;
+        u8 image_flags = 0;  // bit 0 = nearest-neighbor
         std::vector<u8> canvas_pixels;
         u32 canvas_data_w = 0;
         u32 canvas_data_h = 0;

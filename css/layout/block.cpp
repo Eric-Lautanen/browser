@@ -348,6 +348,37 @@ namespace browser::css {
             node->content.height = max_y;
         }
 
+        // Apply aspect-ratio if one dimension is auto
+        auto *ar = node->style().get("aspect-ratio");
+        if (ar) {
+            f32 ratio = 0;
+            if (ar->type == CSSValue::Type::NUMBER) {
+                ratio = ar->number;
+            } else if (ar->type == CSSValue::Type::STRING) {
+                // Parse "w / h" or "w"
+                std::string s = ar->string_value;
+                size_t slash = s.find('/');
+                if (slash != std::string::npos) {
+                    f32 w = std::strtof(s.c_str(), nullptr);
+                    f32 h = std::strtof(s.c_str() + slash + 1, nullptr);
+                    if (w > 0 && h > 0) ratio = w / h;
+                } else {
+                    ratio = std::strtof(s.c_str(), nullptr);
+                }
+            } else if (ar->type == CSSValue::Type::KEYWORD && ar->keyword == "auto") {
+                // auto: use intrinsic ratio if available (not implemented)
+            }
+            if (ratio > 0) {
+                auto *hv = node->style().get("height");
+                bool height_auto = !hv || (hv->type == CSSValue::Type::KEYWORD && hv->keyword == "auto");
+                if (!width_auto && height_auto) {
+                    node->content.height = node->content.width / ratio;
+                } else if (width_auto && !height_auto && node->content.height > 0) {
+                    node->content.width = node->content.height * ratio;
+                }
+            }
+        }
+
         auto *maxh = node->style().get("max-height");
         if (maxh) {
             f32 mh = 0;

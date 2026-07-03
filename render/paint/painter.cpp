@@ -24,7 +24,8 @@ namespace browser::render {
                               f32 radius = 0,
                               const css::Mat3x3 &transform = {},
                               f32 opacity = 1.0f,
-                              u8 font_flags = 0) {
+                              u8 font_flags = 0,
+                              u8 image_flags = 0) {
             PaintCommand cmd;
             cmd.type = type;
             cmd.rect = rect;
@@ -37,6 +38,7 @@ namespace browser::render {
             cmd.radius = radius;
             cmd.transform = transform;
             cmd.opacity = opacity;
+            cmd.image_flags = image_flags;
             return cmd;
         }
 
@@ -376,7 +378,11 @@ namespace browser::render {
                     }
                 }
                 col = static_cast<u32>(caret - last_newline);
-                form_controls::paint_textarea(list, fx, fy, fw, fh, value, line, col, focused);
+                std::string resize = "both";
+                auto *rs = node->style().get("resize");
+                if (rs && rs->type == css::CSSValue::Type::KEYWORD)
+                    resize = rs->keyword;
+                form_controls::paint_textarea(list, fx, fy, fw, fh, value, line, col, focused, resize);
             } else if (el->tag_name == "input" && type == "file") {
                 form_controls::paint_file_input(list, fx, fy, fw, fh, value, focused);
             } else if (el->tag_name == "input" && type == "range") {
@@ -575,16 +581,59 @@ namespace browser::render {
 
     void Painter::paint_background(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
         auto *bg_img = node->style().get("background-image");
-        f32 bx = ox - node->padding.left;
-        f32 by = oy - node->padding.top;
-        f32 bw =
-            node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
-        f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
-                 node->border.bottom;
+        // Clip box (default border-box)
+        f32 clip_bx = ox - node->padding.left;
+        f32 clip_by = oy - node->padding.top;
+        f32 clip_bw = node->content.width + node->padding.left + node->padding.right +
+                      node->border.left + node->border.right;
+        f32 clip_bh = node->content.height + node->padding.top + node->padding.bottom +
+                      node->border.top + node->border.bottom;
+
+        // Origin box for positioning (default padding-box)
+        f32 origin_bx = ox - node->padding.left;
+        f32 origin_by = oy - node->padding.top;
+        f32 origin_bw = node->content.width + node->padding.left + node->padding.right;
+        f32 origin_bh = node->content.height + node->padding.top + node->padding.bottom;
+
+        // Apply background-clip
+        auto *bg_clip = node->style().get("background-clip");
+        if (bg_clip && bg_clip->type == css::CSSValue::Type::KEYWORD) {
+            if (bg_clip->keyword == "padding-box") {
+                clip_bx = ox - node->padding.left;
+                clip_by = oy - node->padding.top;
+                clip_bw = node->content.width + node->padding.left + node->padding.right;
+                clip_bh = node->content.height + node->padding.top + node->padding.bottom;
+            } else if (bg_clip->keyword == "content-box") {
+                clip_bx = ox;
+                clip_by = oy;
+                clip_bw = node->content.width;
+                clip_bh = node->content.height;
+            }
+            // border-box is the default
+        }
+
+        // Apply background-origin
+        auto *bg_origin = node->style().get("background-origin");
+        if (bg_origin && bg_origin->type == css::CSSValue::Type::KEYWORD) {
+            if (bg_origin->keyword == "border-box") {
+                origin_bx = ox - node->padding.left - node->border.left;
+                origin_by = oy - node->padding.top - node->border.top;
+                origin_bw = node->content.width + node->padding.left + node->padding.right +
+                            node->border.left + node->border.right;
+                origin_bh = node->content.height + node->padding.top + node->padding.bottom +
+                            node->border.top + node->border.bottom;
+            } else if (bg_origin->keyword == "content-box") {
+                origin_bx = ox;
+                origin_by = oy;
+                origin_bw = node->content.width;
+                origin_bh = node->content.height;
+            }
+            // padding-box is the default
+        }
 
         if (bg_img && bg_img->type == css::CSSValue::Type::GRADIENT) {
             list.push(make_cmd(
-                PaintCommand::Type::DRAW_GRADIENT, {bx, by, bw, bh}, Color::TRANSPARENT, "", 0, 0, bg_img->gradient));
+                PaintCommand::Type::DRAW_GRADIENT, {clip_bx, clip_by, clip_bw, clip_bh}, Color::TRANSPARENT, "", 0, 0, bg_img->gradient));
             return;
         }
 
@@ -606,8 +655,8 @@ namespace browser::render {
                         auto *img = it->second.get();
                         f32 img_w = static_cast<f32>(img->width);
                         f32 img_h = static_cast<f32>(img->height);
-                        if (img_w <= 0) img_w = bw;
-                        if (img_h <= 0) img_h = bh;
+                        if (img_w <= 0) img_w = clip_bw;
+                        if (img_h <= 0) img_h = clip_bh;
                         ImageId id = reinterpret_cast<ImageId>(img);
 
                         // Check background-repeat
@@ -616,54 +665,54 @@ namespace browser::render {
                         if (bg_rep && bg_rep->type == css::CSSValue::Type::KEYWORD)
                             repeat = bg_rep->keyword;
 
-                        // Check background-size
+                        // Check background-size (uses clip box for sizing reference)
                         f32 draw_w = img_w;
                         f32 draw_h = img_h;
                         auto *bg_size = node->style().get("background-size");
                         if (bg_size && bg_size->type == css::CSSValue::Type::KEYWORD) {
                             if (bg_size->keyword == "cover") {
-                                f32 scale = std::max(bw / img_w, bh / img_h);
+                                f32 scale = std::max(clip_bw / img_w, clip_bh / img_h);
                                 draw_w = img_w * scale;
                                 draw_h = img_h * scale;
                             } else if (bg_size->keyword == "contain") {
-                                f32 scale = std::min(bw / img_w, bh / img_h);
+                                f32 scale = std::min(clip_bw / img_w, clip_bh / img_h);
                                 draw_w = img_w * scale;
                                 draw_h = img_h * scale;
                             }
                         }
 
-                        // Check background-position
-                        f32 pos_x = bx;
-                        f32 pos_y = by;
+                        // Check background-position (uses origin box)
+                        f32 pos_x = origin_bx;
+                        f32 pos_y = origin_by;
                         auto *bg_pos = node->style().get("background-position");
                         if (bg_pos && bg_pos->type == css::CSSValue::Type::KEYWORD) {
                             if (bg_pos->keyword == "center" || bg_pos->keyword == "center center") {
-                                pos_x = bx + (bw - draw_w) / 2.0f;
-                                pos_y = by + (bh - draw_h) / 2.0f;
+                                pos_x = origin_bx + (origin_bw - draw_w) / 2.0f;
+                                pos_y = origin_by + (origin_bh - draw_h) / 2.0f;
                             } else if (bg_pos->keyword == "top") {
-                                pos_x = bx + (bw - draw_w) / 2.0f;
-                                pos_y = by;
+                                pos_x = origin_bx + (origin_bw - draw_w) / 2.0f;
+                                pos_y = origin_by;
                             } else if (bg_pos->keyword == "bottom") {
-                                pos_x = bx + (bw - draw_w) / 2.0f;
-                                pos_y = by + bh - draw_h;
+                                pos_x = origin_bx + (origin_bw - draw_w) / 2.0f;
+                                pos_y = origin_by + origin_bh - draw_h;
                             } else if (bg_pos->keyword == "left") {
-                                pos_x = bx;
-                                pos_y = by + (bh - draw_h) / 2.0f;
+                                pos_x = origin_bx;
+                                pos_y = origin_by + (origin_bh - draw_h) / 2.0f;
                             } else if (bg_pos->keyword == "right") {
-                                pos_x = bx + bw - draw_w;
-                                pos_y = by + (bh - draw_h) / 2.0f;
+                                pos_x = origin_bx + origin_bw - draw_w;
+                                pos_y = origin_by + (origin_bh - draw_h) / 2.0f;
                             } else if (bg_pos->keyword == "top left" || bg_pos->keyword == "left top") {
-                                pos_x = bx;
-                                pos_y = by;
+                                pos_x = origin_bx;
+                                pos_y = origin_by;
                             } else if (bg_pos->keyword == "top right" || bg_pos->keyword == "right top") {
-                                pos_x = bx + bw - draw_w;
-                                pos_y = by;
+                                pos_x = origin_bx + origin_bw - draw_w;
+                                pos_y = origin_by;
                             } else if (bg_pos->keyword == "bottom left" || bg_pos->keyword == "left bottom") {
-                                pos_x = bx;
-                                pos_y = by + bh - draw_h;
+                                pos_x = origin_bx;
+                                pos_y = origin_by + origin_bh - draw_h;
                             } else if (bg_pos->keyword == "bottom right" || bg_pos->keyword == "right bottom") {
-                                pos_x = bx + bw - draw_w;
-                                pos_y = by + bh - draw_h;
+                                pos_x = origin_bx + origin_bw - draw_w;
+                                pos_y = origin_by + origin_bh - draw_h;
                             }
                         }
 
@@ -671,19 +720,19 @@ namespace browser::render {
                             list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
                                 {pos_x, pos_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
                         } else if (repeat == "repeat-x") {
-                            for (f32 tx = pos_x; tx < bx + bw; tx += draw_w) {
+                            for (f32 tx = pos_x; tx < origin_bx + origin_bw; tx += draw_w) {
                                 list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
                                     {tx, pos_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
                             }
                         } else if (repeat == "repeat-y") {
-                            for (f32 ty = pos_y; ty < by + bh; ty += draw_h) {
+                            for (f32 ty = pos_y; ty < origin_by + origin_bh; ty += draw_h) {
                                 list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
                                     {pos_x, ty, draw_w, draw_h}, Color::WHITE, "", 0, id));
                             }
                         } else {
-                            // repeat: tile both directions
-                            for (f32 tx = pos_x - std::fmod(pos_x - bx, draw_w); tx < bx + bw; tx += draw_w) {
-                                for (f32 ty = pos_y - std::fmod(pos_y - by, draw_h); ty < by + bh; ty += draw_h) {
+                            // repeat: tile both directions (clip to clip box)
+                            for (f32 tx = pos_x - std::fmod(pos_x - clip_bx, draw_w); tx < clip_bx + clip_bw; tx += draw_w) {
+                                for (f32 ty = pos_y - std::fmod(pos_y - clip_by, draw_h); ty < clip_by + clip_bh; ty += draw_h) {
                                     list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
                                         {tx, ty, draw_w, draw_h}, Color::WHITE, "", 0, id));
                                 }
@@ -715,9 +764,9 @@ namespace browser::render {
         }
 
         if (radius > 0) {
-            list.push(make_cmd(PaintCommand::Type::DRAW_ROUNDED_RECT, {bx, by, bw, bh}, bg, "", 0, 0, {}, radius));
+            list.push(make_cmd(PaintCommand::Type::DRAW_ROUNDED_RECT, {clip_bx, clip_by, clip_bw, clip_bh}, bg, "", 0, 0, {}, radius));
         } else {
-            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, bh}, bg));
+            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {clip_bx, clip_by, clip_bw, clip_bh}, bg));
         }
     }
 
@@ -919,18 +968,56 @@ namespace browser::render {
             dec_thickness = dec_thick->length.value;
         }
 
+        // text-underline-offset
+        f32 underline_offset = 0.0f;
+        auto *dec_offset = node->style().get("text-underline-offset");
+        if (dec_offset && dec_offset->type == css::CSSValue::Type::LENGTH) {
+            underline_offset = dec_offset->length.value;
+        }
+
+        // text-decoration-style (solid, dotted, dashed, double, wavy)
+        std::string dec_style = "solid";
+        auto *dec_style_val = node->style().get("text-decoration-style");
+        if (dec_style_val && dec_style_val->type == css::CSSValue::Type::KEYWORD)
+            dec_style = dec_style_val->keyword;
+
         auto paint_decorations = [&](f32 line_y, f32 line_w) {
+            auto paint_deco_line = [&](f32 y) {
+                if (dec_style == "double") {
+                    f32 gap = std::max(1.5f, dec_thickness * 0.6f);
+                    f32 half = std::max(1.0f, dec_thickness * 0.35f);
+                    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y - gap, line_w, half}, dec_color));
+                    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y + gap, line_w, half}, dec_color));
+                } else if (dec_style == "dotted") {
+                    f32 dot_size = std::max(1.0f, dec_thickness);
+                    f32 spacing = dot_size * 2.5f;
+                    for (f32 dx = 0; dx < line_w; dx += spacing) {
+                        f32 dw = std::min(dot_size, line_w - dx);
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox + dx, y, dw, dec_thickness}, dec_color));
+                    }
+                } else if (dec_style == "dashed") {
+                    f32 dash_len = std::max(3.0f, dec_thickness * 3.0f);
+                    f32 gap_len = std::max(2.0f, dec_thickness * 2.0f);
+                    for (f32 dx = 0; dx < line_w; dx += dash_len + gap_len) {
+                        f32 dw = std::min(dash_len, line_w - dx);
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox + dx, y, dw, dec_thickness}, dec_color));
+                    }
+                } else {
+                    // solid (default)
+                    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y, line_w, dec_thickness}, dec_color));
+                }
+            };
             if (has_underline) {
-                f32 y = line_y + font_size + 1.0f;
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y, line_w, dec_thickness}, dec_color));
+                f32 y = line_y + font_size + 1.0f + underline_offset;
+                paint_deco_line(y);
             }
             if (has_overline) {
                 f32 y = line_y - descender_pad * 0.3f;
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y, line_w, dec_thickness}, dec_color));
+                paint_deco_line(y);
             }
             if (has_line_through) {
                 f32 y = line_y + font_size * 0.4f;
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {ox, y, line_w, dec_thickness}, dec_color));
+                paint_deco_line(y);
             }
         };
 
@@ -1084,11 +1171,19 @@ namespace browser::render {
             }
         }
 
+        // Check image-rendering for nearest-neighbor scaling
+        u8 img_flags = 0;
+        auto *ir = node->style().get("image-rendering");
+        if (ir && ir->type == css::CSSValue::Type::KEYWORD) {
+            if (ir->keyword == "pixelated" || ir->keyword == "crisp-edges" || ir->keyword == "nearest-neighbor")
+                img_flags |= 1;
+        }
+
         if (needs_clip) {
             list.push(make_cmd(PaintCommand::Type::PUSH_CLIP, {ox, oy, box_w, box_h}, Color::TRANSPARENT));
         }
 
-        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {draw_x, draw_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
+        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {draw_x, draw_y, draw_w, draw_h}, Color::WHITE, "", 0, id, {}, 0, {}, 1.0f, 0, img_flags));
 
         if (needs_clip) {
             list.push(make_cmd(PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT));

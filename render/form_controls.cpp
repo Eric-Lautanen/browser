@@ -230,12 +230,35 @@ namespace browser::render::form_controls {
                         const std::string &value,
                         u32 cursor_line,
                         u32 cursor_col,
-                        bool focused) {
+                        bool focused,
+                        const std::string &resize) {
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, {1, 1, 1, 1}));
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, {0.6f, 0.6f, 0.6f, 1}));
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
         commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, {0.6f, 0.6f, 0.6f, 1}));
+
+        // Draw resize handle if not "none"
+        if (resize != "none") {
+            f32 handle_size = 12.0f;
+            f32 hx = x + w - handle_size;
+            f32 hy = y + h - handle_size;
+            Color handle_color{0.5f, 0.5f, 0.5f, 1};
+            if (resize == "both" || resize == "horizontal") {
+                // Horizontal grip lines
+                for (int i = 0; i < 3; i++) {
+                    f32 ly = hy + 2 + i * 3;
+                    commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {hx + 2, ly, handle_size - 4, 1}, handle_color));
+                }
+            }
+            if (resize == "both" || resize == "vertical") {
+                // Vertical grip lines
+                for (int i = 0; i < 3; i++) {
+                    f32 lx = hx + 2 + i * 3;
+                    commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {lx, hy + 2, 1, handle_size - 4}, handle_color));
+                }
+            }
+        }
 
         f32 text_x = x + 3;
         f32 text_y = y + 3;

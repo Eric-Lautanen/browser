@@ -133,20 +133,22 @@ namespace browser::css {
             for (char c : at.name) lower_name += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
             if (lower_name == "font-face") {
-                // @font-face silently ignored — skip to closing brace
-                u32 brace_depth = 1;
-                while (brace_depth > 0 && current_.type != CssTokenType::EOF_TOKEN) {
-                    if (current_.type == CssTokenType::OPEN_BRACE) {
-                        brace_depth++;
-                    } else if (current_.type == CssTokenType::CLOSE_BRACE) {
-                        brace_depth--;
-                        if (brace_depth == 0) {
-                            advance();
-                            break;
-                        }
+                // Parse @font-face declarations
+                while (current_.type != CssTokenType::CLOSE_BRACE && current_.type != CssTokenType::EOF_TOKEN) {
+                    if (current_.type == CssTokenType::WHITESPACE) {
+                        advance();
+                        continue;
                     }
-                    advance();
+                    if (current_.type == CssTokenType::SEMICOLON) {
+                        advance();
+                        continue;
+                    }
+                    at.declarations.push_back(parse_declaration());
+                    if (current_.type == CssTokenType::SEMICOLON)
+                        advance();
                 }
+                if (current_.type == CssTokenType::CLOSE_BRACE)
+                    advance();
             } else {
                 while (current_.type != CssTokenType::CLOSE_BRACE && current_.type != CssTokenType::EOF_TOKEN) {
                     if (current_.type == CssTokenType::WHITESPACE) {

@@ -160,7 +160,7 @@ namespace browser::render {
         draw_textured_quad(x, y, w, h, color, texture);
     }
 
-    void Renderer::draw_textured_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, Texture2D *texture) {
+    void Renderer::draw_textured_quad(f32 x, f32 y, f32 w, f32 h, const Color &color, Texture2D *texture, bool nearest) {
         if (!texture) {
             fill_rect(x, y, w, h, color);
             return;
@@ -180,7 +180,15 @@ namespace browser::render {
             current_texture_id_ = tid;
             textured_mode_ = true;
         }
+        if (nearest) {
+            pgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            pgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        }
         batch_mesh_->add_quad_tex(x, y, w, h, color.r, color.g, color.b, color.a, 0.0f, 0.0f, 1.0f, 1.0f);
+        if (nearest) {
+            pgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            pgl::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        }
     }
 
     void Renderer::begin_textured(Texture2D *texture) {
