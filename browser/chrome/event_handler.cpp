@@ -324,6 +324,53 @@ namespace browser {
 
             chrome_.address_focused = false;
 
+            // Handle multi-select list box clicks (always visible)
+            if (current_page_.has_value()) {
+                f32 py2 = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                auto &dr2 = html::g_form_state.select_dropdown_rect;
+                if (dr2.width > 0 && mx >= dr2.x && mx <= dr2.x + dr2.width && py2 >= dr2.y && py2 <= dr2.y + dr2.height) {
+                    // Must have a focused multi-select element
+                    auto *focused = html::g_form_state.focused_element;
+                    if (focused && focused->tag_name == "select" && focused->has_attribute("multiple")) {
+                        f32 rel_y = py2 - dr2.y;
+                        int row = static_cast<int>(rel_y / 20.0f);
+                        if (row >= 0) {
+                            int target_option = 0;
+                            int running_idx = 0;
+                            bool found = false;
+                            std::function<void(html::Node*, int&, int&)> walk2 =
+                                [&](html::Node *parent, int &row_idx, int &opt_idx) {
+                                    if (found) return;
+                                    for (auto &c : parent->children) {
+                                        if (found) return;
+                                        if (c->type != html::NodeType::ELEMENT) continue;
+                                        auto *ch = static_cast<html::Element*>(c.get());
+                                        if (ch->tag_name == "option") {
+                                            if (row_idx == row) {
+                                                target_option = opt_idx;
+                                                found = true;
+                                                return;
+                                            }
+                                            row_idx++;
+                                            opt_idx++;
+                                        } else if (ch->tag_name == "optgroup") {
+                                            if (row_idx == row) { found = true; return; }
+                                            row_idx++;
+                                            walk2(ch, row_idx, opt_idx);
+                                        }
+                                    }
+                                };
+                            walk2(const_cast<html::Element*>(focused), running_idx, target_option);
+                            if (found) {
+                                html::g_form_state.set_selected_index(
+                                    const_cast<html::Element*>(focused), target_option);
+                            }
+                        }
+                        return;
+                    }
+                }
+            }
+
             // Handle open select dropdown clicks
             if (html::g_form_state.open_select && current_page_.has_value()) {
                 f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);

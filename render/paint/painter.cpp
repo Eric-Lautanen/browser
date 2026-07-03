@@ -221,9 +221,80 @@ namespace browser::render {
                 form_controls::paint_button(list, fx, fy, fw, fh, label, hovered, focused);
             } else if (el->tag_name == "select") {
                 bool is_open = (html::g_form_state.open_select == el);
+                bool is_multiple = el->has_attribute("multiple");
                 int sel_idx = html::g_form_state.get_selected_index(el);
                 form_controls::paint_select(list, fx, fy, fw, fh, value, is_open);
-                if (is_open) {
+
+                if (is_multiple) {
+                    // Multiple select: render as a list box, always showing all options
+                    int opt_count = 0;
+                    std::function<int(html::Node*)> count_opts = [&](html::Node *parent) -> int {
+                        int n = 0;
+                        for (auto &c : parent->children) {
+                            if (c->type == html::NodeType::ELEMENT) {
+                                auto *ch = static_cast<html::Element*>(c.get());
+                                if (ch->tag_name == "option") n++;
+                                else if (ch->tag_name == "optgroup") n += count_opts(ch);
+                            }
+                        }
+                        return n;
+                    };
+                    opt_count = count_opts(el);
+                    if (opt_count > 0) {
+                        f32 list_h = std::min(static_cast<f32>(opt_count) * 20.0f, 200.0f);
+                        f32 opt_y = fy + fh;
+                        f32 opt_w = fw;
+                        // Border around list
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y + list_h - 1, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, 1, list_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + opt_w - 1, opt_y, 1, list_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+
+                        // Store dropdown rect for hit testing
+                        html::g_form_state.select_dropdown_rect = {fx, opt_y, opt_w, list_h};
+
+                        int idx = 0;
+                        f32 yy = 0;
+                        std::function<void(html::Node*, f32&)> render_mult = [&](html::Node *parent, f32 &ypos) {
+                            for (auto &c : parent->children) {
+                                if (c->type != html::NodeType::ELEMENT) continue;
+                                auto *ch = static_cast<html::Element*>(c.get());
+                                if (ch->tag_name == "option") {
+                                    std::string opt_text = ch->get_attribute("label");
+                                    if (opt_text.empty()) {
+                                        for (auto &tc : ch->children)
+                                            if (tc->type == html::NodeType::TEXT)
+                                                opt_text += static_cast<html::Text*>(tc.get())->data;
+                                    }
+                                    if (opt_text.empty()) opt_text = ch->get_attribute("value");
+                                    Color opt_color = (idx == sel_idx) ? Color{0.2f, 0.4f, 0.9f, 1} : Color{0, 0, 0, 1};
+                                    if (idx == sel_idx) {
+                                        list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                            {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.8f, 0.85f, 1.0f, 1}));
+                                    }
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                        {fx + 4, opt_y + ypos + 2, opt_w - 8, 18.0f}, opt_color, opt_text, 14));
+                                    idx++;
+                                    ypos += 20.0f;
+                                } else if (ch->tag_name == "optgroup") {
+                                    std::string grp_label = ch->get_attribute("label");
+                                    list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                        {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.94f, 0.94f, 0.94f, 1}));
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                        {fx + 8, opt_y + ypos + 2, opt_w - 12, 18.0f}, Color{0.35f, 0.35f, 0.35f, 1}, grp_label, 13));
+                                    ypos += 20.0f;
+                                    f32 saved_x = fx;
+                                    fx += 14.0f;
+                                    opt_w -= 14.0f;
+                                    render_mult(ch, ypos);
+                                    fx = saved_x;
+                                    opt_w += 14.0f;
+                                }
+                            }
+                        };
+                        render_mult(el, yy);
+                    }
+                } else if (is_open) {
                     // Count visible options (including those in optgroups)
                     std::function<int(html::Node*)> count_options = [&](html::Node *parent) -> int {
                         int n = 0;
