@@ -160,7 +160,18 @@ namespace browser::css {
                         continue;
                     }
                     if (current_.type == CssTokenType::AT_KEYWORD) {
+                        // CS-S2: cap at-rule nesting — `@media a{@media a{…}}`
+                        // x80k recursed to stack exhaustion. Deeper rules are
+                        // dropped (spec: unknown/false condition).
+                        if (at_rule_depth_ >= kMaxAtRuleDepth) {
+                            while (current_.type != CssTokenType::CLOSE_BRACE &&
+                                   current_.type != CssTokenType::EOF_TOKEN)
+                                advance();
+                            continue;
+                        }
+                        ++at_rule_depth_;
                         at.at_rules.push_back(parse_at_rule());
+                        --at_rule_depth_;
                     } else {
                         at.rules.push_back(parse_rule());
                     }

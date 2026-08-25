@@ -16,9 +16,17 @@ namespace browser::css {
         std::vector<Declaration> parse_inline_declarations();
         static std::vector<Selector> parse_selectors(const std::string &input);
 
+        // CS-S1: nesting cap for :not()/:is() argument re-parsing.
+        static constexpr u32 kMaxSelectorDepth = 32;
+        // CS-S2: nesting cap for @media/at-rule recursion.
+        static constexpr u32 kMaxAtRuleDepth = 64;
+        static std::vector<Selector> parse_selectors_with_depth(const std::string &input, u32 depth);
+
     private:
         CssTokenizer tokenizer_;
         CssToken current_;
+        u32 selector_depth_ = 0;
+        u32 at_rule_depth_ = 0;
         void advance();
         void expect(CssTokenType type);
         Rule parse_rule();

@@ -1,4 +1,5 @@
 #include "../layout.hpp"
+#include "../../parsers.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -105,12 +106,19 @@ namespace browser::css {
                 if (is_table_cell_tag(ctag)) {
                     TableCell tc;
                     tc.cell = cell_child.get();
+                    // CS-S4: colspan/rowspan drive vector allocations and the
+                    // column count — `colspan="999999999"` previously OOM'd.
+                    constexpr i32 kMaxSpan = 1000;
                     std::string cs = cel->get_attribute("colspan");
-                    if (!cs.empty())
-                        tc.colspan = std::max(1, static_cast<i32>(std::strtol(cs.c_str(), nullptr, 10)));
+                    if (!cs.empty()) {
+                        auto v = parse::parse_i64(cs);
+                        tc.colspan = v ? std::clamp<i32>(static_cast<i32>(std::min<i64>(*v, kMaxSpan)), 1, kMaxSpan) : 1;
+                    }
                     std::string rs = cel->get_attribute("rowspan");
-                    if (!rs.empty())
-                        tc.rowspan = std::max(1, static_cast<i32>(std::strtol(rs.c_str(), nullptr, 10)));
+                    if (!rs.empty()) {
+                        auto v = parse::parse_i64(rs);
+                        tc.rowspan = v ? std::clamp<i32>(static_cast<i32>(std::min<i64>(*v, kMaxSpan)), 1, kMaxSpan) : 1;
+                    }
                     row.cells.push_back(tc);
                 }
             }

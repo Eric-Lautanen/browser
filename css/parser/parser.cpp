@@ -110,7 +110,12 @@ namespace browser::css {
     }
 
     std::vector<Selector> CssParser::parse_selectors(const std::string &input) {
+        return parse_selectors_with_depth(input, 0);
+    }
+
+    std::vector<Selector> CssParser::parse_selectors_with_depth(const std::string &input, u32 depth) {
         CssParser p(input);
+        p.selector_depth_ = depth;
         std::vector<Selector> sels;
         while (p.current_.type != CssTokenType::EOF_TOKEN) {
             if (p.current_.type == CssTokenType::WHITESPACE || p.current_.type == CssTokenType::COMMA) {

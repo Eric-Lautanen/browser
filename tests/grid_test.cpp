@@ -444,3 +444,15 @@ TEST(grid_sizing, {
     ASSERT_EQ(static_cast<int>(grid_node->children[0]->content.width), 100);
     ASSERT_EQ(static_cast<int>(grid_node->children[1]->content.width), 100);
 })
+
+// CS-S3: hostile spans must be clamped, not allocated.
+TEST(grid_parse_hostile_span_clamped, {
+    auto p = parse_grid_line("span 99999999");
+    ASSERT(p.span <= 1000u);
+    ASSERT(p.span >= 1u);
+})
+
+TEST(grid_parse_garbage_span_defaults, {
+    auto p = parse_grid_line("span garbage");
+    ASSERT_EQ(p.span, 1u);
+})

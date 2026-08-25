@@ -1,4 +1,5 @@
 #include "grid.hpp"
+#include "../parsers.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -281,7 +282,10 @@ namespace browser::css {
 
         auto parts = split_slash(v);
 
+        // CS-S3: clamp span — `span 99999999` previously allocated one track
+        // per iteration (~2.4GB) plus a map entry per cell.
         auto parse_part = [](const std::string &part, i32 &line, u32 &span, bool &is_explicit) {
+            constexpr u32 kMaxGridSpan = 1000;
             std::string s = trim(part);
             if (s.empty() || s == "auto") {
                 line = 0;
@@ -289,7 +293,9 @@ namespace browser::css {
             }
             if (starts_with(s, "span ")) {
                 std::string num_str = trim(s.substr(5));
-                span = static_cast<u32>(std::strtol(num_str.c_str(), nullptr, 10));
+                auto v = parse::parse_u64(num_str);
+                u32 n = v ? static_cast<u32>(std::min<u64>(*v, kMaxGridSpan)) : 1u;
+                span = std::max(1u, std::min(n, kMaxGridSpan));
                 line = 0;
                 is_explicit = true;
                 return;

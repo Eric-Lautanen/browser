@@ -1,4 +1,4 @@
-#include "test_framework.hpp"
+﻿#include "test_framework.hpp"
 #include "utility.hpp"
 #include "../css/css_values.hpp"
 #include "../css/tokenizer.hpp"
@@ -726,4 +726,44 @@ tfoot { display: table-footer-group; }
     ASSERT_EQ(find_display("thead"), "table-header-group");
     ASSERT_EQ(find_display("tbody"), "table-row-group");
     ASSERT_EQ(find_display("tfoot"), "table-footer-group");
+})
+
+static browser::u32 selector_arg_depth(const browser::css::Selector& s, browser::u32 d) {
+    browser::u32 m = d;
+    for (const auto& c : s.compounds) {
+        for (const auto& simple : c.simples) {
+            for (const auto& arg : simple.argument_selectors) {
+                m = std::max(m, selector_arg_depth(arg, d + 1));
+            }
+        }
+    }
+    return m;
+}
+
+TEST(css_nested_not_beyond_cap_rejected, {
+    // 50k nested :not(...) recursed to stack exhaustion pre-cap. Parsing must
+    // survive, and the resulting AST must not nest arguments beyond the cap.
+    std::string css = "a";
+    for (int i = 0; i < 50000; i++) css += ":not(";
+    for (int i = 0; i < 50000; i++) css += ")";
+    css += " { color: red; }";
+
+    auto sheet_r = browser::css::parse_async(css).sync_wait();
+    ASSERT(sheet_r.is_ok());
+    auto& sheet = sheet_r.unwrap();
+    for (const auto& rule : sheet.rules) {
+        for (const auto& s : rule.selectors) {
+            ASSERT(selector_arg_depth(s, 0) <= 40);
+        }
+    }
+})
+
+TEST(css_deep_media_nesting_survives, {
+    // `@media a{` x80k recursed to stack overflow pre-cap.
+    std::string css;
+    for (int i = 0; i < 80000; i++) css += "@media a{";
+    for (int i = 0; i < 80000; i++) css += "}";
+
+    auto sheet_r = browser::css::parse_async(css).sync_wait();
+    ASSERT(sheet_r.is_ok());
 })
