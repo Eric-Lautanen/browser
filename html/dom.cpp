@@ -2,6 +2,33 @@
 
 namespace browser::html {
 
+    // H-C1: iterative destruction. Splices every descendant into a flat work
+    // list and empties each node's child vectors before it is destroyed, so
+    // freeing a deep tree costs O(nodes) heap and O(1) stack.
+    Node::~Node() {
+        std::vector<std::unique_ptr<Node>> work = std::move(children);
+        children.clear();
+        while (!work.empty()) {
+            std::unique_ptr<Node> n = std::move(work.back());
+            work.pop_back();
+            if (!n)
+                continue;
+            if (auto *el = dynamic_cast<Element *>(n.get())) {
+                for (auto &k : el->template_content) {
+                    if (k)
+                        work.push_back(std::move(k));
+                }
+                el->template_content.clear();
+            }
+            for (auto &k : n->children) {
+                if (k)
+                    work.push_back(std::move(k));
+            }
+            n->children.clear();
+            // `n` is destroyed at scope end with no children left: no recursion.
+        }
+    }
+
     std::string Element::id() const {
         auto it = attributes.find("id");
         return it != attributes.end() ? it->second : "";

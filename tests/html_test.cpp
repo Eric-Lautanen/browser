@@ -1,4 +1,4 @@
-#include "../html/entities.hpp"
+﻿#include "../html/entities.hpp"
 #include "../html/parser.hpp"
 #include "../html/token.hpp"
 #include "../html/tokenizer.hpp"
@@ -631,4 +631,57 @@ TEST(parse_debug_serialize, {
     auto s = browser::html::serialize_dom(doc.get());
     // Serialization should at least contain tags
     ASSERT(s.find("<html>") != std::string::npos);
+})
+
+// ---- H-C1: DOM depth cap + iterative destruction ----
+
+TEST(deep_nesting_capped_at_max_depth, {
+    // 50k nested <div>s used to build a 50k-deep tree that overflowed the
+    // stack during traversal/destruction. The parser must flatten beyond
+    // kMaxDomDepth (512).
+    std::string html;
+    for (int i = 0; i < 50000; i++) html += "<div>";
+    html += "deep";
+    browser::html::Parser parser;
+    auto doc = parser.parse(html);
+    ASSERT(doc != nullptr);
+    ASSERT(doc->children.size() > 0);
+
+    // Walk down counting depth â€” must stay within a small factor of the cap.
+    browser::u32 depth = 0;
+    const browser::html::Node *n = doc.get();
+    while (!n->children.empty()) {
+        n = n->children.back().get();
+        depth++;
+    }
+    ASSERT(depth < 600);   // cap is 512; allow slack for body/html wrappers
+})
+
+TEST(deep_document_destruction_is_bounded, {
+    // Build a deep-ish document, then destroy it. Pre-fix this recursed once
+    // per level in ~Node (stack overflow at ~10-50k). Post-fix iterative.
+    std::string html;
+    for (int i = 0; i < 20000; i++) html += "<div>";
+    browser::html::Parser parser;
+    auto doc = parser.parse(html);
+    ASSERT(doc != nullptr);
+    doc.reset();   // must not crash
+    ASSERT(true);
+})
+
+TEST(shallow_nesting_unaffected_by_cap, {
+    std::string html;
+    for (int i = 0; i < 100; i++) html += "<div>";
+    html += "ok";
+    browser::html::Parser parser;
+    auto doc = parser.parse(html);
+    ASSERT(doc != nullptr);
+    // All 100 divs present below body.
+    const browser::html::Node *n = doc.get();
+    browser::u32 depth = 0;
+    while (!n->children.empty()) {
+        n = n->children.back().get();
+        depth++;
+    }
+    ASSERT(depth >= 102);  // html > body > 100 divs > text
 })

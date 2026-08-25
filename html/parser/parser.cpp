@@ -1,10 +1,14 @@
-#include "../parser.hpp"
+﻿#include "../parser.hpp"
 
 #include "../utf8.hpp"
 
 #include <unordered_set>
 
 namespace browser::html {
+
+    // H-C1: maximum open-element depth; hostile pages deeper than this are
+    // flattened by ignoring further start tags.
+    inline constexpr size_t kMaxDomDepth = 512;
 
     Parser::Parser() : preload_scanner_(nullptr) {}
 
@@ -39,8 +43,17 @@ namespace browser::html {
         if (token.index() != 3)
             skip_leading_newline_ = false;
 
+        // H-C1: cap DOM depth. Beyond the cap, start tags are ignored â€” the
+        // tree stays valid (text still attaches to the current node) but a
+        // hostile page can no longer build an arbitrarily deep structure.
+        if (token.index() == 1 && stack_.size() >= kMaxDomDepth) {
+            auto &tag = std::get<TagToken>(token);
+            if (tag.type == TokenType::START_TAG)
+                return;
+        }
+
         // Spec: a <template> start tag is handled identically from any
-        // insertion mode (except raw text modes) — insert the element, push it,
+        // insertion mode (except raw text modes) â€” insert the element, push it,
         // enter "in template", set a formatting marker.
         if (mode_ != InsertionMode::TEXT && token.index() == 1) {
             auto &tag = std::get<TagToken>(token);
@@ -864,7 +877,7 @@ namespace browser::html {
         }
 
         if (t == "template") {
-            // Spec: works from any insertion mode — generate implied end tags,
+            // Spec: works from any insertion mode â€” generate implied end tags,
             // pop until the template element has been popped, clear active
             // formatting elements up to the marker, then reset the mode.
             if (!has_element_in_scope("template"))

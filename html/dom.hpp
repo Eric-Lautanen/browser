@@ -14,7 +14,10 @@ namespace browser::html {
         Node *parent = nullptr;
         Node *next_sibling = nullptr;
         Node *prev_sibling = nullptr;
-        virtual ~Node() = default;
+        // H-C1: destruction must not recurse per tree level — a hostile page
+        // with tens of thousands of nesting levels would overflow the stack
+        // when the document is freed. Defined in dom.cpp (iterative).
+        virtual ~Node();
     };
 
     struct Document : Node {
