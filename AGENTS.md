@@ -2,7 +2,7 @@
 
 ## Project Identity
 
-From-scratch C++20 web browser for Windows x86-64. Zero third-party dependencies. Every component — HTML5 parser, CSS layout (block/flex/grid), JavaScript VM+JIT, TLS 1.3, HTTP/2, font rasterizer, OpenGL renderer — is hand-written. ~25K LOC. Read `structure.md` for the complete file tree and CMake targets before touching any source.
+From-scratch C++20 web browser for Windows x86-64. Zero third-party dependencies. Every component — HTML5 parser, CSS layout (block/flex/grid/table/multi-column), JavaScript VM+JIT, TLS 1.3, HTTP/2, font rasterizer, OpenGL renderer — is hand-written. ~73K LOC. Read `structure.md` for the complete file tree and CMake targets before touching any source.
 
 **This is a fully functional browser, not a toy.** Every page must render correctly — HTML structure, CSS styling (all layout modes including flex/grid/table/positioned), UTF-8 text (Latin, CJK, Arabic, emoji), images, forms, interactive elements. Performance and correctness must match mainstream browsers. If a feature is partially implemented, finish it before moving on. The test suite validates internal data structures; visual output is the real measure of correctness.
 
@@ -226,12 +226,12 @@ Categories: `PARSE_ERROR`, `CASCADE_ERROR`, `LAYOUT_ERROR`, `ENCODING_ERROR`, `M
 1. Create `tools/tests/regression_NNN_description.html` with the minimal HTML that reproduces the bug
 2. DOM fixture is auto-generated on first run (jsdom reference)
 3. After fixing the bug, bootstrap layout/cascade/display-list fixtures from the corrected engine:
-   ```bash
-   BROWSER=build/browser.exe
-   $BROWSER --dump-layout tools/tests/regression_NNN_description.html > \
-     tools/tests/regression_NNN_description.expected-layout.json
+   ```powershell
+   $BROWSER = "build\browser.exe"
+   cmd /c "$BROWSER --dump-layout tools\tests\regression_NNN_description.html > tools\tests\regression_NNN_description.expected-layout.json"
    ```
-4. Run `tools/run_tests.sh --json` and verify the new test passes
+   (Use `cmd /c` for redirection — PowerShell `>` writes UTF-16 which breaks the exact-string comparison.)
+4. Run `.\tools\run_tests.ps1 -json` and verify the new test passes
 
 ---
 
@@ -240,10 +240,14 @@ Categories: `PARSE_ERROR`, `CASCADE_ERROR`, `LAYOUT_ERROR`, `ENCODING_ERROR`, `M
 ```bash
 cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -S . -B build
 ninja -C build browser
-ninja -C build run_tests   # C++ unit test suite (30+ executables in tests/)
+ninja -C build builtins_test   # build any single test executable
 ```
 
-The C++ unit tests in `tests/` (custom framework: `TEST()` / `ASSERT_EQ()`) are separate from the external harness in `tools/`. Both must pass. The C++ tests cover individual subsystems (parser, VM, layout engine internals). The external harness tests end-to-end pipeline output against reference parsers.
+The C++ unit tests in `tests/` (custom framework: `TEST()` / `ASSERT_EQ()`) are
+separate from the external harness in `tools/`. Both must pass. The C++ tests
+are 40 standalone executables — run them directly (`.\build\layout_test.exe`,
+exit code = number of failures). The custom target `run_tests` only runs the
+framework's self-test, not the suite.
 
 ---
 
@@ -265,9 +269,9 @@ browser/              Chrome UI, page loader, history, bookmarks, settings
 async/                C++20 coroutines, channels, thread pool, IOCP
 image/                BMP, PNG, GIF, JPEG decoders (all hand-written)
 platform/             Win32 window, WGL context, audio
-tests/                C++ unit tests (30+ executables)
+tests/                C++ unit tests (40 executables incl. builtins_test)
 tools/                External test harness (this section)
-  run_tests.sh        Test runner
+  run_tests.ps1       Test runner (-quick / -filter / -full)
   json_diff.py        Diff engine
   reference_html.js   jsdom reference (DOM stage)
   reference_css.js    postcss reference (CSS stage)
@@ -289,7 +293,7 @@ tools/                External test harness (this section)
    ```powershell
    ninja -C build html_test       # just the HTML parser test
    ninja -C build layout_test     # just the layout test
-   ninja -C build flex_test       # just the flexbox test
+   ninja -C build builtins_test   # just the JS builtin tests
    ```
 8. **Run harness** — `.\tools\run_tests.ps1 -filter "your_test_pattern"`; compare to baseline
 9. **Check `ref_errors.log`** — must be empty
@@ -298,13 +302,16 @@ tools/                External test harness (this section)
 
 **Never** break a passing test. If a test was passing before your change and fails after, stop and fix it before proceeding.
 
-**Full suite is for CI and pre-commit only.** Run `-full` and `ninja -C build run_tests` once before committing, when the machine is idle.
+**Full suite is for CI and pre-commit only.** Run `.\tools\run_tests.ps1 -full`
+and every `build\*_test.exe` once before committing, when the machine is idle.
 
 ---
 
 ## Test Harness Resource Usage
 
-The harness spawns a fresh `browser.exe` process per test per stage — that's ~300 processes for a full run. Each one initializes OpenGL, compiles shaders, and loads fonts. On a laptop this can use 4-8 GB RAM and peg the CPU if processes pile up.
+All tests run inside a **single** `browser.exe --test-suite` process — no per-stage
+process spawning. It still initializes OpenGL, compiles shaders, and loads fonts once,
+and a full run is CPU-heavy for a couple of minutes.
 
 **Rules:**
 - Run `tools/run_tests.ps1` only when you can dedicate the machine. It is not a background task.
@@ -314,7 +321,8 @@ The harness spawns a fresh `browser.exe` process per test per stage — that's ~
   ```
 - For quick iteration on a single test, run directly:
   ```powershell
-  build\browser.exe --dump-dom tools\tests\html_basic_structure.html | python3 tools\json_diff.py tools\tests\html_basic_structure.expected-dom.json - --mode dom
+  build\browser.exe --dump-dom tools\tests\html_basic_structure.html > $env:TEMP\dom.json; `
+    python3 tools\json_diff.py tools\tests\html_basic_structure.expected-dom.json $env:TEMP\dom.json --mode dom
   ```
 - The harness already throttles with a 200ms sleep between stages. Do not remove this.
 - Never run two harness instances simultaneously.
@@ -327,9 +335,43 @@ The harness spawns a fresh `browser.exe` process per test per stage — that's ~
 - `.sync_wait()` from a thread pool thread deadlocks — always `co_await` instead.
 - `ConnectEx` requires `bind()` first.
 - DOM native functions: `args[0]` is `this`; first JS argument is `args[1]`.
-- `GCJSFunction::mark_children` must trace `prototype_property` or the prototype is GC'd.
+- `GCJSFunction::mark_children` must trace `prototype_property` AND `fn.properties` or statics/prototypes are GC'd.
 - Timer callbacks that iterate `timer_queue` while potentially modifying it — collect IDs first, fire in a separate loop.
 - Canvas textures cannot be cached by pixel-buffer address — regenerate each frame.
+
+### VM / JS Engine Pitfalls
+
+- Never run GC while a native holds values only in C++ locals — natives execute under
+  `VM::NativeCallScope`, which suspends collection. If you call natives from new code
+  paths, wrap them: `VM::NativeCallScope scope(vm);`.
+- Values that must outlive a native call (promise reactions, timer callbacks) must be
+  stored on a heap object (e.g. the promise's hidden keys) before returning — C++ locals
+  are invisible to the collector once the scope ends.
+- To invoke bytecode from native code, use `vm->invoke(fn, args[, this])` — never push
+  call frames directly; `invoke` contains throws via state save/restore.
+- Top-level `var` compiles to `STORE_GLOBAL`; inside functions it is a local. Reads
+  resolve local-first, so shadowing behaves as expected.
+- Compound assignment (`+=` etc.) must go through `compile_assign`, which emits an
+  explicit read-modify-write; do not desugar in the parser.
+- Array elements live in `JSObject::array_elements`, not the property map — numeric
+  get/set goes through `get_property`/`set_property` special cases (index, `length`,
+  hole-filling growth).
+- Function expressions parse into `ArrowFuncExpr` (the compiler treats them as
+  first-class values); `parse_program`/`parse_block` force progress when a statement
+  consumes nothing — do not remove that guard or one bad token hangs the parser.
+
+### Networking Ownership Pitfalls
+
+- Sub-clients (`HTTP1Client`, `HTTP2Client`) borrow the caller's `Connection` via
+  `ConnectionRef::adopt()` and own their fallback socket via `obtain()`. Never move the
+  caller's connection into a sub-client and never `delete` a TLS pointer after passing
+  ownership — transfer it with `std::move(unique_ptr)`.
+
+### Tooling Pitfalls
+
+- PowerShell `>` redirection writes UTF-16 — always use `cmd /c "browser.exe --dump-x ... > file"`
+  when regenerating fixtures.
+- Do NOT run `clang-format` on `CMakeLists.txt` or `.md` files — only `.cpp/.hpp`.
 
 ## Debug Shortcuts
 
@@ -339,10 +381,6 @@ The harness spawns a fresh `browser.exe` process per test per stage — that's ~
 | Ctrl+Shift+S | Save viewport screenshot to `viewport_screenshot.bmp` |
 | Ctrl+Shift+X | Copy all page text to clipboard |
 | Ctrl+L | Focus address bar |
-| Ctrl+T | New tab |
-| Ctrl+R / F5 | Refresh |
-| F11 | Toggle fullscreen |
-| F12 | DevTools |
 | Ctrl+T | New tab |
 | Ctrl+R / F5 | Refresh |
 | F11 | Toggle fullscreen |

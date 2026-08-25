@@ -1,18 +1,18 @@
-# Browser Engine Test Harness
+﻿# Browser Engine Test Harness
 
 Automated testing and regression harness for the from-scratch C++ browser engine.
 Compares engine output against spec-compliant reference parsers at every pipeline
-stage: HTML parsing → CSS parsing → cascade → layout → paint.
+stage: HTML parsing â†’ CSS parsing â†’ cascade â†’ layout â†’ paint.
 
 ## Architecture
 
 ```
-test.html ──┬──▶ reference_html.js ──▶ expected-dom.json ──┐
-             │                                               │
-             └──▶ engine --dump-dom  ──▶ actual-dom.json ──┐│
-                                                             ▼│
+test.html â”€â”€â”¬â”€â”€â–¶ reference_html.js â”€â”€â–¶ expected-dom.json â”€â”€â”
+             â”‚                                               â”‚
+             â””â”€â”€â–¶ engine --dump-dom  â”€â”€â–¶ actual-dom.json â”€â”€â”â”‚
+                                                             â–¼â”‚
                                                       json_diff.py
-                                                             │
+                                                             â”‚
                                                PASS / FAIL / MINOR
 ```
 
@@ -23,22 +23,21 @@ The harness has four components:
 | Reference scripts | `tools/reference_html.js`, `tools/reference_css.js`, `tools/reference_js.js` | Parse input using spec-compliant parsers (jsdom, postcss, acorn) |
 | Engine dump modes | `src/main.cpp` (CLI flags) | Run individual pipeline stages via `--dump-dom`, `--dump-css`, `--dump-cascade`, `--dump-layout`, `--dump-display-list` |
 | Diff engine | `tools/json_diff.py` | Recursively compare expected vs actual JSON trees |
-| Test runner | `tools/run_tests.sh` | Orchestrate everything, collect results |
+| Test runner | `tools/run_tests.ps1` | Orchestrate everything, collect results |
 
 ## Prerequisites
 
 - **Node.js** >= 18 (for reference scripts)
 - **Python 3** >= 3.8 (for diff engine)
-- **C++ compiler** with C++20 coroutine support (MSVC 2022 recommended)
+- **C++ compiler** with C++20 coroutine support (GCC 15.2+ / MinGW-w64 as used in CI)
 - **CMake** >= 3.16 (for building the engine)
 
 ## Setup
 
-```bash
-# 1. Build the browser engine
-cd browser
-cmake -S . -B build
-cmake --build build
+```powershell
+# 1. Build the browser engine (from repo root)
+cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -S . -B build
+ninja -C build browser
 
 # 2. Install Node.js dependencies for reference scripts
 cd tools
@@ -46,25 +45,32 @@ npm install
 cd ..
 
 # 3. Verify everything works
-tools/run_tests.sh
+.\tools\run_tests.ps1 -quick
 ```
 
 ## Running Tests
 
 ### Full test suite
 
-```bash
-# Uses the default build/browser.exe
-tools/run_tests.sh
+```powershell
+# Uses the default build/browser.exe; -full runs everything in one process
+.\tools\run_tests.ps1 -full
 
 # Or specify a custom browser binary
-BROWSER=/path/to/browser.exe tools/run_tests.sh
+.\tools\run_tests.ps1 -full -browser_bin C:\path\to\browser.exe
+```
+
+### Quick / filtered runs (preferred during iteration)
+
+```powershell
+.\tools\run_tests.ps1 -quick                 # 14 representative tests
+.\tools\run_tests.ps1 -filter "flex|grid"    # filename substring match, '|' = OR
 ```
 
 ### Full test suite with JSON output
 
-```bash
-tools/run_tests.sh --json
+```powershell
+.\tools\run_tests.ps1 -full -json
 ```
 
 This writes structured JSON results to `tools/results/latest_run.json` with
@@ -105,7 +111,7 @@ Parses HTML and outputs the full DOM tree as JSON. Schema:
 ```
 
 Expected DOM files are generated from the reference parser (jsdom).
-These are the gold standard — any mismatch is a real parsing bug.
+These are the gold standard â€” any mismatch is a real parsing bug.
 
 **Known intentional divergence:** `html_noscript.html` is bootstrapped from the
 engine instead. jsdom always parses `<noscript>` contents as elements (it does
@@ -223,8 +229,8 @@ Each diff entry has:
 ```
 
 **Severity:**
-- `CRITICAL` — structural error, wrong value, missing/extra node (exit code 1)
-- `MINOR` — whitespace difference, numeric tolerance, color channel drift (exit code 2)
+- `CRITICAL` â€” structural error, wrong value, missing/extra node (exit code 1)
+- `MINOR` â€” whitespace difference, numeric tolerance, color channel drift (exit code 2)
 
 **Categories:**
 | Category | Meaning |
@@ -272,18 +278,19 @@ node tools/reference_html.js tools/tests/regression_NNN_description.html > \
 
 3. Generate expected cascade and layout from a known-good engine state:
 
-```bash
-BROWSER=build/browser.exe
-"$BROWSER" --dump-cascade tools/tests/regression_NNN_description.html \
-  > tools/tests/regression_NNN_description.expected-cascade.json
-"$BROWSER" --dump-layout tools/tests/regression_NNN_description.html \
-  > tools/tests/regression_NNN_description.expected-layout.json
+```powershell
+$BROWSER = "build\browser.exe"
+cmd /c "$BROWSER --dump-cascade tools\tests\regression_NNN_description.html > tools\tests\regression_NNN_description.expected-cascade.json"
+cmd /c "$BROWSER --dump-layout tools\tests\regression_NNN_description.html > tools\tests\regression_NNN_description.expected-layout.json"
 ```
+
+(Use `cmd /c` for redirection — PowerShell `>` writes UTF-16 which breaks the
+exact-string comparison.)
 
 4. Run the test suite to verify:
 
-```bash
-tools/run_tests.sh
+```powershell
+.\tools\run_tests.ps1 -filter "regression_NNN"
 ```
 
 The test runner automatically discovers any `.html` or `.css` file in the test
@@ -308,31 +315,31 @@ They are **engine-bootstrapped snapshots**. Follow this workflow:
 ```yaml
 - name: Build
   run: |
-    cmake -S . -B build
-    cmake --build build
+    cmake -G Ninja -DCMAKE_CXX_COMPILER=g++ -S . -B build
+    ninja -C build browser
 
 - name: Test
-  run: tools/run_tests.sh
-  env:
-    BROWSER: build/browser.exe
+  run: .\tools\run_tests.ps1 -full
+  shell: pwsh
 ```
 
 ### JSON CI output
 
 ```yaml
 - name: Test
-  run: tools/run_tests.sh --json
+  run: .\tools\run_tests.ps1 -full -json
+  shell: pwsh
 ```
 
 The JSON output at `tools/results/latest_run.json` can be parsed by CI tools
-for structured reporting. It includes root-cause analysis — if a DOM failure
+for structured reporting. It includes root-cause analysis â€” if a DOM failure
 is detected, cascade/layout/display failures in the same test are tagged as
 `secondary`, enabling immediate identification of the first broken stage.
 
 ### Expected outcomes
 
 - **0 failures**: CI passes green
-- **CRITICAL failures only**: CI fails red — a real bug has been introduced
+- **CRITICAL failures only**: CI fails red â€” a real bug has been introduced
 - **MINOR failures only**: CI may be configured to pass with warning (threshold configurable)
 
 ### History tracking
@@ -353,14 +360,14 @@ grep "layout_flexbox" tools/results/history.txt
 ## Determinism
 
 The harness is fully deterministic:
-- Identical input → identical reference output (jsdom/postcss are deterministic)
-- Identical input → identical engine output (all PRNG eliminated from headless modes)
+- Identical input â†’ identical reference output (jsdom/postcss are deterministic)
+- Identical input â†’ identical engine output (all PRNG eliminated from headless modes)
 - Diff engine is a pure function of its two JSON inputs
 
 ## Test File Conventions
 
-- **HTML test files**: `tools/tests/*.html` — run through DOM, cascade, layout, and display-list modes
-- **CSS test files**: `tools/tests/*.css` — run through CSS mode only
+- **HTML test files**: `tools/tests/*.html` â€” run through DOM, cascade, layout, and display-list modes
+- **CSS test files**: `tools/tests/*.css` â€” run through CSS mode only
 - **Expected outputs**: `tools/tests/*.expected-{dom,css,cascade,layout,display-list}.json`
 - **Actual outputs**: `tools/tests/*.actual-{dom,css,cascade,layout,display-list}.json` (generated at test time)
 - **Results**: `tools/results/latest_run.txt` (full diff of failures)
