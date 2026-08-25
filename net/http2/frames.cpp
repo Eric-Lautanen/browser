@@ -42,14 +42,14 @@ namespace browser::net::http2 {
         if (use_tls_) {
             return tls_->send_all(frame.data(), static_cast<u32>(frame.size()));
         } else {
-            return tcp_.send_all(frame.data(), static_cast<u32>(frame.size()));
+            return tcp_->send_all(frame.data(), static_cast<u32>(frame.size()));
         }
     }
 
     Result<u32> HTTP2Client::read_some(u8 *buf, u32 len) {
         if (use_tls_)
             return tls_->receive(buf, len);
-        return tcp_.receive(buf, len);
+        return tcp_->receive(buf, len);
     }
 
     Result<FrameHeader> HTTP2Client::read_frame() {

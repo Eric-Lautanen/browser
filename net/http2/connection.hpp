@@ -114,7 +114,7 @@ namespace browser::net::http2 {
                              u16 port,
                              bool use_tls,
                              Connection *existing_tcp = nullptr,
-                             tls::TLSConnection *existing_tls = nullptr);
+                             std::unique_ptr<tls::TLSConnection> existing_tls = nullptr);
         Result<http::Response> execute(const http::Request &req);
         void close();
         bool is_connected() const;
@@ -122,7 +122,9 @@ namespace browser::net::http2 {
         async::task<http::Response> execute_async(const http::Request &req);
 
     private:
-        Connection tcp_;
+        // Borrows the caller's socket when adopting an existing connection;
+        // owns one otherwise. Never destroys a borrowed socket.
+        ConnectionRef tcp_;
         std::unique_ptr<tls::TLSConnection> tls_;
         bool use_tls_ = false;
         bool connected_ = false;

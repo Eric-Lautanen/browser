@@ -13,7 +13,7 @@ namespace browser::net::http2 {
     HTTP2Client &HTTP2Client::operator=(HTTP2Client &&) noexcept = default;
 
     bool HTTP2Client::is_connected() const {
-        if (!tcp_.is_open())
+        if (!tcp_.valid() || !tcp_->is_open())
             return false;
         if (use_tls_ && (!tls_ || !tls_->is_connected()))
             return false;
@@ -26,6 +26,8 @@ namespace browser::net::http2 {
             tls_->close();
             tls_.reset();
         }
+        // Safe on a borrowed socket: Connection::close() is idempotent and the
+        // borrowed object itself is owned (and destroyed) by the caller.
         tcp_.close();
         next_stream_id_ = 1;
         server_window_ = 65535;
@@ -119,7 +121,7 @@ namespace browser::net::http2 {
             if (r.is_err())
                 return std::string("send preface: " + r.unwrap_err());
         } else {
-            auto r = tcp_.send_all(kPreface, 24);
+            auto r = tcp_->send_all(kPreface, 24);
             if (r.is_err())
                 return std::string("send preface: " + r.unwrap_err());
         }
@@ -190,25 +192,29 @@ namespace browser::net::http2 {
         return {};
     }
 
-    Result<void> HTTP2Client::connect(
-        const std::string &host, u16 port, bool use_tls, Connection *existing_tcp, tls::TLSConnection *existing_tls) {
+    Result<void> HTTP2Client::connect(const std::string &host,
+                                      u16 port,
+                                      bool use_tls,
+                                      Connection *existing_tcp,
+                                      std::unique_ptr<tls::TLSConnection> existing_tls) {
         close();
         use_tls_ = use_tls;
 
         if (existing_tcp && existing_tls) {
-            tcp_ = std::move(*existing_tcp);
-            tls_.reset(existing_tls);
+            // Adopt caller's established connection; take ownership of the TLS layer.
+            tcp_.adopt(*existing_tcp);
+            tls_ = std::move(existing_tls);
         } else {
             ConnectionConfig cfg;
             cfg.connect_timeout_ms = 10000;
             cfg.read_timeout_ms = 30000;
-            auto r = tcp_.open(host, port, cfg);
+            auto r = tcp_.obtain().open(host, port, cfg);
             if (r.is_err())
                 return std::string("connect: " + r.unwrap_err());
 
             if (use_tls_) {
                 tls_ = std::make_unique<tls::TLSConnection>();
-                auto tr = tls_->connect(&tcp_, host);
+                auto tr = tls_->connect(&tcp_.get(), host);
                 if (tr.is_err()) {
                     close();
                     return std::string("tls: " + tr.unwrap_err());
@@ -411,7 +417,7 @@ namespace browser::net::http2 {
                 if (r.is_err())
                     co_return std::string("send headers: ") + r.unwrap_err();
             } else {
-                auto r = co_await tcp_.send_all_async(frame.data(), static_cast<u32>(frame.size()));
+                auto r = co_await tcp_->send_all_async(frame.data(), static_cast<u32>(frame.size()));
                 if (r.is_err())
                     co_return std::string("send headers: ") + r.unwrap_err();
             }
@@ -427,7 +433,7 @@ namespace browser::net::http2 {
             u32 got = 0;
             while (got < 9) {
                 auto r = use_tls_ ? co_await tls_->receive_async(header + got, 9 - got)
-                                  : co_await tcp_.receive_async(header + got, 9 - got);
+                                  : co_await tcp_->receive_async(header + got, 9 - got);
                 if (r.is_err())
                     co_return std::string("read frame header: ") + r.unwrap_err();
                 u32 n = r.unwrap();
@@ -453,7 +459,7 @@ namespace browser::net::http2 {
                 u32 pgot = 0;
                 while (pgot < fh.length) {
                     auto r = use_tls_ ? co_await tls_->receive_async(payload.data() + pgot, fh.length - pgot)
-                                      : co_await tcp_.receive_async(payload.data() + pgot, fh.length - pgot);
+                                      : co_await tcp_->receive_async(payload.data() + pgot, fh.length - pgot);
                     if (r.is_err())
                         co_return std::string("read payload: ") + r.unwrap_err();
                     u32 n = r.unwrap();
@@ -481,7 +487,7 @@ namespace browser::net::http2 {
                             co_return std::string("ping ack: ") + r.unwrap_err();
                         }
                     } else {
-                        auto r = co_await tcp_.send_all_async(ack.data(), static_cast<u32>(ack.size()));
+                        auto r = co_await tcp_->send_all_async(ack.data(), static_cast<u32>(ack.size()));
                         if (r.is_err()) {
                             close();
                             co_return std::string("ping ack: ") + r.unwrap_err();
