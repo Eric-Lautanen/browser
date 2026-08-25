@@ -70,7 +70,29 @@ public:
 
                 if (compression != 0) return Result<Image>("Unsupported PNG compression");
                 if (filter != 0) return Result<Image>("Unsupported PNG filter");
-                // interlace (byte 12): 0=none, 1=Adam7 (pass 1 only, non-interlaced decode)
+                u8 interlace = chunk_data[12];
+                if (interlace != 0)
+                    return Result<Image>("Interlaced PNG not supported");
+                // I-C5: reject (color_type, bit_depth) pairs outside the spec table.
+                bool depth_ok = false;
+                switch (color_type) {
+                    case 0:
+                        depth_ok =
+                            bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8 || bit_depth == 16;
+                        break;
+                    case 2:
+                    case 4:
+                    case 6:
+                        depth_ok = bit_depth == 8 || bit_depth == 16;
+                        break;
+                    case 3:
+                        depth_ok = bit_depth == 1 || bit_depth == 2 || bit_depth == 4 || bit_depth == 8;
+                        break;
+                    default:
+                        return Result<Image>("Unsupported PNG color type");
+                }
+                if (!depth_ok)
+                    return Result<Image>("Invalid PNG color type / bit depth combination");
                 has_ihdr = true;
             } else if (std::strcmp(chunk_type, "PLTE") == 0) {
                 if (chunk_len > 0 && chunk_len % 3 == 0) {
@@ -104,35 +126,41 @@ public:
             default: return Result<Image>("Unsupported PNG color type");
         }
 
-        u32 bytes_per_pixel = channels;
-        if (bit_depth >= 8) {
-            bytes_per_pixel = channels * (bit_depth / 8);
-        } else {
-            bytes_per_pixel = 1; // handled specially
-        }
-
-        // Decompress using Deflate
+        // Decompress using Deflate. IDAT already carries its own zlib wrapper
+        // (RFC 1950); inflate() detects and validates it — no fabricated header.
         std::vector<u8> decompressed;
         if (!compressed_data.empty()) {
-            // Build a minimal zlib header for the inflater (no dictionary)
-            std::vector<u8> zlib_data;
-            zlib_data.push_back(0x78); // CMF: deflate, 32K window
-            zlib_data.push_back(0x01); // FLG: check bits, no dict
-            zlib_data.insert(zlib_data.end(), compressed_data.begin(), compressed_data.end());
-            // Adler-32 (append 0 for simplicity - inflate in net/deflate.cpp may not check)
-            zlib_data.push_back(0x00);
-            zlib_data.push_back(0x00);
-            zlib_data.push_back(0x00);
-            zlib_data.push_back(0x00);
-
-            decompressed = net::inflate(zlib_data.data(), static_cast<u32>(zlib_data.size()));
+            decompressed = net::inflate(compressed_data.data(), static_cast<u32>(compressed_data.size()));
         }
 
         if (decompressed.empty()) {
             return Result<Image>("Failed to decompress PNG data");
         }
 
-        u32 bpp = bytes_per_pixel;
+        // 16-bit depths: scale down to 8 bits by keeping the high byte of each
+        // big-endian sample, so the rest of the decoder sees byte-per-sample data.
+        if (bit_depth == 16) {
+            std::vector<u8> narrow;
+            narrow.reserve(decompressed.size() / 2);
+            for (u32 y = 0; y < height; y++) {
+                u32 row_start = static_cast<u32>(y) * (width * channels * 2 + 1);
+                if (row_start >= decompressed.size())
+                    break;
+                narrow.push_back(decompressed[row_start]);  // filter byte
+                for (u32 b = 0; b < width * channels; b++) {
+                    size_t idx = row_start + 1 + b * 2;
+                    if (idx >= decompressed.size())
+                        break;
+                    narrow.push_back(decompressed[idx]);
+                }
+            }
+            decompressed = std::move(narrow);
+            bit_depth = 8;
+        }
+
+        u32 bpp = channels;  // byte depths only reach here (16-bit narrowed above)
+        if (bit_depth < 8)
+            bpp = 1;
         u32 scanline_width = width;
         if (bit_depth < 8) {
             scanline_width = (width * bit_depth + 7) / 8;
@@ -146,6 +174,8 @@ public:
         for (u32 y = 0; y < height; y++) {
             if (src_pos >= decompressed.size()) break;
             u8 filter_type = decompressed[src_pos++];
+            if (filter_type > 4)
+                return Result<Image>("Invalid PNG filter type");
             u32 raw_offset = y * (scanline_width + 1);
             raw_image[raw_offset] = filter_type;
             for (u32 x = 0; x < scanline_width && src_pos < decompressed.size(); x++) {

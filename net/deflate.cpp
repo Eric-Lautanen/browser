@@ -164,7 +164,7 @@ static u32 decode_distance(u32 sym, BitReader& br) {
     return kDistBase[sym] + br.read_bits(kDistExtra[sym]);
 }
 
-static std::vector<u8> inflate_internal(const u8* data, u32 len) {
+static std::vector<u8> inflate_internal(const u8 *data, u32 len, std::size_t max_output) {
     BitReader br(data, len);
     std::vector<u8> result;
     result.reserve(len * 4); // estimate
@@ -183,6 +183,8 @@ static std::vector<u8> inflate_internal(const u8* data, u32 len) {
             br.align_to_byte();
             u32 stored_len = br.read_u16_le();
             /* u16 nlen = */ br.read_u16_le(); // one's complement
+            if (result.size() + stored_len > max_output)
+                return {};
             for (u32 i = 0; i < stored_len && br.byte_pos < br.len; i++) {
                 result.push_back(static_cast<u8>(br.read_byte()));
             }
@@ -258,12 +260,14 @@ static std::vector<u8> inflate_internal(const u8* data, u32 len) {
                     u32 dist_sym = dist_tree->decode(br);
                     if (dist_sym == 0xFFFF) break;
                     u32 distance = decode_distance(dist_sym, br);
-                    if (distance == 0 || distance > result.size()) {
-                        distance = 1;
-                    }
+                    // Invalid distance is a corrupt stream, not a literal 1.
+                    if (distance == 0 || distance > result.size())
+                        break;
                     u32 start = static_cast<u32>(result.size()) - distance;
                     for (u32 i = 0; i < length; i++) {
                         result.push_back(result[start + i]);
+                        if (result.size() > max_output)
+                            return {};
                     }
                 }
             }
@@ -273,11 +277,43 @@ static std::vector<u8> inflate_internal(const u8* data, u32 len) {
     return result;
 }
 
-std::vector<u8> inflate(const u8* data, u32 len) {
-    return inflate_internal(data, len);
+static u32 adler32(const u8 *data, std::size_t len) {
+    u32 a = 1, b = 0;
+    for (std::size_t i = 0; i < len; i++) {
+        a = (a + data[i]) % 65521;
+        b = (b + a) % 65521;
+    }
+    return (b << 16) | a;
 }
 
-std::vector<u8> gzip_decompress(const u8* data, u32 len) {
+std::vector<u8> inflate_raw(const u8 *data, u32 len, std::size_t max_output) {
+    return inflate_internal(data, len, max_output);
+}
+
+std::vector<u8> inflate(const u8 *data, u32 len, std::size_t max_output) {
+    // zlib wrapper detection (RFC 1950): CM must be 8 and (CMF<<8|FLG) % 31 == 0.
+    if (len >= 2 && (data[0] & 0x0F) == 8 && ((static_cast<u32>(data[0]) << 8) | data[1]) % 31 == 0) {
+        bool fdict = (data[1] & 0x20) != 0;
+        if (fdict)
+            return {};  // preset dictionaries unsupported
+        std::size_t body_len = len - 2;
+        // Trailer: Adler-32 (4 bytes). Truncated trailer is malformed.
+        if (body_len < 4)
+            return {};
+        auto out = inflate_internal(data + 2, static_cast<u32>(body_len - 4), max_output);
+        if (out.empty())
+            return {};
+        const u8 *adler = data + len - 4;
+        u32 expected = (static_cast<u32>(adler[0]) << 24) | (static_cast<u32>(adler[1]) << 16) |
+                       (static_cast<u32>(adler[2]) << 8) | static_cast<u32>(adler[3]);
+        if (adler32(out.data(), out.size()) != expected)
+            return {};
+        return out;
+    }
+    return inflate_internal(data, len, max_output);
+}
+
+std::vector<u8> gzip_decompress(const u8 *data, u32 len, std::size_t max_output) {
     if (len < 18) return {};
     if (data[0] != 0x1F || data[1] != 0x8B) return {};
 
@@ -306,7 +342,7 @@ std::vector<u8> gzip_decompress(const u8* data, u32 len) {
 
     if (pos >= len) return {};
 
-    auto decompressed = inflate_internal(data + pos, len - pos);
+    auto decompressed = inflate_internal(data + pos, len - pos, max_output);
 
     return decompressed;
 }

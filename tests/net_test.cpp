@@ -1,12 +1,14 @@
-#include "test_framework.hpp"
-#include "utility.hpp"
-#include "../net/socket.hpp"
+﻿#include "../net/connection.hpp"
+#include "../net/deflate.hpp"
 #include "../net/dns.hpp"
-#include "../net/connection.hpp"
-#include "../net/url.hpp"
 #include "../net/http.hpp"
 #include "../net/http2.hpp"
 #include "../net/http_client.hpp"
+#include "../net/socket.hpp"
+#include "../net/url.hpp"
+#include "test_framework.hpp"
+#include "utility.hpp"
+
 #include <cstring>
 #include <vector>
 
@@ -316,7 +318,7 @@ TEST(url_resolve_dotdot, {
     auto r = browser::net::URL::parse("http://example.com/a/b/c");
     ASSERT(r.is_ok());
     base = r.unwrap();
-    // RFC 3986 §5.2.4: ../../d from /a/b/c -> /d
+    // RFC 3986 Â§5.2.4: ../../d from /a/b/c -> /d
     auto resolved = base.resolve("../../d");
     ASSERT(resolved.is_ok());
     ASSERT_EQ(resolved.unwrap().path, "/d");
@@ -327,7 +329,7 @@ TEST(url_resolve_dotdot_mid, {
     auto r = browser::net::URL::parse("http://example.com/a/b/c");
     ASSERT(r.is_ok());
     base = r.unwrap();
-    // RFC 3986 §5.2.4: ../x/../y from /a/b/c -> /a/b/y (one up, then back into, then up again)
+    // RFC 3986 Â§5.2.4: ../x/../y from /a/b/c -> /a/b/y (one up, then back into, then up again)
     auto resolved = base.resolve("../x/../y");
     ASSERT(resolved.is_ok());
     ASSERT_EQ(resolved.unwrap().path, "/a/y");
@@ -595,7 +597,7 @@ TEST(hpack_integer_boundaries, {
     auto enc0 = hp.encode_integer(0, 5);
     browser::u32 pos0 = 0;
     ASSERT_EQ(hp.decode_integer(enc0.data(), (browser::u32)enc0.size(), pos0, 5), 0u);
-    // Test value 31 (2^5 - 1) — should need extended encoding
+    // Test value 31 (2^5 - 1) â€” should need extended encoding
     auto enc31 = hp.encode_integer(31, 5);
     browser::u32 pos31 = 0;
     ASSERT_EQ(hp.decode_integer(enc31.data(), (browser::u32)enc31.size(), pos31, 5), 31u);
@@ -643,4 +645,65 @@ TEST(hpack_decode_table_size_update, {
     auto entries = hp.decode(data.data(), (browser::u32)data.size());
     ASSERT_EQ(entries.size(), 0u);
     ASSERT_EQ(hp.max_table_size(), 200u);
+})
+
+// ---- Deflate: zlib wrapper detection, Adler-32, bomb cap (I-C2 / N-S8) ----
+
+using namespace browser;
+
+// zlib stream wrapping a stored deflate block containing "hi": 78 01 | 01 02 00 FD FF | hi | adler
+static void append_zlib_stored(std::vector<browser::u8> &out, const std::vector<browser::u8> &raw) {
+    out.push_back(0x78);
+    out.push_back(0x01);
+    u16 len = static_cast<u16>(raw.size());
+    u16 nlen = static_cast<u16>(~len & 0xFFFF);
+    out.push_back(0x01);  // BFINAL=1, BTYPE=00 (stored)
+    out.push_back(static_cast<u8>(len & 0xFF));
+    out.push_back(static_cast<u8>(len >> 8));
+    out.push_back(static_cast<u8>(nlen & 0xFF));
+    out.push_back(static_cast<u8>(nlen >> 8));
+    for (auto b : raw) out.push_back(b);
+    // Adler-32 over raw bytes
+    u32 a = 1, b2 = 0;
+    for (auto byte : raw) {
+        a = (a + byte) % 65521;
+        b2 = (b2 + a) % 65521;
+    }
+    u32 adler = (b2 << 16) | a;
+    out.push_back(static_cast<u8>((adler >> 24) & 0xFF));
+    out.push_back(static_cast<u8>((adler >> 16) & 0xFF));
+    out.push_back(static_cast<u8>((adler >> 8) & 0xFF));
+    out.push_back(static_cast<u8>(adler & 0xFF));
+}
+
+TEST(inflate_zlib_wrapper_detected_and_verified, {
+    std::vector<u8> stream;
+    append_zlib_stored(stream, {'h', 'i'});
+    auto out = net::inflate(stream.data(), static_cast<u32>(stream.size()));
+    ASSERT_EQ(out.size(), 2u);
+    ASSERT_EQ(out[0], 'h');
+    ASSERT_EQ(out[1], 'i');
+})
+
+TEST(inflate_rejects_bad_adler32, {
+    std::vector<u8> stream;
+    append_zlib_stored(stream, {'h', 'i'});
+    stream.back() ^= 0x01;  // corrupt Adler-32
+    auto out = net::inflate(stream.data(), static_cast<u32>(stream.size()));
+    ASSERT(out.empty());
+})
+
+TEST(inflate_raw_accepts_plain_deflate, {
+    std::vector<u8> stream;
+    append_zlib_stored(stream, {'h', 'i'});
+    auto out = net::inflate_raw(stream.data() + 2, static_cast<u32>(stream.size() - 6), net::kMaxInflateOutput);
+    ASSERT_EQ(out.size(), 2u);
+})
+
+TEST(inflate_output_cap_enforced, {
+    // Stored block claiming 100 bytes with a tiny cap must fail cleanly.
+    std::vector<browser::u8> stream;
+    append_zlib_stored(stream, std::vector<u8>(100, 0x42));
+    auto out = net::inflate_raw(stream.data(), static_cast<u32>(stream.size()), 10);
+    ASSERT(out.empty());
 })

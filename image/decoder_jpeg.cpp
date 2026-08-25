@@ -336,14 +336,16 @@ private:
     bool read_sof() {
         u16 len = read_u16();
         if (len < 6) return false;
-        if (pos_ + 6 > size_) return false;
+        if (pos_ + 6 > size_)
+            return false;
         u8 prec = data_[pos_++];
         if (prec != 8) return false;
         height_ = static_cast<int>(read_u16());
         width_ = static_cast<int>(read_u16());
         comp_count_ = data_[pos_++];
         if (comp_count_ < 1 || comp_count_ > 4) return false;
-        if (pos_ + static_cast<size_t>(comp_count_) * 3 > size_) return false;
+        if (pos_ + static_cast<size_t>(comp_count_) * 3 > size_)
+            return false;
         for (int i = 0; i < comp_count_; i++) {
             comps_[i].id = data_[pos_++];
             u8 s = data_[pos_++];
@@ -351,9 +353,12 @@ private:
             comps_[i].v_samp = static_cast<u8>(s & 0x0F);
             comps_[i].q_table_idx = data_[pos_];
             // I-C4: untrusted table index / sampling factors — validate at parse time.
-            if (comps_[i].h_samp < 1 || comps_[i].h_samp > 4) return false;
-            if (comps_[i].v_samp < 1 || comps_[i].v_samp > 4) return false;
-            if (comps_[i].q_table_idx >= 4) return false;
+            if (comps_[i].h_samp < 1 || comps_[i].h_samp > 4)
+                return false;
+            if (comps_[i].v_samp < 1 || comps_[i].v_samp > 4)
+                return false;
+            if (comps_[i].q_table_idx >= 4)
+                return false;
             pos_++;
             if (comps_[i].h_samp > h_samp_max_) h_samp_max_ = comps_[i].h_samp;
             if (comps_[i].v_samp > v_samp_max_) v_samp_max_ = comps_[i].v_samp;
@@ -378,7 +383,8 @@ private:
                 tbl.counts[i] = data_[pos_++];
                 total += tbl.counts[i];
             }
-            if (total > 256 || pos_ + total > size_ || pos_ + total > end) return false;
+            if (total > 256 || pos_ + total > size_ || pos_ + total > end)
+                return false;
             tbl.values.resize(total);
             for (u32 i = 0; i < total; i++)
                 tbl.values[i] = data_[pos_++];
@@ -395,7 +401,8 @@ private:
         // --- read SOS header using pos_ ---
         u16 sos_len = read_u16();
         if (sos_len < 4) return false;
-        if (pos_ >= size_) return false;
+        if (pos_ >= size_)
+            return false;
         int num_sc = data_[pos_++];
         if (num_sc < 1 || num_sc > 4) return false;
         // Baseline JPEG requires all components in one scan
@@ -412,7 +419,8 @@ private:
             // I-C4: SOS table-selector nibbles index huff_[4][2] — reject out of range.
             u8 dc_sel = static_cast<u8>((tbl >> 4) & 0x0F);
             u8 ac_sel = static_cast<u8>(tbl & 0x0F);
-            if (dc_sel >= 4 || ac_sel >= 4) return false;
+            if (dc_sel >= 4 || ac_sel >= 4)
+                return false;
             for (int j = 0; j < comp_count_; j++) {
                 if (comps_[j].id == cid) {
                     comps_[j].dc_tbl = dc_sel;
@@ -441,16 +449,12 @@ private:
         // I-C1: each chroma plane is sized by ITS OWN component's sampling factors,
         // not the max. Plane dims cover the same physical area as luma:
         // width = mcu_w_ * c.h_samp / h_samp_max_.
-        auto comp_plane_w = [&](const JComponent& c) {
-            return mcu_w_ * c.h_samp / h_samp_max_;
-        };
-        auto comp_plane_h = [&](const JComponent& c) {
-            return mcu_h_ * c.v_samp / v_samp_max_;
-        };
+        auto comp_plane_w = [&](const JComponent &c) { return mcu_w_ * c.h_samp / h_samp_max_; };
+        auto comp_plane_h = [&](const JComponent &c) { return mcu_h_ * c.v_samp / v_samp_max_; };
 
         if (comp_count_ >= 3) {
-            const JComponent& c1 = comps_[1];
-            const JComponent& c2 = comps_[2];
+            const JComponent &c1 = comps_[1];
+            const JComponent &c2 = comps_[2];
             cb_stride_ = comp_plane_w(c1);
             cb_rows_ = comp_plane_h(c1);
             cb_buf_.resize(static_cast<size_t>(cb_stride_) * static_cast<size_t>(cb_rows_), 0.0f);
@@ -536,8 +540,9 @@ private:
                                 auto* buf = (c == 1) ? &cb_buf_ : &cr_buf_;
                                 int stride = (c == 1) ? cb_stride_ : cr_stride_;
                                 int rows = (c == 1) ? cb_rows_ : cr_rows_;
-                                if (buf->empty() || stride <= 0 || rows <= 0) continue;
-                                const JComponent& cc = comps_[c];
+                                if (buf->empty() || stride <= 0 || rows <= 0)
+                                    continue;
+                                const JComponent &cc = comps_[c];
                                 int px0 = bx0 * cc.h_samp / h_samp_max_;
                                 int py0 = by0 * cc.v_samp / v_samp_max_;
                                 for (int yy = 0; yy < 8; yy++) {
@@ -545,8 +550,7 @@ private:
                                         int px = px0 + xx;
                                         int py = py0 + yy;
                                         if (px >= 0 && px < stride && py >= 0 && py < rows)
-                                            (*buf)[static_cast<size_t>(py) * stride + px] =
-                                                idct[yy * 8 + xx] + 128.0f;
+                                            (*buf)[static_cast<size_t>(py) * stride + px] = idct[yy * 8 + xx] + 128.0f;
                                     }
                                 }
                             }
@@ -594,8 +598,8 @@ private:
 
         // YCbCr → RGB (nearest-neighbour chroma upsampling, per-component ratios)
         // I-C1/I-M8: index each chroma plane with its own stride and sampling ratio.
-        const JComponent& cb_c = comps_[1];
-        const JComponent& cr_c = comps_[2];
+        const JComponent &cb_c = comps_[1];
+        const JComponent &cr_c = comps_[2];
         // Fewer than 3 components: missing chroma planes render as neutral gray.
         if (comp_count_ < 3 || cb_buf_.empty() || cr_buf_.empty()) {
             for (int y = 0; y < height_; y++) {
