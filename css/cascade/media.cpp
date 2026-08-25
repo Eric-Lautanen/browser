@@ -1,4 +1,5 @@
-#include "engine.hpp"
+﻿#include "engine.hpp"
+#include "../../parsers.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -39,38 +40,48 @@ namespace browser::css {
             std::regex minw_re(R"(min-width\s*:\s*(\d+)\s*px)");
             std::smatch m;
             if (std::regex_search(cond, m, minw_re)) {
-                f32 minw = std::stof(m[1].str());
+                auto minw = parse::parse_f32(m[1].str());
+                if (!minw) return false;
+                return viewport_width >= *minw;
                 return viewport_width >= minw;
             }
 
             std::regex maxw_re(R"(max-width\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, maxw_re)) {
-                f32 maxw = std::stof(m[1].str());
+                auto maxw = parse::parse_f32(m[1].str());
+                if (!maxw) return false;
+                return viewport_width <= *maxw;
                 return viewport_width <= maxw;
             }
 
             std::regex minh_re(R"(min-height\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, minh_re)) {
-                f32 minh = std::stof(m[1].str());
+                auto minh = parse::parse_f32(m[1].str());
+                if (!minh) return false;
+                return viewport_height >= *minh;
                 return viewport_height >= minh;
             }
 
             std::regex maxh_re(R"(max-height\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, maxh_re)) {
-                f32 maxh = std::stof(m[1].str());
+                auto maxh = parse::parse_f32(m[1].str());
+                if (!maxh) return false;
+                return viewport_height <= *maxh;
                 return viewport_height <= maxh;
             }
 
             std::regex w_re(R"(width\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, w_re)) {
-                f32 w = std::stof(m[1].str());
-                return std::abs(viewport_width - w) < 0.5f;
+                auto wv = parse::parse_f32(m[1].str());
+                if (!wv) return false;
+                return std::abs(viewport_width - *wv) < 0.5f;
             }
 
             std::regex h_re(R"(height\s*:\s*(\d+)\s*px)");
             if (std::regex_search(cond, m, h_re)) {
-                f32 h = std::stof(m[1].str());
-                return std::abs(viewport_height - h) < 0.5f;
+                auto hv = parse::parse_f32(m[1].str());
+                if (!hv) return false;
+                return std::abs(viewport_height - *hv) < 0.5f;
             }
 
             if (cond.find("prefers-color-scheme") != std::string::npos) {
@@ -96,7 +107,9 @@ namespace browser::css {
 
             std::regex res_re(R"(resolution:\s*(\d+(?:\.\d+)?)\s*dpi)");
             if (std::regex_search(cond, m, res_re)) {
-                f32 res = std::stof(m[1].str());
+                auto res = parse::parse_f32(m[1].str());
+                if (!res) return false;
+                return device_pixel_ratio * 96.0f >= *res;
                 return device_pixel_ratio * 96.0f >= res;
             }
 

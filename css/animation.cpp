@@ -1,4 +1,5 @@
 #include "animation.hpp"
+#include "../parsers.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -54,10 +55,14 @@ namespace browser::css {
             return cubic_bezier(t, 0.42f, 0.0f, 0.58f, 1.0f);
         // steps() - simplified
         if (func.find("steps(") != std::string::npos) {
+            // CS-S5: hostile input previously reached std::stoi (terminate under
+            // -fno-exceptions) and substr underflowed when the comma came first.
             int n = 1;
             auto pos = func.find(',');
-            if (pos != std::string::npos) {
-                n = std::stoi(func.substr(6, pos - 6));
+            if (pos != std::string::npos && pos >= 6) {
+                auto v = parse::parse_i64(std::string_view(func).substr(6, pos - 6));
+                if (v && *v > 0)
+                    n = static_cast<int>(std::min<i64>(*v, 1000));
             }
             f32 step = 1.0f / n;
             return std::floor(t * n) * step;

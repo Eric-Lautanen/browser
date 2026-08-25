@@ -1,4 +1,5 @@
 #include "cookie_jar.hpp"
+#include "../parsers.hpp"
 #include <fstream>
 #include <sstream>
 #include <chrono>
@@ -175,7 +176,11 @@ Result<void> CookieJar::load_from_file(const std::string& path) {
         c.domain = domain;
         c.path = path_str;
         c.secure = (secure_flag == "TRUE");
-        c.expires_time = static_cast<u64>(std::stoull(expires_str));
+        if (auto v = parse::parse_u64(expires_str)) {
+            c.expires_time = static_cast<u64>(*v);
+        } else {
+            return {};  // corrupt line: skip rather than terminate (N-S10)
+        }
         c.creation_time = now_epoch_secs();
         c.last_access_time = c.creation_time;
 

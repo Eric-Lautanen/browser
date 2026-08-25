@@ -1,5 +1,5 @@
 #include "types.hpp"
-
+#include "../../parsers.hpp"
 #include "socket_win32.hpp"
 
 #include <sstream>
@@ -22,7 +22,12 @@ namespace browser::net {
             if (c == '.') {
                 if (count >= 4)
                     return std::string("invalid IPv4 address");
-                parts[count++] = static_cast<u32>(std::stoul(current));
+                if (current.empty())
+                    return std::string("invalid IPv4 address");
+                auto v = parse::parse_u64(current);
+                if (!v)
+                    return std::string("invalid IPv4 address");
+                parts[count++] = static_cast<u32>(*v);
                 current.clear();
             } else if (c >= '0' && c <= '9') {
                 current += c;
@@ -32,7 +37,12 @@ namespace browser::net {
         }
         if (count != 3 || current.empty())
             return std::string("invalid IPv4 address");
-        parts[count] = static_cast<u32>(std::stoul(current));
+        {
+            auto v2 = parse::parse_u64(current);
+            if (!v2)
+                return std::string("invalid IPv4 address");
+            parts[count] = static_cast<u32>(*v2);
+        }
         for (int i = 0; i < 4; i++) {
             if (parts[i] > 255)
                 return std::string("invalid IPv4 address");
@@ -72,7 +82,10 @@ namespace browser::net {
                 return {};
             if (num_parsed >= 8)
                 return std::string("too many IPv6 groups");
-            parsed[num_parsed++] = static_cast<u16>(std::stoul(current, nullptr, 16));
+            auto v3 = parse::parse_u64(current, 16);
+            if (!v3)
+                return std::string("invalid IPv6 group");
+            parsed[num_parsed++] = static_cast<u16>(*v3);
             current.clear();
             return {};
         };

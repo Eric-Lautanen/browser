@@ -1,4 +1,5 @@
-#include "http_cache.hpp"
+﻿#include "http_cache.hpp"
+#include "../parsers.hpp"
 #include <fstream>
 #include <sstream>
 #include <cstring>
@@ -293,7 +294,8 @@ Result<void> HTTPCache::store(const std::string& method, const std::string& url,
             pos += 8;
             auto end = cc.find_first_not_of("0123456789", pos);
             if (end == std::string::npos) end = cc.size();
-            entry.max_age_secs = static_cast<u64>(std::stoul(cc.substr(pos, end - pos)));
+            if (auto v = parse::parse_u64(std::string_view(cc).substr(pos, end - pos)))
+                entry.max_age_secs = static_cast<u64>(*v);
         }
     }
 
@@ -342,7 +344,8 @@ Result<void> HTTPCache::update_from_304(CacheEntry& entry, const http::Response&
         if (pos != std::string::npos && pos + 8 <= cc.size()) {
             auto end = cc.find_first_not_of("0123456789", pos + 8);
             if (end == std::string::npos) end = cc.size();
-            entry.max_age_secs = static_cast<u64>(std::stoul(cc.substr(pos + 8, end - pos - 8)));
+            if (auto v = parse::parse_u64(std::string_view(cc).substr(pos + 8, end - pos - 8)))
+                entry.max_age_secs = static_cast<u64>(*v);
         }
     }
     if (!response.headers.get("etag").empty())

@@ -1,4 +1,5 @@
 #include "page_loader.hpp"
+#include "../parsers.hpp"
 
 #include "../async/executor.hpp"
 #include "../css/cascade.hpp"
@@ -606,9 +607,16 @@ namespace browser {
         } else if (key == "cookie_policy") {
             settings_->set_cookie_policy(val);
         } else if (key == "font_size") {
-            settings_->set_font_size(static_cast<u32>(std::stoul(val)));
+            // BR-C1: malformed values previously hit std::stoul → terminate.
+            if (auto n = parse::parse_u64(val)) {
+                u32 size = static_cast<u32>(*n);
+                settings_->set_font_size(std::clamp(size, 8u, 64u));
+            }
         } else if (key == "zoom") {
-            settings_->set_zoom_level(std::stof(val));
+            if (auto z = parse::parse_f32(val)) {
+                f32 zoom = *z;
+                settings_->set_zoom_level(std::clamp(zoom, 0.25f, 5.0f));
+            }
         }
         settings_->save_to_file(data_dir() + "/settings.txt");
     }

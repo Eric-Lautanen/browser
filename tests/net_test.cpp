@@ -37,6 +37,22 @@ TEST(ipv4_address_invalid, {
     ASSERT(a.is_err());
 })
 
+// X-C1/N-S10: malformed hosts previously hit std::stoul → std::terminate.
+TEST(ipv4_address_empty_segments_rejected, {
+    auto a = browser::net::IPv4Address::from_string("1..2.3");
+    ASSERT(a.is_err());
+    auto b = browser::net::IPv4Address::from_string("1.2.3.");
+    ASSERT(b.is_err());
+    auto c = browser::net::IPv4Address::from_string(".1.2.3");
+    ASSERT(c.is_err());
+})
+
+TEST(ipv4_address_overflow_segment_rejected, {
+    // Digit run exceeding u64 must not throw/abort.
+    auto a = browser::net::IPv4Address::from_string("99999999999999999999999.2.3.4");
+    ASSERT(a.is_err());
+})
+
 TEST(ipv4_address_eq, {
     auto a1 = browser::net::IPv4Address(10, 0, 0, 1);
     auto a2 = browser::net::IPv4Address(10, 0, 0, 1);
