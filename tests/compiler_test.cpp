@@ -143,12 +143,21 @@ TEST(compile_object, {
 // Variable declarations
 // ---------------------------------------------------------------------------
 
-TEST(compile_var_decl, {
+// Top-level `var` compiles to STORE_GLOBAL (engine semantics); locals only
+// exist inside function bodies.
+TEST(compile_var_decl_global, {
     auto bc = Compiler{}.compile(*Parser("var x = 42;").parse_program());
+    ASSERT(instruction_index(*bc, Opcode::STORE_GLOBAL) < bc->instructions.size());
+})
+
+TEST(compile_var_decl_function_local, {
+    auto bc = Compiler{}.compile(*Parser("function f() { var y = 7; }").parse_program());
     ASSERT(bc->num_locals > 0);
+    ASSERT(instruction_index(*bc, Opcode::STORE_LOCAL) < bc->instructions.size());
 })
 
 TEST(compile_block, {
+    // `var` inside a block gets local slots (only bare top-level var becomes global).
     auto bc = Compiler{}.compile(*Parser("{ var a = 1; var b = 2; }").parse_program());
     ASSERT_EQ(bc->num_locals, 2u);
 })
@@ -265,7 +274,7 @@ TEST(compile_member_computed, {
 // ---------------------------------------------------------------------------
 
 TEST(compile_assign_local, {
-    auto bc = Compiler{}.compile(*Parser("var x; x = 5;").parse_program());
+    auto bc = Compiler{}.compile(*Parser("function f() { var x; x = 5; }").parse_program());
     ASSERT(instruction_index(*bc, Opcode::STORE_LOCAL) < bc->instructions.size());
 })
 
