@@ -137,6 +137,20 @@ namespace browser::js {
                 gc_obj->mark(heap);
             }
         }
+        for (auto &[key, val] : fn.properties) {
+            if (val.type == JSValue::Type::OBJECT && val.object_val) {
+                auto *gc_obj = heap.lookup_object(val.object_val);
+                if (gc_obj && !gc_obj->is_marked()) {
+                    gc_obj->mark(heap);
+                }
+            }
+            if (val.type == JSValue::Type::FUNCTION && val.function_val) {
+                auto *gc_fn = heap.lookup_function(val.function_val);
+                if (gc_fn && !gc_fn->is_marked()) {
+                    gc_fn->mark(heap);
+                }
+            }
+        }
     }
 
 }  // namespace browser::js

@@ -541,6 +541,32 @@ namespace browser::js {
                     return std::make_unique<Expr>(std::move(*unary));
                 }
 
+                // Function expression: function name?(params) { body }.
+                // Parsed as ArrowFuncExpr — it carries identical information
+                // (params + body) and the compiler already emits a first-class
+                // function value for it.
+                if (current_.text == "function") {
+                    advance();
+                    // Optional binding name ('function' is reserved, so an
+                    // identifier here can only be the name).
+                    if (current_.type == TokenType::IDENTIFIER)
+                        advance();
+                    expect(TokenType::LPAREN);
+                    auto fn_expr = std::make_unique<ArrowFuncExpr>();
+                    fn_expr->line = line;
+                    fn_expr->column = col;
+                    while (current_.type != TokenType::RPAREN && current_.type != TokenType::EOF_TOKEN) {
+                        auto p = parse_pattern();
+                        if (p)
+                            fn_expr->params.push_back(std::move(p));
+                        if (!match(TokenType::COMMA))
+                            break;
+                    }
+                    expect(TokenType::RPAREN);
+                    parse_arrow_body(fn_expr.get());
+                    return std::make_unique<Expr>(std::move(*fn_expr));
+                }
+
                 // Single-identifier arrow: x => ...
                 auto name = current_.text;
                 advance();

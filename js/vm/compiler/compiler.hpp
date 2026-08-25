@@ -40,6 +40,7 @@ namespace browser::js {
         void compile_if(IfStmt &if_stmt);
         void compile_while(WhileStmt &while_stmt);
         void compile_for(ForStmt &for_stmt);
+        void compile_try(TryStmt &trys);
         u32 resolve_local(const std::string &name);
         u32 allocate_local(const std::string &name);
         u32 add_constant(const BytecodeFunction::Constant &c);

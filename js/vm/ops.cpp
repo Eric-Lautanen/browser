@@ -97,6 +97,20 @@ namespace browser::js {
         auto it = properties.find(name);
         if (it != properties.end())
             return it->second;
+        // Array index and length access read from array_elements.
+        if (is_array) {
+            if (name == "length")
+                return JSValue::number(static_cast<f64>(array_elements.size()));
+            char *end = nullptr;
+            long idx = std::strtol(name.c_str(), &end, 10);
+            bool numeric = end && !name.empty() && *end == '\0' && idx >= 0;
+            if (numeric) {
+                size_t i = static_cast<size_t>(idx);
+                if (i < array_elements.size())
+                    return array_elements[i];
+                return JSValue::undefined();
+            }
+        }
         if (prototype.type == JSValue::Type::OBJECT && prototype.object_val) {
             return prototype.object_val->get_property(name);
         }
@@ -104,6 +118,19 @@ namespace browser::js {
     }
 
     void JSObject::set_property(const std::string &name, const JSValue &val) {
+        // Numeric writes on arrays go to storage; holes are filled with undefined.
+        if (is_array) {
+            char *end = nullptr;
+            long idx = std::strtol(name.c_str(), &end, 10);
+            bool numeric = end && !name.empty() && *end == '\0' && idx >= 0;
+            if (numeric) {
+                size_t i = static_cast<size_t>(idx);
+                if (i >= array_elements.size())
+                    array_elements.resize(i + 1, JSValue::undefined());
+                array_elements[i] = val;
+                return;
+            }
+        }
         properties[name] = val;
     }
 
@@ -264,6 +291,10 @@ namespace browser::js {
         auto obj_val = pop();
         if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
             push(obj_val.object_val->get_property(prop));
+        } else if (obj_val.type == JSValue::Type::FUNCTION && obj_val.function_val) {
+            // Statics like Date.now / Promise.resolve live on the function itself.
+            auto it = obj_val.function_val->properties.find(prop);
+            push(it != obj_val.function_val->properties.end() ? it->second : JSValue::undefined());
         } else if (obj_val.type == JSValue::Type::STRING) {
             push(JSValue::undefined());
         } else {
@@ -276,6 +307,9 @@ namespace browser::js {
         auto obj_val = pop();
         if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
             push(obj_val.object_val->get_property(key_val.to_string()));
+        } else if (obj_val.type == JSValue::Type::FUNCTION && obj_val.function_val) {
+            auto it = obj_val.function_val->properties.find(key_val.to_string());
+            push(it != obj_val.function_val->properties.end() ? it->second : JSValue::undefined());
         } else {
             push(JSValue::undefined());
         }
@@ -286,6 +320,8 @@ namespace browser::js {
         auto obj_val = pop();
         if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
             obj_val.object_val->set_property(prop, val);
+        } else if (obj_val.type == JSValue::Type::FUNCTION && obj_val.function_val) {
+            obj_val.function_val->properties[prop] = val;
         }
         push(val);
     }
@@ -296,6 +332,8 @@ namespace browser::js {
         auto obj_val = pop();
         if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
             obj_val.object_val->set_property(key_val.to_string(), val);
+        } else if (obj_val.type == JSValue::Type::FUNCTION && obj_val.function_val) {
+            obj_val.function_val->properties[key_val.to_string()] = val;
         }
         push(val);
     }
@@ -469,6 +507,7 @@ namespace browser::js {
                     args.push_back(stack_[stack_.size() - argc + i]);
                 }
                 stack_.resize(stack_.size() - argc - 1);
+                NativeCallScope gc_guard(*this);
                 push(fn->native_fn(args, fn->native_context));
             } else if (fn->bytecode) {
                 auto *new_frame = push_call_frame(fn, argc);
@@ -494,6 +533,16 @@ namespace browser::js {
         }
         JSValue callee;
         JSValue receiver_val;
+        auto fn_property = [](const JSValue &recv, const std::string &name) -> JSValue {
+            if (recv.type == JSValue::Type::OBJECT && recv.object_val)
+                return recv.object_val->get_property(name);
+            if (recv.type == JSValue::Type::FUNCTION && recv.function_val) {
+                auto it = recv.function_val->properties.find(name);
+                if (it != recv.function_val->properties.end())
+                    return it->second;
+            }
+            return JSValue::undefined();
+        };
         auto resolve_method = [&]() {
             u32 obj_idx = stack_.size() - 1 - argc;
             if (is_computed)
@@ -502,18 +551,10 @@ namespace browser::js {
             receiver_val = obj_val;
             if (is_computed) {
                 JSValue key_val = stack_[obj_idx + 1];
-                if (obj_val.type == JSValue::Type::OBJECT) {
-                    callee = obj_val.object_val->get_property(key_val.to_string());
-                } else {
-                    callee = JSValue::undefined();
-                }
+                callee = fn_property(obj_val, key_val.to_string());
                 stack_.erase(stack_.begin() + obj_idx + 1);
             } else {
-                if (obj_val.type == JSValue::Type::OBJECT) {
-                    callee = obj_val.object_val->get_property(info.method_name);
-                } else {
-                    callee = JSValue::undefined();
-                }
+                callee = fn_property(obj_val, info.method_name);
             }
             if (obj_idx < stack_.size()) {
                 stack_[obj_idx] = callee;
@@ -529,6 +570,7 @@ namespace browser::js {
                     args.push_back(stack_[stack_.size() - argc + i]);
                 }
                 stack_.resize(stack_.size() - argc - 1);
+                NativeCallScope gc_guard(*this);
                 push(fn->native_fn(args, fn->native_context));
             } else if (fn->bytecode) {
                 auto *new_frame = push_call_frame(fn, argc);
@@ -565,6 +607,7 @@ namespace browser::js {
                     args.push_back(stack_[stack_.size() - argc + i]);
                 }
                 stack_.resize(stack_.size() - argc - 1);
+                NativeCallScope gc_guard(*this);
                 JSValue result = ctor->native_fn(args, ctor->native_context);
                 if (result.type == JSValue::Type::OBJECT || result.type == JSValue::Type::FUNCTION) {
                     push(result);

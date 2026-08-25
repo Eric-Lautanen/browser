@@ -292,30 +292,84 @@ namespace browser::js {
         }
     }
 
+    static Opcode compound_binop(TokenType op) {
+        switch (op) {
+            case TokenType::PLUS_EQ:
+                return Opcode::ADD;
+            case TokenType::MINUS_EQ:
+                return Opcode::SUB;
+            case TokenType::STAR_EQ:
+                return Opcode::MUL;
+            case TokenType::SLASH_EQ:
+                return Opcode::DIV;
+            case TokenType::PERCENT_EQ:
+                return Opcode::MOD;
+            default:
+                return Opcode::NOP;
+        }
+    }
+
     void Compiler::compile_assign(AssignExpr &assign) {
         auto *mem = std::get_if<MemberExpr>(assign.left.get());
         if (mem) {
+            bool compound = assign.op != TokenType::EQUALS;
+
+            if (!mem->computed) {
+                const std::string &name = std::get<IdentExpr>(*mem->property).name;
+                compile_expr(*mem->object);
+                if (compound) {
+                    // stack: obj -> obj, current_value
+                    current_->emit(Opcode::DUP);
+                    current_->emit(Opcode::GET_PROP, name);
+                    compile_expr(*assign.right);
+                    current_->emit(compound_binop(assign.op));
+                } else {
+                    compile_expr(*assign.right);
+                }
+                current_->emit(Opcode::SET_PROP, name);
+                return;
+            }
+
+            // Computed key: stash the combined value in a scratch local while
+            // the object/key expressions are evaluated again for the store.
+            u32 tmp = allocate_local("$assign_value$");
             compile_expr(*mem->object);
-            if (mem->computed) {
-                compile_expr(*mem->property);
-            }
-            compile_expr(*assign.right);
-            if (mem->computed) {
-                current_->emit(Opcode::SET_PROP_COMPUTED);
+            compile_expr(*mem->property);
+            current_->emit(Opcode::GET_PROP_COMPUTED);
+            if (compound) {
+                compile_expr(*assign.right);
+                current_->emit(compound_binop(assign.op));
             } else {
-                current_->emit(Opcode::SET_PROP, std::get<IdentExpr>(*mem->property).name);
+                compile_expr(*assign.right);
             }
+            current_->emit(Opcode::STORE_LOCAL, tmp);
+            compile_expr(*mem->object);
+            compile_expr(*mem->property);
+            current_->emit(Opcode::LOAD_LOCAL, tmp);
+            current_->emit(Opcode::SET_PROP_COMPUTED);
+            current_->emit(Opcode::LOAD_LOCAL, tmp);
+            current_->emit(Opcode::POP);
             return;
         }
-        compile_expr(*assign.right);
+
         auto *id = std::get_if<IdentExpr>(assign.left.get());
         if (id) {
             u32 slot = resolve_local(id->name);
-            if (slot != UINT32_MAX) {
-                current_->emit(Opcode::STORE_LOCAL, slot);
-            } else {
-                current_->emit(Opcode::STORE_GLOBAL, id->name);
+            bool is_global = (slot == UINT32_MAX);
+            bool compound = assign.op != TokenType::EQUALS;
+            if (compound) {
+                if (is_global)
+                    current_->emit(Opcode::LOAD_GLOBAL, id->name);
+                else
+                    current_->emit(Opcode::LOAD_LOCAL, slot);
             }
+            compile_expr(*assign.right);
+            if (compound)
+                current_->emit(compound_binop(assign.op));
+            if (is_global)
+                current_->emit(Opcode::STORE_GLOBAL, id->name);
+            else
+                current_->emit(Opcode::STORE_LOCAL, slot);
         }
     }
 

@@ -1,9 +1,9 @@
 #pragma once
+#include "../../net/csp.hpp"
 #include "../../tests/utility.hpp"
 #include "../bytecode.hpp"
 #include "../jit.hpp"
 #include "../value.hpp"
-#include "../../net/csp.hpp"
 
 #include <functional>
 #include <memory>
@@ -45,31 +45,50 @@ namespace browser::js {
         void add_gc_root_provider(std::function<std::vector<JSValue *>()> provider);
         JSFunction *create_native_fn(JSFunction::NativeFn fn, bool is_constructor = false, void *context = nullptr);
         JSValue add(const JSValue &a, const JSValue &b);
+        // Calls a function value (native or bytecode) with the given arguments.
+        // Usable from inside native functions (promise reactions, timer callbacks).
+        // A throw inside the callee is contained: invoke returns undefined and
+        // the caller's frame state is restored.
+        // Calls a function value (native or bytecode) with the given arguments.
+        // Usable from inside native functions (promise reactions, timer callbacks).
+        // A throw inside the callee is contained: invoke returns undefined and
+        // the caller's frame state is restored.
+        JSValue invoke(const JSValue &fn, const std::vector<JSValue> &args, JSValue this_val = JSValue::undefined());
         void maybe_gc();
+        // While natives run, callee/argument values live only in C++ locals the GC
+        // cannot see. This scope suspends collection so they cannot be swept.
+        struct NativeCallScope {
+            VM &vm;
+            explicit NativeCallScope(VM &v) : vm(v) { ++vm.native_depth_; }
+            ~NativeCallScope() { --vm.native_depth_; }
+        };
         CallFrame *push_call_frame(JSFunction *fn, u32 argc);
         VMState save_state() const;
         void restore_state(VMState &&state);
 
-    JITState jit_state_;
-    net::CSPPolicy csp_policy_;
+        JITState jit_state_;
+        net::CSPPolicy csp_policy_;
 
-    void set_csp_policy(const net::CSPPolicy& policy) { csp_policy_ = policy; }
-    const net::CSPPolicy& csp_policy() const { return csp_policy_; }
-    bool csp_allows_eval() const {
-        if (!csp_policy_.has_directive("script-src") && !csp_policy_.has_directive("default-src")) return true;
-        return csp_policy_.allows_eval();
-    }
+        void set_csp_policy(const net::CSPPolicy &policy) { csp_policy_ = policy; }
+        const net::CSPPolicy &csp_policy() const { return csp_policy_; }
+        bool csp_allows_eval() const {
+            if (!csp_policy_.has_directive("script-src") && !csp_policy_.has_directive("default-src"))
+                return true;
+            return csp_policy_.allows_eval();
+        }
 
-private:
-    std::vector<JSValue> stack_;
-    std::vector<CallFrame> frames_;
-    GCJSObject *global_ = nullptr;
-    std::unique_ptr<class GCHeap> heap_;
-    JSValue global_root_;
-    JSValue thrown_value_;
-    std::vector<std::function<std::vector<JSValue *>()>> gc_root_providers_;
+    private:
+        std::vector<JSValue> stack_;
+        std::vector<CallFrame> frames_;
+        GCJSObject *global_ = nullptr;
+        std::unique_ptr<class GCHeap> heap_;
+        JSValue global_root_;
+        JSValue thrown_value_;
+        u32 native_depth_ = 0;
+        std::vector<std::function<std::vector<JSValue *>()>> gc_root_providers_;
 
         JSValue run();
+        void run_until_frames(size_t target_depth);
         void pop_frame();
         JSValue &local(u32 slot) {
             auto &f = frames_.back();

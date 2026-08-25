@@ -51,6 +51,41 @@ namespace browser::js {
         gc_root_providers_.push_back(std::move(provider));
     }
 
+    JSValue VM::invoke(const JSValue &fn_val, const std::vector<JSValue> &args, JSValue this_val) {
+        if (fn_val.type != JSValue::Type::FUNCTION || !fn_val.function_val)
+            return JSValue::undefined();
+        JSFunction *fn = fn_val.function_val;
+        if (fn->native_fn) {
+            std::vector<JSValue> full_args;
+            full_args.push_back(this_val);
+            for (const auto &a : args) full_args.push_back(a);
+            NativeCallScope gc_guard(*this);
+            return fn->native_fn(full_args, fn->native_context);
+        }
+        if (!fn->bytecode)
+            return JSValue::undefined();
+
+        VMState saved = save_state();
+        size_t depth = frames_.size();
+        size_t stack_base = stack_.size();
+
+        push(this_val);  // callee/receiver slot
+        for (const auto &a : args) push(a);
+        auto *frame = push_call_frame(fn, static_cast<u32>(args.size()));
+        frame->this_value = this_val;
+
+        run_until_frames(depth);
+
+        // A throw inside the callee unwinds past our boundary — restore the
+        // caller's exact state and swallow the error (spec: rejected reaction).
+        if (frames_.size() < depth || stack_.size() <= stack_base) {
+            restore_state(std::move(saved));
+            return JSValue::undefined();
+        }
+        JSValue result = pop();
+        return result;
+    }
+
     VM::VMState VM::save_state() const {
         return {stack_, frames_, thrown_value_};
     }
@@ -83,6 +118,8 @@ namespace browser::js {
     }
 
     void VM::maybe_gc() {
+        if (native_depth_ > 0)
+            return;
         if (heap_->allocated_bytes() > heap_->threshold()) {
             heap_->collect(gc_roots());
         }
@@ -127,7 +164,12 @@ namespace browser::js {
     }
 
     JSValue VM::run() {
-        while (!frames_.empty()) {
+        run_until_frames(0);
+        return stack_.empty() ? JSValue::undefined() : peek();
+    }
+
+    void VM::run_until_frames(size_t target_depth) {
+        while (frames_.size() > target_depth) {
             auto &frame = frames_.back();
             auto *func = frame.function;
             if (frame.ip >= func->instructions.size())
@@ -282,12 +324,16 @@ namespace browser::js {
                     auto ret = pop();
                     JSValue new_obj = frames_.back().new_object;
                     pop_frame();
-                    if (frames_.empty()) {
+                    if (frames_.empty() || frames_.size() == target_depth) {
+                        // Result of the entry frame: leave it on the stack for
+                        // the caller (run()/invoke()) to pick up.
                         if (new_obj.type == JSValue::Type::OBJECT && ret.type != JSValue::Type::OBJECT &&
                             ret.type != JSValue::Type::FUNCTION) {
-                            return new_obj;
+                            push(new_obj);
+                        } else {
+                            push(ret);
                         }
-                        return ret;
+                        break;
                     }
                     if (new_obj.type == JSValue::Type::OBJECT && ret.type != JSValue::Type::OBJECT &&
                         ret.type != JSValue::Type::FUNCTION) {
@@ -379,9 +425,6 @@ namespace browser::js {
                     break;
             }
         }
-        if (stack_.empty())
-            return JSValue::undefined();
-        return pop();
     }
 
 }  // namespace browser::js

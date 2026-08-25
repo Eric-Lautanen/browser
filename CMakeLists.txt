@@ -412,6 +412,9 @@ target_link_libraries(css_animation_test test_framework css html)
 add_executable(js_test tests/main.cpp tests/js_test.cpp)
 target_link_libraries(js_test test_framework js)
 
+add_executable(builtins_test tests/main.cpp tests/builtins_test.cpp)
+target_link_libraries(builtins_test test_framework js)
+
 add_executable(parser_test tests/main.cpp tests/parser_test.cpp)
 target_link_libraries(parser_test test_framework js)
 

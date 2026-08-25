@@ -1,6 +1,7 @@
 #include "../../net/http_client.hpp"
 #include "../../net/origin.hpp"
 #include "../../net/url.hpp"
+#include "../builtins/builtins.hpp"
 #include "../dom_bindings.hpp"
 #include "../gc.hpp"
 #include "../vm.hpp"
@@ -91,10 +92,10 @@ namespace browser::js::dom_bindings {
         VM *vm = ctx->vm;
 
         if (args.size() < 2) {
-            auto *rejected = vm->heap()->alloc_object();
-            rejected->obj.set("[[PromiseState]]", JSValue::string("rejected"));
-            rejected->obj.set("[[PromiseResult]]", JSValue::string("fetch: missing url argument"));
-            return JSValue::object(&rejected->obj);
+            JSValue rejected = browser::js::builtins::make_promise_object(vm);
+            rejected.object_val->set("[[PromiseState]]", JSValue::string("rejected"));
+            rejected.object_val->set("[[PromiseResult]]", JSValue::string("fetch: missing url argument"));
+            return rejected;
         }
 
         std::string url_str = args[1].to_string();
@@ -113,10 +114,10 @@ namespace browser::js::dom_bindings {
         if (resolved_url.empty()) {
             auto parsed = net::URL::parse(url_str);
             if (parsed.is_err()) {
-                auto *rejected = vm->heap()->alloc_object();
-                rejected->obj.set("[[PromiseState]]", JSValue::string("rejected"));
-                rejected->obj.set("[[PromiseResult]]", JSValue::string("fetch: invalid url"));
-                return JSValue::object(&rejected->obj);
+                JSValue rejected = browser::js::builtins::make_promise_object(vm);
+                rejected.object_val->set("[[PromiseState]]", JSValue::string("rejected"));
+                rejected.object_val->set("[[PromiseResult]]", JSValue::string("fetch: invalid url"));
+                return rejected;
             }
             target_url = parsed.unwrap();
             resolved_url = url_str;
@@ -149,28 +150,28 @@ namespace browser::js::dom_bindings {
         }
         auto resp_r = http.fetch(req);
         if (resp_r.is_err()) {
-            auto *rejected = vm->heap()->alloc_object();
-            rejected->obj.set("[[PromiseState]]", JSValue::string("rejected"));
-            rejected->obj.set("[[PromiseResult]]", JSValue::string("fetch: " + resp_r.unwrap_err()));
-            return JSValue::object(&rejected->obj);
+            JSValue rejected = browser::js::builtins::make_promise_object(vm);
+            rejected.object_val->set("[[PromiseState]]", JSValue::string("rejected"));
+            rejected.object_val->set("[[PromiseResult]]", JSValue::string("fetch: " + resp_r.unwrap_err()));
+            return rejected;
         }
         auto resp = resp_r.unwrap();
 
         if (cross_origin) {
             std::string cors_error;
             if (!check_cors(ctx->page_url, target_url, resp, cors_error)) {
-                auto *rejected = vm->heap()->alloc_object();
-                rejected->obj.set("[[PromiseState]]", JSValue::string("rejected"));
-                rejected->obj.set("[[PromiseResult]]", JSValue::string(cors_error));
-                return JSValue::object(&rejected->obj);
+                JSValue rejected = browser::js::builtins::make_promise_object(vm);
+                rejected.object_val->set("[[PromiseState]]", JSValue::string("rejected"));
+                rejected.object_val->set("[[PromiseResult]]", JSValue::string(cors_error));
+                return rejected;
             }
         }
 
         JSValue response_obj = create_response_object(vm, resp, resolved_url);
-        auto *promise = vm->heap()->alloc_object();
-        promise->obj.set("[[PromiseState]]", JSValue::string("fulfilled"));
-        promise->obj.set("[[PromiseResult]]", response_obj);
-        return JSValue::object(&promise->obj);
+        JSValue promise = browser::js::builtins::make_promise_object(vm);
+        promise.object_val->set("[[PromiseState]]", JSValue::string("fulfilled"));
+        promise.object_val->set("[[PromiseResult]]", response_obj);
+        return promise;
     }
 
     void register_fetch_bindings(VM *vm, DOMBindings *bindings, const std::string &page_url) {

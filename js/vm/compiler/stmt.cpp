@@ -25,9 +25,16 @@ namespace browser::js {
                     current_->emit(Opcode::PUSH_UNDEFINED);
                 }
                 if (auto *pat = std::get_if<IdentPattern>(decl.id.get())) {
-                    u32 slot = allocate_local(pat->name);
-                    current_->emit(Opcode::STORE_LOCAL, slot);
-                    current_->emit(Opcode::POP);
+                    if (at_top_level_) {
+                        // Spec: a top-level `var` creates a property on the
+                        // global object so separate scripts share state.
+                        current_->emit(Opcode::STORE_GLOBAL, pat->name);
+                        current_->emit(Opcode::POP);
+                    } else {
+                        u32 slot = allocate_local(pat->name);
+                        current_->emit(Opcode::STORE_LOCAL, slot);
+                        current_->emit(Opcode::POP);
+                    }
                     current_->emit(Opcode::PUSH_UNDEFINED);
                 } else {
                     compile_destructuring(decl.id);
@@ -62,13 +69,71 @@ namespace browser::js {
         } else if (auto *fr = std::get_if<ForStmt>(&stmt)) {
             compile_for(*fr);
         } else if (auto *trys = std::get_if<TryStmt>(&stmt)) {
-            (void)trys;
-            bool saved = at_top_level_;
-            at_top_level_ = false;
-            current_->emit(Opcode::NOP);
-            at_top_level_ = saved;
+            compile_try(*trys);
         } else if (auto *empty = std::get_if<EmptyStmt>(&stmt)) {
             (void)empty;
+        }
+    }
+
+    void Compiler::compile_try(TryStmt &trys) {
+        // Layout (all jumps absolute):
+        //   TRY -> catch_start
+        //   [try body]  END_TRY  JMP -> after_catch
+        //   catch_start: [bind param] [catch body]
+        //   after_catch: [finalizer]
+        // op_throw pushes the thrown value before jumping to catch_start.
+        u32 try_idx = current_->instructions.size();
+        current_->emit(Opcode::TRY, (u32)0);
+
+        {
+            bool saved = at_top_level_;
+            at_top_level_ = false;
+            compile_stmt(*trys.block);
+            at_top_level_ = saved;
+        }
+        current_->emit(Opcode::END_TRY);
+        u32 skip_catch = emit_jump(Opcode::JMP);
+
+        u32 catch_start = (u32)current_->instructions.size();
+        current_->instructions[try_idx].operand = catch_start;
+
+        if (trys.handler) {
+            // Bind the exception value (pushed by op_throw) to the parameter.
+            // Binding scope follows the enclosing context: locals inside a
+            // function, a global property at top level.
+            bool bind_global = at_top_level_;
+            if (trys.handler->param) {
+                if (auto *ip = std::get_if<IdentPattern>(trys.handler->param.get())) {
+                    if (bind_global) {
+                        current_->emit(Opcode::STORE_GLOBAL, ip->name);
+                        current_->emit(Opcode::POP);
+                    } else {
+                        u32 slot = allocate_local(ip->name);
+                        current_->emit(Opcode::STORE_LOCAL, slot);
+                        current_->emit(Opcode::POP);
+                    }
+                } else {
+                    // Destructuring catch params are not supported yet: drop.
+                    current_->emit(Opcode::POP);
+                }
+            } else {
+                current_->emit(Opcode::POP);
+            }
+            bool saved = at_top_level_;
+            at_top_level_ = false;
+            compile_stmt(*trys.handler->body);
+            at_top_level_ = saved;
+        } else {
+            // No handler: behave as empty catch.
+            current_->emit(Opcode::POP);
+        }
+        patch_jump(skip_catch);
+
+        if (trys.finalizer) {
+            bool saved = at_top_level_;
+            at_top_level_ = false;
+            compile_stmt(*trys.finalizer);
+            at_top_level_ = saved;
         }
     }
 
