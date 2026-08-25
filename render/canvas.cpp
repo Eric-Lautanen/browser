@@ -12,12 +12,34 @@ namespace browser::render {
 
     std::unordered_map<const void *, std::shared_ptr<Canvas2D>> g_canvas_registry;
 
-    Canvas2D::Canvas2D(u32 width, u32 height) : width_(width), height_(height), pixels_(width * height * 4, 0) {}
+    // R-S6: w*h*4 must fit in size_t/u32 arithmetic. 4096×4096 is the area cap
+    // (matches typical browser limits); per-dimension caps stay at 65536.
+    inline constexpr u64 kMaxCanvasArea = 16ull * 1024 * 1024;
+
+    static u32 clamp_dim(u32 v) {
+        return v > 65536 ? 65536 : (v == 0 ? 1 : v);
+    }
+
+    Canvas2D::Canvas2D(u32 width, u32 height)
+        : width_(clamp_dim(width)), height_(clamp_dim(height)) {
+        if ((u64)width_ * height_ > kMaxCanvasArea) {
+            // Scale down preserving aspect ratio into the allowed area.
+            f64 ratio = std::sqrt((f64)kMaxCanvasArea / ((f64)width_ * height_));
+            width_ = std::max<u32>(1, (u32)((f64)width_ * ratio));
+            height_ = std::max<u32>(1, (u32)((f64)height_ * ratio));
+        }
+        pixels_.assign((size_t)width_ * height_ * 4, 0);
+    }
 
     void Canvas2D::resize(u32 w, u32 h) {
-        width_ = w;
-        height_ = h;
-        pixels_.assign(w * h * 4, 0);
+        width_ = clamp_dim(w);
+        height_ = clamp_dim(h);
+        if ((u64)width_ * height_ > kMaxCanvasArea) {
+            f64 ratio = std::sqrt((f64)kMaxCanvasArea / ((f64)width_ * height_));
+            width_ = std::max<u32>(1, (u32)((f64)width_ * ratio));
+            height_ = std::max<u32>(1, (u32)((f64)height_ * ratio));
+        }
+        pixels_.assign((size_t)width_ * height_ * 4, 0);
         version_++;
     }
 
@@ -566,19 +588,23 @@ namespace browser::render {
     }
 
     void Canvas2D::get_image_data(u32 sx, u32 sy, u32 sw, u32 sh, std::vector<u8> &out) const {
-        out.resize(sw * sh * 4, 0);
-        for (u32 row = 0; row < sh; row++) {
-            for (u32 col = 0; col < sw; col++) {
-                u32 src_x = sx + col;
-                u32 src_y = sy + row;
-                u32 dst_idx = (row * sw + col) * 4;
-                if (src_x < width_ && src_y < height_) {
-                    u32 src_idx = (src_y * width_ + src_x) * 4;
-                    out[dst_idx] = pixels_[src_idx];
-                    out[dst_idx + 1] = pixels_[src_idx + 1];
-                    out[dst_idx + 2] = pixels_[src_idx + 2];
-                    out[dst_idx + 3] = pixels_[src_idx + 3];
-                }
+        out.clear();
+        // R-S7: sw/sh come straight from JS doubles cast to u32 — the product
+        // overflowed and corrupted the heap. Clamp the rectangle to the canvas
+        // (spec behavior) and size the output in u64.
+        if (sx >= width_ || sy >= height_ || sw == 0 || sh == 0)
+            return;
+        u32 copy_w = std::min(sw, width_ - sx);
+        u32 copy_h = std::min(sh, height_ - sy);
+        out.resize((size_t)copy_w * copy_h * 4, 0);
+        for (u32 row = 0; row < copy_h; row++) {
+            for (u32 col = 0; col < copy_w; col++) {
+                u32 src_idx = ((sy + row) * (u64)width_ + sx + col) * 4;
+                u32 dst_idx = (row * (u64)copy_w + col) * 4;
+                out[dst_idx] = pixels_[src_idx];
+                out[dst_idx + 1] = pixels_[src_idx + 1];
+                out[dst_idx + 2] = pixels_[src_idx + 2];
+                out[dst_idx + 3] = pixels_[src_idx + 3];
             }
         }
     }

@@ -199,16 +199,30 @@ static js::JSValue canvas_set_transform_fn(const std::vector<js::JSValue>& args,
 static js::JSValue canvas_get_image_data_fn(const std::vector<js::JSValue>& args, void* context) {
     auto* bc = get_bc(context);
     if (!bc->canvas || args.size() < 5) return js::JSValue::undefined();
-    u32 sx = static_cast<u32>(args[1].to_number());
-    u32 sy = static_cast<u32>(args[2].to_number());
-    u32 sw = static_cast<u32>(args[3].to_number());
-    u32 sh = static_cast<u32>(args[4].to_number());
+    f64 sxd = args[1].to_number(), syd = args[2].to_number();
+    f64 swd = args[3].to_number(), shd = args[4].to_number();
+    if (!(sxd >= 0 && syd >= 0 && swd >= 0 && shd >= 0) || swd > 65536 || shd > 65536)
+        return js::JSValue::undefined();
+    u32 sx = static_cast<u32>(sxd), sy = static_cast<u32>(syd);
+    u32 sw = static_cast<u32>(swd), sh = static_cast<u32>(shd);
     std::vector<u8> pixel_data;
     bc->canvas->get_image_data(sx, sy, sw, sh, pixel_data);
+    // Clamped rectangle dimensions (may differ from the request).
+    u32 cw = (sx >= bc->canvas->width()) ? 0 : std::min(sw, bc->canvas->width() - sx);
+    u32 ch = (sy >= bc->canvas->height()) ? 0 : std::min(sh, bc->canvas->height() - sy);
     auto* img_gc = bc->vm->heap()->alloc_object();
     auto* img_obj = &img_gc->obj;
-    img_obj->set("width", js::JSValue::number(static_cast<f64>(sw)));
-    img_obj->set("height", js::JSValue::number(static_cast<f64>(sh)));
+    img_obj->set("width", js::JSValue::number(static_cast<f64>(cw)));
+    img_obj->set("height", js::JSValue::number(static_cast<f64>(ch)));
+    // R-S7: expose the fetched pixels — the API was broken without it.
+    auto* data_gc = bc->vm->heap()->alloc_object();
+    auto* data_obj = &data_gc->obj;
+    data_obj->is_array = true;
+    data_obj->array_elements.reserve(pixel_data.size());
+    for (u8 b : pixel_data) {
+        data_obj->array_elements.push_back(js::JSValue::number(static_cast<f64>(b)));
+    }
+    img_obj->set("data", js::JSValue::object(data_obj));
     return js::JSValue::object(img_obj);
 }
 
@@ -286,6 +300,10 @@ static js::JSValue canvas_get_context_fn(const std::vector<js::JSValue>& args, v
         long val = std::strtol(el_ctx->element->get_attribute("height").c_str(), &end, 10);
         if (end && val > 0 && val < 65536) h = static_cast<u32>(val);
     }
+
+    // R-S6: reject dimension products that would overflow the pixel buffer.
+    if ((u64)w * h > 16ull * 1024 * 1024)
+        return js::JSValue::null();
 
     auto canvas2d = std::make_shared<Canvas2D>(w, h);
     canvas_binding_map[el_ctx->element] = canvas2d;

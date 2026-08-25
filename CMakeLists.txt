@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+﻿cmake_minimum_required(VERSION 3.20)
 project(browser VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -442,6 +442,9 @@ target_link_libraries(mesh_test test_framework render)
 
 add_executable(font_test tests/main.cpp tests/font_test.cpp)
 target_link_libraries(font_test test_framework render)
+
+add_executable(canvas_test tests/main.cpp tests/canvas_test.cpp)
+target_link_libraries(canvas_test test_framework render)
 
 add_executable(paint_test tests/main.cpp tests/paint_test.cpp)
 target_link_libraries(paint_test test_framework render css html)
