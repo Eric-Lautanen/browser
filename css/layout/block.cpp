@@ -171,6 +171,102 @@ namespace browser::css {
             return;
         }
 
+        // Multi-column layout
+        bool has_columns = false;
+        f32 column_width = 0;
+        int column_count = 0;
+        f32 column_gap_val = 0;
+        {
+            auto *cw = node->style().get("column-width");
+            auto *cc = node->style().get("column-count");
+            auto *cg = node->style().get("column-gap");
+            if (cw || cc) {
+                has_columns = true;
+                if (cw && cw->type == CSSValue::Type::LENGTH) {
+                    column_width = resolve_length(cw->length, containing_width, font_size);
+                }
+                if (cc && cc->type == CSSValue::Type::NUMBER) {
+                    column_count = static_cast<int>(cc->number);
+                }
+                if (cg && cg->type == CSSValue::Type::LENGTH) {
+                    column_gap_val = resolve_length(cg->length, containing_width, font_size);
+                } else if (cg && cg->type == CSSValue::Type::NUMBER) {
+                    column_gap_val = cg->number;
+                }
+                if (column_gap_val <= 0) column_gap_val = font_size;
+            }
+        }
+
+        if (has_columns && !node->children.empty()) {
+            // Compute number of columns
+            f32 content_width = node->content.width;
+            int num_cols = column_count;
+            if (column_width > 0 && num_cols <= 0) {
+                num_cols = static_cast<int>(content_width / (column_width + column_gap_val));
+                if (num_cols < 1) num_cols = 1;
+            } else if (num_cols <= 0) {
+                num_cols = 1;
+            }
+            f32 total_gap = (num_cols - 1) * column_gap_val;
+            f32 col_width = (content_width - total_gap) / num_cols;
+            if (col_width < 20.0f) {
+                col_width = 20.0f;
+                num_cols = static_cast<int>((content_width + column_gap_val) / (col_width + column_gap_val));
+                if (num_cols < 1) num_cols = 1;
+            }
+
+            // Lay out children into columns
+            f32 col_y = 0;
+            int current_col = 0;
+            f32 current_x = 0;
+            f32 max_col_h = 0;
+
+            for (auto &child : node->children) {
+                auto *pos = child->style().get("position");
+                bool is_absolute = pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute";
+                if (is_absolute)
+                    continue;
+
+                layout_block(child.get(), col_width, containing_height);
+
+                if (col_y + child->content.height > containing_height && col_y > 0 && current_col < num_cols - 1) {
+                    // Move to next column
+                    current_col++;
+                    current_x += col_width + column_gap_val;
+                    col_y = 0;
+                }
+
+                child->content.x = current_x;
+                child->content.y = col_y;
+                col_y += child->content.height + child->margin.bottom + child->border.bottom + child->padding.bottom;
+                if (col_y > max_col_h) max_col_h = col_y;
+            }
+
+            node->content.height = max_col_h;
+
+            // Apply column-rule rendering info (stored in style for painter)
+            auto *crw = node->style().get("column-rule-width");
+            auto *crs = node->style().get("column-rule-style");
+            auto *crc = node->style().get("column-rule-color");
+            if (!crw && !crs && !crc) {
+                // No column-rule specified
+            }
+
+            auto *maxh = node->style().get("max-height");
+            if (maxh && maxh->type == CSSValue::Type::LENGTH) {
+                f32 mh = resolve_length(maxh->length, containing_height, font_size);
+                if (node->content.height > mh)
+                    node->content.height = mh;
+            }
+            auto *minh = node->style().get("min-height");
+            if (minh && minh->type == CSSValue::Type::LENGTH) {
+                f32 mh = resolve_length(minh->length, containing_height, font_size);
+                if (node->content.height < mh)
+                    node->content.height = mh;
+            }
+            return;
+        }
+
         // Intrinsic sizing for form controls
         {
             html::Node *n = node->node();

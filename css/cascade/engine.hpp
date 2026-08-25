@@ -43,6 +43,7 @@ namespace browser::css {
     public:
         struct CascadeResult {
             std::unordered_map<const html::Element *, ComputedStyle> element_styles;
+            std::vector<FontFaceRule> font_faces;
         };
 
         async::task<CascadeResult> compute_async(const html::Document &doc,

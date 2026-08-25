@@ -164,6 +164,15 @@ struct AtRule {
     KeyframesRule keyframes; // for @keyframes
 };
 
+struct FontFaceRule {
+    std::string family;
+    std::string src;
+    std::string font_weight;
+    std::string font_style;
+    std::string font_stretch;
+    std::string unicode_range;
+};
+
 struct StyleSheet {
     std::vector<Rule> rules;
     std::vector<AtRule> at_rules;

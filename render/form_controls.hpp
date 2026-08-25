@@ -55,4 +55,10 @@ namespace browser::render::form_controls {
     void paint_color_input(CommandList &commands,
                            f32 x, f32 y, f32 w, f32 h, const std::string &value, bool focused);
 
+    void paint_date_input(CommandList &commands,
+                           f32 x, f32 y, f32 w, f32 h, const std::string &value, bool focused);
+
+    void paint_time_input(CommandList &commands,
+                          f32 x, f32 y, f32 w, f32 h, const std::string &value, bool focused);
+
 }  // namespace browser::render::form_controls

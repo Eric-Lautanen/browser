@@ -1,5 +1,6 @@
 #pragma once
 #include "../../css/layout.hpp"
+#include "../../css/animation.hpp"
 #include "../../platform/window.hpp"
 #include "../../render/font/atlas.hpp"
 #include "../../render/renderer.hpp"
@@ -8,6 +9,7 @@
 #include "../download_manager.hpp"
 #include "../find_bar.hpp"
 #include "../page_loader.hpp"
+#include "../history.hpp"
 #include "../session.hpp"
 #include "../theme.hpp"
 
@@ -122,6 +124,17 @@ namespace browser {
         FindState find_state;
         DevToolsState devtools;
 
+        // Textarea resize drag state
+        struct TextareaResizeState {
+            bool active = false;
+            html::Element *element = nullptr;
+            const css::LayoutNode *layout_node = nullptr;
+            f32 start_mouse_x = 0;
+            f32 start_mouse_y = 0;
+            f32 start_width = 0;
+            f32 start_height = 0;
+        } textarea_resize;
+
         static constexpr f32 TITLEBAR_H = 32.0f;
         static constexpr f32 TOOLBAR_H = 36.0f;
         static constexpr f32 CHROME_H = TITLEBAR_H + TOOLBAR_H;
@@ -164,6 +177,7 @@ namespace browser {
         std::unique_ptr<net::TrackerBlocker> tracker_;
         std::unique_ptr<DownloadManager> download_manager_;
         std::unique_ptr<SessionManager> session_;
+        css::AnimationEngine animation_engine_;
 
         void compute_layout();
         void render_chrome();
@@ -199,6 +213,9 @@ namespace browser {
 
         void check_resize();
         void do_relayout();
+        void setup_animations();
+        void update_animations(f32 dt);
+        void apply_animation_values();
 
         static f32 text_measure_cb(void *ctx, const std::string &text, u32 pixel_size);
         static css::FontMetrics text_metrics_cb(void *ctx, u32 pixel_size);

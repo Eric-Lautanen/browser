@@ -395,6 +395,10 @@ namespace browser::render {
                 form_controls::paint_range(list, fx, fy, fw, fh, cur, min_val, max_val, focused, accent);
             } else if (el->tag_name == "input" && type == "color") {
                 form_controls::paint_color_input(list, fx, fy, fw, fh, value, focused);
+            } else if (el->tag_name == "input" && type == "date") {
+                form_controls::paint_date_input(list, fx, fy, fw, fh, value, focused);
+            } else if (el->tag_name == "input" && type == "time") {
+                form_controls::paint_time_input(list, fx, fy, fw, fh, value, focused);
             } else if (el->tag_name == "progress") {
                 f32 max_val = 1.0f;
                 std::string max_str = el->get_attribute("max");

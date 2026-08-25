@@ -14,6 +14,8 @@ namespace browser {
             auto loaded = page_loader_->try_get_loaded_page();
             if (loaded.has_value()) {
                 current_page_ = std::move(loaded.value());
+                // Set up animations for the newly loaded page
+                setup_animations();
             }
         }
         if (!current_page_.has_value())

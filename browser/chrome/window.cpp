@@ -1,7 +1,10 @@
 #include "window.hpp"
 
+#include "../../css/animation.hpp"
 #include "../../css/layout.hpp"
+#include "../../css/parser.hpp"
 #include "../../html/form_state.hpp"
+#include "../../html/traversal.hpp"
 #include "../../net/http_client.hpp"
 #include "../../net/storage.hpp"
 #include "../../net/tracker_blocker.hpp"
@@ -18,6 +21,7 @@
 
 #include <commctrl.h>
 #include <psapi.h>
+#include <sstream>
 #include <windows.h>
 
 namespace browser {
@@ -91,7 +95,7 @@ namespace browser {
         text_renderer_->initialize(fm_.get());
 
         page_loader_ = std::make_unique<PageLoader>(
-            telemetry_.get(), settings_.get(), tracker_.get(), text_renderer_.get());
+            telemetry_.get(), settings_.get(), tracker_.get(), text_renderer_.get(), fm_.get());
         render::setup_canvas_bindings();
         page_loader_->set_viewport_size(viewport_width_, viewport_height_);
         page_loader_->set_download_callback(
@@ -362,6 +366,18 @@ namespace browser {
             // Check for deferred resize re-layout after messages are processed
             check_resize();
 
+            // Update CSS animations
+            {
+                static auto last_anim_time = std::chrono::steady_clock::now();
+                auto now = std::chrono::steady_clock::now();
+                f32 dt = std::chrono::duration<float>(now - last_anim_time).count();
+                last_anim_time = now;
+                if (dt > 0 && dt < 1.0f) {
+                    update_animations(dt);
+                    apply_animation_values();
+                }
+            }
+
             // 6. Render frame
             renderer_->begin_frame();
             renderer_->set_viewport(viewport_width_, viewport_height_);
@@ -477,6 +493,171 @@ namespace browser {
 
         renderer_->set_needs_redraw();
         InvalidateRect(static_cast<HWND>(window_->get_native_handle()), nullptr, FALSE);
+    }
+
+    void BrowserWindow::setup_animations() {
+        if (!current_page_.has_value() || !current_page_->dom)
+            return;
+
+        // Clear previous animations
+        // Note: we don't clear keyframes_map_ since keyframes may be re-registered
+
+        // Register @keyframes from the stylesheet
+        // We need access to the parsed stylesheet. Since we don't store it directly,
+        // we re-parse the CSS from the DOM's <style> elements.
+        // For now, collect keyframes from the page's styles by looking for animation-name
+        // properties and registering matching keyframes from a re-parse.
+
+        // Re-parse CSS to get @keyframes
+        std::string merged_css;
+        net::URL empty_base;
+        // Use page_loader's collect_css indirectly — but that's private.
+        // Instead, walk the DOM for <style> elements.
+        html::traverse_depth_first(current_page_->dom.get(), [&](html::Node *node) {
+            if (node->type != html::NodeType::ELEMENT)
+                return;
+            auto *el = static_cast<html::Element *>(node);
+            if (el->tag_name == "style") {
+                merged_css += html::inner_text(el) + "\n";
+            }
+        });
+
+        if (merged_css.empty())
+            return;
+
+        css::CssParser parser(merged_css);
+        auto sheet = parser.parse();
+
+        // Register all @keyframes
+        for (const auto &at : sheet.at_rules) {
+            std::string lower_name;
+            for (char c : at.name) lower_name += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (lower_name == "keyframes" || lower_name == "-webkit-keyframes") {
+                animation_engine_.register_keyframes(at.keyframes);
+            }
+        }
+
+        // Collect animation properties from computed styles
+        for (auto &[el, style] : current_page_->styles) {
+            auto *anim_name = style.get("animation-name");
+            if (!anim_name || anim_name->type != css::CSSValue::Type::KEYWORD)
+                continue;
+            std::string name = anim_name->keyword;
+            if (name.empty() || name == "none")
+                continue;
+
+            css::AnimationState anim;
+            anim.name = name;
+
+            // animation-duration
+            auto *dur = style.get("animation-duration");
+            if (dur && dur->type == css::CSSValue::Type::KEYWORD) {
+                std::string s = dur->keyword;
+                if (s.size() >= 2 && s[s.size() - 1] == 's') {
+                    f32 val = std::strtof(s.c_str(), nullptr);
+                    if (s[s.size() - 2] == 'm')
+                        anim.duration = val / 1000.0f;
+                    else
+                        anim.duration = val;
+                }
+            }
+
+            // animation-timing-function
+            auto *tf = style.get("animation-timing-function");
+            if (tf && tf->type == css::CSSValue::Type::KEYWORD) {
+                anim.timing_function = tf->keyword;
+            }
+
+            // animation-iteration-count
+            auto *ic = style.get("animation-iteration-count");
+            if (ic && ic->type == css::CSSValue::Type::KEYWORD) {
+                if (ic->keyword == "infinite")
+                    anim.iteration_count = -1;
+                else
+                    anim.iteration_count = std::strtof(ic->keyword.c_str(), nullptr);
+            }
+
+            // animation-direction
+            auto *dir = style.get("animation-direction");
+            if (dir && dir->type == css::CSSValue::Type::KEYWORD) {
+                anim.direction = dir->keyword;
+            }
+
+            // animation-fill-mode
+            auto *fm = style.get("animation-fill-mode");
+            if (fm && fm->type == css::CSSValue::Type::KEYWORD) {
+                anim.fill_mode = fm->keyword;
+            }
+
+            // animation-play-state
+            auto *ps = style.get("animation-play-state");
+            if (ps && ps->type == css::CSSValue::Type::KEYWORD) {
+                anim.play_state = ps->keyword;
+            }
+
+            // animation-delay
+            auto *dly = style.get("animation-delay");
+            if (dly && dly->type == css::CSSValue::Type::KEYWORD) {
+                std::string s = dly->keyword;
+                if (s.size() >= 2 && s[s.size() - 1] == 's') {
+                    f32 val = std::strtof(s.c_str(), nullptr);
+                    if (s[s.size() - 2] == 'm')
+                        anim.delay = val / 1000.0f;
+                    else
+                        anim.delay = val;
+                }
+            }
+
+            // Use element pointer as key
+            std::string key = std::to_string(reinterpret_cast<uintptr_t>(el));
+            animation_engine_.add_animation(key, anim);
+        }
+    }
+
+    void BrowserWindow::update_animations(f32 dt) {
+        if (!animation_engine_.has_active())
+            return;
+        animation_engine_.update(dt);
+    }
+
+    void BrowserWindow::apply_animation_values() {
+        if (!current_page_.has_value())
+            return;
+
+        auto interpolated = animation_engine_.get_interpolated_declarations();
+        if (interpolated.empty())
+            return;
+
+        bool changed = false;
+        for (const auto &[key, decls] : interpolated) {
+            // Find the element by key (pointer string)
+            uintptr_t ptr = 0;
+            {
+                std::istringstream ss(key);
+                ss >> ptr;
+                if (!ss)
+                    continue;
+            }
+            auto *el = reinterpret_cast<html::Element *>(ptr);
+
+            // Find this element in the styles map
+            auto it = current_page_->styles.find(el);
+            if (it == current_page_->styles.end())
+                continue;
+
+            // Apply interpolated declarations
+            for (const auto &decl : decls) {
+                if (decl.values.empty())
+                    continue;
+                it->second.properties[decl.property] = decl.values[0];
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            // Trigger relayout and repaint
+            do_relayout();
+        }
     }
 
     void BrowserWindow::check_resize() {

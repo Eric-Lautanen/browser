@@ -11,6 +11,7 @@
 
 #include <functional>
 #include <windows.h>
+#include <commctrl.h>
 
 namespace browser {
 
@@ -162,6 +163,11 @@ namespace browser {
             handle_mouse_click(e.mouse_x, e.mouse_y);
         } else if (e.type == platform::Event::Type::MOUSE_UP) {
             chrome_.scroll_dragging = false;
+            if (chrome_.textarea_resize.active) {
+                chrome_.textarea_resize.active = false;
+                chrome_.textarea_resize.element = nullptr;
+                chrome_.textarea_resize.layout_node = nullptr;
+            }
         } else if (e.type == platform::Event::Type::MOUSE_MOVE) {
             if (chrome_.scroll_dragging) {
                 f32 sb_h = chrome_.rects.scrollbar.h;
@@ -569,6 +575,168 @@ namespace browser {
                                 GetRValue(cc.rgbResult), GetGValue(cc.rgbResult), GetBValue(cc.rgbResult));
                             html::g_form_state.set_value(ht.element, buf);
                         }
+                    } else if (tag == "input" && type == "date") {
+                        html::g_form_state.focus(ht.element);
+                        // Parse current value yyyy-MM-dd
+                        std::string cur_val = html::g_form_state.get_value(ht.element);
+                        SYSTEMTIME st = {};
+                        bool have_date = false;
+                        if (cur_val.size() >= 10) {
+                            int y = 0, m = 0, d = 0;
+                            if (sscanf(cur_val.c_str(), "%d-%d-%d", &y, &m, &d) == 3) {
+                                st.wYear = (WORD)y;
+                                st.wMonth = (WORD)m;
+                                st.wDay = (WORD)d;
+                                have_date = true;
+                            }
+                        }
+                        if (!have_date)
+                            GetLocalTime(&st);
+
+                        // Modal dialog with month calendar
+                        HWND parent = GetActiveWindow();
+                        HWND dlg = CreateWindowEx(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST, "STATIC", "Pick a date",
+                            WS_POPUP | WS_CAPTION | WS_VISIBLE,
+                            100, 100, 240, 220, parent, nullptr, GetModuleHandle(nullptr), nullptr);
+                        if (dlg) {
+                            HWND cal = CreateWindowEx(0, MONTHCAL_CLASSA, "",
+                                WS_CHILD | WS_VISIBLE | MCS_NOTODAYCIRCLE,
+                                4, 4, 220, 160, dlg, (HMENU)1001, GetModuleHandle(nullptr), nullptr);
+                            SendMessage(cal, MCM_SETCURSEL, 0, (LPARAM)&st);
+                            CreateWindowEx(0, "BUTTON", "OK",
+                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                60, 170, 60, 24, dlg, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
+                            CreateWindowEx(0, "BUTTON", "Cancel",
+                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                130, 170, 60, 24, dlg, (HMENU)IDCANCEL, GetModuleHandle(nullptr), nullptr);
+
+                            // Subclass dialog proc
+                            struct DlgCtx { HWND cal; bool ok; SYSTEMTIME chosen; WNDPROC orig; };
+                            static DlgCtx s_ctx;
+                            s_ctx.cal = cal;
+                            s_ctx.ok = false;
+                            s_ctx.chosen = st;
+                            s_ctx.orig = (WNDPROC)GetWindowLongPtr(dlg, GWLP_WNDPROC);
+                            SetWindowLongPtr(dlg, GWLP_WNDPROC, (LONG_PTR)+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+                                if (msg == WM_COMMAND) {
+                                    if (LOWORD(wp) == IDOK) {
+                                        SendMessage(s_ctx.cal, MCM_GETCURSEL, 0, (LPARAM)&s_ctx.chosen);
+                                        s_ctx.ok = true;
+                                        DestroyWindow(hwnd);
+                                        return 0;
+                                    } else if (LOWORD(wp) == IDCANCEL) {
+                                        DestroyWindow(hwnd);
+                                        return 0;
+                                    }
+                                }
+                                return CallWindowProc(s_ctx.orig, hwnd, msg, wp, lp);
+                            });
+
+                            MSG m;
+                            while (IsWindow(dlg)) {
+                                BOOL ret = GetMessage(&m, nullptr, 0, 0);
+                                if (!ret || ret == -1) break;
+                                if (!IsDialogMessage(dlg, &m)) {
+                                    TranslateMessage(&m);
+                                    DispatchMessage(&m);
+                                }
+                            }
+                            if (s_ctx.ok) {
+                                char buf[16];
+                                snprintf(buf, sizeof(buf), "%04d-%02d-%02d",
+                                    s_ctx.chosen.wYear, s_ctx.chosen.wMonth, s_ctx.chosen.wDay);
+                                html::g_form_state.set_value(ht.element, buf);
+                            }
+                        }
+                    } else if (tag == "input" && type == "time") {
+                        html::g_form_state.focus(ht.element);
+                        // Parse current value HH:mm
+                        std::string cur_val = html::g_form_state.get_value(ht.element);
+                        int h = 0, mi = 0;
+                        bool have_time = false;
+                        if (cur_val.size() >= 5) {
+                            if (sscanf(cur_val.c_str(), "%d:%d", &h, &mi) == 2)
+                                have_time = true;
+                        }
+                        if (!have_time) {
+                            SYSTEMTIME st;
+                            GetLocalTime(&st);
+                            h = st.wHour;
+                            mi = st.wMinute;
+                        }
+
+                        HWND parent = GetActiveWindow();
+                        HWND dlg = CreateWindowEx(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST, "STATIC", "Pick a time",
+                            WS_POPUP | WS_CAPTION | WS_VISIBLE,
+                            120, 120, 200, 120, parent, nullptr, GetModuleHandle(nullptr), nullptr);
+                        if (dlg) {
+                            CreateWindowEx(0, "STATIC", "Hour:",
+                                WS_CHILD | WS_VISIBLE, 12, 14, 40, 18, dlg, nullptr, GetModuleHandle(nullptr), nullptr);
+                            HWND hour_edit = CreateWindowEx(0, "EDIT", "",
+                                WS_CHILD | WS_VISIBLE | ES_NUMBER | WS_BORDER,
+                                56, 12, 40, 22, dlg, (HMENU)2001, GetModuleHandle(nullptr), nullptr);
+                            CreateWindowEx(0, "STATIC", "Min:",
+                                WS_CHILD | WS_VISIBLE, 12, 44, 40, 18, dlg, nullptr, GetModuleHandle(nullptr), nullptr);
+                            HWND min_edit = CreateWindowEx(0, "EDIT", "",
+                                WS_CHILD | WS_VISIBLE | ES_NUMBER | WS_BORDER,
+                                56, 42, 40, 22, dlg, (HMENU)2002, GetModuleHandle(nullptr), nullptr);
+                            CreateWindowEx(0, "BUTTON", "OK",
+                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                110, 12, 60, 24, dlg, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
+                            CreateWindowEx(0, "BUTTON", "Cancel",
+                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                110, 42, 60, 24, dlg, (HMENU)IDCANCEL, GetModuleHandle(nullptr), nullptr);
+
+                            char hbuf[8], mbuf[8];
+                            snprintf(hbuf, sizeof(hbuf), "%d", h);
+                            snprintf(mbuf, sizeof(mbuf), "%d", mi);
+                            SetWindowTextA(hour_edit, hbuf);
+                            SetWindowTextA(min_edit, mbuf);
+
+                            struct TimeCtx { HWND hour, min; bool ok; WNDPROC orig; };
+                            static TimeCtx s_tctx;
+                            s_tctx.hour = hour_edit;
+                            s_tctx.min = min_edit;
+                            s_tctx.ok = false;
+                            s_tctx.orig = (WNDPROC)GetWindowLongPtr(dlg, GWLP_WNDPROC);
+                            SetWindowLongPtr(dlg, GWLP_WNDPROC, (LONG_PTR)+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+                                if (msg == WM_COMMAND) {
+                                    if (LOWORD(wp) == IDOK) {
+                                        char hb[8], mb[8];
+                                        GetWindowTextA(s_tctx.hour, hb, 8);
+                                        GetWindowTextA(s_tctx.min, mb, 8);
+                                        int hh = atoi(hb), mm = atoi(mb);
+                                        if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60)
+                                            s_tctx.ok = true;
+                                        DestroyWindow(hwnd);
+                                        return 0;
+                                    } else if (LOWORD(wp) == IDCANCEL) {
+                                        DestroyWindow(hwnd);
+                                        return 0;
+                                    }
+                                }
+                                return CallWindowProc(s_tctx.orig, hwnd, msg, wp, lp);
+                            });
+
+                            MSG m;
+                            while (IsWindow(dlg)) {
+                                BOOL ret = GetMessage(&m, nullptr, 0, 0);
+                                if (!ret || ret == -1) break;
+                                if (!IsDialogMessage(dlg, &m)) {
+                                    TranslateMessage(&m);
+                                    DispatchMessage(&m);
+                                }
+                            }
+                            if (s_tctx.ok) {
+                                char hb[8], mb[8];
+                                GetWindowTextA(s_tctx.hour, hb, 8);
+                                GetWindowTextA(s_tctx.min, mb, 8);
+                                int hh = atoi(hb), mm = atoi(mb);
+                                char buf[16];
+                                snprintf(buf, sizeof(buf), "%02d:%02d", hh, mm);
+                                html::g_form_state.set_value(ht.element, buf);
+                            }
+                        }
                     } else if (tag == "input" && type == "checkbox") {
                         html::g_form_state.toggle_checkbox(ht.element);
                         html::g_form_state.focus(ht.element);
@@ -591,6 +759,32 @@ namespace browser {
                                 start_load(nav_url);
                         }
                     } else if (tag == "textarea") {
+                        // Check if clicking on resize handle
+                        std::string resize = "both";
+                        if (ht.layout_node) {
+                            auto *rs = ht.layout_node->style().get("resize");
+                            if (rs && rs->type == css::CSSValue::Type::KEYWORD) {
+                                resize = rs->keyword;
+                            }
+                        }
+                        if (resize != "none" && ht.layout_node) {
+                            f32 handle_size = 12.0f;
+                            f32 hx = ht.hit_rect.x + ht.hit_rect.width - handle_size;
+                            f32 hy = ht.hit_rect.y + ht.hit_rect.height - handle_size;
+                            f32 px = static_cast<f32>(mx);
+                            f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                            if (px >= hx && px <= hx + handle_size && py >= hy && py <= hy + handle_size) {
+                                // Start resize drag
+                                chrome_.textarea_resize.active = true;
+                                chrome_.textarea_resize.element = ht.element;
+                                chrome_.textarea_resize.layout_node = ht.layout_node;
+                                chrome_.textarea_resize.start_mouse_x = px;
+                                chrome_.textarea_resize.start_mouse_y = py;
+                                chrome_.textarea_resize.start_width = ht.hit_rect.width;
+                                chrome_.textarea_resize.start_height = ht.hit_rect.height;
+                                return;
+                            }
+                        }
                         html::g_form_state.focus(ht.element);
                     } else if (tag == "select") {
                         html::g_form_state.focus(ht.element);
@@ -1418,6 +1612,61 @@ namespace browser {
     }
 
     void BrowserWindow::handle_mouse_move(i32 mx, i32 my) {
+        // Handle textarea resize drag
+        if (chrome_.textarea_resize.active && chrome_.textarea_resize.element) {
+            f32 px = static_cast<f32>(mx);
+            f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+            f32 dx = px - chrome_.textarea_resize.start_mouse_x;
+            f32 dy = py - chrome_.textarea_resize.start_mouse_y;
+
+            std::string resize = "both";
+            if (chrome_.textarea_resize.layout_node) {
+                auto *rs = chrome_.textarea_resize.layout_node->style().get("resize");
+                if (rs && rs->type == css::CSSValue::Type::KEYWORD) {
+                    resize = rs->keyword;
+                }
+            }
+
+            f32 new_w = chrome_.textarea_resize.start_width;
+            f32 new_h = chrome_.textarea_resize.start_height;
+            if (resize == "both" || resize == "horizontal") {
+                new_w = std::max(20.0f, chrome_.textarea_resize.start_width + dx);
+            }
+            if (resize == "both" || resize == "vertical") {
+                new_h = std::max(20.0f, chrome_.textarea_resize.start_height + dy);
+            }
+
+            // Update the element's inline style with new width/height
+            auto *el = chrome_.textarea_resize.element;
+            std::string style = el->get_attribute("style");
+            // Remove existing width/height from inline style
+            std::string new_style;
+            size_t pos = 0;
+            while (pos < style.size()) {
+                size_t end = style.find(';', pos);
+                if (end == std::string::npos) end = style.size();
+                std::string decl = style.substr(pos, end - pos);
+                while (!decl.empty() && decl[0] == ' ') decl = decl.substr(1);
+                if (!decl.empty()) {
+                    std::string lower;
+                    for (char c : decl) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    if (lower.find("width:") != 0 && lower.find("height:") != 0) {
+                        if (!new_style.empty()) new_style += "; ";
+                        new_style += decl;
+                    }
+                }
+                pos = end + 1;
+            }
+            if (!new_style.empty()) new_style += "; ";
+            new_style += "width:" + std::to_string(new_w) + "px; height:" + std::to_string(new_h) + "px";
+            el->attributes["style"] = new_style;
+
+            // Trigger relayout
+            renderer_->set_needs_redraw();
+            do_relayout();
+            return;
+        }
+
         chrome_.hovered_button = -1;
         chrome_.hovered_tab = -1;
         chrome_.hovered_close = -1;

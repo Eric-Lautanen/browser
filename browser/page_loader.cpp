@@ -32,12 +32,14 @@ namespace browser {
     PageLoader::PageLoader(Telemetry *telemetry,
                            SettingsManager *settings,
                            net::TrackerBlocker *tracker,
-                           render::TextRenderer *text_renderer)
+                           render::TextRenderer *text_renderer,
+                           render::FontManager *font_manager)
         : resource_loader_(&http_),
           telemetry_(telemetry),
           settings_(settings),
           tracker_(tracker),
           text_renderer_(text_renderer),
+          font_manager_(font_manager),
           loaded_channel_(1) {}
 
     void PageLoader::start_load(const std::string &url_str) {
@@ -450,6 +452,7 @@ namespace browser {
         css::Cascade cascader;
         css::StyleSheet sheet;
 
+        std::vector<css::FontFaceRule> font_faces;
         if (!merged_css.empty()) {
             auto sheet_r = co_await css::parse_async(merged_css);
             if (sheet_r.is_ok()) {
@@ -457,8 +460,14 @@ namespace browser {
                 auto styles_r = co_await cascader.compute_async(*page.dom, sheet);
                 if (styles_r.is_ok()) {
                     page.styles = std::move(styles_r.unwrap().element_styles);
+                    font_faces = std::move(styles_r.unwrap().font_faces);
                 }
             }
+        }
+
+        // Load @font-face fonts
+        if (!font_faces.empty() && font_manager_) {
+            co_await load_font_faces(font_faces, req.url);
         }
 
         // Load and decode images
@@ -522,14 +531,21 @@ namespace browser {
         collect_css(page.dom.get(), merged_css, empty_base);
 
         css::Cascade cascader;
+        std::vector<css::FontFaceRule> font_faces;
         if (!merged_css.empty()) {
             auto sheet_r = co_await css::parse_async(merged_css);
             if (sheet_r.is_ok()) {
                 auto styles_r = co_await cascader.compute_async(*page.dom, sheet_r.unwrap());
                 if (styles_r.is_ok()) {
                     page.styles = std::move(styles_r.unwrap().element_styles);
+                    font_faces = std::move(styles_r.unwrap().font_faces);
                 }
             }
+        }
+
+        // Load @font-face fonts
+        if (!font_faces.empty() && font_manager_) {
+            co_await load_font_faces(font_faces, empty_base);
         }
 
         if (page.dom) {
@@ -734,6 +750,56 @@ namespace browser {
             if (img_r.is_ok()) {
                 auto img = std::make_shared<image::Image>(std::move(img_r.unwrap()));
                 loaded_images_[res.url] = std::move(img);
+            }
+        }
+        co_return true;
+    }
+
+    async::task<bool> PageLoader::load_font_faces(const std::vector<css::FontFaceRule> &font_faces, const net::URL &base_url) {
+        co_await async::thread_pool_executor{};
+        for (const auto &rule : font_faces) {
+            if (rule.src.empty())
+                continue;
+            // Parse src: extract first url(...) or url("...") value
+            std::string url_str;
+            size_t url_pos = rule.src.find("url(");
+            if (url_pos != std::string::npos) {
+                size_t start = url_pos + 4;
+                while (start < rule.src.size() && (rule.src[start] == ' ' || rule.src[start] == '\t'))
+                    start++;
+                char quote = 0;
+                if (rule.src[start] == '"' || rule.src[start] == '\'') {
+                    quote = rule.src[start];
+                    start++;
+                }
+                size_t end = start;
+                if (quote) {
+                    end = rule.src.find(quote, start);
+                } else {
+                    while (end < rule.src.size() && rule.src[end] != ')' && rule.src[end] != ' ' && rule.src[end] != '\t')
+                        end++;
+                }
+                if (end > start) {
+                    url_str = rule.src.substr(start, end - start);
+                }
+            }
+            if (url_str.empty())
+                continue;
+
+            // Resolve relative URLs
+            auto resolved = base_url.resolve(url_str);
+            if (resolved.is_ok()) {
+                url_str = resolved.unwrap().to_string();
+            }
+
+            // Fetch font data
+            auto resp = resource_loader_.fetch_single(url_str, html::ResourcePriority::FONT);
+            if (!resp.success || resp.data.empty())
+                continue;
+
+            // Load into FontManager
+            if (font_manager_) {
+                font_manager_->load_from_memory(resp.data.data(), static_cast<u32>(resp.data.size()));
             }
         }
         co_return true;

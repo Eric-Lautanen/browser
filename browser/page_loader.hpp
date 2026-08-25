@@ -30,6 +30,7 @@ namespace browser {
     }
     namespace render {
         class TextRenderer;
+        class FontManager;
     }
 
     struct LoadedPage {
@@ -52,7 +53,8 @@ namespace browser {
         PageLoader(Telemetry *telemetry,
                    SettingsManager *settings,
                    net::TrackerBlocker *tracker,
-                   render::TextRenderer *text_renderer);
+                   render::TextRenderer *text_renderer,
+                   render::FontManager *font_manager = nullptr);
 
         void set_download_callback(DownloadCheckCallback cb) { download_callback_ = std::move(cb); }
 
@@ -73,6 +75,7 @@ namespace browser {
         SettingsManager *settings_;
         net::TrackerBlocker *tracker_;
         render::TextRenderer *text_renderer_;
+        render::FontManager *font_manager_;
         std::atomic<bool> loading_{false};
         std::atomic<bool> cancelled_{false};
         u32 viewport_width_ = 980;
@@ -91,6 +94,7 @@ namespace browser {
         async::task<bool> fetch_css_content(std::string &merged_css);
         void collect_resources(html::Document *doc, const net::URL &base_url);
         async::task<bool> load_and_decode_images(const std::string &);
+        async::task<bool> load_font_faces(const std::vector<css::FontFaceRule> &font_faces, const net::URL &base_url);
         static u64 elapsed_ms(std::chrono::steady_clock::time_point start);
         std::unordered_map<std::string, std::shared_ptr<image::Image>> loaded_images_;
         DownloadCheckCallback download_callback_;

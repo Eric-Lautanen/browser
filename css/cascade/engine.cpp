@@ -2150,6 +2150,30 @@ code { font-family: monospace; }
                             }
                         }
 
+                        // writing-mode: horizontal-tb | vertical-rl | vertical-lr
+                        if (prop == "writing-mode" && val.type == CSSValue::Type::KEYWORD) {
+                            std::string k = val.keyword;
+                            for (auto &c : k) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                            if (k == "horizontal-tb" || k == "vertical-rl" || k == "vertical-lr") {
+                                CSSValue cv;
+                                cv.type = CSSValue::Type::KEYWORD;
+                                cv.keyword = k;
+                                style.properties["writing-mode"] = cv;
+                            }
+                        }
+
+                        // direction: ltr | rtl
+                        if (prop == "direction" && val.type == CSSValue::Type::KEYWORD) {
+                            std::string k = val.keyword;
+                            for (auto &c : k) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                            if (k == "ltr" || k == "rtl") {
+                                CSSValue cv;
+                                cv.type = CSSValue::Type::KEYWORD;
+                                cv.keyword = k;
+                                style.properties["direction"] = cv;
+                            }
+                        }
+
                         // filter: parse into CSSFilterFunc list
                         if (prop == "filter" && val.type == CSSValue::Type::STRING) {
                             std::string s = val.string_value;
@@ -2313,7 +2337,42 @@ code { font-family: monospace; }
             }
         }
 
-        co_return CascadeResult{std::move(styles)};
+        // Collect @font-face rules from the author stylesheet
+        std::vector<FontFaceRule> font_faces;
+        for (const auto &at : author.at_rules) {
+            std::string lower_name;
+            for (char c : at.name) lower_name += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (lower_name != "font-face")
+                continue;
+            FontFaceRule rule;
+            for (const auto &decl : at.declarations) {
+                std::string prop_lower;
+                for (char c : decl.property) prop_lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                if (prop_lower == "font-family" && !decl.values.empty()) {
+                    rule.family = decl.values[0].string_value;
+                    if (rule.family.size() >= 2 && rule.family.front() == '"' && rule.family.back() == '"') {
+                        rule.family = rule.family.substr(1, rule.family.size() - 2);
+                    } else if (rule.family.size() >= 2 && rule.family.front() == '\'' && rule.family.back() == '\'') {
+                        rule.family = rule.family.substr(1, rule.family.size() - 2);
+                    }
+                } else if (prop_lower == "src" && !decl.values.empty()) {
+                    rule.src = decl.values[0].string_value;
+                } else if (prop_lower == "font-weight" && !decl.values.empty()) {
+                    rule.font_weight = decl.values[0].string_value;
+                } else if (prop_lower == "font-style" && !decl.values.empty()) {
+                    rule.font_style = decl.values[0].string_value;
+                } else if (prop_lower == "font-stretch" && !decl.values.empty()) {
+                    rule.font_stretch = decl.values[0].string_value;
+                } else if (prop_lower == "unicode-range" && !decl.values.empty()) {
+                    rule.unicode_range = decl.values[0].string_value;
+                }
+            }
+            if (!rule.family.empty() && !rule.src.empty()) {
+                font_faces.push_back(std::move(rule));
+            }
+        }
+
+        co_return CascadeResult{std::move(styles), std::move(font_faces)};
     }
 
 }  // namespace browser::css

@@ -416,4 +416,84 @@ namespace browser::render::form_controls {
         }
     }
 
+    void paint_date_input(CommandList &commands,
+                           f32 x, f32 y, f32 w, f32 h, const std::string &value, bool focused) {
+        Color bg = Color{1, 1, 1, 1};
+        Color border_c = focused ? Color{0.3f, 0.5f, 0.9f, 1} : Color{0.6f, 0.6f, 0.6f, 1};
+        Color text_c = Color{0, 0, 0, 1};
+        Color placeholder_c = Color{0.55f, 0.55f, 0.55f, 1};
+
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, bg));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, border_c));
+
+        f32 text_x = x + 4;
+        f32 text_y = y + (h - 14) / 2.0f;
+        std::string display = value;
+        Color display_color = text_c;
+        if (display.empty()) {
+            display = "yyyy-MM-dd";
+            display_color = placeholder_c;
+        }
+        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {text_x, text_y, w - 24, h}, display_color, display, 14));
+
+        // Calendar icon on the right
+        f32 icon_x = x + w - 20;
+        f32 icon_y = y + (h - 16) / 2.0f;
+        Color icon_c = focused ? Color{0.3f, 0.5f, 0.9f, 1} : Color{0.4f, 0.4f, 0.4f, 1};
+        // Calendar body
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x, icon_y + 2, 16, 12}, Color{1, 1, 1, 1}));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x, icon_y + 2, 16, 1}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x, icon_y + 13, 16, 1}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x, icon_y + 2, 1, 12}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x + 15, icon_y + 2, 1, 12}, icon_c));
+        // Top binding tabs
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x + 3, icon_y, 2, 3}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x + 11, icon_y, 2, 3}, icon_c));
+        // Header bar
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {icon_x + 1, icon_y + 3, 14, 3}, icon_c));
+    }
+
+    void paint_time_input(CommandList &commands,
+                          f32 x, f32 y, f32 w, f32 h, const std::string &value, bool focused) {
+        Color bg = Color{1, 1, 1, 1};
+        Color border_c = focused ? Color{0.3f, 0.5f, 0.9f, 1} : Color{0.6f, 0.6f, 0.6f, 1};
+        Color text_c = Color{0, 0, 0, 1};
+        Color placeholder_c = Color{0.55f, 0.55f, 0.55f, 1};
+
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, h}, bg));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y + h - 1, w, 1}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x, y, 1, h}, border_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {x + w - 1, y, 1, h}, border_c));
+
+        f32 text_x = x + 4;
+        f32 text_y = y + (h - 14) / 2.0f;
+        std::string display = value;
+        Color display_color = text_c;
+        if (display.empty()) {
+            display = "HH:mm";
+            display_color = placeholder_c;
+        }
+        commands.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {text_x, text_y, w - 24, h}, display_color, display, 14));
+
+        // Clock icon on the right
+        f32 icon_x = x + w - 20;
+        f32 icon_y = y + (h - 16) / 2.0f;
+        Color icon_c = focused ? Color{0.3f, 0.5f, 0.9f, 1} : Color{0.4f, 0.4f, 0.4f, 1};
+        f32 cx = icon_x + 8;
+        f32 cy = icon_y + 8;
+        f32 r = 7.0f;
+        // Clock circle (approximate with rect outline)
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx - r, cy - r, r * 2, 1}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx - r, cy + r - 1, r * 2, 1}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx - r, cy - r, 1, r * 2}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx + r - 1, cy - r, 1, r * 2}, icon_c));
+        // Clock hands
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, cy, 1, 5}, icon_c));
+        commands.push(make_cmd(PaintCommand::Type::FILL_RECT, {cx, cy, 4, 1}, icon_c));
+    }
+
 }  // namespace browser::render::form_controls
