@@ -335,16 +335,22 @@ namespace browser::net {
         }
 
         IoOverlapped ol;
-        BOOL bret = connect_ex(handle_, result->ai_addr, (int)result->ai_addrlen, nullptr, 0, nullptr, &ol);
-        ::freeaddrinfo(result);
-        if (!bret) {
-            int err = WSAGetLastError();
-            if (err != ERROR_IO_PENDING) {
-                ::closesocket(handle_);
-                handle_ = INVALID_SOCKET;
-                co_return std::string("ConnectEx failed");
+        int conn_err = 0;
+        co_await co_iocp(&ol, [&]() -> int {
+            if (!connect_ex(handle_, result->ai_addr, (int)result->ai_addrlen, nullptr, 0, nullptr, &ol)) {
+                int err = WSAGetLastError();
+                if (err != ERROR_IO_PENDING) {
+                    conn_err = err;
+                    return 1;
+                }
             }
-            co_await async::iocp_awaiter{&ol};
+            return 0;
+        });
+        ::freeaddrinfo(result);
+        if (conn_err) {
+            ::closesocket(handle_);
+            handle_ = INVALID_SOCKET;
+            co_return std::string("ConnectEx failed err=") + std::to_string(conn_err);
         }
         if (ol.error) {
             ::closesocket(handle_);
@@ -409,15 +415,21 @@ namespace browser::net {
         }
 
         IoOverlapped ol;
-        BOOL bret = connect_ex(handle_, (struct sockaddr *)&server_addr, sizeof(server_addr), nullptr, 0, nullptr, &ol);
-        if (!bret) {
-            int err = WSAGetLastError();
-            if (err != ERROR_IO_PENDING) {
-                ::closesocket(handle_);
-                handle_ = INVALID_SOCKET;
-                co_return std::string("ConnectEx failed");
+        int conn_err = 0;
+        co_await co_iocp(&ol, [&]() -> int {
+            if (!connect_ex(handle_, (struct sockaddr *)&server_addr, sizeof(server_addr), nullptr, 0, nullptr, &ol)) {
+                int err = WSAGetLastError();
+                if (err != ERROR_IO_PENDING) {
+                    conn_err = err;
+                    return 1;
+                }
             }
-            co_await async::iocp_awaiter{&ol};
+            return 0;
+        });
+        if (conn_err) {
+            ::closesocket(handle_);
+            handle_ = INVALID_SOCKET;
+            co_return std::string("ConnectEx failed");
         }
         if (ol.error) {
             ::closesocket(handle_);
@@ -433,14 +445,20 @@ namespace browser::net {
         WSABUF buf = {data.size(), reinterpret_cast<char *>(data.data())};
         IoOverlapped ol;
         DWORD sent = 0;
-        int ret = ::WSASend(handle_, &buf, 1, &sent, 0, &ol, nullptr);
-        if (ret == SOCKET_ERROR) {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-                co_return std::string("WSASend failed");
-        }
-        // Always wait for IOCP completion (even on immediate completion, a packet is queued)
-        co_await async::iocp_awaiter{&ol};
+        int send_err = 0;
+        co_await co_iocp(&ol, [&]() -> int {
+            if (::WSASend(handle_, &buf, 1, &sent, 0, &ol, nullptr) == SOCKET_ERROR) {
+                int err = WSAGetLastError();
+                if (err != WSA_IO_PENDING) {
+                    send_err = err;
+                    return 1;
+                }
+            }
+            // Immediate success also queues a completion packet on IOCP-bound handles.
+            return 0;
+        });
+        if (send_err)
+            co_return std::string("WSASend failed");
         if (ol.error)
             co_return std::string("WSASend error");
         co_return ol.bytes;
@@ -453,13 +471,19 @@ namespace browser::net {
         DWORD flags = 0;
         IoOverlapped ol;
         DWORD recvd = 0;
-        int ret = ::WSARecv(handle_, &wbuf, 1, &recvd, &flags, &ol, nullptr);
-        if (ret == SOCKET_ERROR) {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-                co_return std::string("WSARecv failed");
-        }
-        co_await async::iocp_awaiter{&ol};
+        int recv_err = 0;
+        co_await co_iocp(&ol, [&]() -> int {
+            if (::WSARecv(handle_, &wbuf, 1, &recvd, &flags, &ol, nullptr) == SOCKET_ERROR) {
+                int err = WSAGetLastError();
+                if (err != WSA_IO_PENDING) {
+                    recv_err = err;
+                    return 1;
+                }
+            }
+            return 0;
+        });
+        if (recv_err)
+            co_return std::string("WSARecv failed");
         if (ol.error)
             co_return std::string("WSARecv error");
         co_return ol.bytes;

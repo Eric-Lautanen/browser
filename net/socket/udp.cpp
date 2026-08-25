@@ -92,14 +92,21 @@ namespace browser::net {
         WSABUF buf = {data.size(), reinterpret_cast<char *>(data.data())};
         IoOverlapped ol;
         DWORD sent = 0;
-        int ret =
-            ::WSASendTo(handle_, &buf, 1, &sent, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr), &ol, nullptr);
-        if (ret == SOCKET_ERROR) {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-                co_return std::string("WSASendTo failed");
-        }
-        co_await async::iocp_awaiter{&ol};
+        int send_err = 0;
+        co_await co_iocp(&ol, [&]() -> int {
+            if (::WSASendTo(
+                    handle_, &buf, 1, &sent, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr), &ol, nullptr) ==
+                SOCKET_ERROR) {
+                int err = WSAGetLastError();
+                if (err != WSA_IO_PENDING) {
+                    send_err = err;
+                    return 1;
+                }
+            }
+            return 0;
+        });
+        if (send_err)
+            co_return std::string("WSASendTo failed");
         if (ol.error)
             co_return std::string("WSASendTo error");
         co_return ol.bytes;
@@ -114,14 +121,21 @@ namespace browser::net {
         DWORD flags = 0;
         IoOverlapped ol;
         DWORD recvd = 0;
-        int ret =
-            ::WSARecvFrom(handle_, &wbuf, 1, &recvd, &flags, (struct sockaddr *)&from_addr, &from_len, &ol, nullptr);
-        if (ret == SOCKET_ERROR) {
-            int err = WSAGetLastError();
-            if (err != WSA_IO_PENDING)
-                co_return std::string("WSARecvFrom failed");
-        }
-        co_await async::iocp_awaiter{&ol};
+        int recv_err = 0;
+        co_await co_iocp(&ol, [&]() -> int {
+            if (::WSARecvFrom(
+                    handle_, &wbuf, 1, &recvd, &flags, (struct sockaddr *)&from_addr, &from_len, &ol, nullptr) ==
+                SOCKET_ERROR) {
+                int err = WSAGetLastError();
+                if (err != WSA_IO_PENDING) {
+                    recv_err = err;
+                    return 1;
+                }
+            }
+            return 0;
+        });
+        if (recv_err)
+            co_return std::string("WSARecvFrom failed");
         if (ol.error)
             co_return std::string("WSARecvFrom error");
         if (sender) {

@@ -96,9 +96,9 @@ void IOCP::worker_thread() {
         }
         iol->bytes = bytes;
         iol->completed = true;
-        if (iol->hEvent) {
-            auto coro = std::coroutine_handle<>::from_address(iol->hEvent);
-            coro.resume();
+        if (iol->coro.load(std::memory_order_acquire)) {
+            auto coro_handle = iol->get_coro();
+            coro_handle.resume();
         }
     }
 }
