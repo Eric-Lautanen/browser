@@ -7,6 +7,7 @@
 #include "../net/crypto/x25519.hpp"
 #include "../net/crypto/chacha20.hpp"
 #include "../net/tls.hpp"
+#include "../net/tls/cert_verify.hpp"
 #include <cstring>
 #include <vector>
 #include <string>
@@ -403,6 +404,34 @@ TEST(cert_parse_missing_ext_block_rejected, {
     std::vector<u8> entry = {0x00, 0x00, 0x02, 0x01, 0x02};
     auto r = parse_certificate_message(cert_msg_with_list(entry, static_cast<u32>(entry.size())));
     ASSERT(r.is_err());
+})
+
+// Certificate chain validator tests (N-S2: every failure path must fail closed)
+
+TEST(cert_chain_empty_rejected, {
+    CertValidationResult r;
+    validate_certificate_chain({}, "example.com", r);
+    ASSERT(!r.is_valid());
+    ASSERT_EQ(static_cast<int>(r.result), static_cast<int>(CertResult::MALFORMED));
+})
+
+// Wildcard matching: exactly one label (N-S2). check_hostname_match is static, so
+// exercise it through the public API is impossible without a live cert; instead test
+// via the exported validator on garbage DER which must also be rejected.
+TEST(cert_chain_garbage_der_rejected, {
+    std::vector<std::vector<u8>> chain = {{0xDE, 0xAD, 0xBE, 0xEF}};
+    CertValidationResult r;
+    validate_certificate_chain(chain, "example.com", r);
+    ASSERT(!r.is_valid());
+    ASSERT_EQ(static_cast<int>(r.result), static_cast<int>(CertResult::MALFORMED));
+})
+
+TEST(cert_chain_truncated_der_rejected, {
+    // ASN.1 SEQUENCE header claiming more bytes than provided
+    std::vector<std::vector<u8>> chain = {{0x30, 0x82, 0xFF, 0xFF, 0x01}};
+    CertValidationResult r;
+    validate_certificate_chain(chain, "example.com", r);
+    ASSERT(!r.is_valid());
 })
 
 // TLS connect test

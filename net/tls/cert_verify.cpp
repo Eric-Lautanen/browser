@@ -16,21 +16,28 @@ namespace browser::net::tls {
         return r;
     }
 
+    // Wildcard matches exactly ONE leftmost label: *.example.com matches a.example.com
+    // but never a.b.example.com or example.com (N-S2).
     static bool check_hostname_match(const std::string &pattern, const std::string &hostname) {
         std::string lc_pat = to_lower(pattern);
         std::string lc_host = to_lower(hostname);
         if (lc_pat == lc_host)
             return true;
         if (lc_pat.rfind("*.", 0) == 0) {
-            std::string suffix = lc_pat.substr(1);
-            if (lc_host.size() > suffix.size() && lc_host.substr(lc_host.size() - suffix.size()) == suffix) {
-                return true;
+            std::string suffix = lc_pat.substr(1);  // ".example.com"
+            if (lc_host.size() > suffix.size() &&
+                lc_host.compare(lc_host.size() - suffix.size(), suffix.size(), suffix) == 0) {
+                std::string label = lc_host.substr(0, lc_host.size() - suffix.size());
+                if (label.find('.') == std::string::npos && !label.empty())
+                    return true;
             }
         }
         return false;
     }
 
-    static bool check_san(PCCERT_CONTEXT cert_ctx, const std::string &hostname) {
+    // Returns: 1 = SAN present and hostname matched, 0 = SAN present, no match,
+    // -1 = no SAN extension at all (CN fallback then permitted).
+    static int check_san(PCCERT_CONTEXT cert_ctx, const std::string &hostname) {
         PCERT_EXTENSION ext = CertFindExtension(
             szOID_SUBJECT_ALT_NAME2, cert_ctx->pCertInfo->cExtension, cert_ctx->pCertInfo->rgExtension);
         if (!ext) {
@@ -38,7 +45,7 @@ namespace browser::net::tls {
                 szOID_SUBJECT_ALT_NAME, cert_ctx->pCertInfo->cExtension, cert_ctx->pCertInfo->rgExtension);
         }
         if (!ext)
-            return false;
+            return -1;
 
         DWORD cbDecoded = 0;
         if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
@@ -49,23 +56,20 @@ namespace browser::net::tls {
                                  nullptr,
                                  nullptr,
                                  &cbDecoded)) {
-            return false;
+            return 0;
         }
 
-        void *pvDecoded = malloc(cbDecoded);
-        if (!pvDecoded)
-            return false;
-
+        std::vector<u8> decoded(cbDecoded);
         bool matched = false;
         if (CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                 szOID_SUBJECT_ALT_NAME2,
                                 ext->Value.pbData,
                                 ext->Value.cbData,
-                                CRYPT_DECODE_NOCOPY_FLAG,
+                                0,
                                 nullptr,
-                                pvDecoded,
+                                decoded.data(),
                                 &cbDecoded)) {
-            CERT_ALT_NAME_INFO *altInfo = static_cast<CERT_ALT_NAME_INFO *>(pvDecoded);
+            CERT_ALT_NAME_INFO *altInfo = reinterpret_cast<CERT_ALT_NAME_INFO *>(decoded.data());
             for (DWORD i = 0; i < altInfo->cAltEntry; i++) {
                 if (altInfo->rgAltEntry[i].dwAltNameChoice == CERT_ALT_NAME_DNS_NAME) {
                     std::wstring wdns(altInfo->rgAltEntry[i].pwszDNSName);
@@ -81,8 +85,7 @@ namespace browser::net::tls {
                 }
             }
         }
-        free(pvDecoded);
-        return matched;
+        return matched ? 1 : 0;
     }
 
     static bool check_cn(PCCERT_CONTEXT cert_ctx, const std::string &hostname) {
@@ -111,14 +114,21 @@ namespace browser::net::tls {
             CertCloseStore(hc, 0);
     }
 
+    // Fail-closed validator (N-S2): any inability to establish trust yields a
+    // non-VALID result. Only a chain built to a trusted root with valid
+    // signatures, valid validity window and matching hostname passes.
     void validate_certificate_chain(const std::vector<std::vector<u8>> &cert_chain,
                                     const std::string &hostname,
                                     CertValidationResult &out_result) {
-        out_result.result = CertResult::VALID;
+        out_result.result = CertResult::MALFORMED;
         out_result.detail.clear();
 
+        auto finish =
+            [&](HCERTSTORE hs, HCERTSTORE hc, HCERTSTORE hp, std::vector<PCCERT_CONTEXT> &ctxs, PCCERT_CHAIN_CONTEXT ch) {
+                cleanup_cert_stores(hs, hc, hp, ctxs, ch);
+            };
+
         if (cert_chain.empty()) {
-            out_result.result = CertResult::MALFORMED;
             out_result.detail = "empty certificate chain";
             return;
         }
@@ -135,9 +145,8 @@ namespace browser::net::tls {
             CERT_STORE_PROV_SYSTEM, X509_ASN_ENCODING, (HCRYPTPROV)0, CERT_SYSTEM_STORE_LOCAL_MACHINE, L"CA");
         hPeerStore = CertOpenStore(CERT_STORE_PROV_MEMORY, 0, (HCRYPTPROV)0, 0, nullptr);
         if (!hPeerStore) {
-            out_result.result = CertResult::VALID;
-            out_result.detail = "certificate validation deferred (no store)";
-            cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+            out_result.detail = "certificate store unavailable";
+            finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
             return;
         }
 
@@ -145,20 +154,12 @@ namespace browser::net::tls {
             PCCERT_CONTEXT ctx = CertCreateCertificateContext(
                 X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, der.data(), static_cast<DWORD>(der.size()));
             if (!ctx) {
-                out_result.result = CertResult::VALID;
-                out_result.detail = "certificate decode deferred, continuing";
-                cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+                out_result.detail = "certificate decode failed";
+                finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
                 return;
             }
             cert_contexts.push_back(ctx);
             CertAddCertificateContextToStore(hPeerStore, ctx, CERT_STORE_ADD_ALWAYS, nullptr);
-        }
-
-        if (cert_contexts.empty()) {
-            out_result.result = CertResult::VALID;
-            out_result.detail = "no parsed certs, continuing";
-            cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
-            return;
         }
 
         PCCERT_CONTEXT leaf_ctx = cert_contexts[0];
@@ -169,23 +170,30 @@ namespace browser::net::tls {
         if (CompareFileTime(&now_time, &leaf_ctx->pCertInfo->NotBefore) < 0) {
             out_result.result = CertResult::EXPIRED;
             out_result.detail = "certificate not yet valid (notBefore)";
-            cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+            finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
             return;
         }
         if (CompareFileTime(&now_time, &leaf_ctx->pCertInfo->NotAfter) > 0) {
             out_result.result = CertResult::EXPIRED;
             out_result.detail = "certificate has expired (notAfter)";
-            cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+            finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
             return;
         }
 
-        if (!check_san(leaf_ctx, hostname)) {
+        int san = check_san(leaf_ctx, hostname);
+        if (san < 0) {
+            // No SAN extension: fall back to CN (legacy certificates).
             if (!check_cn(leaf_ctx, hostname)) {
                 out_result.result = CertResult::HOST_MISMATCH;
-                out_result.detail = "hostname does not match certificate SAN/CN";
-                cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+                out_result.detail = "hostname does not match certificate CN";
+                finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
                 return;
             }
+        } else if (san == 0) {
+            out_result.result = CertResult::HOST_MISMATCH;
+            out_result.detail = "hostname does not match certificate SAN";
+            finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+            return;
         }
 
         CERT_CHAIN_PARA chain_params = {};
@@ -201,35 +209,37 @@ namespace browser::net::tls {
                                      CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY,
                                      nullptr,
                                      &pChainContext)) {
-            out_result.result = CertResult::VALID;
-            out_result.detail = "chain building deferred";
-            cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+            out_result.result = CertResult::UNTRUSTED;
+            out_result.detail = "chain building failed";
+            finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
             return;
         }
 
         if (pChainContext->TrustStatus.dwErrorStatus != 0) {
             DWORD err = pChainContext->TrustStatus.dwErrorStatus;
             if (err & CERT_TRUST_IS_UNTRUSTED_ROOT) {
-                out_result.result = CertResult::VALID;
-                out_result.detail = "untrusted root (deferred)";
+                out_result.result = CertResult::UNTRUSTED;
+                out_result.detail = "untrusted root";
             } else if (err & CERT_TRUST_IS_PARTIAL_CHAIN) {
-                out_result.result = CertResult::VALID;
-                out_result.detail = "partial chain (deferred)";
+                out_result.result = CertResult::UNTRUSTED;
+                out_result.detail = "partial chain";
             } else if (err & CERT_TRUST_IS_NOT_TIME_VALID) {
                 out_result.result = CertResult::EXPIRED;
                 out_result.detail = "chain contains expired certificate";
             } else if (err & CERT_TRUST_IS_NOT_SIGNATURE_VALID) {
-                out_result.result = CertResult::VALID;
-                out_result.detail = "signature validation deferred";
+                out_result.result = CertResult::UNTRUSTED;
+                out_result.detail = "chain signature invalid";
             } else {
-                out_result.result = CertResult::VALID;
-                out_result.detail = "chain validation deferred";
+                out_result.result = CertResult::UNTRUSTED;
+                out_result.detail = "chain validation failed";
             }
-            cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+            finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
             return;
         }
 
-        cleanup_cert_stores(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
+        out_result.result = CertResult::VALID;
+        out_result.detail.clear();
+        finish(hRootStore, hCaStore, hPeerStore, cert_contexts, pChainContext);
     }
 
 }  // namespace browser::net::tls
