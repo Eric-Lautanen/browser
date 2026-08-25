@@ -823,4 +823,15 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | N-S1 | Handshake verifies server CertificateVerify signature over transcript (RSA-PSS-SHA256 + ECDSA-P256 via new DER reader + SPKI extraction), then validates chain against system roots before completing. Fixed two latent bugs found during work `[NEW]`: SAN CryptDecodeObjectEx call pattern was invalid (SAN matching never worked — now two-call size query + NOCOPY); DER INTEGER leading-zero pad in RSA modulus broke PSS alignment | net/tls/cert_verify.{hpp,cpp}, net/tls/handshake.cpp, tests/tls_test.cpp | Live validated handshakes vs google.com/github.com; CNG signing-oracle cross-check; 12 new unit tests; tls_test 41/41, net_test 58/58 | 5b6b6d8 |
 
 
+### Session 1 final verification
+
+- Full harness suite: **90/90 PASS** (0 critical, 0 minor), tools/results/latest_run.json
+- All 42 test executables: exit 0 (incl. live-network tests tls_connect_google,
+  http2_connect_google, connection_http — now exercising real certificate validation)
+- Build clean under -Wall -Wextra -Wpedantic -Werror; zero std::sto* remain in production code
+
+**Process note:** git clang-format HEAD reformatted staged .json fixtures (clang-format
+supports JSON) breaking exact-string fixture comparison — restrict clang-format to
+.cpp/.hpp only, and regenerate DOM fixtures with the basename as source path.
+
 *End of audit. All line references verified against working tree at audit time (commit c127d01 lineage).*
