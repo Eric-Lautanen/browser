@@ -1,16 +1,18 @@
-#include "test_framework.hpp"
-#include "utility.hpp"
+#include "../net/tls.hpp"
+
+#include "../net/crypto/aes.hpp"
 #include "../net/crypto/bignum.hpp"
+#include "../net/crypto/chacha20.hpp"
 #include "../net/crypto/ecc.hpp"
 #include "../net/crypto/sha.hpp"
-#include "../net/crypto/aes.hpp"
 #include "../net/crypto/x25519.hpp"
-#include "../net/crypto/chacha20.hpp"
-#include "../net/tls.hpp"
 #include "../net/tls/cert_verify.hpp"
+#include "test_framework.hpp"
+#include "utility.hpp"
+
 #include <cstring>
-#include <vector>
 #include <string>
+#include <vector>
 
 using namespace browser;
 using namespace browser::net::crypto;
@@ -432,6 +434,150 @@ TEST(cert_chain_truncated_der_rejected, {
     CertValidationResult r;
     validate_certificate_chain(chain, "example.com", r);
     ASSERT(!r.is_valid());
+})
+
+// CertificateVerify signature verification (N-S1)
+
+static void der_len(std::vector<u8> &out, size_t len) {
+    if (len < 128) {
+        out.push_back((u8)len);
+        return;
+    }
+    int nb = (len <= 0xFF) ? 1 : (len <= 0xFFFF ? 2 : 3);
+    out.push_back((u8)(0x80 | nb));
+    for (int i = nb - 1; i >= 0; i--) out.push_back((u8)((len >> (8 * i)) & 0xFF));
+}
+
+static void der_int(std::vector<u8> &out, const std::vector<u8> &v) {
+    out.push_back(0x02);
+    size_t start = 0;
+    while (start < v.size() && v[start] == 0) start++;
+    size_t vl = v.size() - start;
+    bool pad = vl == 0 || (v[start] & 0x80);
+    der_len(out, vl + (pad ? 1 : 0));
+    if (pad)
+        out.push_back(0);
+    out.insert(out.end(), v.begin() + start, v.end());
+}
+
+// Minimal structurally-valid X.509 shell around a SubjectPublicKeyInfo.
+static std::vector<u8> make_cert_with_spki(const std::vector<u8> &spki) {
+    auto seq = [](const std::vector<u8> &inner) {
+        std::vector<u8> out{(u8)0x30};
+        der_len(out, inner.size());
+        out.insert(out.end(), inner.begin(), inner.end());
+        return out;
+    };
+    std::vector<u8> tbs;
+    tbs.push_back(0x02);
+    tbs.push_back(0x01);
+    tbs.push_back(0x01);  // serialNumber
+    for (int i = 0; i < 4; i++) {
+        tbs.push_back(0x30);
+        tbs.push_back(0x00);
+    }  // sig/issuer/validity/subject
+    tbs.insert(tbs.end(), spki.begin(), spki.end());
+    std::vector<u8> rest = seq(tbs);
+    rest.push_back(0x30);
+    rest.push_back(0x00);  // signatureAlgorithm
+    rest.push_back(0x03);
+    rest.push_back(0x02);
+    rest.push_back(0x00);
+    rest.push_back(0x00);  // signatureValue
+    return seq(rest);
+}
+
+static std::vector<u8> make_ec_p256_spki(const std::vector<u8> &point) {
+    static const u8 oid_ec[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01};
+    static const u8 oid_p256[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07};
+    std::vector<u8> algid_inner{(u8)0x06, sizeof(oid_ec)};
+    algid_inner.insert(algid_inner.end(), oid_ec, oid_ec + sizeof(oid_ec));
+    algid_inner.push_back((u8)0x06);
+    algid_inner.push_back(sizeof(oid_p256));
+    algid_inner.insert(algid_inner.end(), oid_p256, oid_p256 + sizeof(oid_p256));
+
+    std::vector<u8> bitstr{(u8)0x03};
+    der_len(bitstr, point.size() + 1);
+    bitstr.push_back(0);
+    bitstr.insert(bitstr.end(), point.begin(), point.end());
+
+    std::vector<u8> spki_inner{(u8)0x30};
+    der_len(spki_inner, algid_inner.size());
+    spki_inner.insert(spki_inner.end(), algid_inner.begin(), algid_inner.end());
+    spki_inner.insert(spki_inner.end(), bitstr.begin(), bitstr.end());
+
+    std::vector<u8> spki{(u8)0x30};
+    der_len(spki, spki_inner.size());
+    spki.insert(spki.end(), spki_inner.begin(), spki_inner.end());
+    return spki;
+}
+
+TEST(cert_verify_extract_ec_key, {
+    auto curve = EllipticCurve::secp256r1();
+    ECPoint q = curve.point_mul(curve.generator, BigNum(758883078u));
+    std::vector<u8> point;
+    point.push_back(0x04);
+    auto xb = q.x.to_bytes(32);
+    auto yb = q.y.to_bytes(32);
+    point.insert(point.end(), xb.begin(), xb.end());
+    point.insert(point.end(), yb.begin(), yb.end());
+
+    PublicKey pk;
+    ASSERT(extract_certificate_public_key(make_cert_with_spki(make_ec_p256_spki(point)), pk));
+    ASSERT_EQ(static_cast<int>(pk.kind), static_cast<int>(PubKeyKind::EC_P256));
+    ASSERT(pk.point == point);
+})
+
+// Self-consistency: sign the CV content with our own ECC primitives and verify.
+TEST(cert_verify_ecdsa_roundtrip, {
+    auto curve = EllipticCurve::secp256r1();
+    BigNum d(0x1234567Au);
+    ECPoint q = curve.point_mul(curve.generator, d);
+
+    std::vector<u8> point;
+    point.push_back(0x04);
+    auto xb = q.x.to_bytes(32);
+    auto yb = q.y.to_bytes(32);
+    point.insert(point.end(), xb.begin(), xb.end());
+    point.insert(point.end(), yb.begin(), yb.end());
+
+    std::vector<u8> th(32, 0xCD);
+    auto content = make_certificate_verify_content("TLS 1.3, server CertificateVerify", th);
+    auto digest = SHA256::hash(content.data(), content.size());
+
+    // Sign: k fixed nonce; r = (kG).x mod n ; s = k^-1(e + d r) mod n
+    BigNum k(0x0B0B0FACu);
+    ECPoint kg = curve.point_mul(curve.generator, k);
+    BigNum r = kg.x.mod_mul(BigNum(1), curve.order);
+    BigNum e = BigNum::from_bytes(digest.data(), digest.size());
+    BigNum dr = d.mod_mul(r, curve.order);
+    BigNum s = k.mod_inverse(curve.order).mod_mul(e.mod_add(dr, curve.order), curve.order);
+
+    std::vector<u8> sig_inner;
+    der_int(sig_inner, r.to_bytes(32));
+    der_int(sig_inner, s.to_bytes(32));
+    std::vector<u8> sig{(u8)0x30};
+    der_len(sig, sig_inner.size());
+    sig.insert(sig.end(), sig_inner.begin(), sig_inner.end());
+
+    std::vector<std::vector<u8>> chain{make_cert_with_spki(make_ec_p256_spki(point))};
+    auto vr = verify_server_certificate_verify(chain, 0x0403, sig, th);
+    ASSERT_EQ(static_cast<int>(vr), static_cast<int>(CVResult::VALID));
+
+    sig[5] ^= 0x01;
+    vr = verify_server_certificate_verify(chain, 0x0403, sig, th);
+    ASSERT_EQ(static_cast<int>(vr), static_cast<int>(CVResult::INVALID_SIGNATURE));
+})
+
+TEST(cert_verify_unsupported_alg_rejected, {
+    std::vector<std::vector<u8>> chain{make_cert_with_spki(make_ec_p256_spki(std::vector<u8>(65, 0x04)))};
+    auto vr = verify_server_certificate_verify(chain, 0x0501, std::vector<u8>(8, 0), std::vector<u8>(32, 0));
+    ASSERT_EQ(static_cast<int>(vr), static_cast<int>(CVResult::UNSUPPORTED_ALGORITHM));
+})
+
+TEST(cert_verify_no_public_key_rejected, {
+    auto vr = verify_server_certificate_verify({}, 0x0403, std::vector<u8>(8, 0), std::vector<u8>(32, 0));
+    ASSERT_EQ(static_cast<int>(vr), static_cast<int>(CVResult::NO_PUBLIC_KEY));
 })
 
 // TLS connect test

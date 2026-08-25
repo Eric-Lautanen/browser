@@ -1,4 +1,8 @@
-#include "cert_verify.hpp"
+﻿#include "cert_verify.hpp"
+
+#include "../crypto/bignum.hpp"
+#include "../crypto/ecc.hpp"
+#include "../crypto/sha.hpp"
 
 #include <cctype>
 #include <cstring>
@@ -9,6 +13,278 @@
 #include <wincrypt.h>
 
 namespace browser::net::tls {
+
+    // ---------------------------------------------------------------------------
+    // Minimal DER reader (definite-length forms only, as used by X.509)
+    // ---------------------------------------------------------------------------
+
+    namespace der {
+
+        struct Elem {
+            u8 tag = 0;
+            std::size_t content_off = 0;
+            std::size_t content_len = 0;
+        };
+
+        static bool next(const u8 *d, std::size_t size, std::size_t off, Elem &out) {
+            if (off + 2 > size)
+                return false;
+            out.tag = d[off];
+            u8 first = d[off + 1];
+            std::size_t hdr = 2;
+            u64 len = 0;
+            if (first < 0x80) {
+                len = first;
+            } else {
+                u8 n = static_cast<u8>(first & 0x7F);
+                if (n == 0 || n > 4 || off + 2 + n > size)
+                    return false;
+                for (u8 i = 0; i < n; i++) len = (len << 8) | d[off + 2 + i];
+                hdr += n;
+            }
+            if (off + hdr + len > size)
+                return false;
+            out.content_off = off + hdr;
+            out.content_len = static_cast<std::size_t>(len);
+            return true;
+        }
+
+        static bool children(const u8 *d, std::size_t size, const Elem &parent, std::vector<Elem> &out) {
+            std::size_t off = parent.content_off;
+            std::size_t end = parent.content_off + parent.content_len;
+            while (off < end) {
+                Elem e;
+                if (!next(d, size, off, e))
+                    return false;
+                out.push_back(e);
+                off = e.content_off + e.content_len;
+            }
+            return off == end;
+        }
+
+    }  // namespace der
+
+    // OIDs
+    static const u8 OID_RSA_ENCRYPTION[] = {0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01};
+    static const u8 OID_EC_PUBLIC_KEY[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x02, 0x01};
+    static const u8 OID_PRIME256V1[] = {0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07};
+
+    static bool oid_equals(const u8 *d, std::size_t size, const u8 *oid, std::size_t oid_len) {
+        return size == oid_len && std::memcmp(d, oid, oid_len) == 0;
+    }
+
+    // Extract SubjectPublicKeyInfo from a DER certificate.
+    bool extract_certificate_public_key(const std::vector<u8> &cert, PublicKey &out) {
+        const u8 *d = cert.data();
+        std::size_t size = cert.size();
+        der::Elem root;
+        if (!der::next(d, size, 0, root) || root.tag != 0x30)
+            return false;
+        std::vector<der::Elem> top;
+        if (!der::children(d, size, root, top) || top.empty())
+            return false;
+        if (top[0].tag != 0x30)
+            return false;
+
+        // TBSCertificate children; skip optional [0] EXPLICIT version.
+        std::vector<der::Elem> tbs;
+        if (!der::children(d, size, top[0], tbs))
+            return false;
+        std::size_t i = 0;
+        if (!tbs.empty() && tbs[0].tag == 0xA0)
+            i = 1;
+        // Order per RFC 5280: serialNumber, signature, issuer, validity, subject, SPKI.
+        if (tbs.size() < i + 6 || tbs[i].tag != 0x02 || tbs[i + 1].tag != 0x30 || tbs[i + 5].tag != 0x30)
+            return false;
+        der::Elem spki = tbs[i + 5];
+
+        std::vector<der::Elem> spki_kids;
+        if (!der::children(d, size, spki, spki_kids) || spki_kids.size() != 2 || spki_kids[0].tag != 0x30 ||
+            spki_kids[1].tag != 0x03)
+            return false;
+
+        std::vector<der::Elem> alg;
+        if (!der::children(d, size, spki_kids[0], alg) || alg.empty() || alg[0].tag != 0x06)
+            return false;
+        const u8 *oid = d + alg[0].content_off;
+        std::size_t oid_len = alg[0].content_len;
+
+        // BIT STRING content: one unused-bits byte then key bytes.
+        if (spki_kids[1].content_len < 1)
+            return false;
+        const u8 *key = d + spki_kids[1].content_off + 1;
+        std::size_t key_len = spki_kids[1].content_len - 1;
+
+        if (oid_equals(oid, oid_len, OID_RSA_ENCRYPTION, sizeof(OID_RSA_ENCRYPTION))) {
+            der::Elem rsa_seq;
+            if (!der::next(key, key_len, 0, rsa_seq) || rsa_seq.tag != 0x30)
+                return false;
+            std::vector<der::Elem> rsa_kids;
+            if (!der::children(key, key_len, rsa_seq, rsa_kids) || rsa_kids.size() != 2)
+                return false;
+            out.kind = PubKeyKind::RSA;
+            out.n.assign(key + rsa_kids[0].content_off, key + rsa_kids[0].content_off + rsa_kids[0].content_len);
+            // DER INTEGER carries a redundant leading 0x00 when the high bit is set;
+            // the modulus must be exactly its minimal big-endian encoding.
+            while (out.n.size() > 1 && out.n.front() == 0x00) out.n.erase(out.n.begin());
+            return !out.n.empty();
+        }
+        if (oid_equals(oid, oid_len, OID_EC_PUBLIC_KEY, sizeof(OID_EC_PUBLIC_KEY))) {
+            if (alg.size() < 2 || alg[1].tag != 0x06)
+                return false;
+            const u8 *curve = d + alg[1].content_off;
+            if (!oid_equals(curve, alg[1].content_len, OID_PRIME256V1, sizeof(OID_PRIME256V1)))
+                return false;
+            if (key_len < 1 || key[0] != 0x04)
+                return false;
+            out.kind = PubKeyKind::EC_P256;
+            out.point.assign(key, key + key_len);
+            return true;
+        }
+        return false;
+    }
+
+    // ---------------------------------------------------------------------------
+    // MGF1 + RSASSA-PSS verification (SHA-256, salt length 32 â€” RFC 8446 Â§4.2.3)
+    // ---------------------------------------------------------------------------
+
+    static std::vector<u8> mgf1_sha256(const u8 *seed, std::size_t seed_len, std::size_t mask_len) {
+        std::vector<u8> mask;
+        mask.reserve(mask_len + 32);
+        for (u32 counter = 0; mask.size() < mask_len; counter++) {
+            std::vector<u8> input(seed, seed + seed_len);
+            input.push_back(static_cast<u8>((counter >> 24) & 0xFF));
+            input.push_back(static_cast<u8>((counter >> 16) & 0xFF));
+            input.push_back(static_cast<u8>((counter >> 8) & 0xFF));
+            input.push_back(static_cast<u8>(counter & 0xFF));
+            auto h = crypto::SHA256::hash(input.data(), input.size());
+            mask.insert(mask.end(), h.begin(), h.end());
+        }
+        mask.resize(mask_len);
+        return mask;
+    }
+
+    static bool verify_rsa_pss_sha256(const std::vector<u8> &modulus_be,
+                                      const std::vector<u8> &signature,
+                                      const std::vector<u8> &content) {
+        constexpr std::size_t HLEN = 32;
+        constexpr std::size_t SLEN = 32;
+
+        crypto::BigNum n = crypto::BigNum::from_bytes(modulus_be.data(), modulus_be.size());
+        crypto::BigNum e(65537);
+        crypto::BigNum s = crypto::BigNum::from_bytes(signature.data(), signature.size());
+        if (s.compare(n) >= 0)
+            return false;
+
+        std::size_t k = modulus_be.size();
+        auto m = s.mod_exp(e, n).to_bytes(k);
+        if (m.size() != k || m[k - 1] != 0xBC)
+            return false;
+
+        std::size_t em_bits = modulus_be.size() * 8 - 1;
+        std::size_t em_len = (em_bits + 7) / 8;
+        if (k < HLEN + SLEN + 2)
+            return false;
+        const u8 *masked_db = m.data();
+        std::size_t db_len = k - HLEN - 1;
+        const u8 *h = m.data() + db_len;
+
+        std::vector<u8> db = mgf1_sha256(h, HLEN, db_len);
+        for (std::size_t i = 0; i < db_len; i++) db[i] ^= masked_db[i];
+        std::size_t top_bits = 8 * em_len - em_bits;
+        db[0] &= static_cast<u8>(0xFF >> top_bits);
+
+        // DB must be 0x00* || 0x01 || salt
+        std::size_t idx = 0;
+        while (idx < db_len && db[idx] == 0x00) idx++;
+        if (idx + 1 + SLEN != db_len || db[idx] != 0x01)
+            return false;
+        const u8 *salt = db.data() + idx + 1;
+
+        auto m_hash = crypto::SHA256::hash(content.data(), content.size());
+        std::vector<u8> m_prime(8 + HLEN + SLEN, 0);
+        std::memcpy(m_prime.data() + 8, m_hash.data(), HLEN);
+        std::memcpy(m_prime.data() + 8 + HLEN, salt, SLEN);
+        auto h_prime = crypto::SHA256::hash(m_prime.data(), m_prime.size());
+        return std::memcmp(h, h_prime.data(), HLEN) == 0;
+    }
+
+    // ---------------------------------------------------------------------------
+    // ECDSA P-256 verification over SHA-256
+    // ---------------------------------------------------------------------------
+
+    std::vector<u8> make_certificate_verify_content(const std::string &context,
+                                                    const std::vector<u8> &transcript_hash) {
+        std::vector<u8> content(64, 0x20);
+        content.insert(content.end(), context.begin(), context.end());
+        content.push_back(0x00);
+        content.insert(content.end(), transcript_hash.begin(), transcript_hash.end());
+        return content;
+    }
+
+    CVResult verify_server_certificate_verify(const std::vector<std::vector<u8>> &cert_chain,
+                                              u16 sig_alg,
+                                              const std::vector<u8> &signature,
+                                              const std::vector<u8> &transcript_hash) {
+        if (sig_alg != 0x0804 && sig_alg != 0x0403)
+            return CVResult::UNSUPPORTED_ALGORITHM;
+        if (cert_chain.empty())
+            return CVResult::NO_PUBLIC_KEY;
+
+        PublicKey pk;
+        if (!extract_certificate_public_key(cert_chain[0], pk))
+            return CVResult::NO_PUBLIC_KEY;
+
+        static const char server_ctx[] = "TLS 1.3, server CertificateVerify";
+        auto content = make_certificate_verify_content(server_ctx, transcript_hash);
+
+        if (sig_alg == 0x0804) {
+            if (pk.kind != PubKeyKind::RSA)
+                return CVResult::INVALID_SIGNATURE;
+            return verify_rsa_pss_sha256(pk.n, signature, content) ? CVResult::VALID : CVResult::INVALID_SIGNATURE;
+        }
+
+        if (pk.kind != PubKeyKind::EC_P256)
+            return CVResult::INVALID_SIGNATURE;
+
+        // ecdsa_secp256r1_sha256 hashes the full CertificateVerify content.
+        auto digest = crypto::SHA256::hash(content.data(), content.size());
+        // e = leftmost min(bitlen(order), 256) bits of the digest; both are 256 bits here.
+        auto curve = crypto::EllipticCurve::secp256r1();
+        crypto::BigNum e = crypto::BigNum::from_bytes(digest.data(), digest.size());
+
+        der::Elem seq;
+        if (!der::next(signature.data(), signature.size(), 0, seq) || seq.tag != 0x30)
+            return CVResult::INVALID_SIGNATURE;
+        std::vector<der::Elem> ints;
+        if (!der::children(signature.data(), signature.size(), seq, ints) || ints.size() != 2)
+            return CVResult::INVALID_SIGNATURE;
+        for (auto &el : ints) {
+            if (el.tag != 0x02 || el.content_len == 0 || el.content_len > 33)
+                return CVResult::INVALID_SIGNATURE;
+        }
+        crypto::BigNum rr = crypto::BigNum::from_bytes(signature.data() + ints[0].content_off, ints[0].content_len);
+        crypto::BigNum ss = crypto::BigNum::from_bytes(signature.data() + ints[1].content_off, ints[1].content_len);
+        if (rr.is_zero() || ss.is_zero() || rr.compare(curve.order) >= 0 || ss.compare(curve.order) >= 0)
+            return CVResult::INVALID_SIGNATURE;
+
+        crypto::ECPoint q{crypto::BigNum::from_bytes(pk.point.data() + 1, 32),
+                          crypto::BigNum::from_bytes(pk.point.data() + 33, 32),
+                          false};
+        if (!curve.is_on_curve(q))
+            return CVResult::INVALID_SIGNATURE;
+
+        crypto::BigNum w = ss.mod_inverse(curve.order);
+        crypto::BigNum u1 = e.mod_mul(w, curve.order);
+        crypto::BigNum u2 = rr.mod_mul(w, curve.order);
+        crypto::ECPoint p1 = curve.point_mul(curve.generator, u1);
+        crypto::ECPoint p2 = curve.point_mul(q, u2);
+        crypto::ECPoint result = curve.point_add(p1, p2);
+        if (result.is_infinity)
+            return CVResult::INVALID_SIGNATURE;
+        crypto::BigNum v = result.x.mod_mul(crypto::BigNum(1), curve.order);
+        return v.compare(rr) == 0 ? CVResult::VALID : CVResult::INVALID_SIGNATURE;
+    }
 
     static std::string to_lower(const std::string &s) {
         std::string r(s.size(), 0);
@@ -47,28 +323,32 @@ namespace browser::net::tls {
         if (!ext)
             return -1;
 
+        // Two-call pattern: pvInfo=NULL yields the required buffer size.
         DWORD cbDecoded = 0;
         if (!CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                  szOID_SUBJECT_ALT_NAME2,
                                  ext->Value.pbData,
                                  ext->Value.cbData,
-                                 CRYPT_DECODE_ALLOC_FLAG,
+                                 0,
                                  nullptr,
                                  nullptr,
-                                 &cbDecoded)) {
+                                 &cbDecoded) ||
+            cbDecoded == 0) {
             return 0;
         }
 
+        // CRYPT_DECODE_NOCOPY_FLAG keeps sub-pointers inside our own buffer.
         std::vector<u8> decoded(cbDecoded);
+        DWORD cbOut = static_cast<DWORD>(decoded.size());
         bool matched = false;
         if (CryptDecodeObjectEx(X509_ASN_ENCODING | PKCS_7_ASN_ENCODING,
                                 szOID_SUBJECT_ALT_NAME2,
                                 ext->Value.pbData,
                                 ext->Value.cbData,
-                                0,
+                                CRYPT_DECODE_NOCOPY_FLAG,
                                 nullptr,
                                 decoded.data(),
-                                &cbDecoded)) {
+                                &cbOut)) {
             CERT_ALT_NAME_INFO *altInfo = reinterpret_cast<CERT_ALT_NAME_INFO *>(decoded.data());
             for (DWORD i = 0; i < altInfo->cAltEntry; i++) {
                 if (altInfo->rgAltEntry[i].dwAltNameChoice == CERT_ALT_NAME_DNS_NAME) {
@@ -123,10 +403,11 @@ namespace browser::net::tls {
         out_result.result = CertResult::MALFORMED;
         out_result.detail.clear();
 
-        auto finish =
-            [&](HCERTSTORE hs, HCERTSTORE hc, HCERTSTORE hp, std::vector<PCCERT_CONTEXT> &ctxs, PCCERT_CHAIN_CONTEXT ch) {
-                cleanup_cert_stores(hs, hc, hp, ctxs, ch);
-            };
+        auto finish = [&](HCERTSTORE hs,
+                          HCERTSTORE hc,
+                          HCERTSTORE hp,
+                          std::vector<PCCERT_CONTEXT> &ctxs,
+                          PCCERT_CHAIN_CONTEXT ch) { cleanup_cert_stores(hs, hc, hp, ctxs, ch); };
 
         if (cert_chain.empty()) {
             out_result.detail = "empty certificate chain";

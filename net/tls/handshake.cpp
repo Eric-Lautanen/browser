@@ -309,6 +309,23 @@ namespace browser::net::tls {
             peer_certs_ = std::move(certs.unwrap());
             msgs_needed--;
         } else if (type == HS_CERTIFICATE_VERIFY) {
+            if (body.size() < 4)
+                return std::string("truncated certificate verify");
+            u16 sig_alg = (static_cast<u16>(body[0]) << 8) | body[1];
+            u16 sig_len = (static_cast<u16>(body[2]) << 8) | body[3];
+            if (4ull + sig_len != body.size())
+                return std::string("bad certificate verify length");
+
+            // Transcript hash covers everything up to but NOT including this message.
+            auto th = compute_transcript_hash();
+            std::vector<u8> signature(body.begin() + 4, body.begin() + 4 + sig_len);
+            auto vr = verify_server_certificate_verify(peer_certs_, sig_alg, signature, th);
+            if (vr != CVResult::VALID) {
+                if (vr == CVResult::UNSUPPORTED_ALGORITHM)
+                    return std::string("unsupported certificate verify algorithm");
+                return std::string("certificate verify signature invalid");
+            }
+
             transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
             transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
             msgs_needed--;
@@ -538,6 +555,13 @@ namespace browser::net::tls {
         if (msgs_needed != 0)
             return std::string("missing handshake messages");
 
+        // N-S1: abort unless the server chain validates against the system roots
+        // for the hostname we connected to.
+        CertValidationResult chain_result;
+        validate_certificate_chain(peer_certs_, hostname, chain_result);
+        if (!chain_result.is_valid())
+            return std::string("certificate validation failed: " + chain_result.detail);
+
         auto transcript_hash = compute_transcript_hash();
         auto finished_key = hkdf_expand_label(client_hs_traffic_, "finished", {}, 32);
         auto finished_verify_data = crypto::hmac_sha256(finished_key, transcript_hash);
@@ -615,6 +639,13 @@ namespace browser::net::tls {
 
         if (msgs_needed != 0)
             co_return std::string("missing handshake messages");
+
+        // N-S1: abort unless the server chain validates against the system roots
+        // for the hostname we connected to.
+        CertValidationResult chain_result;
+        validate_certificate_chain(peer_certs_, hostname, chain_result);
+        if (!chain_result.is_valid())
+            co_return std::string("certificate validation failed: " + chain_result.detail);
 
         auto transcript_hash = compute_transcript_hash();
         auto finished_key = hkdf_expand_label(client_hs_traffic_, "finished", {}, 32);
