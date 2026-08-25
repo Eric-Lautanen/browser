@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8">
+<style>
+  table { border-collapse: collapse; width: 100%; }
+  td { padding: 2px; }
+</style>
+</head>
+<body>
+  <!-- CS-S4: giant colspan previously allocated ~8GB of column vectors -->
+  <table>
+    <tr><td colspan="99999999">wide</td></tr>
+    <tr><td>a</td><td>b</td></tr>
+  </table>
+</body>
+</html>

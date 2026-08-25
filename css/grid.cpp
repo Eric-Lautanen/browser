@@ -293,8 +293,10 @@ namespace browser::css {
             }
             if (starts_with(s, "span ")) {
                 std::string num_str = trim(s.substr(5));
-                auto v = parse::parse_u64(num_str);
-                u32 n = v ? static_cast<u32>(std::min<u64>(*v, kMaxGridSpan)) : 1u;
+                // The cascade may serialize the count as a float ("span 2.000000"),
+                // so parse as f32 and truncate; garbage defaults to 1.
+                auto v = parse::parse_f32(num_str);
+                u32 n = v ? static_cast<u32>(std::min<f64>(*v + 0.5, kMaxGridSpan)) : 1u;
                 span = std::max(1u, std::min(n, kMaxGridSpan));
                 line = 0;
                 is_explicit = true;
