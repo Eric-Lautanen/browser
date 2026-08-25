@@ -1,7 +1,7 @@
 #include "../crypto/sha.hpp"
 #include "../crypto/x25519.hpp"
-#include "connection.hpp"
 #include "cert_verify.hpp"
+#include "connection.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -134,6 +134,175 @@ namespace browser::net::tls {
         }
 
         app_keys_set_ = true;
+    }
+
+    // Shared ServerHello processing: parse body, extract key share, derive handshake keys.
+    Result<std::vector<u8>> TLSConnection::process_server_hello(const std::vector<u8> &sh_data) {
+        ParsedHS hs;
+        if (!parse_hs_header(sh_data, 0, hs))
+            return std::string("bad server hello header");
+        if (hs.type != HS_SERVER_HELLO)
+            return std::string("expected server hello");
+
+        transcript_.insert(transcript_.end(), sh_data.begin(), sh_data.end());
+        transcript_hasher_.update(sh_data.data(), sh_data.size());
+
+        auto sh_body = std::vector<u8>(sh_data.begin() + 4, sh_data.end());
+        std::size_t off = 0;
+
+        if (off + 2 > sh_body.size())
+            return std::string("truncated SH");
+        off += 2;
+
+        if (off + 32 > sh_body.size())
+            return std::string("truncated SH random");
+        off += 32;
+
+        if (off + 1 > sh_body.size())
+            return std::string("truncated SH sid");
+        u8 sid_len = sh_body[off++];
+        if (off + sid_len > sh_body.size())
+            return std::string("truncated SH sid2");
+        off += sid_len;
+
+        if (off + 2 > sh_body.size())
+            return std::string("truncated SH cs");
+        cipher_suite_ = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
+        off += 2;
+        if (cipher_suite_ != 0x1301 && cipher_suite_ != 0x1303)
+            return std::string("unsupported cipher suite: " + std::to_string(cipher_suite_));
+
+        if (off + 1 > sh_body.size())
+            return std::string("truncated SH comp");
+        off++;
+
+        if (off + 2 > sh_body.size())
+            return std::string("truncated SH ext");
+        u16 sh_exts_len = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
+        off += 2;
+
+        if (off + sh_exts_len > sh_body.size())
+            return std::string("truncated SH exts2");
+
+        std::vector<u8> server_pub;
+        std::size_t ext_off = off;
+        std::size_t ext_end = off + sh_exts_len;
+
+        while (ext_off + 4 <= ext_end) {
+            u16 ext_type = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
+            u16 ext_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
+            ext_off += 4;
+            if (ext_off + ext_len > ext_end)
+                break;
+
+            if (ext_type == 0x0033 && ext_len >= 4) {
+                u16 group = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
+                u16 key_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
+                if (group == 0x001d && key_len == 32 && ext_off + 4 + key_len <= ext_end) {
+                    server_pub.assign(sh_body.begin() + ext_off + 4, sh_body.begin() + ext_off + 4 + key_len);
+                }
+            }
+            ext_off += ext_len;
+        }
+
+        if (server_pub.size() != 32)
+            return std::string("no key_share in SH");
+
+        u8 shared_secret[32];
+        crypto::X25519::shared_secret(client_priv_, server_pub.data(), shared_secret);
+        std::vector<u8> ss(shared_secret, shared_secret + 32);
+
+        derive_handshake_keys(ss);
+        return server_pub;
+    }
+
+    // Shared post-ServerHello handshake-message handling. Returns error on fatal condition;
+    // decrements msgs_needed when an expected message was consumed.
+    Result<void> TLSConnection::process_hs_message(u8 type,
+                                                   const std::vector<u8> &msg_bytes,
+                                                   const std::vector<u8> &body,
+                                                   int &msgs_needed) {
+        if (type == HS_ENCRYPTED_EXTENSIONS) {
+            transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+            transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+            std::size_t eo = 0;
+            if (eo + 2 <= body.size()) {
+                u16 ee_exts_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
+                eo += 2;
+                if (eo + ee_exts_len > body.size())
+                    return std::string("truncated encrypted extensions");
+                std::size_t ee_end = eo + ee_exts_len;
+                while (eo + 4 <= ee_end) {
+                    u16 etype = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
+                    u16 elen = (static_cast<u16>(body[eo + 2]) << 8) | body[eo + 3];
+                    eo += 4;
+                    if (eo + elen > ee_end)
+                        break;
+                    if (etype == 0x0010 && elen >= 2) {
+                        u16 list_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
+                        if (list_len >= 2 && eo + 2 + list_len <= ee_end) {
+                            u8 proto_len = body[eo + 2];
+                            if (proto_len > 0 && proto_len <= list_len - 1 && eo + 3 + proto_len <= body.size()) {
+                                alpn_.assign(reinterpret_cast<const char *>(body.data() + eo + 3), proto_len);
+                            }
+                        }
+                    }
+                    eo += elen;
+                }
+            }
+            msgs_needed--;
+        } else if (type == HS_CERTIFICATE) {
+            transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+            transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+            peer_certs_.clear();
+            std::size_t off = 0;
+            if (off < body.size()) {
+                u8 ctx_len = body[off++];
+                off += ctx_len;
+                if (off + 3 <= body.size()) {
+                    u32 list_len = (static_cast<u32>(body[off]) << 16) | (static_cast<u32>(body[off + 1]) << 8) |
+                                   static_cast<u32>(body[off + 2]);
+                    off += 3;
+                    std::size_t list_end = off + list_len;
+                    while (off + 3 <= list_end) {
+                        u32 cert_len = (static_cast<u32>(body[off]) << 16) | (static_cast<u32>(body[off + 1]) << 8) |
+                                       static_cast<u32>(body[off + 2]);
+                        off += 3;
+                        if (off + cert_len + 2 > list_end || off + cert_len + 2 > body.size())
+                            break;
+                        std::vector<u8> cert_der(body.begin() + off, body.begin() + off + cert_len);
+                        peer_certs_.push_back(std::move(cert_der));
+                        off += cert_len;
+                        if (off + 2 > body.size())
+                            break;
+                        u16 ext_len = (static_cast<u16>(body[off]) << 8) | body[off + 1];
+                        off += 2 + ext_len;
+                    }
+                }
+            }
+            msgs_needed--;
+        } else if (type == HS_CERTIFICATE_VERIFY) {
+            transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+            transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+            msgs_needed--;
+        } else if (type == HS_FINISHED) {
+            auto transcript_hash = compute_transcript_hash();
+            auto finished_key = hkdf_expand_label(server_hs_traffic_, "finished", {}, 32);
+            auto expected_verify_data = crypto::hmac_sha256(finished_key, transcript_hash);
+            if (body.size() != expected_verify_data.size() ||
+                std::memcmp(body.data(), expected_verify_data.data(), body.size()) != 0) {
+                return std::string("server finished verification failed");
+            }
+            transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+            transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+            msgs_needed--;
+        } else if (type == HS_CLIENT_HELLO || type == HS_SERVER_HELLO) {
+            return std::string("unexpected hs type");
+        } else {
+            transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
+            transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
+        }
+        return {};
     }
 
     std::vector<u8> TLSConnection::build_client_hello(const std::string &hostname) {
@@ -302,83 +471,10 @@ namespace browser::net::tls {
         auto sh_r = read_raw_record();
         if (sh_r.is_err())
             return std::string("read server hello: " + sh_r.unwrap_err());
-        auto &sh_data = sh_r.unwrap();
 
-        ParsedHS hs;
-        if (!parse_hs_header(sh_data, 0, hs))
-            return std::string("bad server hello header");
-        if (hs.type != HS_SERVER_HELLO)
-            return std::string("expected server hello");
-
-        transcript_.insert(transcript_.end(), sh_data.begin(), sh_data.end());
-        transcript_hasher_.update(sh_data.data(), sh_data.size());
-
-        auto sh_body = std::vector<u8>(sh_data.begin() + 4, sh_data.end());
-        std::size_t off = 0;
-
-        if (off + 2 > sh_body.size())
-            return std::string("truncated SH");
-        off += 2;
-
-        if (off + 32 > sh_body.size())
-            return std::string("truncated SH random");
-        off += 32;
-
-        if (off + 1 > sh_body.size())
-            return std::string("truncated SH sid");
-        u8 sid_len = sh_body[off++];
-        if (off + sid_len > sh_body.size())
-            return std::string("truncated SH sid2");
-        off += sid_len;
-
-        if (off + 2 > sh_body.size())
-            return std::string("truncated SH cs");
-        cipher_suite_ = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
-        off += 2;
-        if (cipher_suite_ != 0x1301 && cipher_suite_ != 0x1303)
-            return std::string("unsupported cipher suite: " + std::to_string(cipher_suite_));
-
-        if (off + 1 > sh_body.size())
-            return std::string("truncated SH comp");
-        off++;
-
-        if (off + 2 > sh_body.size())
-            return std::string("truncated SH ext");
-        u16 sh_exts_len = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
-        off += 2;
-
-        if (off + sh_exts_len > sh_body.size())
-            return std::string("truncated SH exts2");
-
-        std::vector<u8> server_pub;
-        std::size_t ext_off = off;
-        std::size_t ext_end = off + sh_exts_len;
-
-        while (ext_off + 4 <= ext_end) {
-            u16 ext_type = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
-            u16 ext_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
-            ext_off += 4;
-            if (ext_off + ext_len > ext_end)
-                break;
-
-            if (ext_type == 0x0033 && ext_len >= 4) {
-                u16 group = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
-                u16 key_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
-                if (group == 0x001d && key_len == 32 && ext_off + 4 + key_len <= ext_end) {
-                    server_pub.assign(sh_body.begin() + ext_off + 4, sh_body.begin() + ext_off + 4 + key_len);
-                }
-            }
-            ext_off += ext_len;
-        }
-
-        if (server_pub.size() != 32)
-            return std::string("no key_share in SH");
-
-        u8 shared_secret[32];
-        crypto::X25519::shared_secret(client_priv_, server_pub.data(), shared_secret);
-        std::vector<u8> ss(shared_secret, shared_secret + 32);
-
-        derive_handshake_keys(ss);
+        auto sh = process_server_hello(sh_r.unwrap());
+        if (sh.is_err())
+            return sh.unwrap_err();
 
         int msgs_needed = 4;
         while (msgs_needed > 0) {
@@ -402,88 +498,11 @@ namespace browser::net::tls {
                     return std::string("truncated hs msg");
 
                 auto msg_bytes = std::vector<u8>(rec_data.begin() + msg_off, rec_data.begin() + msg_off + total_len);
-
                 auto body = std::vector<u8>(rec_data.begin() + msg_off + 4, rec_data.begin() + msg_off + total_len);
 
-                if (phs.type == HS_ENCRYPTED_EXTENSIONS) {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    std::size_t eo = 0;
-                    if (eo + 2 <= body.size()) {
-                        u16 ee_exts_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
-                        eo += 2;
-                        std::size_t ee_end = eo + ee_exts_len;
-                        while (eo + 4 <= ee_end) {
-                            u16 etype = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
-                            u16 elen = (static_cast<u16>(body[eo + 2]) << 8) | body[eo + 3];
-                            eo += 4;
-                            if (eo + elen > ee_end)
-                                break;
-                            if (etype == 0x0010) {
-                                u16 list_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
-                                if (list_len >= 2 && eo + 2 + list_len <= ee_end) {
-                                    u8 proto_len = body[eo + 2];
-                                    if (proto_len > 0 && proto_len <= list_len - 1) {
-                                        alpn_.assign(reinterpret_cast<const char *>(body.data() + eo + 3), proto_len);
-                                    }
-                                }
-                            }
-                            eo += elen;
-                        }
-                    }
-                    msgs_needed--;
-                } else if (phs.type == HS_CERTIFICATE) {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    {
-                        peer_certs_.clear();
-                        std::size_t off = 0;
-                        if (off < body.size()) {
-                            u8 ctx_len = body[off++];
-                            off += ctx_len;
-                            if (off + 3 <= body.size()) {
-                                u32 list_len = (static_cast<u32>(body[off]) << 16) |
-                                               (static_cast<u32>(body[off + 1]) << 8) |
-                                               static_cast<u32>(body[off + 2]);
-                                off += 3;
-                                std::size_t list_end = off + list_len;
-                                while (off + 3 <= list_end) {
-                                    u32 cert_len = (static_cast<u32>(body[off]) << 16) |
-                                                   (static_cast<u32>(body[off + 1]) << 8) |
-                                                   static_cast<u32>(body[off + 2]);
-                                    off += 3;
-                                    if (off + cert_len + 2 > list_end) break;
-                                    std::vector<u8> cert_der(body.begin() + off, body.begin() + off + cert_len);
-                                    peer_certs_.push_back(std::move(cert_der));
-                                    off += cert_len;
-                                    u16 ext_len = (static_cast<u16>(body[off]) << 8) | body[off + 1];
-                                    off += 2 + ext_len;
-                                }
-                            }
-                        }
-                    }
-                    msgs_needed--;
-                } else if (phs.type == HS_CERTIFICATE_VERIFY) {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    msgs_needed--;
-                } else if (phs.type == HS_FINISHED) {
-                    auto transcript_hash = compute_transcript_hash();
-                    auto finished_key = hkdf_expand_label(server_hs_traffic_, "finished", {}, 32);
-                    auto expected_verify_data = crypto::hmac_sha256(finished_key, transcript_hash);
-                    if (body.size() != expected_verify_data.size() ||
-                        std::memcmp(body.data(), expected_verify_data.data(), body.size()) != 0) {
-                        return std::string("server finished verification failed");
-                    }
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    msgs_needed--;
-                } else if (phs.type == HS_CLIENT_HELLO || phs.type == HS_SERVER_HELLO) {
-                    return std::string("unexpected hs type");
-                } else {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                }
+                auto pr = process_hs_message(phs.type, msg_bytes, body, msgs_needed);
+                if (pr.is_err())
+                    return pr.unwrap_err();
 
                 msg_off += total_len;
             }
@@ -530,73 +549,10 @@ namespace browser::net::tls {
         auto sh_r = co_await read_raw_record_async();
         if (sh_r.is_err())
             co_return std::string("read server hello: ") + sh_r.unwrap_err();
-        auto sh_data = sh_r.unwrap();
 
-        ParsedHS hs;
-        if (!parse_hs_header(sh_data, 0, hs))
-            co_return std::string("bad server hello header");
-        if (hs.type != HS_SERVER_HELLO)
-            co_return std::string("expected server hello");
-
-        transcript_.insert(transcript_.end(), sh_data.begin(), sh_data.end());
-        transcript_hasher_.update(sh_data.data(), sh_data.size());
-
-        auto sh_body = std::vector<u8>(sh_data.begin() + 4, sh_data.end());
-        std::size_t off = 0;
-
-        if (off + 2 > sh_body.size())
-            co_return std::string("truncated SH");
-        off += 2;
-        if (off + 32 > sh_body.size())
-            co_return std::string("truncated SH random");
-        off += 32;
-        if (off + 1 > sh_body.size())
-            co_return std::string("truncated SH sid");
-        u8 sid_len = sh_body[off++];
-        if (off + sid_len > sh_body.size())
-            co_return std::string("truncated SH sid2");
-        off += sid_len;
-        if (off + 2 > sh_body.size())
-            co_return std::string("truncated SH cs");
-        cipher_suite_ = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
-        off += 2;
-        if (cipher_suite_ != 0x1301 && cipher_suite_ != 0x1303)
-            co_return std::string("unsupported cipher suite: ") + std::to_string(cipher_suite_);
-        if (off + 1 > sh_body.size())
-            co_return std::string("truncated SH comp");
-        off++;
-        if (off + 2 > sh_body.size())
-            co_return std::string("truncated SH ext");
-        u16 sh_exts_len = (static_cast<u16>(sh_body[off]) << 8) | sh_body[off + 1];
-        off += 2;
-        if (off + sh_exts_len > sh_body.size())
-            co_return std::string("truncated SH exts2");
-
-        std::vector<u8> server_pub;
-        std::size_t ext_off = off;
-        std::size_t ext_end = off + sh_exts_len;
-        while (ext_off + 4 <= ext_end) {
-            u16 ext_type = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
-            u16 ext_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
-            ext_off += 4;
-            if (ext_off + ext_len > ext_end)
-                break;
-            if (ext_type == 0x0033 && ext_len >= 4) {
-                u16 group = (static_cast<u16>(sh_body[ext_off]) << 8) | sh_body[ext_off + 1];
-                u16 key_len = (static_cast<u16>(sh_body[ext_off + 2]) << 8) | sh_body[ext_off + 3];
-                if (group == 0x001d && key_len == 32 && ext_off + 4 + key_len <= ext_end) {
-                    server_pub.assign(sh_body.begin() + ext_off + 4, sh_body.begin() + ext_off + 4 + key_len);
-                }
-            }
-            ext_off += ext_len;
-        }
-        if (server_pub.size() != 32)
-            co_return std::string("no key_share in SH");
-
-        u8 shared_secret[32];
-        crypto::X25519::shared_secret(client_priv_, server_pub.data(), shared_secret);
-        std::vector<u8> ss(shared_secret, shared_secret + 32);
-        derive_handshake_keys(ss);
+        auto sh = process_server_hello(sh_r.unwrap());
+        if (sh.is_err())
+            co_return sh.unwrap_err();
 
         int msgs_needed = 4;
         while (msgs_needed > 0) {
@@ -604,7 +560,7 @@ namespace browser::net::tls {
                 co_return std::string("handshake timeout");
             auto rec_r = co_await read_encrypted_record_async(server_hs_key_, server_hs_iv_, server_seq_);
             if (rec_r.is_err())
-                co_return std::string("read hs: ") + rec_r.unwrap_err();
+                co_return std::string("read hs record: ") + rec_r.unwrap_err();
             auto rec_data = rec_r.unwrap();
             if (rec_data.empty())
                 continue;
@@ -622,85 +578,10 @@ namespace browser::net::tls {
                 auto msg_bytes = std::vector<u8>(rec_data.begin() + msg_off, rec_data.begin() + msg_off + total_len);
                 auto body = std::vector<u8>(rec_data.begin() + msg_off + 4, rec_data.begin() + msg_off + total_len);
 
-                if (phs.type == HS_ENCRYPTED_EXTENSIONS) {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    std::size_t eo = 0;
-                    if (eo + 2 <= body.size()) {
-                        u16 ee_exts_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
-                        eo += 2;
-                        std::size_t ee_end = eo + ee_exts_len;
-                        while (eo + 4 <= ee_end) {
-                            u16 etype = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
-                            u16 elen = (static_cast<u16>(body[eo + 2]) << 8) | body[eo + 3];
-                            eo += 4;
-                            if (eo + elen > ee_end)
-                                break;
-                            if (etype == 0x0010) {
-                                u16 list_len = (static_cast<u16>(body[eo]) << 8) | body[eo + 1];
-                                if (list_len >= 2 && eo + 2 + list_len <= ee_end) {
-                                    u8 proto_len = body[eo + 2];
-                                    if (proto_len > 0 && proto_len <= list_len - 1) {
-                                        alpn_.assign(reinterpret_cast<const char *>(body.data() + eo + 3), proto_len);
-                                    }
-                                }
-                            }
-                            eo += elen;
-                        }
-                    }
-                    msgs_needed--;
-                } else if (phs.type == HS_CERTIFICATE) {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    {
-                        peer_certs_.clear();
-                        std::size_t off = 0;
-                        if (off < body.size()) {
-                            u8 ctx_len = body[off++];
-                            off += ctx_len;
-                            if (off + 3 <= body.size()) {
-                                u32 list_len = (static_cast<u32>(body[off]) << 16) |
-                                               (static_cast<u32>(body[off + 1]) << 8) |
-                                               static_cast<u32>(body[off + 2]);
-                                off += 3;
-                                std::size_t list_end = off + list_len;
-                                while (off + 3 <= list_end) {
-                                    u32 cert_len = (static_cast<u32>(body[off]) << 16) |
-                                                   (static_cast<u32>(body[off + 1]) << 8) |
-                                                   static_cast<u32>(body[off + 2]);
-                                    off += 3;
-                                    if (off + cert_len + 2 > list_end) break;
-                                    std::vector<u8> cert_der(body.begin() + off, body.begin() + off + cert_len);
-                                    peer_certs_.push_back(std::move(cert_der));
-                                    off += cert_len;
-                                    u16 ext_len = (static_cast<u16>(body[off]) << 8) | body[off + 1];
-                                    off += 2 + ext_len;
-                                }
-                            }
-                        }
-                    }
-                    msgs_needed--;
-                } else if (phs.type == HS_CERTIFICATE_VERIFY) {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    msgs_needed--;
-                } else if (phs.type == HS_FINISHED) {
-                    auto transcript_hash = compute_transcript_hash();
-                    auto finished_key = hkdf_expand_label(server_hs_traffic_, "finished", {}, 32);
-                    auto expected_verify_data = crypto::hmac_sha256(finished_key, transcript_hash);
-                    if (body.size() != expected_verify_data.size() ||
-                        std::memcmp(body.data(), expected_verify_data.data(), body.size()) != 0) {
-                        co_return std::string("server finished verification failed");
-                    }
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                    msgs_needed--;
-                } else if (phs.type == HS_CLIENT_HELLO || phs.type == HS_SERVER_HELLO) {
-                    co_return std::string("unexpected hs type");
-                } else {
-                    transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
-                    transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-                }
+                auto pr = process_hs_message(phs.type, msg_bytes, body, msgs_needed);
+                if (pr.is_err())
+                    co_return pr.unwrap_err();
+
                 msg_off += total_len;
             }
         }

@@ -95,6 +95,17 @@ namespace browser::net::tls {
             u8 inner_type, const std::vector<u8> &data, const u8 key[32], const u8 iv[12], u64 &seq);
         async::task<std::vector<u8>> read_encrypted_record_async(const u8 key[32], const u8 iv[12], u64 &seq);
 
+        // Shared handshake-message processing used by both connect() paths.
+        // Parses the ServerHello body, derives handshake keys; returns server key share.
+        Result<std::vector<u8>> process_server_hello(const std::vector<u8> &sh_data);
+
+        // Handles one post-ServerHello handshake message: transcript update, cert parsing,
+        // Finished verification. Decrements msgs_needed when an expected message was consumed.
+        Result<void> process_hs_message(u8 type,
+                                        const std::vector<u8> &msg_bytes,
+                                        const std::vector<u8> &body,
+                                        int &msgs_needed);
+
         void append_handshake_to_transcript(u8 type, const std::vector<u8> &body);
         std::vector<u8> compute_transcript_hash() const;
 
