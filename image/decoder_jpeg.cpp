@@ -186,8 +186,11 @@ public:
 
         parse_markers();
 
-        if (!sof_found_)
+        if (!sof_found_) {
+            if (sof_progressive_)
+                return Result<Image>("JPEG: progressive JPEG not supported (baseline only)");
             return Result<Image>("JPEG: No SOF marker");
+        }
         if (width_ == 0 || height_ == 0 || width_ > 4096 || height_ > 4096)
             return Result<Image>("JPEG: Invalid dimensions");
 
@@ -222,6 +225,12 @@ private:
     std::vector<float> y_buf_;
     std::vector<float> cb_buf_;
     std::vector<float> cr_buf_;
+    // Chroma plane geometry for output assembly (per-component, not max-sampled)
+    int cb_stride_ = 0;
+    int cb_rows_ = 0;
+    int cr_stride_ = 0;
+    int cr_rows_ = 0;
+    bool sof_progressive_ = false;
 
     // ------------------------------------------------------------------
     // Marker parsing
@@ -252,6 +261,8 @@ private:
         if (pos_ + 2 > size_) return;
         u16 len = static_cast<u16>((static_cast<u16>(data_[pos_]) << 8) | data_[pos_ + 1]);
         pos_ += len;
+        if (pos_ > size_)
+            pos_ = size_;
     }
 
     void parse_markers() {
@@ -272,6 +283,9 @@ private:
                 case 0xC0: case 0xC1:
                     if (!read_sof()) return;
                     break;
+                case 0xC2:
+                    sof_progressive_ = true;  // progressive: report explicit error below
+                    return;
                 case 0xC4:
                     if (!read_dht()) return;
                     break;
@@ -322,23 +336,30 @@ private:
     bool read_sof() {
         u16 len = read_u16();
         if (len < 6) return false;
+        if (pos_ + 6 > size_) return false;
         u8 prec = data_[pos_++];
         if (prec != 8) return false;
         height_ = static_cast<int>(read_u16());
         width_ = static_cast<int>(read_u16());
         comp_count_ = data_[pos_++];
-        sof_found_ = true;
         if (comp_count_ < 1 || comp_count_ > 4) return false;
-        if (pos_ + comp_count_ * 3 > size_) return false;
+        if (pos_ + static_cast<size_t>(comp_count_) * 3 > size_) return false;
         for (int i = 0; i < comp_count_; i++) {
             comps_[i].id = data_[pos_++];
             u8 s = data_[pos_++];
-            comps_[i].h_samp = (s >> 4) & 0x0F;
-            comps_[i].v_samp = s & 0x0F;
-            comps_[i].q_table_idx = data_[pos_++];
+            comps_[i].h_samp = static_cast<u8>((s >> 4) & 0x0F);
+            comps_[i].v_samp = static_cast<u8>(s & 0x0F);
+            comps_[i].q_table_idx = data_[pos_];
+            // I-C4: untrusted table index / sampling factors — validate at parse time.
+            if (comps_[i].h_samp < 1 || comps_[i].h_samp > 4) return false;
+            if (comps_[i].v_samp < 1 || comps_[i].v_samp > 4) return false;
+            if (comps_[i].q_table_idx >= 4) return false;
+            pos_++;
             if (comps_[i].h_samp > h_samp_max_) h_samp_max_ = comps_[i].h_samp;
             if (comps_[i].v_samp > v_samp_max_) v_samp_max_ = comps_[i].v_samp;
         }
+        // Only mark SOF found once every field validated.
+        sof_found_ = true;
         return true;
     }
 
@@ -346,11 +367,10 @@ private:
         u16 len = read_u16();
         if (len < 2) return false;
         size_t end = pos_ + len - 2;
-        while (pos_ < end) {
-            if (pos_ >= size_) return false;
+        while (pos_ + 17 <= end && pos_ + 17 <= size_) {
             u8 info = data_[pos_++];
-            u8 cls = (info >> 4) & 0x0F;
-            u8 tid = info & 0x0F;
+            u8 cls = static_cast<u8>((info >> 4) & 0x0F);
+            u8 tid = static_cast<u8>(info & 0x0F);
             if (cls > 1 || tid > 3) return false;
             auto& tbl = huff_[tid][cls];
             u32 total = 0;
@@ -358,7 +378,7 @@ private:
                 tbl.counts[i] = data_[pos_++];
                 total += tbl.counts[i];
             }
-            if (total > 256 || pos_ + total > size_) return false;
+            if (total > 256 || pos_ + total > size_ || pos_ + total > end) return false;
             tbl.values.resize(total);
             for (u32 i = 0; i < total; i++)
                 tbl.values[i] = data_[pos_++];
@@ -375,6 +395,7 @@ private:
         // --- read SOS header using pos_ ---
         u16 sos_len = read_u16();
         if (sos_len < 4) return false;
+        if (pos_ >= size_) return false;
         int num_sc = data_[pos_++];
         if (num_sc < 1 || num_sc > 4) return false;
         // Baseline JPEG requires all components in one scan
@@ -388,10 +409,14 @@ private:
             if (pos_ + 2 > size_) return false;
             u8 cid = data_[pos_++];
             u8 tbl = data_[pos_++];
+            // I-C4: SOS table-selector nibbles index huff_[4][2] — reject out of range.
+            u8 dc_sel = static_cast<u8>((tbl >> 4) & 0x0F);
+            u8 ac_sel = static_cast<u8>(tbl & 0x0F);
+            if (dc_sel >= 4 || ac_sel >= 4) return false;
             for (int j = 0; j < comp_count_; j++) {
                 if (comps_[j].id == cid) {
-                    comps_[j].dc_tbl = (tbl >> 4) & 0x0F;
-                    comps_[j].ac_tbl = tbl & 0x0F;
+                    comps_[j].dc_tbl = dc_sel;
+                    comps_[j].ac_tbl = ac_sel;
                     break;
                 }
             }
@@ -408,12 +433,30 @@ private:
         mcu_w_ = mcu_cols * h_samp_max_ * 8;
         mcu_h_ = mcu_rows * v_samp_max_ * 8;
 
-        y_buf_.resize(static_cast<size_t>(mcu_w_) * mcu_h_, 0.0f);
+        y_buf_.resize(static_cast<size_t>(mcu_w_) * static_cast<size_t>(mcu_h_), 0.0f);
+        cb_buf_.clear();
+        cr_buf_.clear();
+        cb_stride_ = cb_rows_ = cr_stride_ = cr_rows_ = 0;
+
+        // I-C1: each chroma plane is sized by ITS OWN component's sampling factors,
+        // not the max. Plane dims cover the same physical area as luma:
+        // width = mcu_w_ * c.h_samp / h_samp_max_.
+        auto comp_plane_w = [&](const JComponent& c) {
+            return mcu_w_ * c.h_samp / h_samp_max_;
+        };
+        auto comp_plane_h = [&](const JComponent& c) {
+            return mcu_h_ * c.v_samp / v_samp_max_;
+        };
+
         if (comp_count_ >= 3) {
-            int cs = mcu_w_ / h_samp_max_;
-            int rs = mcu_h_ / v_samp_max_;
-            cb_buf_.resize(static_cast<size_t>(cs) * rs, 0.0f);
-            cr_buf_.resize(static_cast<size_t>(cs) * rs, 0.0f);
+            const JComponent& c1 = comps_[1];
+            const JComponent& c2 = comps_[2];
+            cb_stride_ = comp_plane_w(c1);
+            cb_rows_ = comp_plane_h(c1);
+            cb_buf_.resize(static_cast<size_t>(cb_stride_) * static_cast<size_t>(cb_rows_), 0.0f);
+            cr_stride_ = comp_plane_w(c2);
+            cr_rows_ = comp_plane_h(c2);
+            cr_buf_.resize(static_cast<size_t>(cr_stride_) * static_cast<size_t>(cr_rows_), 0.0f);
         }
 
         float block[64] = {};
@@ -483,23 +526,27 @@ private:
                                         int px = bx0 + xx;
                                         int py = by0 + yy;
                                         if (px < mcu_w_ && py < mcu_h_)
-                                            y_buf_[py * y_stride + px] = idct[yy * 8 + xx] + 128.0f;
+                                            y_buf_[static_cast<size_t>(py) * y_stride + px] =
+                                                idct[yy * 8 + xx] + 128.0f;
                                     }
                                 }
-                            } else if (c >= 1 && c <= 2) {
-                                // Chroma: use component's own sampling factors for stride/index
+                            } else if (c == 1 || c == 2) {
+                                // Chroma: store at block origin scaled by THIS component's
+                                // sampling ratio, into its own plane (I-C1).
                                 auto* buf = (c == 1) ? &cb_buf_ : &cr_buf_;
-                                if (buf->empty()) continue;
-                                int ch_stride = mcu_w_ / ci.h_samp;
-                                int ch_x0 = bx0 / ci.h_samp;
-                                int ch_y0 = by0 / ci.v_samp;
-                                int ch_h = mcu_h_ / ci.v_samp;
+                                int stride = (c == 1) ? cb_stride_ : cr_stride_;
+                                int rows = (c == 1) ? cb_rows_ : cr_rows_;
+                                if (buf->empty() || stride <= 0 || rows <= 0) continue;
+                                const JComponent& cc = comps_[c];
+                                int px0 = bx0 * cc.h_samp / h_samp_max_;
+                                int py0 = by0 * cc.v_samp / v_samp_max_;
                                 for (int yy = 0; yy < 8; yy++) {
                                     for (int xx = 0; xx < 8; xx++) {
-                                        int px = ch_x0 + xx;
-                                        int py = ch_y0 + yy;
-                                        if (px < ch_stride && py < ch_h)
-                                            (*buf)[py * ch_stride + px] = idct[yy * 8 + xx] + 128.0f;
+                                        int px = px0 + xx;
+                                        int py = py0 + yy;
+                                        if (px >= 0 && px < stride && py >= 0 && py < rows)
+                                            (*buf)[static_cast<size_t>(py) * stride + px] =
+                                                idct[yy * 8 + xx] + 128.0f;
                                     }
                                 }
                             }
@@ -545,16 +592,39 @@ private:
             return Result<Image>(std::move(img));
         }
 
-        // YCbCr → RGB (nearest-neighbour chroma upsampling)
-        int cb_stride = mcu_w_ / h_samp_max_;
-        int ratio_h = h_samp_max_;
-        int ratio_v = v_samp_max_;
+        // YCbCr → RGB (nearest-neighbour chroma upsampling, per-component ratios)
+        // I-C1/I-M8: index each chroma plane with its own stride and sampling ratio.
+        const JComponent& cb_c = comps_[1];
+        const JComponent& cr_c = comps_[2];
+        // Fewer than 3 components: missing chroma planes render as neutral gray.
+        if (comp_count_ < 3 || cb_buf_.empty() || cr_buf_.empty()) {
+            for (int y = 0; y < height_; y++) {
+                for (int x = 0; x < width_; x++) {
+                    float yy = y_buf_[static_cast<size_t>(y) * y_stride + x];
+                    size_t off = (static_cast<size_t>(y) * img.width + x) * 4;
+                    img.rgba_pixels[off + 0] = clamp_u8(yy);
+                    img.rgba_pixels[off + 1] = clamp_u8(yy);
+                    img.rgba_pixels[off + 2] = clamp_u8(yy);
+                    img.rgba_pixels[off + 3] = 255;
+                }
+            }
+            return Result<Image>(std::move(img));
+        }
+        int cb_ratio_h = h_samp_max_ / std::max(1, static_cast<int>(cb_c.h_samp));
+        int cb_ratio_v = v_samp_max_ / std::max(1, static_cast<int>(cb_c.v_samp));
+        int cr_ratio_h = h_samp_max_ / std::max(1, static_cast<int>(cr_c.h_samp));
+        int cr_ratio_v = v_samp_max_ / std::max(1, static_cast<int>(cr_c.v_samp));
 
         for (int y = 0; y < height_; y++) {
             for (int x = 0; x < width_; x++) {
-                float yy = y_buf_[y * y_stride + x];
-                float cb = cb_buf_[(y / ratio_v) * cb_stride + (x / ratio_h)];
-                float cr = cr_buf_[(y / ratio_v) * cb_stride + (x / ratio_h)];
+                float yy = y_buf_[static_cast<size_t>(y) * y_stride + x];
+
+                int cbx = std::min(x / std::max(1, cb_ratio_h), cb_stride_ - 1);
+                int cby = std::min(y / std::max(1, cb_ratio_v), cb_rows_ - 1);
+                int crx = std::min(x / std::max(1, cr_ratio_h), cr_stride_ - 1);
+                int cry = std::min(y / std::max(1, cr_ratio_v), cr_rows_ - 1);
+                float cb = cb_buf_[static_cast<size_t>(cby) * cb_stride_ + cbx];
+                float cr = cr_buf_[static_cast<size_t>(cry) * cr_stride_ + crx];
 
                 float r = yy + 1.402f * (cr - 128.0f);
                 float g = yy - 0.344136f * (cb - 128.0f) - 0.714136f * (cr - 128.0f);
