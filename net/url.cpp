@@ -86,6 +86,14 @@ Result<URL> URL::parse(const std::string& url) {
     std::size_t pos = 0;
     std::size_t len = url.size();
 
+    // N-S5: reject raw control characters anywhere in the URL. CR/LF in a
+    // host or path previously allowed HTTP request/header injection.
+    for (std::size_t i = 0; i < len; i++) {
+        unsigned char c = static_cast<unsigned char>(url[i]);
+        if (c < 0x21 || c > 0x7E)
+            return std::string("control or non-ASCII character in URL");
+    }
+
     // Parse scheme
     std::size_t scheme_end = url.find(':');
     if (scheme_end == std::string::npos || scheme_end == 0)

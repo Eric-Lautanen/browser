@@ -723,3 +723,25 @@ TEST(inflate_output_cap_enforced, {
     auto out = net::inflate_raw(stream.data(), static_cast<u32>(stream.size()), 10);
     ASSERT(out.empty());
 })
+
+// ---- N-S5: control characters must be rejected at URL parse time ----
+
+TEST(url_rejects_crlf_injection, {
+    auto r = browser::net::URL::parse("http://evil.com/x\r\nX-Injected: 1");
+    ASSERT(r.is_err());
+    auto r2 = browser::net::URL::parse("http://example.com?a=1\nb=2");
+    ASSERT(r2.is_err());
+})
+
+TEST(url_rejects_tab_and_space, {
+    auto a = browser::net::URL::parse("http://exa\tmple.com/");
+    ASSERT(a.is_err());
+    auto b = browser::net::URL::parse("http://example.com/a b?c=d");
+    ASSERT(b.is_err());
+})
+
+TEST(url_accepts_percent_encoded_controls, {
+    // Percent-encoded forms are safe and must keep parsing.
+    auto r = browser::net::URL::parse("http://example.com/a%0d%0aX-Inj:%201");
+    ASSERT(r.is_ok());
+})

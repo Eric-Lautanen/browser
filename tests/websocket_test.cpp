@@ -134,3 +134,14 @@ TEST(websocket_ping_pong, {
     auto decoded = decoded_r.unwrap();
     ASSERT(decoded.opcode == Opcode::PING);
 })
+
+// N-S11: a peer-declared 64-bit payload length must not trigger a huge
+// allocation; frames over the cap are rejected before any resize.
+TEST(websocket_oversized_payload_rejected, {
+    // Header claiming a 64-bit length of 4 GB (0x1_0000_0000), no payload.
+    std::vector<browser::u8> frame = {0x82, 0x7F,
+                                      0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00};
+    browser::u32 consumed = 0;
+    auto r = WebSocket::decode_frame(frame.data(), (browser::u32)frame.size(), consumed);
+    ASSERT(r.is_err());
+})

@@ -446,6 +446,9 @@ target_link_libraries(font_test test_framework render)
 add_executable(canvas_test tests/main.cpp tests/canvas_test.cpp)
 target_link_libraries(canvas_test test_framework render)
 
+add_executable(csp_test tests/main.cpp tests/csp_test.cpp)
+target_link_libraries(csp_test test_framework net)
+
 add_executable(paint_test tests/main.cpp tests/paint_test.cpp)
 target_link_libraries(paint_test test_framework render css html)
 

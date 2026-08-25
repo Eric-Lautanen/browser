@@ -6,6 +6,10 @@
 
 namespace browser::net::http {
 
+    // N-S11: caps on untrusted header input.
+    inline constexpr std::size_t kMaxHeaderLineBytes = 128 * 1024;
+    inline constexpr std::size_t kMaxTotalHeaderBytes = 1 * 1024 * 1024;
+
     // --- Headers ---
 
     void Headers::set(const std::string &key, const std::string &value) {
@@ -52,6 +56,9 @@ namespace browser::net::http {
                 }
                 line += static_cast<char>(data[pos]);
                 pos++;
+                // N-S11: a malicious server could stream a multi-GB header line.
+                if (line.size() > kMaxHeaderLineBytes)
+                    return h;  // consumed stays 0 -> parse failure
             }
 
             auto colon = line.find(':');

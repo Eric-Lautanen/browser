@@ -393,7 +393,8 @@ namespace browser {
                 }
             }
             if (!csp_val.empty()) {
-                current_csp_ = net::CSPParser::parse(csp_val);
+                // N-S4: pass the page origin so 'self' resolves correctly.
+                current_csp_ = net::CSPParser::parse(csp_val, req.url.scheme + "://" + req.url.host);
             }
             if (!hsts_val.empty()) {
                 hsts.process_header(req.url.host, hsts_val);

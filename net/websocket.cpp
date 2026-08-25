@@ -7,6 +7,9 @@
 
 namespace browser::net::ws {
 
+    // N-S11: maximum accepted inbound frame payload (64 MiB).
+    inline constexpr u64 kMaxWebSocketPayload = 64ull * 1024 * 1024;
+
 namespace sha1 {
     struct SHA1 {
         u32 state[5];
@@ -343,6 +346,11 @@ Result<WebSocketFrame> WebSocket::decode_frame(const u8* data, u32 len, u32& con
     }
 
     frame.payload_length = payload_len;
+    // N-S11: a peer can claim a 64-bit length and demand gigabytes of
+    // allocation. Cap payloads; the caller surfaces it as a protocol error.
+    if (payload_len > kMaxWebSocketPayload)
+        return std::string("frame payload exceeds limit");
+
     if (pos + payload_len > len) return std::string("payload truncated");
 
     frame.payload.assign(data + pos, data + pos + static_cast<u32>(payload_len));

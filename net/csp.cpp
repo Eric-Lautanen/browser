@@ -44,6 +44,9 @@ namespace browser::net {
         } else if (t.rfind("*.", 0) == 0) {
             s.type = CSPSource::WILDCARD_HOST;
             s.host = t.substr(2);
+        } else if (t == "*") {
+            // Bare '*' matches any host (scheme still unrestricted here).
+            s.type = CSPSource::WILDCARD_HOST;
         } else {
             size_t colon = t.find(':');
             if (colon != std::string::npos) {
@@ -62,8 +65,9 @@ namespace browser::net {
         return s;
     }
 
-    CSPPolicy CSPParser::parse(const std::string &header_value) {
+    CSPPolicy CSPParser::parse(const std::string &header_value, const std::string &page_origin) {
         CSPPolicy policy;
+        policy.self_origin = page_origin;
         std::string h = to_lower(header_value);
         size_t pos = 0;
         while (pos < h.size()) {
@@ -127,8 +131,15 @@ namespace browser::net {
 
     bool CSPPolicy::source_matches(const CSPSource &source, const std::string &origin) const {
         switch (source.type) {
-            case CSPSource::SELF:
-                return true;
+            case CSPSource::SELF: {
+                // N-S4: 'self' previously matched EVERY origin. It must equal
+                // the policy's own origin; unknown origin fails closed.
+                if (self_origin.empty())
+                    return false;
+                Origin self = Origin::from_url_str(self_origin);
+                Origin o = Origin::from_url_str(origin);
+                return o == self;
+            }
             case CSPSource::NONE:
                 return false;
             case CSPSource::UNSAFE_INLINE:
@@ -141,16 +152,22 @@ namespace browser::net {
             }
             case CSPSource::HOST: {
                 auto o = Origin::from_url_str(origin);
-                if (o.host == source.host)
-                    return true;
+                if (o.host != source.host)
+                    return false;
                 if (source.port != 0 && o.port != source.port)
                     return false;
-                return false;
+                return true;
             }
             case CSPSource::WILDCARD_HOST: {
+                // N-S4: require a dot boundary — *.example.com must not match
+                // evilexample.com, only foo.example.com. A bare '*' (empty
+                // host) matches everything.
                 auto o = Origin::from_url_str(origin);
-                if (o.host.size() > source.host.size() &&
-                    o.host.substr(o.host.size() - source.host.size()) == source.host) {
+                if (source.host.empty())
+                    return true;
+                if (o.host.size() > source.host.size() + 1 &&
+                    o.host.compare(o.host.size() - source.host.size(), source.host.size(), source.host) == 0 &&
+                    o.host[o.host.size() - source.host.size() - 1] == '.') {
                     return true;
                 }
                 return false;
