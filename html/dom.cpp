@@ -15,8 +15,9 @@ namespace browser::html {
         const std::string &remaining = it->second;
         std::size_t pos = 0;
         while (pos < remaining.size()) {
-            while (pos < remaining.size() && (remaining[pos] == ' ' || remaining[pos] == '\t' ||
-                   remaining[pos] == '\n' || remaining[pos] == '\f' || remaining[pos] == '\r'))
+            while (pos < remaining.size() &&
+                   (remaining[pos] == ' ' || remaining[pos] == '\t' || remaining[pos] == '\n' ||
+                    remaining[pos] == '\f' || remaining[pos] == '\r'))
                 pos++;
             if (pos >= remaining.size())
                 break;
@@ -53,7 +54,27 @@ namespace browser::html {
         return std::make_unique<Document>();
     }
 
+    static std::vector<std::unique_ptr<Node>> *template_target(Node *parent) {
+        if (parent && parent->type == NodeType::ELEMENT) {
+            auto *el = static_cast<Element *>(parent);
+            if (el->is_template)
+                return &el->template_content;
+        }
+        return nullptr;
+    }
+
     void append_child(Node *parent, std::unique_ptr<Node> child) {
+        // <template> contents are stored in the content fragment, not as children.
+        if (auto *target = template_target(parent)) {
+            if (!target->empty()) {
+                Node *last = target->back().get();
+                last->next_sibling = child.get();
+                child->prev_sibling = last;
+            }
+            child->parent = parent;
+            target->push_back(std::move(child));
+            return;
+        }
         child->parent = parent;
         if (!parent->children.empty()) {
             Node *last = parent->children.back().get();

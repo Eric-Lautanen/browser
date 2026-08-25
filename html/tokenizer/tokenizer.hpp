@@ -16,6 +16,9 @@ namespace browser::html {
         Token next();
         void set_appropriate_end_tag(const std::string &name);
         void set_state(int s);
+        // In foreign (SVG/MathML) content `<![CDATA[...]]>` is a CDATA section;
+        // in HTML content it is a bogus comment. The parser keeps this in sync.
+        void set_foreign_content(bool f) { foreign_content_ = f; }
 
     private:
         enum class State {
@@ -101,6 +104,7 @@ namespace browser::html {
         std::string temporary_buffer_;
         std::string appropriate_end_tag_;
         bool reconsume_ = false;
+        bool foreign_content_ = false;
         char32_t last_char_ = 0;
 
         void process_data_state(char32_t c);

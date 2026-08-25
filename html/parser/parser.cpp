@@ -34,6 +34,28 @@ namespace browser::html {
     }
 
     void Parser::handle_token(const Token &token) {
+        // The pre/listing/textarea leading-newline drop only applies to a
+        // character token that immediately follows the start tag.
+        if (token.index() != 3)
+            skip_leading_newline_ = false;
+
+        // Spec: a <template> start tag is handled identically from any
+        // insertion mode (except raw text modes) — insert the element, push it,
+        // enter "in template", set a formatting marker.
+        if (mode_ != InsertionMode::TEXT && token.index() == 1) {
+            auto &tag = std::get<TagToken>(token);
+            if (tag.type == TokenType::START_TAG && tag.tag_name == "template") {
+                flush_pending_text();
+                auto *el = create_element_for_token(tag);
+                insert_element(el);
+                stack_.push_back(el);
+                template_modes_.push_back(InsertionMode::IN_TEMPLATE);
+                active_formatting_elements_.push_back(nullptr);
+                frameset_ok_ = false;
+                return;
+            }
+        }
+
         switch (mode_) {
             case InsertionMode::INITIAL:
                 handle_initial(token);
@@ -174,6 +196,17 @@ namespace browser::html {
     }
 
     void Parser::insert_character(char32_t c) {
+        append_text_char(c);
+    }
+
+    void Parser::append_text_char(char32_t c) {
+        // Spec: for <pre>, <listing> and <textarea>, a single U+000A immediately
+        // after the start tag is dropped.
+        if (skip_leading_newline_) {
+            skip_leading_newline_ = false;
+            if (c == '\n')
+                return;
+        }
         pending_text_ += encode_utf8(c);
     }
 
@@ -202,6 +235,8 @@ namespace browser::html {
 
     Element *Parser::create_element_for_token(const TagToken &token) {
         auto el = std::make_unique<Element>(token.tag_name);
+        if (token.tag_name == "template")
+            el->is_template = true;
         for (const auto &attr : token.attributes) {
             if (el->attributes.find(attr.name) == el->attributes.end()) {
                 el->attributes[attr.name] = attr.value;
@@ -214,6 +249,8 @@ namespace browser::html {
                 el->namespace_uri = "http://www.w3.org/1998/Math/MathML";
             }
             foreign_ = true;
+            if (tokenizer_)
+                tokenizer_->set_foreign_content(true);
         } else if (foreign_) {
             if (token.tag_name == "foreignobject") {
                 // <foreignObject> inside SVG switches back to HTML
@@ -512,6 +549,8 @@ namespace browser::html {
             auto *el = create_element_for_token(tag);
             insert_element(el);
             stack_.push_back(el);
+            if (t == "textarea")
+                skip_leading_newline_ = true;
             tokenizer_->set_appropriate_end_tag(t);
             tokenizer_->set_state(1);  // RCDATA
             original_mode_ = mode_;
@@ -594,6 +633,7 @@ namespace browser::html {
             auto *el = create_element_for_token(tag);
             insert_element(el);
             stack_.push_back(el);
+            skip_leading_newline_ = true;
             frameset_ok_ = false;
             return;
         }
@@ -823,6 +863,30 @@ namespace browser::html {
             return;
         }
 
+        if (t == "template") {
+            // Spec: works from any insertion mode — generate implied end tags,
+            // pop until the template element has been popped, clear active
+            // formatting elements up to the marker, then reset the mode.
+            if (!has_element_in_scope("template"))
+                return;
+            generate_implied_end_tags();
+            while (current_node() && current_node()->tag_name != "template") {
+                stack_.pop_back();
+            }
+            if (current_node())
+                stack_.pop_back();
+            while (!active_formatting_elements_.empty()) {
+                Element *fe = active_formatting_elements_.back();
+                active_formatting_elements_.pop_back();
+                if (fe == nullptr)
+                    break;
+            }
+            if (!template_modes_.empty())
+                template_modes_.pop_back();
+            reset_insertion_mode();
+            return;
+        }
+
         if (t == "p") {
             if (!has_element_in_scope("p"))
                 return;
@@ -878,6 +942,8 @@ namespace browser::html {
                     break;
                 }
             }
+            if (tokenizer_)
+                tokenizer_->set_foreign_content(foreign_);
             return;
         }
 
@@ -904,6 +970,8 @@ namespace browser::html {
                         break;
                     }
                 }
+                if (tokenizer_)
+                    tokenizer_->set_foreign_content(foreign_);
                 return;
             }
         }

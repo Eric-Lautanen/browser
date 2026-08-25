@@ -1,11 +1,11 @@
-#include "test_framework.hpp"
-#include "utility.hpp"
-#include "../html/token.hpp"
-#include "../html/utf8.hpp"
-#include "../html/tokenizer.hpp"
 #include "../html/entities.hpp"
 #include "../html/parser.hpp"
+#include "../html/token.hpp"
+#include "../html/tokenizer.hpp"
 #include "../html/traversal.hpp"
+#include "../html/utf8.hpp"
+#include "test_framework.hpp"
+#include "utility.hpp"
 
 TEST(token_types, {
     using namespace browser::html;
@@ -66,10 +66,12 @@ TEST(token_tag_attributes, {
     tag.type = TokenType::START_TAG;
     tag.tag_name = "a";
     browser::html::Attribute a1;
-    a1.name = "href"; a1.value = "https://example.com";
+    a1.name = "href";
+    a1.value = "https://example.com";
     tag.attributes.push_back(a1);
     browser::html::Attribute a2;
-    a2.name = "class"; a2.value = "link";
+    a2.name = "class";
+    a2.value = "link";
     tag.attributes.push_back(a2);
     ASSERT_EQ(tag.attributes.size(), 2u);
     ASSERT_EQ(tag.attributes[0].name, "href");
@@ -77,14 +79,15 @@ TEST(token_tag_attributes, {
 })
 
 TEST(utf8_ascii, {
-    auto r = browser::html::decode_utf8((const browser::u8*)"A", 1);
+    auto r = browser::html::decode_utf8((const browser::u8 *)"A", 1);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), static_cast<browser::u32>('A'));
     ASSERT_EQ(r.bytes_consumed, 1u);
 })
 
 TEST(utf8_2byte, {
     browser::u8 d[2];
-    d[0] = 0xC2; d[1] = 0xA9;
+    d[0] = 0xC2;
+    d[1] = 0xA9;
     auto r = browser::html::decode_utf8(d, 2);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), 0xA9u);
     ASSERT_EQ(r.bytes_consumed, 2u);
@@ -92,7 +95,9 @@ TEST(utf8_2byte, {
 
 TEST(utf8_3byte, {
     browser::u8 d[3];
-    d[0] = 0xE4; d[1] = 0xB8; d[2] = 0x96;
+    d[0] = 0xE4;
+    d[1] = 0xB8;
+    d[2] = 0x96;
     auto r = browser::html::decode_utf8(d, 3);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), 0x4E16u);
     ASSERT_EQ(r.bytes_consumed, 3u);
@@ -100,7 +105,10 @@ TEST(utf8_3byte, {
 
 TEST(utf8_4byte, {
     browser::u8 d[4];
-    d[0] = 0xF0; d[1] = 0x9F; d[2] = 0x98; d[3] = 0x80;
+    d[0] = 0xF0;
+    d[1] = 0x9F;
+    d[2] = 0x98;
+    d[3] = 0x80;
     auto r = browser::html::decode_utf8(d, 4);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), 0x1F600u);
     ASSERT_EQ(r.bytes_consumed, 4u);
@@ -108,14 +116,17 @@ TEST(utf8_4byte, {
 
 TEST(utf8_overlong, {
     browser::u8 d[2];
-    d[0] = 0xC1; d[1] = 0x81;
+    d[0] = 0xC1;
+    d[1] = 0x81;
     auto r = browser::html::decode_utf8(d, 2);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), 0xFFFDu);
 })
 
 TEST(utf8_surrogate, {
     browser::u8 d[3];
-    d[0] = 0xED; d[1] = 0xA0; d[2] = 0x80;
+    d[0] = 0xED;
+    d[1] = 0xA0;
+    d[2] = 0x80;
     auto r = browser::html::decode_utf8(d, 3);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), 0xFFFDu);
 })
@@ -129,13 +140,14 @@ TEST(utf8_truncated, {
 
 TEST(utf8_invalid_continuation, {
     browser::u8 d[2];
-    d[0] = 0xC2; d[1] = 0x00;
+    d[0] = 0xC2;
+    d[1] = 0x00;
     auto r = browser::html::decode_utf8(d, 2);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), 0xFFFDu);
 })
 
 TEST(utf8_empty, {
-    auto r = browser::html::decode_utf8((const browser::u8*)"", 0);
+    auto r = browser::html::decode_utf8((const browser::u8 *)"", 0);
     ASSERT_EQ(static_cast<browser::u32>(r.codepoint), 0xFFFDu);
     ASSERT_EQ(r.bytes_consumed, 1u);
 })
@@ -184,7 +196,7 @@ TEST(tokenizer_attributes, {
     ASSERT(tok.has_next());
     auto t = tok.next();
     ASSERT(browser::html::is_tag(t, "div"));
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT_EQ(tag.attributes.size(), 2u);
     ASSERT_EQ(tag.attributes[0].name, "class");
     ASSERT_EQ(tag.attributes[0].value, "main");
@@ -198,7 +210,7 @@ TEST(tokenizer_self_closing, {
     tok.end();
     auto t = tok.next();
     ASSERT(browser::html::is_tag(t, "br"));
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT(tag.self_closing);
 })
 
@@ -208,7 +220,17 @@ TEST(tokenizer_comment, {
     tok.end();
     auto t = tok.next();
     ASSERT_EQ(browser::html::get_type(t), browser::html::TokenType::COMMENT);
-    ASSERT_EQ(std::get<browser::html::CommentToken>(t).data, "- comment ");
+    ASSERT(std::get<browser::html::CommentToken>(t).data == " comment ");
+})
+
+TEST(tokenizer_comment_bogus, {
+    // Per spec, <!--> and <!---> are abrupt-closing comments with empty data
+    browser::html::Tokenizer tok;
+    tok.feed("<!-->");
+    tok.end();
+    auto t = tok.next();
+    ASSERT_EQ(browser::html::get_type(t), browser::html::TokenType::COMMENT);
+    ASSERT(std::get<browser::html::CommentToken>(t).data.empty());
 })
 
 TEST(tokenizer_doctype, {
@@ -217,7 +239,7 @@ TEST(tokenizer_doctype, {
     tok.end();
     auto t = tok.next();
     ASSERT_EQ(browser::html::get_type(t), browser::html::TokenType::DOCTYPE);
-    auto& dt = std::get<browser::html::DoctypeToken>(t);
+    auto &dt = std::get<browser::html::DoctypeToken>(t);
     ASSERT_EQ(dt.name, "html");
 })
 
@@ -261,7 +283,7 @@ TEST(tokenizer_single_attr_no_value, {
     tok.end();
     auto t = tok.next();
     ASSERT(browser::html::is_tag(t, "input"));
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT_EQ(tag.attributes.size(), 1u);
     ASSERT_EQ(tag.attributes[0].name, "disabled");
     ASSERT_EQ(tag.attributes[0].value, "");
@@ -273,7 +295,7 @@ TEST(tokenizer_attr_single_quoted, {
     tok.end();
     auto t = tok.next();
     ASSERT(browser::html::is_tag(t, "div"));
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT_EQ(tag.attributes.size(), 1u);
     ASSERT_EQ(tag.attributes[0].name, "class");
     ASSERT_EQ(tag.attributes[0].value, "single");
@@ -285,7 +307,7 @@ TEST(tokenizer_attr_unquoted, {
     tok.end();
     auto t = tok.next();
     ASSERT(browser::html::is_tag(t, "div"));
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT_EQ(tag.attributes.size(), 1u);
     ASSERT_EQ(tag.attributes[0].name, "class");
     ASSERT_EQ(tag.attributes[0].value, "main");
@@ -310,7 +332,7 @@ TEST(tokenizer_multi_attrs, {
     tok.end();
     auto t = tok.next();
     ASSERT(browser::html::is_tag(t, "a"));
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT_EQ(tag.attributes.size(), 3u);
     ASSERT_EQ(tag.attributes[0].name, "href");
     ASSERT_EQ(tag.attributes[1].name, "class");
@@ -331,7 +353,7 @@ TEST(tokenizer_attr_name_case, {
     tok.feed("<div CLASS=\"main\">");
     tok.end();
     auto t = tok.next();
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT_EQ(tag.attributes.size(), 1u);
     ASSERT_EQ(tag.attributes[0].name, "class");
 })
@@ -342,7 +364,7 @@ TEST(tokenizer_doctype_public, {
     tok.end();
     auto t = tok.next();
     ASSERT_EQ(browser::html::get_type(t), browser::html::TokenType::DOCTYPE);
-    auto& dt = std::get<browser::html::DoctypeToken>(t);
+    auto &dt = std::get<browser::html::DoctypeToken>(t);
     ASSERT_EQ(dt.name, "html");
     ASSERT_EQ(dt.public_id, "-//W3C//DTD XHTML 1.0//EN");
 })
@@ -353,17 +375,19 @@ TEST(tokenizer_doctype_system, {
     tok.end();
     auto t = tok.next();
     ASSERT_EQ(browser::html::get_type(t), browser::html::TokenType::DOCTYPE);
-    auto& dt = std::get<browser::html::DoctypeToken>(t);
+    auto &dt = std::get<browser::html::DoctypeToken>(t);
     ASSERT_EQ(dt.name, "html");
     ASSERT_EQ(dt.system_id, "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd");
 })
 
 TEST(tokenizer_doctype_public_system, {
     browser::html::Tokenizer tok;
-    tok.feed("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" \"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">");
+    tok.feed(
+        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
+        "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">");
     tok.end();
     auto t = tok.next();
-    auto& dt = std::get<browser::html::DoctypeToken>(t);
+    auto &dt = std::get<browser::html::DoctypeToken>(t);
     ASSERT_EQ(dt.name, "html");
     ASSERT_EQ(dt.public_id, "-//W3C//DTD XHTML 1.0 Transitional//EN");
     ASSERT_EQ(dt.system_id, "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd");
@@ -375,7 +399,7 @@ TEST(tokenizer_doctype_no_name, {
     tok.end();
     auto t = tok.next();
     ASSERT_EQ(browser::html::get_type(t), browser::html::TokenType::DOCTYPE);
-    auto& dt = std::get<browser::html::DoctypeToken>(t);
+    auto &dt = std::get<browser::html::DoctypeToken>(t);
     ASSERT(dt.force_quirks);
 })
 
@@ -384,7 +408,7 @@ TEST(tokenizer_attr_char_ref, {
     tok.feed("<div class=\"hello&amp;world\">");
     tok.end();
     auto t = tok.next();
-    auto& tag = std::get<browser::html::TagToken>(t);
+    auto &tag = std::get<browser::html::TagToken>(t);
     ASSERT_EQ(tag.attributes[0].value, "hello&world");
 })
 
@@ -442,7 +466,7 @@ TEST(tokenizer_uppercase_doctype, {
     tok.feed("<!DOCTYPE HTML>");
     tok.end();
     auto t = tok.next();
-    auto& dt = std::get<browser::html::DoctypeToken>(t);
+    auto &dt = std::get<browser::html::DoctypeToken>(t);
     ASSERT_EQ(dt.name, "html");
 })
 
@@ -497,10 +521,10 @@ TEST(parse_basic_dom, {
 TEST(parse_paragraph, {
     browser::html::Parser parser;
     auto doc = parser.parse("<p>Hello</p>");
-    auto* body = browser::html::find_element_by_tag(
-        static_cast<browser::html::Element*>(doc->children[0].get()), "body");
+    auto *body =
+        browser::html::find_element_by_tag(static_cast<browser::html::Element *>(doc->children[0].get()), "body");
     ASSERT(body != nullptr);
-    auto* p = browser::html::find_element_by_tag(body, "p");
+    auto *p = browser::html::find_element_by_tag(body, "p");
     ASSERT(p != nullptr);
     ASSERT_EQ(browser::html::inner_text(p), "Hello");
 })
@@ -508,12 +532,12 @@ TEST(parse_paragraph, {
 TEST(parse_nested, {
     browser::html::Parser parser;
     auto doc = parser.parse("<div><span>text</span></div>");
-    auto* body = browser::html::find_element_by_tag(
-        static_cast<browser::html::Element*>(doc->children[0].get()), "body");
+    auto *body =
+        browser::html::find_element_by_tag(static_cast<browser::html::Element *>(doc->children[0].get()), "body");
     ASSERT(body != nullptr);
-    auto* div = browser::html::find_element_by_tag(body, "div");
+    auto *div = browser::html::find_element_by_tag(body, "div");
     ASSERT(div != nullptr);
-    auto* span = browser::html::find_element_by_tag(div, "span");
+    auto *span = browser::html::find_element_by_tag(div, "span");
     ASSERT(span != nullptr);
     ASSERT_EQ(browser::html::inner_text(span), "text");
 })
@@ -521,10 +545,10 @@ TEST(parse_nested, {
 TEST(parse_attributes, {
     browser::html::Parser parser;
     auto doc = parser.parse("<div id=\"main\" class=\"content\">");
-    auto* body = browser::html::find_element_by_tag(
-        static_cast<browser::html::Element*>(doc->children[0].get()), "body");
+    auto *body =
+        browser::html::find_element_by_tag(static_cast<browser::html::Element *>(doc->children[0].get()), "body");
     ASSERT(body != nullptr);
-    auto* div = browser::html::find_element_by_tag(body, "div");
+    auto *div = browser::html::find_element_by_tag(body, "div");
     ASSERT(div != nullptr);
     ASSERT_EQ(div->get_attribute("id"), "main");
     ASSERT_EQ(div->get_attribute("class"), "content");
@@ -533,10 +557,10 @@ TEST(parse_attributes, {
 TEST(parse_heading, {
     browser::html::Parser parser;
     auto doc = parser.parse("<h1>Title</h1>");
-    auto* body = browser::html::find_element_by_tag(
-        static_cast<browser::html::Element*>(doc->children[0].get()), "body");
+    auto *body =
+        browser::html::find_element_by_tag(static_cast<browser::html::Element *>(doc->children[0].get()), "body");
     ASSERT(body != nullptr);
-    auto* h1 = browser::html::find_element_by_tag(body, "h1");
+    auto *h1 = browser::html::find_element_by_tag(body, "h1");
     ASSERT(h1 != nullptr);
     ASSERT_EQ(browser::html::inner_text(h1), "Title");
 })
@@ -544,10 +568,10 @@ TEST(parse_heading, {
 TEST(parse_list, {
     browser::html::Parser parser;
     auto doc = parser.parse("<ul><li>A</li><li>B</li></ul>");
-    auto* body = browser::html::find_element_by_tag(
-        static_cast<browser::html::Element*>(doc->children[0].get()), "body");
+    auto *body =
+        browser::html::find_element_by_tag(static_cast<browser::html::Element *>(doc->children[0].get()), "body");
     ASSERT(body != nullptr);
-    auto* ul = browser::html::find_element_by_tag(body, "ul");
+    auto *ul = browser::html::find_element_by_tag(body, "ul");
     ASSERT(ul != nullptr);
     ASSERT_EQ(ul->children.size(), 2u);
 })
@@ -555,10 +579,10 @@ TEST(parse_list, {
 TEST(parse_comment, {
     browser::html::Parser parser;
     auto doc = parser.parse("<p>Hello<!-- comment -->World</p>");
-    auto* body = browser::html::find_element_by_tag(
-        static_cast<browser::html::Element*>(doc->children[0].get()), "body");
+    auto *body =
+        browser::html::find_element_by_tag(static_cast<browser::html::Element *>(doc->children[0].get()), "body");
     ASSERT(body != nullptr);
-    auto* p = browser::html::find_element_by_tag(body, "p");
+    auto *p = browser::html::find_element_by_tag(body, "p");
     ASSERT(p != nullptr);
     ASSERT_EQ(browser::html::inner_text(p), "HelloWorld");
 })
@@ -566,10 +590,10 @@ TEST(parse_comment, {
 TEST(parse_self_closing, {
     browser::html::Parser parser;
     auto doc = parser.parse("<br>");
-    auto* body = browser::html::find_element_by_tag(
-        static_cast<browser::html::Element*>(doc->children[0].get()), "body");
+    auto *body =
+        browser::html::find_element_by_tag(static_cast<browser::html::Element *>(doc->children[0].get()), "body");
     ASSERT(body != nullptr);
-    auto* br = browser::html::find_element_by_tag(body, "br");
+    auto *br = browser::html::find_element_by_tag(body, "br");
     ASSERT(br != nullptr);
 })
 

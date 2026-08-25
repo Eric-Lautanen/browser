@@ -34,6 +34,11 @@ namespace browser::html {
         std::string tag_name;
         std::unordered_map<std::string, std::string> attributes;
         std::string namespace_uri = "http://www.w3.org/1999/xhtml";
+        // <template>: child nodes live in a separate content fragment
+        // (mirrors the DOM .content DocumentFragment) so they are neither
+        // rendered nor serialized as regular children.
+        bool is_template = false;
+        std::vector<std::unique_ptr<Node>> template_content;
 
         std::string id() const;
         std::vector<std::string> class_list() const;

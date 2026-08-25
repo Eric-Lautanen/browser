@@ -269,8 +269,8 @@ namespace browser::html {
                 } else if (c == 'D' || c == 'd') {
                     temporary_buffer_ = to_lower(c);
                     state_ = State::DOCTYPE;
-                } else if (c == '[' && peek(0) == 'C' && peek(1) == 'D' && peek(2) == 'A' && peek(3) == 'T' &&
-                           peek(4) == 'A' && peek(5) == '[') {
+                } else if (foreign_content_ && c == '[' && peek(0) == 'C' && peek(1) == 'D' && peek(2) == 'A' &&
+                           peek(3) == 'T' && peek(4) == 'A' && peek(5) == '[') {
                     advance();
                     advance();
                     advance();

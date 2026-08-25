@@ -107,6 +107,18 @@ Parses HTML and outputs the full DOM tree as JSON. Schema:
 Expected DOM files are generated from the reference parser (jsdom).
 These are the gold standard — any mismatch is a real parsing bug.
 
+**Known intentional divergence:** `html_noscript.html` is bootstrapped from the
+engine instead. jsdom always parses `<noscript>` contents as elements (it does
+not implement the scripting flag), but this browser has scripting enabled, so
+per the WHATWG spec `<noscript>` uses the generic raw-text algorithm and its
+contents stay a single text node. This matches Chrome/Firefox with JS on.
+Regenerate it with:
+
+```bash
+"$BROWSER" --dump-dom tools/tests/html_noscript.html > \
+    tools/tests/html_noscript.expected-dom.json
+```
+
 ### CSS dump (`--dump-css <file>`)
 
 Parses CSS and outputs the full AST as JSON. Schema:

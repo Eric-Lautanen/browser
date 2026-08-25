@@ -214,7 +214,12 @@ namespace browser::html {
             for (const auto &[k, v] : e->attributes) {
                 clone->attributes[k] = v;
             }
+            // Insert without flushing pending text — callers may be mid-flush
+            // and the text must land inside the newly created clone.
+            std::string saved;
+            saved.swap(pending_text_);
             insert_element(clone);
+            pending_text_.swap(saved);
             stack_.push_back(clone);
             active_formatting_elements_[static_cast<u32>(i)] = clone;
         }
