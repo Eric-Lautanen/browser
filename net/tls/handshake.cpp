@@ -37,6 +37,55 @@ namespace browser::net::tls {
         return true;
     }
 
+    Result<std::vector<std::vector<u8>>> parse_certificate_message(const std::vector<u8> &body) {
+        std::vector<std::vector<u8>> certs;
+        std::size_t off = 0;
+
+        if (off >= body.size())
+            return std::string("truncated certificate message");
+        u8 ctx_len = body[off++];
+        if (off + ctx_len > body.size())
+            return std::string("truncated certificate request context");
+        off += ctx_len;
+
+        if (off + 3 > body.size())
+            return std::string("truncated certificate list");
+        u32 list_len = (static_cast<u32>(body[off]) << 16) | (static_cast<u32>(body[off + 1]) << 8) |
+                       static_cast<u32>(body[off + 2]);
+        off += 3;
+
+        // N-S3: reject list lengths that claim more bytes than the message carries.
+        if (list_len > body.size() - off)
+            return std::string("certificate list exceeds message size");
+        std::size_t list_end = off + list_len;
+
+        while (off + 3 <= list_end) {
+            u32 cert_len = (static_cast<u32>(body[off]) << 16) | (static_cast<u32>(body[off + 1]) << 8) |
+                           static_cast<u32>(body[off + 2]);
+            off += 3;
+            if (cert_len == 0 || off + cert_len > list_end)
+                return std::string("malformed certificate entry");
+
+            certs.emplace_back(body.begin() + static_cast<std::ptrdiff_t>(off),
+                               body.begin() + static_cast<std::ptrdiff_t>(off + cert_len));
+            off += cert_len;
+
+            // Each entry carries a 2-byte extension block; truncated tail is fatal.
+            if (off + 2 > list_end)
+                return std::string("truncated certificate extensions");
+            u16 ext_len = (static_cast<u16>(body[off]) << 8) | body[off + 1];
+            off += 2 + ext_len;
+            if (off > list_end)
+                return std::string("certificate extensions exceed entry");
+        }
+        if (off != list_end)
+            return std::string("stray bytes after certificate list");
+
+        if (certs.empty())
+            return std::string("empty certificate list");
+        return certs;
+    }
+
     void TLSConnection::append_handshake_to_transcript(u8 type, const std::vector<u8> &body) {
         auto msg = make_handshake_msg(type, body);
         transcript_.insert(transcript_.end(), msg.begin(), msg.end());
@@ -254,32 +303,10 @@ namespace browser::net::tls {
         } else if (type == HS_CERTIFICATE) {
             transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());
             transcript_hasher_.update(msg_bytes.data(), msg_bytes.size());
-            peer_certs_.clear();
-            std::size_t off = 0;
-            if (off < body.size()) {
-                u8 ctx_len = body[off++];
-                off += ctx_len;
-                if (off + 3 <= body.size()) {
-                    u32 list_len = (static_cast<u32>(body[off]) << 16) | (static_cast<u32>(body[off + 1]) << 8) |
-                                   static_cast<u32>(body[off + 2]);
-                    off += 3;
-                    std::size_t list_end = off + list_len;
-                    while (off + 3 <= list_end) {
-                        u32 cert_len = (static_cast<u32>(body[off]) << 16) | (static_cast<u32>(body[off + 1]) << 8) |
-                                       static_cast<u32>(body[off + 2]);
-                        off += 3;
-                        if (off + cert_len + 2 > list_end || off + cert_len + 2 > body.size())
-                            break;
-                        std::vector<u8> cert_der(body.begin() + off, body.begin() + off + cert_len);
-                        peer_certs_.push_back(std::move(cert_der));
-                        off += cert_len;
-                        if (off + 2 > body.size())
-                            break;
-                        u16 ext_len = (static_cast<u16>(body[off]) << 8) | body[off + 1];
-                        off += 2 + ext_len;
-                    }
-                }
-            }
+            auto certs = parse_certificate_message(body);
+            if (certs.is_err())
+                return certs.unwrap_err();
+            peer_certs_ = std::move(certs.unwrap());
             msgs_needed--;
         } else if (type == HS_CERTIFICATE_VERIFY) {
             transcript_.insert(transcript_.end(), msg_bytes.begin(), msg_bytes.end());

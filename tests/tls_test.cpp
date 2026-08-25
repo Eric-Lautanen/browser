@@ -330,6 +330,81 @@ TEST(aes_gcm_decrypt, {
     ASSERT(!fail);
 })
 
+// Certificate message parser tests (N-S3: hostile length fields must fail closed)
+
+static std::vector<u8> cert_msg_with_list(const std::vector<u8> &entries, u32 claimed_list_len) {
+    std::vector<u8> body;
+    body.push_back(0);  // empty certificate_request_context
+    body.push_back(static_cast<u8>((claimed_list_len >> 16) & 0xFF));
+    body.push_back(static_cast<u8>((claimed_list_len >> 8) & 0xFF));
+    body.push_back(static_cast<u8>(claimed_list_len & 0xFF));
+    body.insert(body.end(), entries.begin(), entries.end());
+    return body;
+}
+
+TEST(cert_parse_valid_single, {
+    // One entry: 3-byte len + 4-byte DER + 2-byte zero ext block
+    std::vector<u8> entry = {0x00, 0x00, 0x04, 0xAA, 0xBB, 0xCC, 0xDD, 0x00, 0x00};
+    auto r = parse_certificate_message(cert_msg_with_list(entry, static_cast<u32>(entry.size())));
+    ASSERT(r.is_ok());
+    ASSERT_EQ(r.unwrap().size(), 1u);
+    ASSERT_EQ(r.unwrap()[0].size(), 4u);
+    ASSERT_EQ(r.unwrap()[0][0], 0xAA);
+})
+
+TEST(cert_parse_valid_two_entries, {
+    std::vector<u8> e1 = {0x00, 0x00, 0x02, 0x01, 0x02, 0x00, 0x00};
+    std::vector<u8> e2 = {0x00, 0x00, 0x03, 0x05, 0x06, 0x07, 0x00, 0x00};
+    std::vector<u8> both;
+    both.insert(both.end(), e1.begin(), e1.end());
+    both.insert(both.end(), e2.begin(), e2.end());
+    auto r = parse_certificate_message(cert_msg_with_list(both, static_cast<u32>(both.size())));
+    ASSERT(r.is_ok());
+    ASSERT_EQ(r.unwrap().size(), 2u);
+})
+
+// The N-S3 repro: claimed list_len far beyond the actual body. Pre-fix this read
+// past the buffer (loop bounded against list_end while dereferencing body[off]).
+TEST(cert_parse_oversized_list_len_rejected, {
+    std::vector<u8> entry = {0x00, 0x00, 0x04, 0xAA, 0xBB, 0xCC, 0xDD, 0x00, 0x00};
+    auto r = parse_certificate_message(cert_msg_with_list(entry, 0xFFFFFFu));
+    ASSERT(r.is_err());
+})
+
+TEST(cert_parse_truncated_context_rejected, {
+    std::vector<u8> body = {0x40};  // ctx_len=64 with no context bytes present
+    auto r = parse_certificate_message(body);
+    ASSERT(r.is_err());
+})
+
+TEST(cert_parse_zero_len_cert_rejected, {
+    std::vector<u8> entry = {0x00, 0x00, 0x00, 0x00, 0x00};
+    auto r = parse_certificate_message(cert_msg_with_list(entry, static_cast<u32>(entry.size())));
+    ASSERT(r.is_err());
+})
+
+TEST(cert_parse_empty_body_rejected, {
+    std::vector<u8> body;
+    auto r = parse_certificate_message(body);
+    ASSERT(r.is_err());
+})
+
+TEST(cert_parse_stray_tail_rejected, {
+    // Valid single entry followed by a stray byte inside the claimed list
+    std::vector<u8> entry = {0x00, 0x00, 0x02, 0x01, 0x02, 0x00, 0x00};
+    std::vector<u8> padded = entry;
+    padded.push_back(0x99);
+    auto r = parse_certificate_message(cert_msg_with_list(padded, static_cast<u32>(padded.size())));
+    ASSERT(r.is_err());
+})
+
+TEST(cert_parse_missing_ext_block_rejected, {
+    // Entry without the trailing 2-byte extension block
+    std::vector<u8> entry = {0x00, 0x00, 0x02, 0x01, 0x02};
+    auto r = parse_certificate_message(cert_msg_with_list(entry, static_cast<u32>(entry.size())));
+    ASSERT(r.is_err());
+})
+
 // TLS connect test
 
 TEST(tls_connect_google, {

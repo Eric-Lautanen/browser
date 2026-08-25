@@ -22,6 +22,11 @@ namespace browser::net::tls {
         HS_FINISHED = 20
     };
 
+    // Parses a TLS 1.3 Certificate message body into its DER certificate chain.
+    // Fails closed: any length field exceeding the message body is an error, never
+    // a silent truncation (N-S3).
+    Result<std::vector<std::vector<u8>>> parse_certificate_message(const std::vector<u8> &body);
+
     class TLSConnection {
     public:
         TLSConnection();
