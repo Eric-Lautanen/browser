@@ -1,4 +1,4 @@
-#include "font.hpp"
+﻿#include "font.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -15,6 +15,17 @@ static std::vector<u8> rasterize_scanline(const GlyphOutline &outline,
                                            i32 offset_x, i32 offset_y) {
     std::vector<u8> bitmap(pw * ph, 0);
     if (outline.num_contours <= 0 || outline.points.empty()) return bitmap;
+
+    // R-S5: contour endpoints must be strictly increasing and within the point
+    // array; inconsistent outlines (e.g. from a u16 wrap) would index past it.
+    for (i16 c = 1; c < outline.num_contours; c++) {
+        if (outline.contour_end_pts[(size_t)c] <= outline.contour_end_pts[(size_t)c - 1])
+            return bitmap;
+    }
+    size_t total_pts = outline.points.size() / 2;
+    if (!outline.contour_end_pts.empty() &&
+        outline.contour_end_pts.back() >= total_pts)
+        return bitmap;
 
     struct SortedEdge { f32 x0, y0, x1, y1; i32 dir; };
     std::vector<SortedEdge> edges;
@@ -88,7 +99,7 @@ Result<GlyphBitmap> FontFace::rasterize_glyph(u32 codepoint, u32 pixel_size) {
     u16 gid = (u16)glyph_index(codepoint);
     if (gid == 0)
         return Result<GlyphBitmap>(std::string("glyph not in font"));
-    int bezier_steps = (std::max)(12, (int)(pixel_size) * 3 / 4);
+    int bezier_steps = std::clamp((int)(pixel_size) * 3 / 4, 12, 32);
     auto outline_result = read_outline(gid, bezier_steps);
     if (outline_result.is_err())
         return Result<GlyphBitmap>(outline_result.unwrap_err());
@@ -136,7 +147,7 @@ Result<GlyphBitmap> FontFace::rasterize_glyph_by_gid(u16 gid, u32 pixel_size) {
     if (gid == 0)
         return Result<GlyphBitmap>(std::string("glyph not in font"));
 
-    int bezier_steps = (std::max)(12, (int)(pixel_size) * 3 / 4);
+    int bezier_steps = std::clamp((int)(pixel_size) * 3 / 4, 12, 32);
     auto outline_result = read_outline(gid, bezier_steps);
     if (outline_result.is_err())
         return Result<GlyphBitmap>(outline_result.unwrap_err());

@@ -88,7 +88,8 @@ namespace browser::render {
                                                                   u32 gsize,
                                                                   i16 num_contours,
                                                                   int bezier_steps = 8);
-        Result<internal::GlyphOutline> read_outline(u16 glyph_index, int bezier_steps = 8) const;
+        Result<internal::GlyphOutline> read_outline(u16 glyph_index, int bezier_steps = 8,
+                                                int depth = 0) const;
 
         Result<void> load_tables_from_offset(const u8 *data, u32 total_size, u32 font_offset);
     };

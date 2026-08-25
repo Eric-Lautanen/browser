@@ -182,6 +182,13 @@ namespace browser::render {
         for (u16 i = 0; i < end_pts_count; i++) {
             contour_end_pts[i] = read_u16_be(gdata, 10 + i * 2, gsize);
         }
+        // R-S1: endpoints must be strictly increasing. A decreasing pair makes
+        // `num_orig = end - start + 1` underflow and index far past the point
+        // vectors below.
+        for (u16 i = 1; i < end_pts_count; i++) {
+            if (contour_end_pts[i] <= contour_end_pts[i - 1])
+                return Result<GlyphOutline>(std::string("non-monotonic contour endpoints"));
+        }
 
         u16 num_points = contour_end_pts.empty() ? 0 : (u16)(contour_end_pts.back() + 1);
         u16 instr_len = read_u16_be(gdata, 10 + end_pts_count * 2, gsize);
@@ -333,36 +340,51 @@ namespace browser::render {
         return Result<GlyphOutline>(std::move(result));
     }
 
-    Result<GlyphOutline> FontFace::read_outline(u16 glyph_idx, int bezier_steps) const {
+    Result<GlyphOutline> FontFace::read_outline(u16 glyph_idx, int bezier_steps, int depth) const {
         const u8 *fp = font_data_.data();
         u32 fl = (u32)font_data_.size();
 
-        u32 glyph_offset;
-        u32 next_offset;
+        // R-S3: self-referencing composite components must not recurse forever.
+        if (depth > 32)
+            return Result<GlyphOutline>(std::string("composite glyph nesting too deep"));
+
+        // R-S2: loca entries are attacker-controlled; clamp the glyph extent to
+        // both the glyf table and the file before any arithmetic on it.
+        u64 glyph_offset64;
+        u64 next_offset64;
         if (long_loca_) {
-            if (loca_off_ + (glyph_idx + 1) * 4 > fl) {
+            if ((u64)loca_off_ + ((u64)glyph_idx + 1) * 4 > fl) {
                 return Result<GlyphOutline>(std::string("loca out of bounds"));
             }
-            glyph_offset = read_u32_be(fp, loca_off_ + glyph_idx * 4, fl);
-            next_offset = read_u32_be(fp, loca_off_ + (glyph_idx + 1) * 4, fl);
+            glyph_offset64 = read_u32_be(fp, loca_off_ + glyph_idx * 4, fl);
+            next_offset64 = read_u32_be(fp, loca_off_ + (glyph_idx + 1) * 4, fl);
         } else {
-            if (loca_off_ + (glyph_idx + 1) * 2 > fl) {
+            if ((u64)loca_off_ + ((u64)glyph_idx + 1) * 2 > fl) {
                 return Result<GlyphOutline>(std::string("loca out of bounds"));
             }
-            glyph_offset = (u32)read_u16_be(fp, loca_off_ + glyph_idx * 2, fl) * 2;
-            next_offset = (u32)read_u16_be(fp, loca_off_ + (glyph_idx + 1) * 2, fl) * 2;
+            glyph_offset64 = (u64)read_u16_be(fp, loca_off_ + glyph_idx * 2, fl) * 2;
+            next_offset64 = (u64)read_u16_be(fp, loca_off_ + (glyph_idx + 1) * 2, fl) * 2;
         }
 
-        if (glyph_offset == next_offset) {
+        if (glyph_offset64 == next_offset64) {
             return Result<GlyphOutline>(GlyphOutline{0, {}, {}, 0, 0, 0, 0});
         }
+        if (next_offset64 < glyph_offset64)
+            return Result<GlyphOutline>(std::string("loca entries decreasing"));
 
-        if (glyf_off_ + glyph_offset + 10 > fl) {
+        u32 glyf_end = glyf_off_ + glyf_len_;
+        if (glyf_end > fl)
+            glyf_end = fl;
+        u64 abs_start64 = (u64)glyf_off_ + glyph_offset64;
+        u64 abs_end64 = (u64)glyf_off_ + next_offset64;
+        if (abs_end64 > glyf_end)
+            abs_end64 = glyf_end;
+        if (abs_start64 + 10 > abs_end64 || abs_start64 >= fl) {
             return Result<GlyphOutline>(std::string("glyf out of bounds"));
         }
 
-        const u8 *gdata = fp + glyf_off_ + glyph_offset;
-        u32 gsize = next_offset - glyph_offset;
+        const u8 *gdata = fp + abs_start64;
+        u32 gsize = (u32)(abs_end64 - abs_start64);
 
         i16 num_contours = read_i16_be(gdata, 0, gsize);
         i16 x_min = read_i16_be(gdata, 2, gsize);
@@ -454,7 +476,7 @@ namespace browser::render {
                 d = (f32)sy / 16384.0f;
             }
 
-            auto comp_result = read_outline(comp_gid, bezier_steps);
+            auto comp_result = read_outline(comp_gid, bezier_steps, depth + 1);
             if (comp_result.is_err())
                 continue;
             auto &comp = comp_result.unwrap();
@@ -479,6 +501,10 @@ namespace browser::render {
             }
 
             size_t pt_offset = result.points.size() / 2;
+            // R-S3: cap total points below 65536 so contour_end_pts u16 values
+            // cannot wrap and produce inconsistent outlines.
+            if (pt_offset + comp.points.size() / 2 > 65535)
+                break;
             for (size_t i = 0; i < comp.points.size(); i += 2) {
                 f32 px = comp.points[i];
                 f32 py = comp.points[i + 1];
