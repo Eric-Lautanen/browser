@@ -492,4 +492,95 @@ TEST(png_interlaced_rejected_explicitly, {
     ASSERT(result.is_err());
 })
 
+// ---- Hostile BMP / GIF (I-C3 / I-H2 / I-H3) ----
+
+TEST(bmp_oversized_dimensions_truncated_rejected, {
+    // 62-byte file whose header claims 4096x4096 @24bpp — the exact I-C3 repro.
+    std::vector<u8> d(test_bmp, test_bmp + sizeof(test_bmp));
+    auto set32 = [&](size_t off, u32 v) {
+        d[off] = static_cast<u8>(v);
+        d[off + 1] = static_cast<u8>(v >> 8);
+        d[off + 2] = static_cast<u8>(v >> 16);
+        d[off + 3] = static_cast<u8>(v >> 24);
+    };
+    set32(18, 4096);   // info-header width
+    set32(22, 4096);   // info-header height
+    auto decoder = create_decoder(ImageFormat::BMP);
+    auto result = decoder->decode(d.data(), d.size());
+    ASSERT(result.is_err());
+})
+
+TEST(bmp_data_offset_past_pixels_rejected, {
+    // Valid 1x1 but data offset points beyond EOF.
+    std::vector<u8> d(test_bmp, test_bmp + sizeof(test_bmp));
+    auto set32 = [&](size_t off, u32 v) {
+        d[off] = static_cast<u8>(v);
+        d[off + 1] = static_cast<u8>(v >> 8);
+        d[off + 2] = static_cast<u8>(v >> 16);
+        d[off + 3] = static_cast<u8>(v >> 24);
+    };
+    set32(10, 5000);   // fh.data_offset
+    auto decoder = create_decoder(ImageFormat::BMP);
+    auto result = decoder->decode(d.data(), d.size());
+    ASSERT(result.is_err());
+})
+
+TEST(bmp_unsupported_bit_depth_rejected, {
+    std::vector<u8> d(test_bmp, test_bmp + sizeof(test_bmp));
+    // info header starts at 14; bpp is a u16 at +14 within it
+    d[14 + 14] = 2;
+    d[14 + 15] = 0;
+    auto decoder = create_decoder(ImageFormat::BMP);
+    auto result = decoder->decode(d.data(), d.size());
+    ASSERT(result.is_err());
+})
+
+// GIF with GCT size field = 7 (256 entries) but no table bytes present:
+// pre-I-H2 the u8 wrap produced an empty palette and parser desync instead
+// of a clean error.
+static std::vector<u8> gif_with_packed(u8 packed) {
+    std::vector<u8> d;
+    auto push16 = [&d](u16 v) {
+        d.push_back(static_cast<u8>(v & 0xFF));
+        d.push_back(static_cast<u8>(v >> 8));
+    };
+    d.insert(d.end(), {'G', 'I', 'F', '8', '9', 'a'});
+    push16(4);   // logical width
+    push16(4);   // logical height
+    d.push_back(packed);
+    d.push_back(0);  // bg index
+    d.push_back(0);  // aspect
+    return d;
+}
+
+TEST(gif_gct_size_field_seven_no_truncation_desync, {
+    // packed = 0xF7: GCT present, size field 7 → 256 entries that don't exist.
+    auto d = gif_with_packed(0xF7);
+    auto decoder = create_decoder(ImageFormat::GIF);
+    auto result = decoder->decode(d.data(), d.size());
+    ASSERT(result.is_err());  // truncated global color table
+})
+
+TEST(gif_truncated_lzw_subblock_rejected, {
+    // Valid 2-entry GCT then an image descriptor whose LZW sub-block claims
+    // more bytes than remain (I-H3 read-past-buffer).
+    auto d = gif_with_packed(0x80 | 1);  // GCT present, 4 entries... use F1-style: size=1 → 4 entries
+    // provide only 2 of 4 entries? Keep it simple: full 4-entry table = 12 bytes
+    for (int i = 0; i < 12; i++) d.push_back(0x10 * (i % 15));
+    // Image descriptor
+    d.push_back(0x2C);
+    d.push_back(0); d.push_back(0);   // left
+    d.push_back(0); d.push_back(0);   // top
+    d.push_back(4); d.push_back(0);   // w
+    d.push_back(4); d.push_back(0);   // h
+    d.push_back(0x00);                // packed: no LCT, no interlace
+    d.push_back(0x02);                // LZW min code size
+    d.push_back(10);                  // sub-block claims 10 bytes...
+    d.push_back(0xAB); d.push_back(0xCD);  // ...only 2 present, then EOF
+
+    auto decoder = create_decoder(ImageFormat::GIF);
+    auto result = decoder->decode(d.data(), d.size());
+    ASSERT(result.is_err());
+})
+
 } // namespace browser::image

@@ -52,17 +52,41 @@ public:
         if (w == 0 || h == 0 || w > 4096 || h > 4096) {
             return Result<Image>("Invalid BMP dimensions");
         }
+        // Reject unsupported bit depths instead of silently producing black.
+        switch (ih.bpp) {
+            case 1: case 4: case 8: case 16: case 24: case 32: break;
+            default:
+                return Result<Image>("Unsupported BMP bit depth: " + std::to_string(ih.bpp));
+        }
 
         u32 data_offset = fh.data_offset;
         if (data_offset > size) {
             return Result<Image>("BMP data offset out of range");
         }
 
-        u32 palette_offset = sizeof(BMPFileHeader) + ih.header_size;
         u32 num_palette_colors = 0;
         if (ih.bpp <= 8) {
             num_palette_colors = (ih.colors_used > 0) ? ih.colors_used : (1u << ih.bpp);
             if (num_palette_colors > 256) num_palette_colors = 256;
+        }
+
+        u32 row_bytes = ((w * ih.bpp + 31) / 32) * 4;
+
+        // I-C3: pixel rows must actually exist inside the file. Compute in
+        // size_t — a 62-byte file claiming 4096x4096@24bpp previously read
+        // far past the buffer.
+        {
+            u64 needed = static_cast<u64>(data_offset) +
+                         static_cast<u64>(row_bytes) * h;
+            if (needed > static_cast<u64>(size)) {
+                return Result<Image>("BMP pixel data truncated");
+            }
+        }
+        u64 palette_end64 = static_cast<u64>(sizeof(BMPFileHeader)) + ih.header_size +
+                            static_cast<u64>(num_palette_colors) * 4;
+        u32 palette_offset = sizeof(BMPFileHeader) + ih.header_size;
+        if (num_palette_colors > 0 && palette_end64 > static_cast<u64>(size)) {
+            return Result<Image>("BMP palette truncated");
         }
 
         std::vector<u8> rgba(w * h * 4, 0);
@@ -77,8 +101,6 @@ public:
             return static_cast<u32>(p[0]) | (static_cast<u32>(p[1]) << 8) |
                    (static_cast<u32>(p[2]) << 16) | (0xFFu << 24);
         };
-
-        u32 row_bytes = ((w * ih.bpp + 31) / 32) * 4;
 
         // Handle RLE8 (compression=1), RLE4 (compression=2), or BITFIELDS (compression=3)
         if (ih.compression == 1) {
@@ -113,7 +135,10 @@ public:
                 for (u32 x = 0; x < w; x++) {
                     u8 index = decoded[y * w + x];
                     u32 col = get_palette_color(index);
-                    u32 po = (y * w + x) * 4;
+                    // RLE streams are bottom-up for positive heights; flip to
+                    // image orientation (I-M11).
+                    u32 out_y = top_down ? y : (h - 1 - y);
+                    u32 po = (out_y * w + x) * 4;
                     rgba[po + 0] = (col) & 0xFF;
                     rgba[po + 1] = (col >> 8) & 0xFF;
                     rgba[po + 2] = (col >> 16) & 0xFF;

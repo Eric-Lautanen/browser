@@ -52,19 +52,22 @@ public:
         }
 
         bool global_color_table = (ls.packed & 0x80) != 0;
-        u8 gct_size = 1 << ((ls.packed & 0x07) + 1);
+        // I-H2: size field 7 means 256 entries; u8 arithmetic wraps to 0.
+        u32 gct_size = 1u << ((ls.packed & 0x07) + 1);
 
         std::vector<GIFColorTableEntry> global_table;
         size_t pos = sizeof(GIFHeader) + sizeof(GIFLogicalScreen);
 
         if (global_color_table) {
-            for (u8 i = 0; i < gct_size && pos + 3 <= size; i++) {
+            for (u32 i = 0; i < gct_size && pos + 3 <= size; i++) {
                 GIFColorTableEntry entry;
                 entry.r = data[pos++];
                 entry.g = data[pos++];
                 entry.b = data[pos++];
                 global_table.push_back(entry);
             }
+            if (global_table.size() < gct_size)
+                return Result<Image>("Truncated global color table");
         }
 
         // Initialize output with background color
@@ -103,17 +106,19 @@ public:
 
                 bool local_color_table = (id.packed & 0x80) != 0;
                 bool interlace = (id.packed & 0x40) != 0;
-                u8 lct_size = 1 << ((id.packed & 0x07) + 1);
+                u32 lct_size = 1u << ((id.packed & 0x07) + 1);
 
                 std::vector<GIFColorTableEntry> color_table;
                 if (local_color_table) {
-                    for (u8 i = 0; i < lct_size && pos + 3 <= size; i++) {
+                    for (u32 i = 0; i < lct_size && pos + 3 <= size; i++) {
                         GIFColorTableEntry entry;
                         entry.r = data[pos++];
                         entry.g = data[pos++];
                         entry.b = data[pos++];
                         color_table.push_back(entry);
                     }
+                    if (color_table.size() < lct_size)
+                        return Result<Image>("Truncated local color table");
                 } else {
                     color_table = global_table;
                 }
@@ -127,9 +132,11 @@ public:
                 while (pos < size) {
                     u8 block_size = data[pos++];
                     if (block_size == 0) break;
+                    // I-H3: truncated final sub-block must not read past the buffer.
+                    if (pos + block_size > size)
+                        return Result<Image>("Truncated LZW sub-block");
                     lzw_data.insert(lzw_data.end(), data + pos, data + pos + block_size);
                     pos += block_size;
-                    if (pos > size) break;
                 }
 
                 // LZW Decompress
