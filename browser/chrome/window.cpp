@@ -318,9 +318,19 @@ namespace browser {
         while (!window_->should_close()) {
             QueryPerformanceCounter(&frame_start);
 
-            // Wait for messages
-            if (MsgWaitForMultipleObjectsEx(0, nullptr, 16, QS_ALLINPUT, MWMO_INPUTAVAILABLE) == WAIT_TIMEOUT) {
-                // Timeout — still render next frame
+            // BR-P2: decide the wake interval before waiting. Continuous
+            // animation (CSS animations, smooth scroll) keeps a 16 ms beat;
+            // caret blink polls at 60 ms; a fully idle browser sleeps long —
+            // bounded, because async page loads publish from pool threads.
+            absorb_loaded_pages();
+            const bool animating = animation_engine_.has_active() || chrome_.scroll_target_y >= 0;
+            const bool caret_visible_somewhere =
+                html::g_form_state.focused_element != nullptr || chrome_.address_focused;
+
+            const u32 wait_ms = idle_wait_ms(animating, caret_visible_somewhere);
+
+            if (MsgWaitForMultipleObjectsEx(0, nullptr, wait_ms, QS_ALLINPUT, MWMO_INPUTAVAILABLE) == WAIT_TIMEOUT) {
+                // Timeout — fall through to tick timers / maybe render
             }
 
             // Process pending Windows messages
@@ -344,6 +354,9 @@ namespace browser {
                 if (elapsed >= 500) {
                     html::g_form_state.caret_visible = !html::g_form_state.caret_visible;
                     last_blink = now;
+                    // BR-P2: only a visible caret makes the toggle paint-worthy
+                    if (caret_visible_somewhere)
+                        frame_dirty_ = true;
                 }
             }
 
@@ -374,10 +387,20 @@ namespace browser {
                 auto now = std::chrono::steady_clock::now();
                 f32 dt = std::chrono::duration<float>(now - last_anim_time).count();
                 last_anim_time = now;
-                if (dt > 0 && dt < 1.0f) {
+                if (dt > 0 && dt < 1.0f && animation_engine_.has_active()) {
                     update_animations(dt);
                     apply_animation_values();
                 }
+            }
+
+            // BR-P2: render gate. Draw only when something changed or is
+            // continuously animating; otherwise skip straight to the next wait.
+            const bool need_render = frame_dirty_ || animating || renderer_->needs_redraw();
+            frame_dirty_ = false;
+            renderer_->set_needs_redraw(false);
+            if (!need_render) {
+                QueryPerformanceCounter(&frame_end);
+                continue;
             }
 
             // 6. Render frame
@@ -846,6 +869,14 @@ namespace browser {
     bool BrowserWindow::is_in_rect(i32 x, i32 y, const ChromeUI::ButtonRect &r) {
         return static_cast<f32>(x) >= r.x && static_cast<f32>(x) <= r.x + r.w && static_cast<f32>(y) >= r.y &&
                static_cast<f32>(y) <= r.y + r.h;
+    }
+
+    u32 BrowserWindow::idle_wait_ms(bool animating, bool caret_active) {
+        if (animating)
+            return 16;  // full frame beat while something moves
+        if (caret_active)
+            return 60;  // well under the 500 ms blink period
+        return 200;     // idle doze; bounded so async loads still surface
     }
 
 }  // namespace browser

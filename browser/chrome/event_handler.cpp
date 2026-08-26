@@ -9,9 +9,9 @@
 #include "../settings.hpp"
 #include "window.hpp"
 
+#include <commctrl.h>
 #include <functional>
 #include <windows.h>
-#include <commctrl.h>
 
 namespace browser {
 
@@ -32,7 +32,8 @@ namespace browser {
         static void adjust_number_value(html::Element *el, f32 delta) {
             std::string step_str = el->get_attribute("step");
             f32 step = step_str.empty() ? 1.0f : std::strtof(step_str.c_str(), nullptr);
-            if (step <= 0) step = 1.0f;
+            if (step <= 0)
+                step = 1.0f;
 
             std::string val = html::g_form_state.get_value(el);
             f32 cur = std::strtof(val.c_str(), nullptr);
@@ -41,12 +42,14 @@ namespace browser {
             std::string min_str = el->get_attribute("min");
             if (!min_str.empty()) {
                 f32 min_val = std::strtof(min_str.c_str(), nullptr);
-                if (cur < min_val) cur = min_val;
+                if (cur < min_val)
+                    cur = min_val;
             }
             std::string max_str = el->get_attribute("max");
             if (!max_str.empty()) {
                 f32 max_val = std::strtof(max_str.c_str(), nullptr);
-                if (cur > max_val) cur = max_val;
+                if (cur > max_val)
+                    cur = max_val;
             }
 
             char buf[64];
@@ -138,6 +141,9 @@ namespace browser {
     }  // namespace
 
     void BrowserWindow::handle_event(const platform::Event &e) {
+        // BR-P2: any input may change what is on screen; the render gate
+        // picks this up on the next loop iteration.
+        frame_dirty_ = true;
         if (e.type == platform::Event::Type::KEY_DOWN) {
             if (e.key == platform::KeyCode::CTRL || e.key == platform::KeyCode::LCTRL ||
                 e.key == platform::KeyCode::RCTRL)
@@ -334,7 +340,8 @@ namespace browser {
             if (current_page_.has_value()) {
                 f32 py2 = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
                 auto &dr2 = html::g_form_state.select_dropdown_rect;
-                if (dr2.width > 0 && mx >= dr2.x && mx <= dr2.x + dr2.width && py2 >= dr2.y && py2 <= dr2.y + dr2.height) {
+                if (dr2.width > 0 && mx >= dr2.x && mx <= dr2.x + dr2.width && py2 >= dr2.y &&
+                    py2 <= dr2.y + dr2.height) {
                     // Must have a focused multi-select element
                     auto *focused = html::g_form_state.focused_element;
                     if (focused && focused->tag_name == "select" && focused->has_attribute("multiple")) {
@@ -344,13 +351,16 @@ namespace browser {
                             int target_option = 0;
                             int running_idx = 0;
                             bool found = false;
-                            std::function<void(html::Node*, int&, int&)> walk2 =
+                            std::function<void(html::Node *, int &, int &)> walk2 =
                                 [&](html::Node *parent, int &row_idx, int &opt_idx) {
-                                    if (found) return;
+                                    if (found)
+                                        return;
                                     for (auto &c : parent->children) {
-                                        if (found) return;
-                                        if (c->type != html::NodeType::ELEMENT) continue;
-                                        auto *ch = static_cast<html::Element*>(c.get());
+                                        if (found)
+                                            return;
+                                        if (c->type != html::NodeType::ELEMENT)
+                                            continue;
+                                        auto *ch = static_cast<html::Element *>(c.get());
                                         if (ch->tag_name == "option") {
                                             if (row_idx == row) {
                                                 target_option = opt_idx;
@@ -360,16 +370,19 @@ namespace browser {
                                             row_idx++;
                                             opt_idx++;
                                         } else if (ch->tag_name == "optgroup") {
-                                            if (row_idx == row) { found = true; return; }
+                                            if (row_idx == row) {
+                                                found = true;
+                                                return;
+                                            }
                                             row_idx++;
                                             walk2(ch, row_idx, opt_idx);
                                         }
                                     }
                                 };
-                            walk2(const_cast<html::Element*>(focused), running_idx, target_option);
+                            walk2(const_cast<html::Element *>(focused), running_idx, target_option);
                             if (found) {
-                                html::g_form_state.set_selected_index(
-                                    const_cast<html::Element*>(focused), target_option);
+                                html::g_form_state.set_selected_index(const_cast<html::Element *>(focused),
+                                                                      target_option);
                             }
                         }
                         return;
@@ -390,13 +403,16 @@ namespace browser {
                         int target_option = 0;
                         int running_idx = 0;
                         bool found = false;
-                        std::function<void(html::Node*, int&, int&)> walk =
+                        std::function<void(html::Node *, int &, int &)> walk =
                             [&](html::Node *parent, int &row_idx, int &opt_idx) {
-                                if (found) return;
+                                if (found)
+                                    return;
                                 for (auto &c : parent->children) {
-                                    if (found) return;
-                                    if (c->type != html::NodeType::ELEMENT) continue;
-                                    auto *ch = static_cast<html::Element*>(c.get());
+                                    if (found)
+                                        return;
+                                    if (c->type != html::NodeType::ELEMENT)
+                                        continue;
+                                    auto *ch = static_cast<html::Element *>(c.get());
                                     if (ch->tag_name == "option") {
                                         if (row_idx == row) {
                                             target_option = opt_idx;
@@ -407,16 +423,19 @@ namespace browser {
                                         opt_idx++;
                                     } else if (ch->tag_name == "optgroup") {
                                         // Optgroup header is a row too (non-selectable)
-                                        if (row_idx == row) { found = true; return; }
+                                        if (row_idx == row) {
+                                            found = true;
+                                            return;
+                                        }
                                         row_idx++;
                                         walk(ch, row_idx, opt_idx);
                                     }
                                 }
                             };
-                        walk(const_cast<html::Element*>(html::g_form_state.open_select), running_idx, target_option);
+                        walk(const_cast<html::Element *>(html::g_form_state.open_select), running_idx, target_option);
                         if (found) {
                             html::g_form_state.set_selected_index(
-                                const_cast<html::Element*>(html::g_form_state.open_select), target_option);
+                                const_cast<html::Element *>(html::g_form_state.open_select), target_option);
                         }
                     }
                     html::g_form_state.close_select();
@@ -446,8 +465,8 @@ namespace browser {
                 if (ht.element) {
                     std::string tag = ht.element->tag_name;
                     std::string type = ht.element->get_attribute("type");
-                    on_interactive = (tag == "a" || tag == "input" || tag == "button" ||
-                                      tag == "textarea" || tag == "select");
+                    on_interactive =
+                        (tag == "a" || tag == "input" || tag == "button" || tag == "textarea" || tag == "select");
                 }
 
                 if (!on_interactive && current_page_->layout) {
@@ -460,8 +479,7 @@ namespace browser {
                             f32 nx = ox + node->content.x + node->padding.left + node->border.left;
                             f32 ny = oy + node->content.y + node->padding.top + node->border.top;
                             if (node->is_text() && !node->text().empty() && !text_node) {
-                                if (!has_user_select_none(node) &&
-                                    gx >= nx && gx <= nx + node->content.width &&
+                                if (!has_user_select_none(node) && gx >= nx && gx <= nx + node->content.width &&
                                     gy >= ny && gy <= ny + node->content.height) {
                                     text_node = node;
                                 }
@@ -491,392 +509,528 @@ namespace browser {
                     if (ht.element->has_attribute("disabled")) {
                         // Don't focus or interact with disabled elements
                     } else {
-                    html::g_form_state.hovered_element = ht.element;
-                    std::string tag = ht.element->tag_name;
-                    std::string type = ht.element->get_attribute("type");
+                        html::g_form_state.hovered_element = ht.element;
+                        std::string tag = ht.element->tag_name;
+                        std::string type = ht.element->get_attribute("type");
 
-                    if (tag == "input" && (type.empty() || type == "text" || type == "password" || type == "email" || type == "search" || type == "url")) {
-                        html::g_form_state.focus(ht.element);
-                    } else if (tag == "input" && type == "number") {
-                        html::g_form_state.focus(ht.element);
-                        // Check if click is on spin buttons
-                        if (ht.layout_node) {
-                            css::Rect box = ht.layout_node->get_border_box();
-                            f32 spin_w = 18.0f;
-                            f32 spin_x = box.x + box.width - spin_w;
-                            if (static_cast<f32>(mx) >= spin_x && static_cast<f32>(mx) <= box.x + box.width) {
-                                f32 click_y = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
-                                f32 half_h = box.height / 2.0f;
-                                if (click_y < box.y + half_h) {
-                                    // Spin up
-                                    adjust_number_value(ht.element, 1);
-                                } else {
-                                    // Spin down
-                                    adjust_number_value(ht.element, -1);
-                                }
-                            }
-                        }
-                    } else if (tag == "input" && type == "range") {
-                        html::g_form_state.focus(ht.element);
-                        // Set value based on click position
-                        if (ht.layout_node) {
-                            css::Rect box = ht.layout_node->get_border_box();
-                            f32 min_val = 0, max_val = 100;
-                            std::string min_str = ht.element->get_attribute("min");
-                            std::string max_str = ht.element->get_attribute("max");
-                            if (!min_str.empty()) min_val = std::strtof(min_str.c_str(), nullptr);
-                            if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
-                            f32 frac = (static_cast<f32>(mx) - box.x) / box.width;
-                            if (frac < 0) frac = 0;
-                            if (frac > 1) frac = 1;
-                            f32 val = min_val + (max_val - min_val) * frac;
-                            char buf[64];
-                            snprintf(buf, sizeof(buf), "%g", val);
-                            html::g_form_state.set_value(ht.element, buf);
-                        }
-                    } else if (tag == "input" && type == "file") {
-                        html::g_form_state.focus(ht.element);
-                        // Open Win32 file picker dialog
-                        wchar_t wbuf[260 * 64] = {0};
-                        OPENFILENAMEW ofn = {};
-                        ofn.lStructSize = sizeof(ofn);
-                        ofn.hwndOwner = GetActiveWindow();
-                        ofn.lpstrFilter = L"All Files\0*.*\0";
-                        ofn.lpstrFile = wbuf;
-                        ofn.nMaxFile = 260 * 64;
-                        ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
-                        if (GetOpenFileNameW(&ofn)) {
-                            int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, nullptr, 0, nullptr, nullptr);
-                            if (len > 0) {
-                                std::string path(len - 1, '\0');
-                                WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, &path[0], len, nullptr, nullptr);
-                                html::g_form_state.set_value(ht.element, path);
-                            }
-                        }
-                    } else if (tag == "input" && type == "color") {
-                        html::g_form_state.focus(ht.element);
-                        // Parse current color or use black
-                        std::string cur_val = html::g_form_state.get_value(ht.element);
-                        COLORREF cust_colors[16] = {0};
-                        COLORREF cur_rgb = RGB(0, 0, 0);
-                        if (!cur_val.empty() && cur_val[0] == '#' && cur_val.size() >= 7) {
-                            auto c = css::Color::from_hex(cur_val);
-                            cur_rgb = RGB(c.r, c.g, c.b);
-                        }
-                        CHOOSECOLORW cc = {};
-                        cc.lStructSize = sizeof(cc);
-                        cc.hwndOwner = GetActiveWindow();
-                        cc.rgbResult = cur_rgb;
-                        cc.lpCustColors = cust_colors;
-                        cc.Flags = CC_RGBINIT | CC_FULLOPEN;
-                        if (ChooseColorW(&cc)) {
-                            char buf[16];
-                            snprintf(buf, sizeof(buf), "#%02x%02x%02x",
-                                GetRValue(cc.rgbResult), GetGValue(cc.rgbResult), GetBValue(cc.rgbResult));
-                            html::g_form_state.set_value(ht.element, buf);
-                        }
-                    } else if (tag == "input" && type == "date") {
-                        html::g_form_state.focus(ht.element);
-                        // Parse current value yyyy-MM-dd
-                        std::string cur_val = html::g_form_state.get_value(ht.element);
-                        SYSTEMTIME st = {};
-                        bool have_date = false;
-                        if (cur_val.size() >= 10) {
-                            int y = 0, m = 0, d = 0;
-                            if (sscanf(cur_val.c_str(), "%d-%d-%d", &y, &m, &d) == 3) {
-                                st.wYear = (WORD)y;
-                                st.wMonth = (WORD)m;
-                                st.wDay = (WORD)d;
-                                have_date = true;
-                            }
-                        }
-                        if (!have_date)
-                            GetLocalTime(&st);
-
-                        // Modal dialog with month calendar
-                        HWND parent = GetActiveWindow();
-                        HWND dlg = CreateWindowEx(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST, "STATIC", "Pick a date",
-                            WS_POPUP | WS_CAPTION | WS_VISIBLE,
-                            100, 100, 240, 220, parent, nullptr, GetModuleHandle(nullptr), nullptr);
-                        if (dlg) {
-                            HWND cal = CreateWindowEx(0, MONTHCAL_CLASSA, "",
-                                WS_CHILD | WS_VISIBLE | MCS_NOTODAYCIRCLE,
-                                4, 4, 220, 160, dlg, (HMENU)1001, GetModuleHandle(nullptr), nullptr);
-                            SendMessage(cal, MCM_SETCURSEL, 0, (LPARAM)&st);
-                            CreateWindowEx(0, "BUTTON", "OK",
-                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                60, 170, 60, 24, dlg, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
-                            CreateWindowEx(0, "BUTTON", "Cancel",
-                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                130, 170, 60, 24, dlg, (HMENU)IDCANCEL, GetModuleHandle(nullptr), nullptr);
-
-                            // Subclass dialog proc
-                            struct DlgCtx { HWND cal; bool ok; SYSTEMTIME chosen; WNDPROC orig; };
-                            static DlgCtx s_ctx;
-                            s_ctx.cal = cal;
-                            s_ctx.ok = false;
-                            s_ctx.chosen = st;
-                            s_ctx.orig = (WNDPROC)GetWindowLongPtr(dlg, GWLP_WNDPROC);
-                            SetWindowLongPtr(dlg, GWLP_WNDPROC, (LONG_PTR)+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
-                                if (msg == WM_COMMAND) {
-                                    if (LOWORD(wp) == IDOK) {
-                                        SendMessage(s_ctx.cal, MCM_GETCURSEL, 0, (LPARAM)&s_ctx.chosen);
-                                        s_ctx.ok = true;
-                                        DestroyWindow(hwnd);
-                                        return 0;
-                                    } else if (LOWORD(wp) == IDCANCEL) {
-                                        DestroyWindow(hwnd);
-                                        return 0;
+                        if (tag == "input" && (type.empty() || type == "text" || type == "password" ||
+                                               type == "email" || type == "search" || type == "url")) {
+                            html::g_form_state.focus(ht.element);
+                        } else if (tag == "input" && type == "number") {
+                            html::g_form_state.focus(ht.element);
+                            // Check if click is on spin buttons
+                            if (ht.layout_node) {
+                                css::Rect box = ht.layout_node->get_border_box();
+                                f32 spin_w = 18.0f;
+                                f32 spin_x = box.x + box.width - spin_w;
+                                if (static_cast<f32>(mx) >= spin_x && static_cast<f32>(mx) <= box.x + box.width) {
+                                    f32 click_y =
+                                        static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                                    f32 half_h = box.height / 2.0f;
+                                    if (click_y < box.y + half_h) {
+                                        // Spin up
+                                        adjust_number_value(ht.element, 1);
+                                    } else {
+                                        // Spin down
+                                        adjust_number_value(ht.element, -1);
                                     }
                                 }
-                                return CallWindowProc(s_ctx.orig, hwnd, msg, wp, lp);
-                            });
-
-                            MSG m;
-                            while (IsWindow(dlg)) {
-                                BOOL ret = GetMessage(&m, nullptr, 0, 0);
-                                if (!ret || ret == -1) break;
-                                if (!IsDialogMessage(dlg, &m)) {
-                                    TranslateMessage(&m);
-                                    DispatchMessage(&m);
-                                }
                             }
-                            if (s_ctx.ok) {
-                                char buf[16];
-                                snprintf(buf, sizeof(buf), "%04d-%02d-%02d",
-                                    s_ctx.chosen.wYear, s_ctx.chosen.wMonth, s_ctx.chosen.wDay);
+                        } else if (tag == "input" && type == "range") {
+                            html::g_form_state.focus(ht.element);
+                            // Set value based on click position
+                            if (ht.layout_node) {
+                                css::Rect box = ht.layout_node->get_border_box();
+                                f32 min_val = 0, max_val = 100;
+                                std::string min_str = ht.element->get_attribute("min");
+                                std::string max_str = ht.element->get_attribute("max");
+                                if (!min_str.empty())
+                                    min_val = std::strtof(min_str.c_str(), nullptr);
+                                if (!max_str.empty())
+                                    max_val = std::strtof(max_str.c_str(), nullptr);
+                                f32 frac = (static_cast<f32>(mx) - box.x) / box.width;
+                                if (frac < 0)
+                                    frac = 0;
+                                if (frac > 1)
+                                    frac = 1;
+                                f32 val = min_val + (max_val - min_val) * frac;
+                                char buf[64];
+                                snprintf(buf, sizeof(buf), "%g", val);
                                 html::g_form_state.set_value(ht.element, buf);
                             }
-                        }
-                    } else if (tag == "input" && type == "time") {
-                        html::g_form_state.focus(ht.element);
-                        // Parse current value HH:mm
-                        std::string cur_val = html::g_form_state.get_value(ht.element);
-                        int h = 0, mi = 0;
-                        bool have_time = false;
-                        if (cur_val.size() >= 5) {
-                            if (sscanf(cur_val.c_str(), "%d:%d", &h, &mi) == 2)
-                                have_time = true;
-                        }
-                        if (!have_time) {
-                            SYSTEMTIME st;
-                            GetLocalTime(&st);
-                            h = st.wHour;
-                            mi = st.wMinute;
-                        }
-
-                        HWND parent = GetActiveWindow();
-                        HWND dlg = CreateWindowEx(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST, "STATIC", "Pick a time",
-                            WS_POPUP | WS_CAPTION | WS_VISIBLE,
-                            120, 120, 200, 120, parent, nullptr, GetModuleHandle(nullptr), nullptr);
-                        if (dlg) {
-                            CreateWindowEx(0, "STATIC", "Hour:",
-                                WS_CHILD | WS_VISIBLE, 12, 14, 40, 18, dlg, nullptr, GetModuleHandle(nullptr), nullptr);
-                            HWND hour_edit = CreateWindowEx(0, "EDIT", "",
-                                WS_CHILD | WS_VISIBLE | ES_NUMBER | WS_BORDER,
-                                56, 12, 40, 22, dlg, (HMENU)2001, GetModuleHandle(nullptr), nullptr);
-                            CreateWindowEx(0, "STATIC", "Min:",
-                                WS_CHILD | WS_VISIBLE, 12, 44, 40, 18, dlg, nullptr, GetModuleHandle(nullptr), nullptr);
-                            HWND min_edit = CreateWindowEx(0, "EDIT", "",
-                                WS_CHILD | WS_VISIBLE | ES_NUMBER | WS_BORDER,
-                                56, 42, 40, 22, dlg, (HMENU)2002, GetModuleHandle(nullptr), nullptr);
-                            CreateWindowEx(0, "BUTTON", "OK",
-                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                110, 12, 60, 24, dlg, (HMENU)IDOK, GetModuleHandle(nullptr), nullptr);
-                            CreateWindowEx(0, "BUTTON", "Cancel",
-                                WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
-                                110, 42, 60, 24, dlg, (HMENU)IDCANCEL, GetModuleHandle(nullptr), nullptr);
-
-                            char hbuf[8], mbuf[8];
-                            snprintf(hbuf, sizeof(hbuf), "%d", h);
-                            snprintf(mbuf, sizeof(mbuf), "%d", mi);
-                            SetWindowTextA(hour_edit, hbuf);
-                            SetWindowTextA(min_edit, mbuf);
-
-                            struct TimeCtx { HWND hour, min; bool ok; WNDPROC orig; };
-                            static TimeCtx s_tctx;
-                            s_tctx.hour = hour_edit;
-                            s_tctx.min = min_edit;
-                            s_tctx.ok = false;
-                            s_tctx.orig = (WNDPROC)GetWindowLongPtr(dlg, GWLP_WNDPROC);
-                            SetWindowLongPtr(dlg, GWLP_WNDPROC, (LONG_PTR)+[](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
-                                if (msg == WM_COMMAND) {
-                                    if (LOWORD(wp) == IDOK) {
-                                        char hb[8], mb[8];
-                                        GetWindowTextA(s_tctx.hour, hb, 8);
-                                        GetWindowTextA(s_tctx.min, mb, 8);
-                                        int hh = atoi(hb), mm = atoi(mb);
-                                        if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60)
-                                            s_tctx.ok = true;
-                                        DestroyWindow(hwnd);
-                                        return 0;
-                                    } else if (LOWORD(wp) == IDCANCEL) {
-                                        DestroyWindow(hwnd);
-                                        return 0;
-                                    }
-                                }
-                                return CallWindowProc(s_tctx.orig, hwnd, msg, wp, lp);
-                            });
-
-                            MSG m;
-                            while (IsWindow(dlg)) {
-                                BOOL ret = GetMessage(&m, nullptr, 0, 0);
-                                if (!ret || ret == -1) break;
-                                if (!IsDialogMessage(dlg, &m)) {
-                                    TranslateMessage(&m);
-                                    DispatchMessage(&m);
+                        } else if (tag == "input" && type == "file") {
+                            html::g_form_state.focus(ht.element);
+                            // Open Win32 file picker dialog
+                            wchar_t wbuf[260 * 64] = {0};
+                            OPENFILENAMEW ofn = {};
+                            ofn.lStructSize = sizeof(ofn);
+                            ofn.hwndOwner = GetActiveWindow();
+                            ofn.lpstrFilter = L"All Files\0*.*\0";
+                            ofn.lpstrFile = wbuf;
+                            ofn.nMaxFile = 260 * 64;
+                            ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+                            if (GetOpenFileNameW(&ofn)) {
+                                int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, nullptr, 0, nullptr, nullptr);
+                                if (len > 0) {
+                                    std::string path(len - 1, '\0');
+                                    WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, &path[0], len, nullptr, nullptr);
+                                    html::g_form_state.set_value(ht.element, path);
                                 }
                             }
-                            if (s_tctx.ok) {
-                                char hb[8], mb[8];
-                                GetWindowTextA(s_tctx.hour, hb, 8);
-                                GetWindowTextA(s_tctx.min, mb, 8);
-                                int hh = atoi(hb), mm = atoi(mb);
+                        } else if (tag == "input" && type == "color") {
+                            html::g_form_state.focus(ht.element);
+                            // Parse current color or use black
+                            std::string cur_val = html::g_form_state.get_value(ht.element);
+                            COLORREF cust_colors[16] = {0};
+                            COLORREF cur_rgb = RGB(0, 0, 0);
+                            if (!cur_val.empty() && cur_val[0] == '#' && cur_val.size() >= 7) {
+                                auto c = css::Color::from_hex(cur_val);
+                                cur_rgb = RGB(c.r, c.g, c.b);
+                            }
+                            CHOOSECOLORW cc = {};
+                            cc.lStructSize = sizeof(cc);
+                            cc.hwndOwner = GetActiveWindow();
+                            cc.rgbResult = cur_rgb;
+                            cc.lpCustColors = cust_colors;
+                            cc.Flags = CC_RGBINIT | CC_FULLOPEN;
+                            if (ChooseColorW(&cc)) {
                                 char buf[16];
-                                snprintf(buf, sizeof(buf), "%02d:%02d", hh, mm);
+                                snprintf(buf,
+                                         sizeof(buf),
+                                         "#%02x%02x%02x",
+                                         GetRValue(cc.rgbResult),
+                                         GetGValue(cc.rgbResult),
+                                         GetBValue(cc.rgbResult));
                                 html::g_form_state.set_value(ht.element, buf);
                             }
-                        }
-                    } else if (tag == "input" && type == "checkbox") {
-                        html::g_form_state.toggle_checkbox(ht.element);
-                        html::g_form_state.focus(ht.element);
-                    } else if (tag == "input" && type == "radio") {
-                        html::g_form_state.set_checked(ht.element, true);
-                        html::g_form_state.focus(ht.element);
-                    } else if (tag == "input" && type == "submit") {
-                        html::g_form_state.focus(ht.element);
-                        {
-                            std::string nav_url = html::handle_form_submission(ht.element);
-                            if (!nav_url.empty())
-                                start_load(nav_url);
-                        }
-                    } else if (tag == "button") {
-                        html::g_form_state.focus(ht.element);
-                        std::string bt = ht.element->get_attribute("type");
-                        if (bt.empty() || bt == "submit") {
-                            std::string nav_url = html::handle_form_submission(ht.element);
-                            if (!nav_url.empty())
-                                start_load(nav_url);
-                        }
-                    } else if (tag == "textarea") {
-                        // Check if clicking on resize handle
-                        std::string resize = "both";
-                        if (ht.layout_node) {
-                            auto *rs = ht.layout_node->style().get("resize");
-                            if (rs && rs->type == css::CSSValue::Type::KEYWORD) {
-                                resize = rs->keyword;
-                            }
-                        }
-                        if (resize != "none" && ht.layout_node) {
-                            f32 handle_size = 12.0f;
-                            f32 hx = ht.hit_rect.x + ht.hit_rect.width - handle_size;
-                            f32 hy = ht.hit_rect.y + ht.hit_rect.height - handle_size;
-                            f32 px = static_cast<f32>(mx);
-                            f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
-                            if (px >= hx && px <= hx + handle_size && py >= hy && py <= hy + handle_size) {
-                                // Start resize drag
-                                chrome_.textarea_resize.active = true;
-                                chrome_.textarea_resize.element = ht.element;
-                                chrome_.textarea_resize.layout_node = ht.layout_node;
-                                chrome_.textarea_resize.start_mouse_x = px;
-                                chrome_.textarea_resize.start_mouse_y = py;
-                                chrome_.textarea_resize.start_width = ht.hit_rect.width;
-                                chrome_.textarea_resize.start_height = ht.hit_rect.height;
-                                return;
-                            }
-                        }
-                        html::g_form_state.focus(ht.element);
-                    } else if (tag == "select") {
-                        html::g_form_state.focus(ht.element);
-                        html::g_form_state.toggle_select(ht.element);
-                    } else if (tag == "summary") {
-                        // Toggle parent <details> open attribute
-                        html::Node *p = ht.element->parent;
-                        while (p) {
-                            if (p->type == html::NodeType::ELEMENT) {
-                                auto *pe = static_cast<html::Element *>(p);
-                                if (pe->tag_name == "details") {
-                                    if (pe->has_attribute("open"))
-                                        pe->attributes.erase("open");
-                                    else
-                                        pe->attributes["open"] = "";
-                                    renderer_->set_needs_redraw();
-                                    break;
+                        } else if (tag == "input" && type == "date") {
+                            html::g_form_state.focus(ht.element);
+                            // Parse current value yyyy-MM-dd
+                            std::string cur_val = html::g_form_state.get_value(ht.element);
+                            SYSTEMTIME st = {};
+                            bool have_date = false;
+                            if (cur_val.size() >= 10) {
+                                int y = 0, m = 0, d = 0;
+                                if (sscanf(cur_val.c_str(), "%d-%d-%d", &y, &m, &d) == 3) {
+                                    st.wYear = (WORD)y;
+                                    st.wMonth = (WORD)m;
+                                    st.wDay = (WORD)d;
+                                    have_date = true;
                                 }
                             }
-                            p = p->parent;
-                        }
-                    } else if (tag == "label") {
-                        std::string for_id = ht.element->get_attribute("for");
-                        if (!for_id.empty() && current_page_ && current_page_->dom) {
-                            html::Node *target = html::find_element_by_id(current_page_->dom.get(), for_id);
-                            if (target && target->type == html::NodeType::ELEMENT) {
-                                html::g_form_state.focus(static_cast<html::Element *>(target));
-                            }
-                        }
-                    } else if (tag == "a") {
-                        std::string href = ht.element->get_attribute("href");
-                        if (!href.empty()) {
-                            if (href[0] == '#') {
-                                // Scroll-to-anchor: update scroll position
-                                std::string target_id = href.substr(1);
-                                // Walk layout tree to find element with matching id
-                                if (current_page_->layout) {
-                                    html::Node *found = html::find_element_by_id(current_page_->dom.get(), target_id);
-                                    if (found && found->type == html::NodeType::ELEMENT) {
-                                        auto *found_el = static_cast<html::Element *>(found);
-                                        // Find this element in the styles map and compute its Y position
-                                        // Simple approach: search layout tree for matching element
-                                        struct FindResult {
-                                            bool found;
-                                            f32 y;
-                                        };
-                                        std::function<FindResult(html::Element *, css::LayoutNode *, f32)> find_y =
-                                            [&](html::Element *target, css::LayoutNode *node, f32 acc_y) -> FindResult {
-                                            if (node->node() == target)
-                                                return {true, acc_y + node->content.y};
-                                            for (auto &child : node->children) {
-                                                auto r = find_y(target, child.get(), acc_y + node->content.y);
-                                                if (r.found)
-                                                    return r;
+                            if (!have_date)
+                                GetLocalTime(&st);
+
+                            // Modal dialog with month calendar
+                            HWND parent = GetActiveWindow();
+                            HWND dlg = CreateWindowEx(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
+                                                      "STATIC",
+                                                      "Pick a date",
+                                                      WS_POPUP | WS_CAPTION | WS_VISIBLE,
+                                                      100,
+                                                      100,
+                                                      240,
+                                                      220,
+                                                      parent,
+                                                      nullptr,
+                                                      GetModuleHandle(nullptr),
+                                                      nullptr);
+                            if (dlg) {
+                                HWND cal = CreateWindowEx(0,
+                                                          MONTHCAL_CLASSA,
+                                                          "",
+                                                          WS_CHILD | WS_VISIBLE | MCS_NOTODAYCIRCLE,
+                                                          4,
+                                                          4,
+                                                          220,
+                                                          160,
+                                                          dlg,
+                                                          (HMENU)1001,
+                                                          GetModuleHandle(nullptr),
+                                                          nullptr);
+                                SendMessage(cal, MCM_SETCURSEL, 0, (LPARAM)&st);
+                                CreateWindowEx(0,
+                                               "BUTTON",
+                                               "OK",
+                                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                               60,
+                                               170,
+                                               60,
+                                               24,
+                                               dlg,
+                                               (HMENU)IDOK,
+                                               GetModuleHandle(nullptr),
+                                               nullptr);
+                                CreateWindowEx(0,
+                                               "BUTTON",
+                                               "Cancel",
+                                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                               130,
+                                               170,
+                                               60,
+                                               24,
+                                               dlg,
+                                               (HMENU)IDCANCEL,
+                                               GetModuleHandle(nullptr),
+                                               nullptr);
+
+                                // Subclass dialog proc
+                                struct DlgCtx {
+                                    HWND cal;
+                                    bool ok;
+                                    SYSTEMTIME chosen;
+                                    WNDPROC orig;
+                                };
+                                static DlgCtx s_ctx;
+                                s_ctx.cal = cal;
+                                s_ctx.ok = false;
+                                s_ctx.chosen = st;
+                                s_ctx.orig = (WNDPROC)GetWindowLongPtr(dlg, GWLP_WNDPROC);
+                                SetWindowLongPtr(
+                                    dlg,
+                                    GWLP_WNDPROC,
+                                    (LONG_PTR) + [](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+                                        if (msg == WM_COMMAND) {
+                                            if (LOWORD(wp) == IDOK) {
+                                                SendMessage(s_ctx.cal, MCM_GETCURSEL, 0, (LPARAM)&s_ctx.chosen);
+                                                s_ctx.ok = true;
+                                                DestroyWindow(hwnd);
+                                                return 0;
+                                            } else if (LOWORD(wp) == IDCANCEL) {
+                                                DestroyWindow(hwnd);
+                                                return 0;
                                             }
-                                            return {false, 0};
-                                        };
-                                        auto fr = find_y(found_el, current_page_->layout.get(), 0);
-                                        if (fr.found) {
-                                            i32 target = static_cast<i32>(fr.y);
-                                            // Check for scroll-behavior: smooth on root element
-                                            bool smooth = false;
-                                            auto *sb = current_page_->layout->style().get("scroll-behavior");
-                                            if (sb && sb->type == css::CSSValue::Type::KEYWORD && sb->keyword == "smooth")
-                                                smooth = true;
-                                            if (smooth) {
-                                                chrome_.scroll_target_y = target;
-                                            } else {
-                                                chrome_.scroll_y = target;
+                                        }
+                                        return CallWindowProc(s_ctx.orig, hwnd, msg, wp, lp);
+                                    });
+
+                                MSG m;
+                                while (IsWindow(dlg)) {
+                                    BOOL ret = GetMessage(&m, nullptr, 0, 0);
+                                    if (!ret || ret == -1)
+                                        break;
+                                    if (!IsDialogMessage(dlg, &m)) {
+                                        TranslateMessage(&m);
+                                        DispatchMessage(&m);
+                                    }
+                                }
+                                if (s_ctx.ok) {
+                                    char buf[16];
+                                    snprintf(buf,
+                                             sizeof(buf),
+                                             "%04d-%02d-%02d",
+                                             s_ctx.chosen.wYear,
+                                             s_ctx.chosen.wMonth,
+                                             s_ctx.chosen.wDay);
+                                    html::g_form_state.set_value(ht.element, buf);
+                                }
+                            }
+                        } else if (tag == "input" && type == "time") {
+                            html::g_form_state.focus(ht.element);
+                            // Parse current value HH:mm
+                            std::string cur_val = html::g_form_state.get_value(ht.element);
+                            int h = 0, mi = 0;
+                            bool have_time = false;
+                            if (cur_val.size() >= 5) {
+                                if (sscanf(cur_val.c_str(), "%d:%d", &h, &mi) == 2)
+                                    have_time = true;
+                            }
+                            if (!have_time) {
+                                SYSTEMTIME st;
+                                GetLocalTime(&st);
+                                h = st.wHour;
+                                mi = st.wMinute;
+                            }
+
+                            HWND parent = GetActiveWindow();
+                            HWND dlg = CreateWindowEx(WS_EX_DLGMODALFRAME | WS_EX_TOPMOST,
+                                                      "STATIC",
+                                                      "Pick a time",
+                                                      WS_POPUP | WS_CAPTION | WS_VISIBLE,
+                                                      120,
+                                                      120,
+                                                      200,
+                                                      120,
+                                                      parent,
+                                                      nullptr,
+                                                      GetModuleHandle(nullptr),
+                                                      nullptr);
+                            if (dlg) {
+                                CreateWindowEx(0,
+                                               "STATIC",
+                                               "Hour:",
+                                               WS_CHILD | WS_VISIBLE,
+                                               12,
+                                               14,
+                                               40,
+                                               18,
+                                               dlg,
+                                               nullptr,
+                                               GetModuleHandle(nullptr),
+                                               nullptr);
+                                HWND hour_edit = CreateWindowEx(0,
+                                                                "EDIT",
+                                                                "",
+                                                                WS_CHILD | WS_VISIBLE | ES_NUMBER | WS_BORDER,
+                                                                56,
+                                                                12,
+                                                                40,
+                                                                22,
+                                                                dlg,
+                                                                (HMENU)2001,
+                                                                GetModuleHandle(nullptr),
+                                                                nullptr);
+                                CreateWindowEx(0,
+                                               "STATIC",
+                                               "Min:",
+                                               WS_CHILD | WS_VISIBLE,
+                                               12,
+                                               44,
+                                               40,
+                                               18,
+                                               dlg,
+                                               nullptr,
+                                               GetModuleHandle(nullptr),
+                                               nullptr);
+                                HWND min_edit = CreateWindowEx(0,
+                                                               "EDIT",
+                                                               "",
+                                                               WS_CHILD | WS_VISIBLE | ES_NUMBER | WS_BORDER,
+                                                               56,
+                                                               42,
+                                                               40,
+                                                               22,
+                                                               dlg,
+                                                               (HMENU)2002,
+                                                               GetModuleHandle(nullptr),
+                                                               nullptr);
+                                CreateWindowEx(0,
+                                               "BUTTON",
+                                               "OK",
+                                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                               110,
+                                               12,
+                                               60,
+                                               24,
+                                               dlg,
+                                               (HMENU)IDOK,
+                                               GetModuleHandle(nullptr),
+                                               nullptr);
+                                CreateWindowEx(0,
+                                               "BUTTON",
+                                               "Cancel",
+                                               WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+                                               110,
+                                               42,
+                                               60,
+                                               24,
+                                               dlg,
+                                               (HMENU)IDCANCEL,
+                                               GetModuleHandle(nullptr),
+                                               nullptr);
+
+                                char hbuf[8], mbuf[8];
+                                snprintf(hbuf, sizeof(hbuf), "%d", h);
+                                snprintf(mbuf, sizeof(mbuf), "%d", mi);
+                                SetWindowTextA(hour_edit, hbuf);
+                                SetWindowTextA(min_edit, mbuf);
+
+                                struct TimeCtx {
+                                    HWND hour, min;
+                                    bool ok;
+                                    WNDPROC orig;
+                                };
+                                static TimeCtx s_tctx;
+                                s_tctx.hour = hour_edit;
+                                s_tctx.min = min_edit;
+                                s_tctx.ok = false;
+                                s_tctx.orig = (WNDPROC)GetWindowLongPtr(dlg, GWLP_WNDPROC);
+                                SetWindowLongPtr(
+                                    dlg,
+                                    GWLP_WNDPROC,
+                                    (LONG_PTR) + [](HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) -> LRESULT {
+                                        if (msg == WM_COMMAND) {
+                                            if (LOWORD(wp) == IDOK) {
+                                                char hb[8], mb[8];
+                                                GetWindowTextA(s_tctx.hour, hb, 8);
+                                                GetWindowTextA(s_tctx.min, mb, 8);
+                                                int hh = atoi(hb), mm = atoi(mb);
+                                                if (hh >= 0 && hh < 24 && mm >= 0 && mm < 60)
+                                                    s_tctx.ok = true;
+                                                DestroyWindow(hwnd);
+                                                return 0;
+                                            } else if (LOWORD(wp) == IDCANCEL) {
+                                                DestroyWindow(hwnd);
+                                                return 0;
+                                            }
+                                        }
+                                        return CallWindowProc(s_tctx.orig, hwnd, msg, wp, lp);
+                                    });
+
+                                MSG m;
+                                while (IsWindow(dlg)) {
+                                    BOOL ret = GetMessage(&m, nullptr, 0, 0);
+                                    if (!ret || ret == -1)
+                                        break;
+                                    if (!IsDialogMessage(dlg, &m)) {
+                                        TranslateMessage(&m);
+                                        DispatchMessage(&m);
+                                    }
+                                }
+                                if (s_tctx.ok) {
+                                    char hb[8], mb[8];
+                                    GetWindowTextA(s_tctx.hour, hb, 8);
+                                    GetWindowTextA(s_tctx.min, mb, 8);
+                                    int hh = atoi(hb), mm = atoi(mb);
+                                    char buf[16];
+                                    snprintf(buf, sizeof(buf), "%02d:%02d", hh, mm);
+                                    html::g_form_state.set_value(ht.element, buf);
+                                }
+                            }
+                        } else if (tag == "input" && type == "checkbox") {
+                            html::g_form_state.toggle_checkbox(ht.element);
+                            html::g_form_state.focus(ht.element);
+                        } else if (tag == "input" && type == "radio") {
+                            html::g_form_state.set_checked(ht.element, true);
+                            html::g_form_state.focus(ht.element);
+                        } else if (tag == "input" && type == "submit") {
+                            html::g_form_state.focus(ht.element);
+                            {
+                                std::string nav_url = html::handle_form_submission(ht.element);
+                                if (!nav_url.empty())
+                                    start_load(nav_url);
+                            }
+                        } else if (tag == "button") {
+                            html::g_form_state.focus(ht.element);
+                            std::string bt = ht.element->get_attribute("type");
+                            if (bt.empty() || bt == "submit") {
+                                std::string nav_url = html::handle_form_submission(ht.element);
+                                if (!nav_url.empty())
+                                    start_load(nav_url);
+                            }
+                        } else if (tag == "textarea") {
+                            // Check if clicking on resize handle
+                            std::string resize = "both";
+                            if (ht.layout_node) {
+                                auto *rs = ht.layout_node->style().get("resize");
+                                if (rs && rs->type == css::CSSValue::Type::KEYWORD) {
+                                    resize = rs->keyword;
+                                }
+                            }
+                            if (resize != "none" && ht.layout_node) {
+                                f32 handle_size = 12.0f;
+                                f32 hx = ht.hit_rect.x + ht.hit_rect.width - handle_size;
+                                f32 hy = ht.hit_rect.y + ht.hit_rect.height - handle_size;
+                                f32 px = static_cast<f32>(mx);
+                                f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                                if (px >= hx && px <= hx + handle_size && py >= hy && py <= hy + handle_size) {
+                                    // Start resize drag
+                                    chrome_.textarea_resize.active = true;
+                                    chrome_.textarea_resize.element = ht.element;
+                                    chrome_.textarea_resize.layout_node = ht.layout_node;
+                                    chrome_.textarea_resize.start_mouse_x = px;
+                                    chrome_.textarea_resize.start_mouse_y = py;
+                                    chrome_.textarea_resize.start_width = ht.hit_rect.width;
+                                    chrome_.textarea_resize.start_height = ht.hit_rect.height;
+                                    return;
+                                }
+                            }
+                            html::g_form_state.focus(ht.element);
+                        } else if (tag == "select") {
+                            html::g_form_state.focus(ht.element);
+                            html::g_form_state.toggle_select(ht.element);
+                        } else if (tag == "summary") {
+                            // Toggle parent <details> open attribute
+                            html::Node *p = ht.element->parent;
+                            while (p) {
+                                if (p->type == html::NodeType::ELEMENT) {
+                                    auto *pe = static_cast<html::Element *>(p);
+                                    if (pe->tag_name == "details") {
+                                        if (pe->has_attribute("open"))
+                                            pe->attributes.erase("open");
+                                        else
+                                            pe->attributes["open"] = "";
+                                        renderer_->set_needs_redraw();
+                                        break;
+                                    }
+                                }
+                                p = p->parent;
+                            }
+                        } else if (tag == "label") {
+                            std::string for_id = ht.element->get_attribute("for");
+                            if (!for_id.empty() && current_page_ && current_page_->dom) {
+                                html::Node *target = html::find_element_by_id(current_page_->dom.get(), for_id);
+                                if (target && target->type == html::NodeType::ELEMENT) {
+                                    html::g_form_state.focus(static_cast<html::Element *>(target));
+                                }
+                            }
+                        } else if (tag == "a") {
+                            std::string href = ht.element->get_attribute("href");
+                            if (!href.empty()) {
+                                if (href[0] == '#') {
+                                    // Scroll-to-anchor: update scroll position
+                                    std::string target_id = href.substr(1);
+                                    // Walk layout tree to find element with matching id
+                                    if (current_page_->layout) {
+                                        html::Node *found =
+                                            html::find_element_by_id(current_page_->dom.get(), target_id);
+                                        if (found && found->type == html::NodeType::ELEMENT) {
+                                            auto *found_el = static_cast<html::Element *>(found);
+                                            // Find this element in the styles map and compute its Y position
+                                            // Simple approach: search layout tree for matching element
+                                            struct FindResult {
+                                                bool found;
+                                                f32 y;
+                                            };
+                                            std::function<FindResult(html::Element *, css::LayoutNode *, f32)> find_y =
+                                                [&](html::Element *target,
+                                                    css::LayoutNode *node,
+                                                    f32 acc_y) -> FindResult {
+                                                if (node->node() == target)
+                                                    return {true, acc_y + node->content.y};
+                                                for (auto &child : node->children) {
+                                                    auto r = find_y(target, child.get(), acc_y + node->content.y);
+                                                    if (r.found)
+                                                        return r;
+                                                }
+                                                return {false, 0};
+                                            };
+                                            auto fr = find_y(found_el, current_page_->layout.get(), 0);
+                                            if (fr.found) {
+                                                i32 target = static_cast<i32>(fr.y);
+                                                // Check for scroll-behavior: smooth on root element
+                                                bool smooth = false;
+                                                auto *sb = current_page_->layout->style().get("scroll-behavior");
+                                                if (sb && sb->type == css::CSSValue::Type::KEYWORD &&
+                                                    sb->keyword == "smooth")
+                                                    smooth = true;
+                                                if (smooth) {
+                                                    chrome_.scroll_target_y = target;
+                                                } else {
+                                                    chrome_.scroll_y = target;
+                                                }
                                             }
                                         }
                                     }
-                                }
-                            } else {
-                                // Full URL or relative URL — navigate
-                                std::string resolved = href;
-                                if (href.find("://") == std::string::npos) {
-                                    // Relative URL: resolve against current page URL
-                                    auto base_parsed = net::URL::parse(chrome_.url);
-                                    if (base_parsed.is_ok()) {
-                                        auto resolved_r = base_parsed.unwrap().resolve(href);
-                                        if (resolved_r.is_ok())
-                                            resolved = resolved_r.unwrap().to_string();
+                                } else {
+                                    // Full URL or relative URL — navigate
+                                    std::string resolved = href;
+                                    if (href.find("://") == std::string::npos) {
+                                        // Relative URL: resolve against current page URL
+                                        auto base_parsed = net::URL::parse(chrome_.url);
+                                        if (base_parsed.is_ok()) {
+                                            auto resolved_r = base_parsed.unwrap().resolve(href);
+                                            if (resolved_r.is_ok())
+                                                resolved = resolved_r.unwrap().to_string();
+                                        }
                                     }
+                                    navigate(resolved);
                                 }
-                                navigate(resolved);
                             }
+                        } else {
+                            html::g_form_state.blur();
                         }
-                    } else {
-                        html::g_form_state.blur();
-                    }
-                    } // end of 'if (!disabled)'
+                    }  // end of 'if (!disabled)'
                 } else {
                     html::g_form_state.blur();
                 }
@@ -1387,7 +1541,8 @@ namespace browser {
                 return;
             }
 
-            if (tag == "input" && (type.empty() || type == "text" || type == "password" || type == "email" || type == "search" || type == "url" || type == "number")) {
+            if (tag == "input" && (type.empty() || type == "text" || type == "password" || type == "email" ||
+                                   type == "search" || type == "url" || type == "number")) {
                 auto maxlen_attr = el->get_attribute("maxlength");
                 int maxlen = maxlen_attr.empty() ? -1 : std::atoi(maxlen_attr.c_str());
                 if (e.key == platform::KeyCode::ENTER) {
@@ -1426,7 +1581,8 @@ namespace browser {
                         std::string val = html::g_form_state.get_value(el);
                         if (maxlen >= 0) {
                             int available = maxlen - static_cast<int>(val.size());
-                            if (available <= 0) paste.clear();
+                            if (available <= 0)
+                                paste.clear();
                             else if (static_cast<int>(paste.size()) > available)
                                 paste = paste.substr(0, static_cast<size_t>(available));
                         }
@@ -1444,8 +1600,8 @@ namespace browser {
                     if (c) {
                         // For number inputs, only allow valid number characters
                         if (type == "number") {
-                            if (!(std::isdigit(static_cast<unsigned char>(c)) ||
-                                  c == '+' || c == '-' || c == '.' || c == 'e' || c == 'E'))
+                            if (!(std::isdigit(static_cast<unsigned char>(c)) || c == '+' || c == '-' || c == '.' ||
+                                  c == 'e' || c == 'E'))
                                 c = '\0';
                         }
                         if (c) {
@@ -1463,10 +1619,13 @@ namespace browser {
                 std::string min_str = el->get_attribute("min");
                 std::string max_str = el->get_attribute("max");
                 std::string step_str = el->get_attribute("step");
-                if (!min_str.empty()) min_val = std::strtof(min_str.c_str(), nullptr);
-                if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
+                if (!min_str.empty())
+                    min_val = std::strtof(min_str.c_str(), nullptr);
+                if (!max_str.empty())
+                    max_val = std::strtof(max_str.c_str(), nullptr);
                 f32 step = step_str.empty() ? 1.0f : std::strtof(step_str.c_str(), nullptr);
-                if (step <= 0) step = 1.0f;
+                if (step <= 0)
+                    step = 1.0f;
                 std::string val = html::g_form_state.get_value(el);
                 f32 cur = std::strtof(val.c_str(), nullptr);
                 if (e.key == platform::KeyCode::LEFT) {
@@ -1478,8 +1637,10 @@ namespace browser {
                 } else if (e.key == platform::KeyCode::DOWN) {
                     cur -= step;
                 }
-                if (cur < min_val) cur = min_val;
-                if (cur > max_val) cur = max_val;
+                if (cur < min_val)
+                    cur = min_val;
+                if (cur > max_val)
+                    cur = max_val;
                 char buf[64];
                 snprintf(buf, sizeof(buf), "%g", cur);
                 html::g_form_state.set_value(el, buf);
@@ -1644,20 +1805,23 @@ namespace browser {
             size_t pos = 0;
             while (pos < style.size()) {
                 size_t end = style.find(';', pos);
-                if (end == std::string::npos) end = style.size();
+                if (end == std::string::npos)
+                    end = style.size();
                 std::string decl = style.substr(pos, end - pos);
                 while (!decl.empty() && decl[0] == ' ') decl = decl.substr(1);
                 if (!decl.empty()) {
                     std::string lower;
                     for (char c : decl) lower += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
                     if (lower.find("width:") != 0 && lower.find("height:") != 0) {
-                        if (!new_style.empty()) new_style += "; ";
+                        if (!new_style.empty())
+                            new_style += "; ";
                         new_style += decl;
                     }
                 }
                 pos = end + 1;
             }
-            if (!new_style.empty()) new_style += "; ";
+            if (!new_style.empty())
+                new_style += "; ";
             new_style += "width:" + std::to_string(new_w) + "px; height:" + std::to_string(new_h) + "px";
             el->attributes["style"] = new_style;
 
@@ -1750,16 +1914,26 @@ namespace browser {
                         auto *cursor_val = ht.layout_node->style().get("cursor");
                         if (cursor_val && cursor_val->type == css::CSSValue::Type::KEYWORD) {
                             const std::string &c = cursor_val->keyword;
-                            if (c == "pointer") css_cursor = LoadCursor(nullptr, IDC_HAND);
-                            else if (c == "text" || c == "vertical-text") css_cursor = LoadCursor(nullptr, IDC_IBEAM);
-                            else if (c == "default" || c == "auto") css_cursor = LoadCursor(nullptr, IDC_ARROW);
-                            else if (c == "crosshair") css_cursor = LoadCursor(nullptr, IDC_CROSS);
-                            else if (c == "move") css_cursor = LoadCursor(nullptr, IDC_SIZEALL);
-                            else if (c == "wait" || c == "progress") css_cursor = LoadCursor(nullptr, IDC_WAIT);
-                            else if (c == "help") css_cursor = LoadCursor(nullptr, IDC_HELP);
-                            else if (c == "not-allowed" || c == "no-drop") css_cursor = LoadCursor(nullptr, IDC_NO);
-                            else if (c == "col-resize") css_cursor = LoadCursor(nullptr, IDC_SIZEWE);
-                            else if (c == "row-resize" || c == "ns-resize") css_cursor = LoadCursor(nullptr, IDC_SIZENS);
+                            if (c == "pointer")
+                                css_cursor = LoadCursor(nullptr, IDC_HAND);
+                            else if (c == "text" || c == "vertical-text")
+                                css_cursor = LoadCursor(nullptr, IDC_IBEAM);
+                            else if (c == "default" || c == "auto")
+                                css_cursor = LoadCursor(nullptr, IDC_ARROW);
+                            else if (c == "crosshair")
+                                css_cursor = LoadCursor(nullptr, IDC_CROSS);
+                            else if (c == "move")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZEALL);
+                            else if (c == "wait" || c == "progress")
+                                css_cursor = LoadCursor(nullptr, IDC_WAIT);
+                            else if (c == "help")
+                                css_cursor = LoadCursor(nullptr, IDC_HELP);
+                            else if (c == "not-allowed" || c == "no-drop")
+                                css_cursor = LoadCursor(nullptr, IDC_NO);
+                            else if (c == "col-resize")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZEWE);
+                            else if (c == "row-resize" || c == "ns-resize")
+                                css_cursor = LoadCursor(nullptr, IDC_SIZENS);
                             else if (c == "e-resize" || c == "w-resize" || c == "ew-resize")
                                 css_cursor = LoadCursor(nullptr, IDC_SIZEWE);
                             else if (c == "n-resize" || c == "s-resize")
@@ -1885,8 +2059,7 @@ namespace browser {
             }
         }
 
-        chrome_.scroll_y =
-            std::max(0, std::min(chrome_.scroll_max, static_cast<i32>(chrome_.scroll_y - delta * 30)));
+        chrome_.scroll_y = std::max(0, std::min(chrome_.scroll_max, static_cast<i32>(chrome_.scroll_y - delta * 30)));
     }
 
     void BrowserWindow::handle_bookmark_click() {

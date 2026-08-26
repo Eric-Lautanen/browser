@@ -162,6 +162,12 @@ namespace browser {
         static bool is_in_rect(i32 x, i32 y, const ChromeUI::ButtonRect &r);
         f32 chrome_height() const { return chrome_.fullscreen ? 0.0f : ChromeUI::CHROME_H; }
 
+        // BR-P2: how long the message wait sleeps before the next iteration.
+        // Continuous animation keeps a 16 ms beat, a visible caret polls at
+        // blink granularity, a fully idle browser dozes (bounded, because
+        // async loads publish from pool threads).
+        static u32 idle_wait_ms(bool animating, bool caret_active);
+
     private:
         std::unique_ptr<platform::Window> window_;
         std::unique_ptr<render::Renderer> renderer_;
@@ -187,6 +193,10 @@ namespace browser {
         void compute_layout();
         void render_chrome();
         void render_page();
+        // BR-P2: drains the loader channel + queued navigations every loop
+        // iteration (cheap when empty) so completed loads surface even when
+        // rendering is gated off. Sets frame_dirty_ on page adoption.
+        void absorb_loaded_pages();
         void render_scrollbar();
         void render_tabs();
         void render_caption_buttons();
@@ -227,6 +237,10 @@ namespace browser {
 
         bool resize_pending_ = false;
         std::chrono::steady_clock::time_point resize_last_time_;
+
+        // BR-P2: idle dirty-gate. The render block runs only when something
+        // changed (input, page load, relayout) or is continuously animating.
+        bool frame_dirty_ = true;
 
         HWND tooltip_hwnd_ = nullptr;
         std::string tooltip_text_;

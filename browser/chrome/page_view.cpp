@@ -9,44 +9,47 @@
 
 namespace browser {
 
-    void BrowserWindow::render_page() {
+    void BrowserWindow::absorb_loaded_pages() {
         // BR-N1: drain any navigation queued while a load was in flight
-        if (page_loader_)
-            page_loader_->pump_pending();
-        // Check for loaded pages
-        if (page_loader_) {
-            auto loaded = page_loader_->try_get_loaded_page();
-            if (loaded.has_value()) {
-                current_page_ = std::move(loaded.value());
-                // BR-C2/C3: the ONE invalidation point for cross-page raw
-                // pointers. The old page's DOM and layout tree were destroyed
-                // above; form focus, textarea resize, find matches and text
-                // selection must not survive into a page whose nodes were
-                // freed (address reuse makes stale pointers silently valid).
-                chrome_.textarea_resize.active = false;
-                chrome_.textarea_resize.element = nullptr;
-                chrome_.textarea_resize.layout_node = nullptr;
-                chrome_.find_state.matches.clear();
-                chrome_.find_state.current_match = 0;
-                selection_.clear();
-                html::g_form_state.blur();
-                html::g_form_state.close_select();
-                html::g_form_state.focused_element = nullptr;
-                html::g_form_state.hovered_element = nullptr;
-                html::g_form_state.open_select = nullptr;
-                // Keyed-by-pointer state from the freed document: drop it so
-                // recycled element addresses cannot inherit old values.
-                html::g_form_state.input_values.clear();
-                html::g_form_state.check_states.clear();
-                html::g_form_state.select_indices.clear();
-                // BR-P1: GPU caches keyed by pointers owned by the old
-                // document (images, canvases) must go with it.
-                if (paint_executor_)
-                    paint_executor_->invalidate_page_caches();
-                // Set up animations for the newly loaded page
-                setup_animations();
-            }
-        }
+        if (!page_loader_)
+            return;
+        page_loader_->pump_pending();
+        auto loaded = page_loader_->try_get_loaded_page();
+        if (!loaded.has_value())
+            return;
+        current_page_ = std::move(loaded.value());
+        // BR-C2/C3: the ONE invalidation point for cross-page raw
+        // pointers. The old page's DOM and layout tree were destroyed
+        // above; form focus, textarea resize, find matches and text
+        // selection must not survive into a page whose nodes were
+        // freed (address reuse makes stale pointers silently valid).
+        chrome_.textarea_resize.active = false;
+        chrome_.textarea_resize.element = nullptr;
+        chrome_.textarea_resize.layout_node = nullptr;
+        chrome_.find_state.matches.clear();
+        chrome_.find_state.current_match = 0;
+        selection_.clear();
+        html::g_form_state.blur();
+        html::g_form_state.close_select();
+        html::g_form_state.focused_element = nullptr;
+        html::g_form_state.hovered_element = nullptr;
+        html::g_form_state.open_select = nullptr;
+        // Keyed-by-pointer state from the freed document: drop it so
+        // recycled element addresses cannot inherit old values.
+        html::g_form_state.input_values.clear();
+        html::g_form_state.check_states.clear();
+        html::g_form_state.select_indices.clear();
+        // BR-P1: GPU caches keyed by pointers owned by the old
+        // document (images, canvases) must go with it.
+        if (paint_executor_)
+            paint_executor_->invalidate_page_caches();
+        // Set up animations for the newly loaded page
+        setup_animations();
+        // BR-P2: new content requires a frame even if nothing else is dirty.
+        frame_dirty_ = true;
+    }
+
+    void BrowserWindow::render_page() {
         if (!current_page_.has_value())
             return;
 
