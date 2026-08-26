@@ -1,10 +1,11 @@
 #include "../../css/layout.hpp"
+#include "../../html/form_state.hpp"
 #include "../../html/traversal.hpp"
 #include "../../render/paint_executor.hpp"
-#include <functional>
-
 #include "../settings.hpp"
 #include "window.hpp"
+
+#include <functional>
 
 namespace browser {
 
@@ -14,6 +15,27 @@ namespace browser {
             auto loaded = page_loader_->try_get_loaded_page();
             if (loaded.has_value()) {
                 current_page_ = std::move(loaded.value());
+                // BR-C2/C3: the ONE invalidation point for cross-page raw
+                // pointers. The old page's DOM and layout tree were destroyed
+                // above; form focus, textarea resize, find matches and text
+                // selection must not survive into a page whose nodes were
+                // freed (address reuse makes stale pointers silently valid).
+                chrome_.textarea_resize.active = false;
+                chrome_.textarea_resize.element = nullptr;
+                chrome_.textarea_resize.layout_node = nullptr;
+                chrome_.find_state.matches.clear();
+                chrome_.find_state.current_match = 0;
+                selection_.clear();
+                html::g_form_state.blur();
+                html::g_form_state.close_select();
+                html::g_form_state.focused_element = nullptr;
+                html::g_form_state.hovered_element = nullptr;
+                html::g_form_state.open_select = nullptr;
+                // Keyed-by-pointer state from the freed document: drop it so
+                // recycled element addresses cannot inherit old values.
+                html::g_form_state.input_values.clear();
+                html::g_form_state.check_states.clear();
+                html::g_form_state.select_indices.clear();
                 // Set up animations for the newly loaded page
                 setup_animations();
             }

@@ -93,6 +93,11 @@ public:
     bool is_done() const { return !coro_ || coro_.done(); }
     void resume() { if (coro_ && !coro_.done()) coro_.resume(); }
     void start() { resume(); }
+    // Releases ownership WITHOUT destroying the coroutine frame. Used at
+    // teardown (BR-N2): destroying an in-flight task frees a frame the IOCP
+    // layer may still resume (write-after-free); abandoning leaks one frame
+    // at process exit instead — bounded and safe.
+    void abandon() { coro_ = nullptr; }
     Result<T> sync_wait() {
         start();
         while (!is_done()) {
@@ -134,6 +139,8 @@ public:
     bool is_done() const { return !coro_ || coro_.done(); }
     void resume() { if (coro_ && !coro_.done()) coro_.resume(); }
     void start() { resume(); }
+    // See task<T>::abandon().
+    void abandon() { coro_ = nullptr; }
     void sync_wait() {
         start();
         while (!is_done()) {

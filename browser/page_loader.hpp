@@ -16,6 +16,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -55,10 +56,17 @@ namespace browser {
                    net::TrackerBlocker *tracker,
                    render::TextRenderer *text_renderer,
                    render::FontManager *font_manager = nullptr);
+        ~PageLoader();
 
         void set_download_callback(DownloadCheckCallback cb) { download_callback_ = std::move(cb); }
 
+        // BR-N1: navigation requests are never dropped. A request that arrives
+        // while a load is running supersedes it — the in-flight load turns
+        // stale at its next checkpoint and the queued URL is started from the
+        // same single-flight slot, so chrome state and content always agree.
         void start_load(const std::string &url_str);
+        // BR-N3: invalidates the in-flight load (it publishes nothing) and
+        // drops any queued navigation.
         void cancel();
         bool is_loading() const;
         void set_viewport_size(u32 w, u32 h) {
@@ -77,7 +85,12 @@ namespace browser {
         render::TextRenderer *text_renderer_;
         render::FontManager *font_manager_;
         std::atomic<bool> loading_{false};
-        std::atomic<bool> cancelled_{false};
+        // BR-N1/N3: monotonically increasing load generation. Each launched
+        // task captures its generation; any checkpoint that observes a newer
+        // generation abandons the load without touching shared state.
+        std::atomic<u64> generation_{0};
+        std::mutex pending_mutex_;
+        std::string pending_url_;  // latest requested navigation, if queued
         u32 viewport_width_ = 980;
         u32 viewport_height_ = 980;
         async::channel<LoadedPage> loaded_channel_;
@@ -86,8 +99,11 @@ namespace browser {
         bool page_is_https_ = false;
         bool has_mixed_content_ = false;
 
-        async::task<void> load(std::string url_str);
-        async::task<void> load_html(std::string html);
+        bool is_current(u64 gen) const { return generation_.load(std::memory_order_acquire) == gen; }
+        void launch(const std::string &url);
+        void finish_load();
+        async::task<void> load(std::string url_str, u64 gen);
+        async::task<void> load_html(std::string html, u64 gen);
         void handle_settings_query(const std::string &url_str);
         std::string error_page(const std::string &url, const std::string &msg = "");
         void collect_css(html::Document *doc, std::string &merged_css, const net::URL &base_url);

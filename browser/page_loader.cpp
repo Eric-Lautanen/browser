@@ -43,12 +43,64 @@ namespace browser {
           font_manager_(font_manager),
           loaded_channel_(1) {}
 
-    void PageLoader::start_load(const std::string &url_str) {
-        if (loading_.exchange(true, std::memory_order_acq_rel))
-            return;
-        cancelled_.store(false, std::memory_order_release);
-        load_task_ = load(url_str);
+    PageLoader::~PageLoader() {
+        // BR-N2: never destroy an in-flight coroutine frame — an IOCP
+        // completion can resume it later, writing into freed memory. Detach
+        // instead: the frame leaks at process exit, which is bounded and safe.
+        generation_.fetch_add(1, std::memory_order_acq_rel);
+        {
+            std::lock_guard<std::mutex> lock(pending_mutex_);
+            pending_url_.clear();
+        }
+        load_task_.abandon();
+    }
+
+    void PageLoader::launch(const std::string &url) {
+        u64 gen = generation_.fetch_add(1, std::memory_order_acq_rel) + 1;
+        load_task_ = load(url, gen);
         load_task_.start();
+    }
+
+    // Single-flight slot release: chain the queued navigation if one arrived
+    // while we ran, otherwise clear the loading flag. Called from EVERY
+    // terminal point of load()/load_html().
+    void PageLoader::finish_load() {
+        std::string next;
+        {
+            std::lock_guard<std::mutex> lock(pending_mutex_);
+            if (!pending_url_.empty()) {
+                next = std::move(pending_url_);
+                pending_url_.clear();
+            }
+        }
+        if (!next.empty()) {
+            launch(next);
+            return;
+        }
+        finish_load();
+    }
+
+    void PageLoader::start_load(const std::string &url_str) {
+        {
+            std::lock_guard<std::mutex> lock(pending_mutex_);
+            pending_url_ = url_str;
+        }
+        // Supersede whatever is running; it will abandon at its next
+        // checkpoint and drain the queued URL for us.
+        generation_.fetch_add(1, std::memory_order_acq_rel);
+        if (!loading_.exchange(true, std::memory_order_acq_rel)) {
+            std::string next;
+            {
+                std::lock_guard<std::mutex> lock(pending_mutex_);
+                next = std::move(pending_url_);
+                pending_url_.clear();
+            }
+            launch(next);
+        }
+    }
+
+    bool PageLoader::is_loading() const {
+        return loading_.load(std::memory_order_acquire);
     }
 
     std::optional<LoadedPage> PageLoader::try_get_loaded_page() {
@@ -78,12 +130,12 @@ namespace browser {
         return r;
     }
 
-    async::task<void> PageLoader::load(std::string url_str) {
+    async::task<void> PageLoader::load(std::string url_str, u64 gen) {
         co_await async::thread_pool_executor{};
         auto start = std::chrono::steady_clock::now();
 
-        if (cancelled_.load(std::memory_order_acquire)) {
-            loading_.store(false, std::memory_order_release);
+        if (!is_current(gen)) {
+            finish_load();
             co_return;
         }
 
@@ -97,8 +149,8 @@ namespace browser {
             }
             auto parsed = net::URL::parse(normal_url);
             if (parsed.is_err()) {
-                co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()));
-                loading_.store(false, std::memory_order_release);
+                co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()), gen);
+                finish_load();
                 co_return;
             }
 
@@ -116,21 +168,21 @@ namespace browser {
             req.headers.set("Accept-Encoding", "gzip, deflate");
 
             auto resp_r = co_await http_.fetch_async(req);
-            if (cancelled_.load(std::memory_order_acquire)) {
-                loading_.store(false, std::memory_order_release);
+            if (!is_current(gen)) {
+                finish_load();
                 co_return;
             }
             if (resp_r.is_err()) {
-                co_await load_html(error_page(url_str, resp_r.unwrap_err()));
-                loading_.store(false, std::memory_order_release);
+                co_await load_html(error_page(url_str, resp_r.unwrap_err()), gen);
+                finish_load();
                 co_return;
             }
             auto resp = std::move(resp_r.unwrap());
 
             if (resp.headers.has("content-encoding")) {
                 co_await async::thread_pool_executor{};
-                if (cancelled_.load(std::memory_order_acquire)) {
-                    loading_.store(false, std::memory_order_release);
+                if (!is_current(gen)) {
+                    finish_load();
                     co_return;
                 }
                 std::string ce = resp.headers.get("content-encoding");
@@ -234,8 +286,8 @@ namespace browser {
             }
             html += highlighted;
             html += "</code></pre></body></html>";
-            co_await load_html(html);
-            loading_.store(false, std::memory_order_release);
+            co_await load_html(html, gen);
+            finish_load();
             co_return;
         }
 
@@ -253,8 +305,8 @@ namespace browser {
             } else {
                 html = error_page(url_str, "Unknown about: page");
             }
-            co_await load_html(html);
-            loading_.store(false, std::memory_order_release);
+            co_await load_html(html, gen);
+            finish_load();
             co_return;
         }
 
@@ -262,13 +314,13 @@ namespace browser {
             std::string path = url_str.substr(8);
             std::ifstream f(path);
             if (!f.is_open()) {
-                co_await load_html(error_page(url_str, "Cannot open file: " + path));
-                loading_.store(false, std::memory_order_release);
+                co_await load_html(error_page(url_str, "Cannot open file: " + path), gen);
+                finish_load();
                 co_return;
             }
             std::string html((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-            co_await load_html(html);
-            loading_.store(false, std::memory_order_release);
+            co_await load_html(html, gen);
+            finish_load();
             co_return;
         }
 
@@ -279,16 +331,16 @@ namespace browser {
         }
         auto parsed = net::URL::parse(normal_url);
         if (parsed.is_err()) {
-            co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()));
-            loading_.store(false, std::memory_order_release);
+            co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()), gen);
+            finish_load();
             co_return;
         }
 
         if (tracker_ && tracker_->should_block(url_str)) {
             telemetry_->record({TelemetryEvent::TRACKER_BLOCKED, url_str, 0});
             telemetry_->set_trackers_blocked(tracker_->blocked_count());
-            co_await load_html(error_page(url_str, "Blocked by tracker blocker"));
-            loading_.store(false, std::memory_order_release);
+            co_await load_html(error_page(url_str, "Blocked by tracker blocker"), gen);
+            finish_load();
             co_return;
         }
 
@@ -318,13 +370,13 @@ namespace browser {
         req.headers.set("Accept-Encoding", "gzip, deflate");
 
         auto resp_r = co_await http_.fetch_async(req);
-        if (cancelled_.load(std::memory_order_acquire)) {
-            loading_.store(false, std::memory_order_release);
+        if (!is_current(gen)) {
+            finish_load();
             co_return;
         }
         if (resp_r.is_err()) {
-            co_await load_html(error_page(url_str, resp_r.unwrap_err()));
-            loading_.store(false, std::memory_order_release);
+            co_await load_html(error_page(url_str, resp_r.unwrap_err()), gen);
+            finish_load();
             co_return;
         }
         auto resp = std::move(resp_r.unwrap());
@@ -333,8 +385,8 @@ namespace browser {
         while ((resp.status.code == 301 || resp.status.code == 302 || resp.status.code == 303 ||
                 resp.status.code == 307 || resp.status.code == 308) &&
                redirect_count < 5) {
-            if (cancelled_.load(std::memory_order_acquire)) {
-                loading_.store(false, std::memory_order_release);
+            if (!is_current(gen)) {
+                finish_load();
                 co_return;
             }
             std::string loc = resp.headers.get("Location");
@@ -371,7 +423,7 @@ namespace browser {
                         content_length = parsed;
                 }
                 if (download_callback_ && download_callback_(req.url.to_string(), cd, mime_type, content_length)) {
-                    loading_.store(false, std::memory_order_release);
+                    finish_load();
                     co_return;
                 }
             }
@@ -403,8 +455,8 @@ namespace browser {
 
         if (resp.headers.has("content-encoding")) {
             co_await async::thread_pool_executor{};
-            if (cancelled_.load(std::memory_order_acquire)) {
-                loading_.store(false, std::memory_order_release);
+            if (!is_current(gen)) {
+                finish_load();
                 co_return;
             }
             std::string ce = resp.headers.get("content-encoding");
@@ -432,12 +484,12 @@ namespace browser {
         });
 
         auto doc_r = co_await html::parse_async(body_str, &preload_scanner_, base_url_str);
-        if (cancelled_.load(std::memory_order_acquire)) {
-            loading_.store(false, std::memory_order_release);
+        if (!is_current(gen)) {
+            finish_load();
             co_return;
         }
         if (doc_r.is_err()) {
-            loading_.store(false, std::memory_order_release);
+            finish_load();
             co_return;
         }
 
@@ -501,17 +553,17 @@ namespace browser {
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
         telemetry_->record({TelemetryEvent::PAGE_LOAD, url_str, static_cast<f64>(page.load_time_ms)});
 
-        if (!cancelled_.load(std::memory_order_acquire)) {
+        if (is_current(gen)) {
             loaded_channel_.send(std::move(page));
         }
-        loading_.store(false, std::memory_order_release);
+        finish_load();
         co_return;
     }
 
-    async::task<void> PageLoader::load_html(std::string html) {
+    async::task<void> PageLoader::load_html(std::string html, u64 gen) {
         co_await async::thread_pool_executor{};
-        if (cancelled_.load(std::memory_order_acquire)) {
-            loading_.store(false, std::memory_order_release);
+        if (!is_current(gen)) {
+            finish_load();
             co_return;
         }
         auto start = std::chrono::steady_clock::now();
@@ -571,20 +623,22 @@ namespace browser {
         }
 
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
-        if (!cancelled_.load(std::memory_order_acquire)) {
+        if (is_current(gen)) {
             loaded_channel_.send(std::move(page));
         }
-        loading_.store(false, std::memory_order_release);
+        finish_load();
         co_return;
     }
 
     void PageLoader::cancel() {
-        cancelled_.store(true, std::memory_order_release);
-        loading_.store(false, std::memory_order_release);
-    }
-
-    bool PageLoader::is_loading() const {
-        return loading_.load(std::memory_order_acquire);
+        // BR-N3: the in-flight load turns stale and publishes nothing; queued
+        // navigations are dropped. The stale task releases its slot when it
+        // reaches its next checkpoint.
+        {
+            std::lock_guard<std::mutex> lock(pending_mutex_);
+            pending_url_.clear();
+        }
+        generation_.fetch_add(1, std::memory_order_acq_rel);
     }
 
     void PageLoader::handle_settings_query(const std::string &url_str) {
