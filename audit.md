@@ -863,6 +863,22 @@ New JS tests must stay millisecond-scale: an all-live allocation chain above
 the GC threshold used to trigger per-instruction collections (now adaptive,
 see X-C2 row).
 
+### BR-N1 regression found during manual testing (31838cf)
+
+The finish_load→launch chaining added in ca13372 caused infinite synchronous
+recursion at browser startup: finish_load() → launch() → load_task_.start()
+→ new coroutine runs past first checkpoint on the same thread → checkpoint
+calls finish_load() → ∞. Every browser.exe launch died with 0xC00000FD
+(stack overflow) inside ShowWindow's message dispatch.
+
+Fix: finish_load() now only clears loading_; pending navigations are drained
+by pump_pending() called from render_page() each frame. launch() uses
+load_task_.abandon() so a stale frame is never destroyed while its code is
+still on the callstack. Also adds src/crash_report.hpp: SEH filter that
+survives stack overflow using only Win32 APIs + fixed buffers, dumping
+exception code, faulting address, breadcrumb trail and candidate return
+addresses to build/crash_report.txt.
+
 
 ### Session 1 final verification
 
