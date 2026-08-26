@@ -171,6 +171,8 @@ target_link_libraries(html net)
 add_library(css STATIC
     css/css_values.hpp
     css/css_values.cpp
+    css/invalidation.hpp
+    css/invalidation.cpp
     css/tokenizer.hpp
     css/tokenizer.cpp
     css/parser.hpp

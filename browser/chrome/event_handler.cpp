@@ -173,6 +173,9 @@ namespace browser {
                 chrome_.textarea_resize.active = false;
                 chrome_.textarea_resize.element = nullptr;
                 chrome_.textarea_resize.layout_node = nullptr;
+                // BR-P3: settle the final size with one last relayout.
+                relayout_pending_ = true;
+                frame_dirty_ = true;
             }
         } else if (e.type == platform::Event::Type::MOUSE_MOVE) {
             if (chrome_.scroll_dragging) {
@@ -1825,9 +1828,10 @@ namespace browser {
             new_style += "width:" + std::to_string(new_w) + "px; height:" + std::to_string(new_h) + "px";
             el->attributes["style"] = new_style;
 
-            // Trigger relayout
-            renderer_->set_needs_redraw();
-            do_relayout();
+            // BR-P3: defer the relayout to the frame loop — one relayout per
+            // rendered frame instead of one per mouse-move event.
+            relayout_pending_ = true;
+            frame_dirty_ = true;
             return;
         }
 

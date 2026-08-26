@@ -228,6 +228,7 @@ namespace browser {
 
         void check_resize();
         void do_relayout();
+        void do_repaint_only();
         void setup_animations();
         void update_animations(f32 dt);
         void apply_animation_values();
@@ -237,6 +238,11 @@ namespace browser {
 
         bool resize_pending_ = false;
         std::chrono::steady_clock::time_point resize_last_time_;
+
+        // BR-P3: textarea resize drags used to run a full synchronous
+        // relayout on EVERY mouse move. Moves only set this flag; the frame
+        // loop consumes it once per iteration.
+        bool relayout_pending_ = false;
 
         // BR-P2: idle dirty-gate. The render block runs only when something
         // changed (input, page load, relayout) or is continuously animating.

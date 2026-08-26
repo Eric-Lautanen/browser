@@ -1,6 +1,7 @@
 #include "window.hpp"
 
 #include "../../css/animation.hpp"
+#include "../../css/invalidation.hpp"
 #include "../../css/layout.hpp"
 #include "../../css/parser.hpp"
 #include "../../html/form_state.hpp"
@@ -381,6 +382,13 @@ namespace browser {
             // Check for deferred resize re-layout after messages are processed
             check_resize();
 
+            // BR-P3: consume coalesced textarea-drag relayouts (at most one
+            // per loop iteration, never inside the mouse-move handler).
+            if (relayout_pending_) {
+                relayout_pending_ = false;
+                do_relayout();
+            }
+
             // Update CSS animations
             {
                 static auto last_anim_time = std::chrono::steady_clock::now();
@@ -520,6 +528,21 @@ namespace browser {
         InvalidateRect(static_cast<HWND>(window_->get_native_handle()), nullptr, FALSE);
     }
 
+    // CS-P1: repaint without relayout — used when only paint-only properties
+    // (transform/opacity/colors/shadows) changed.
+    void BrowserWindow::do_repaint_only() {
+        if (!current_page_.has_value() || !current_page_->layout)
+            return;
+        auto &page = current_page_.value();
+        render::Painter painter(text_renderer_.get());
+        painter.set_image_data(page.images);
+        auto paint_r = painter.paint_async(page.layout.get()).sync_wait();
+        if (paint_r.is_ok()) {
+            page.display_list = std::move(paint_r.unwrap());
+        }
+        renderer_->set_needs_redraw();
+    }
+
     void BrowserWindow::setup_animations() {
         if (!current_page_.has_value() || !current_page_->dom)
             return;
@@ -645,6 +668,25 @@ namespace browser {
         animation_engine_.update(dt);
     }
 
+    namespace {
+
+        // CS-P1: locate the layout-tree node for an element (iterative DFS).
+        css::LayoutNode *find_layout_node_for(css::LayoutNode *root, const html::Element *el) {
+            if (!root)
+                return nullptr;
+            std::vector<css::LayoutNode *> stack{root};
+            while (!stack.empty()) {
+                css::LayoutNode *n = stack.back();
+                stack.pop_back();
+                if (n->node() == el)
+                    return n;
+                for (auto &c : n->children) stack.push_back(c.get());
+            }
+            return nullptr;
+        }
+
+    }  // namespace
+
     void BrowserWindow::apply_animation_values() {
         if (!current_page_.has_value())
             return;
@@ -653,7 +695,18 @@ namespace browser {
         if (interpolated.empty())
             return;
 
-        bool changed = false;
+        // Pass 1: determine which declarations actually changed and whether
+        // every change is paint-only.
+        struct PendingChange {
+            html::Element *el;
+            const std::string *prop;
+            const css::CSSValue *value;
+        };
+        std::vector<PendingChange> pending;
+        pending.reserve(16);
+        bool any_change = false;
+        bool all_paint_only = true;
+
         for (const auto &[key, decls] : interpolated) {
             // Find the element by key (pointer string)
             uintptr_t ptr = 0;
@@ -665,24 +718,50 @@ namespace browser {
             }
             auto *el = reinterpret_cast<html::Element *>(ptr);
 
-            // Find this element in the styles map
             auto it = current_page_->styles.find(el);
             if (it == current_page_->styles.end())
                 continue;
 
-            // Apply interpolated declarations
             for (const auto &decl : decls) {
                 if (decl.values.empty())
                     continue;
-                it->second.properties[decl.property] = decl.values[0];
-                changed = true;
+                const css::CSSValue &newv = decl.values[0];
+                const css::CSSValue *cur = it->second.get(decl.property);
+                if (cur && css::css_values_equal(*cur, newv))
+                    continue;  // no visual change this frame — skip entirely
+                any_change = true;
+                if (css::style_change_impact(decl.property) != css::StyleImpact::PaintOnly)
+                    all_paint_only = false;
+                pending.push_back({el, &decl.property, &newv});
             }
         }
 
-        if (changed) {
-            // Trigger relayout and repaint
-            do_relayout();
+        if (!any_change)
+            return;
+
+        for (const auto &chg : pending) {
+            auto it = current_page_->styles.find(chg.el);
+            it->second.properties[*chg.prop] = *chg.value;
         }
+
+        if (all_paint_only && current_page_->layout) {
+            // CS-P1/BR-P4 stage (c): transform/opacity/color animations skip
+            // the full relayout. Mirror values into the existing layout tree
+            // and regenerate only the display list.
+            for (const auto &chg : pending) {
+                css::LayoutNode *ln = find_layout_node_for(current_page_->layout.get(), chg.el);
+                if (!ln)
+                    continue;
+                ln->style().properties[*chg.prop] = *chg.value;
+                if (*chg.prop == "transform")
+                    css::apply_transform_to_node(ln);
+            }
+            do_repaint_only();
+            return;
+        }
+
+        // Trigger relayout and repaint
+        do_relayout();
     }
 
     void BrowserWindow::check_resize() {

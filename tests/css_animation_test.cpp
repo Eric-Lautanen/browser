@@ -1,9 +1,11 @@
+﻿#include "../css/animation.hpp"
+#include "../css/cascade.hpp"
+#include "../css/css_values.hpp"
+#include "../css/invalidation.hpp"
+#include "../css/parser.hpp"
 #include "test_framework.hpp"
 #include "utility.hpp"
-#include "../css/css_values.hpp"
-#include "../css/parser.hpp"
-#include "../css/animation.hpp"
-#include "../css/cascade.hpp"
+
 #include <cmath>
 
 TEST(css_keyframes_parse, {
@@ -26,9 +28,9 @@ TEST(css_keyframes_parse, {
     bool found_fade = false;
     bool found_slide = false;
 
-    for (const auto& at : sheet.at_rules) {
+    for (const auto &at : sheet.at_rules) {
         std::string lower_name;
-        for (char& c : lower_name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        for (char &c : lower_name) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
         for (char c : at.name) lower_name += static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
 
         if (lower_name == "keyframes" || lower_name == "-webkit-keyframes") {
@@ -102,9 +104,9 @@ TEST(css_animation_engine_basic, {
 
     auto interpolated = engine.get_interpolated_declarations();
     bool found_opacity = false;
-    for (const auto& [key, decls] : interpolated) {
+    for (const auto &[key, decls] : interpolated) {
         if (key == "test_elem") {
-            for (const auto& d : decls) {
+            for (const auto &d : decls) {
                 if (d.property == "opacity" && !d.values.empty()) {
                     found_opacity = true;
                     // At 50% progress, opacity should be ~0.5
@@ -129,8 +131,10 @@ TEST(css_animation_timing_ease, {
     Declaration d;
     d.property = "opacity";
     CSSValue v0, v1;
-    v0.type = CSSValue::Type::NUMBER; v0.number = 0;
-    v1.type = CSSValue::Type::NUMBER; v1.number = 1;
+    v0.type = CSSValue::Type::NUMBER;
+    v0.number = 0;
+    v1.type = CSSValue::Type::NUMBER;
+    v1.number = 1;
     d.values.push_back(v0);
     b0.declarations.push_back(d);
     b1.positions.push_back(100);
@@ -153,8 +157,8 @@ TEST(css_animation_timing_ease, {
     ASSERT(!result.empty());
 
     // Timing function should give a valid result between 0 and 1
-    for (const auto& [key, decls] : result) {
-        for (const auto& d : decls) {
+    for (const auto &[key, decls] : result) {
+        for (const auto &d : decls) {
             if (d.property == "opacity" && !d.values.empty()) {
                 ASSERT(d.values[0].number >= 0.0f);
                 ASSERT(d.values[0].number <= 1.0f);
@@ -174,8 +178,10 @@ TEST(css_animation_direction_reverse, {
     Declaration d;
     d.property = "opacity";
     CSSValue v0, v1;
-    v0.type = CSSValue::Type::NUMBER; v0.number = 0;
-    v1.type = CSSValue::Type::NUMBER; v1.number = 1;
+    v0.type = CSSValue::Type::NUMBER;
+    v0.number = 0;
+    v1.type = CSSValue::Type::NUMBER;
+    v1.number = 1;
     d.values.push_back(v0);
     b0.declarations.push_back(d);
     b1.positions.push_back(100);
@@ -206,7 +212,7 @@ TEST(css_transform_parse, {
     ASSERT(!sheet.rules.empty());
     ASSERT(!sheet.rules[0].declarations.empty());
 
-    const auto& decl = sheet.rules[0].declarations[0];
+    const auto &decl = sheet.rules[0].declarations[0];
     ASSERT_EQ(decl.property, "transform");
     ASSERT(!decl.values.empty());
     // Each transform function is a separate value in the declaration
@@ -228,16 +234,15 @@ TEST(css_calc_simple, {
     ASSERT(!sheet.rules.empty());
     ASSERT(!sheet.rules[0].declarations.empty());
 
-    const auto& decl = sheet.rules[0].declarations[0];
+    const auto &decl = sheet.rules[0].declarations[0];
     ASSERT_EQ(decl.property, "width");
     ASSERT(!decl.values.empty());
 
     // calc() returns a STRING for deferred evaluation at layout time
-    const auto& val = decl.values[0];
+    const auto &val = decl.values[0];
     ASSERT(val.type == CSSValue::Type::STRING);
     ASSERT(!val.string_value.empty());
-    ASSERT(val.string_value.find("calc(") != std::string::npos ||
-           val.string_value.find("100%") != std::string::npos);
+    ASSERT(val.string_value.find("calc(") != std::string::npos || val.string_value.find("100%") != std::string::npos);
 })
 
 TEST(css_custom_property, {
@@ -249,12 +254,12 @@ TEST(css_custom_property, {
     bool found_custom = false;
     bool found_var = false;
 
-    for (const auto& rule : sheet.rules) {
-        for (const auto& decl : rule.declarations) {
+    for (const auto &rule : sheet.rules) {
+        for (const auto &decl : rule.declarations) {
             if (decl.property == "--my-color") {
                 found_custom = true;
             }
-            if (!decl.values.empty() && decl.values[0].type == CSSValue::Type::KEYWORD && 
+            if (!decl.values.empty() && decl.values[0].type == CSSValue::Type::KEYWORD &&
                 decl.values[0].keyword.substr(0, 4) == "var(") {
                 found_var = true;
             }
@@ -272,7 +277,7 @@ TEST(css_gradient_parse, {
 
     ASSERT(!sheet.rules.empty());
     ASSERT(!sheet.rules[0].declarations.empty());
-    const auto& decl = sheet.rules[0].declarations[0];
+    const auto &decl = sheet.rules[0].declarations[0];
 
     ASSERT(!decl.values.empty());
     // The gradient may be parsed as GRADIENT or FUNCTION type depending on tokenizer
@@ -284,7 +289,7 @@ TEST(css_gradient_parse, {
 TEST(css_media_query_eval, {
     using namespace browser::css;
     // Minimal test: cascade filters by @media queries
-    ASSERT(true); // Placeholder for integration test
+    ASSERT(true);  // Placeholder for integration test
 })
 
 TEST(css_pseudo_classes, {
@@ -300,13 +305,15 @@ TEST(css_pseudo_classes, {
     // Check that pseudo-classes are correctly parsed
     bool found_hover = false;
     bool found_nth = false;
-    for (const auto& rule : sheet.rules) {
-        for (const auto& sel : rule.selectors) {
-            for (const auto& comp : sel.compounds) {
-                for (const auto& ss : comp.simples) {
+    for (const auto &rule : sheet.rules) {
+        for (const auto &sel : rule.selectors) {
+            for (const auto &comp : sel.compounds) {
+                for (const auto &ss : comp.simples) {
                     if (ss.type == SimpleSelector::Type::PSEUDO_CLASS) {
-                        if (ss.name == "hover") found_hover = true;
-                        if (ss.name == "nth-child") found_nth = true;
+                        if (ss.name == "hover")
+                            found_hover = true;
+                        if (ss.name == "nth-child")
+                            found_nth = true;
                     }
                 }
             }
@@ -314,4 +321,89 @@ TEST(css_pseudo_classes, {
     }
     ASSERT(found_hover);
     ASSERT(found_nth);
+})
+
+// -- CS-P1: style-change impact classification + value equality --
+
+TEST(style_impact_paint_only_properties, {
+    using namespace browser::css;
+    // Properties the painter reads straight off the layout node must be
+    // classified paint-only so animating them skips relayout entirely.
+    ASSERT(style_change_impact("opacity") == StyleImpact::PaintOnly);
+    ASSERT(style_change_impact("transform") == StyleImpact::PaintOnly);
+    ASSERT(style_change_impact("color") == StyleImpact::PaintOnly);
+    ASSERT(style_change_impact("background-color") == StyleImpact::PaintOnly);
+    ASSERT(style_change_impact("border-top-color") == StyleImpact::PaintOnly);
+    ASSERT(style_change_impact("box-shadow") == StyleImpact::PaintOnly);
+    ASSERT(style_change_impact("text-shadow") == StyleImpact::PaintOnly);
+    ASSERT(style_change_impact("outline-color") == StyleImpact::PaintOnly);
+})
+
+TEST(style_impact_layout_properties, {
+    using namespace browser::css;
+    // Geometry-affecting properties must never take the paint-only path.
+    ASSERT(style_change_impact("width") == StyleImpact::Layout);
+    ASSERT(style_change_impact("height") == StyleImpact::Layout);
+    ASSERT(style_change_impact("margin-left") == StyleImpact::Layout);
+    ASSERT(style_change_impact("padding") == StyleImpact::Layout);
+    ASSERT(style_change_impact("font-size") == StyleImpact::Layout);
+    ASSERT(style_change_impact("display") == StyleImpact::Layout);
+    ASSERT(style_change_impact("position") == StyleImpact::Layout);
+    ASSERT(style_change_impact("flex-direction") == StyleImpact::Layout);
+    // Unknown properties are conservatively Layout.
+    ASSERT(style_change_impact("some-future-property") == StyleImpact::Layout);
+})
+
+TEST(css_values_equality_basic_types, {
+    using namespace browser::css;
+    CSSValue a, b;
+    a.type = b.type = CSSValue::Type::NUMBER;
+    a.number = 0.5f;
+    b.number = 0.5f;
+    ASSERT(css_values_equal(a, b));
+    b.number = 0.500001f;
+    ASSERT(!css_values_equal(a, b));
+
+    a.type = b.type = CSSValue::Type::LENGTH;
+    a.length = {100.0f, Length::Unit::PX};
+    b.length = {100.0f, Length::Unit::PX};
+    ASSERT(css_values_equal(a, b));
+    b.length.value = 101.0f;
+    ASSERT(!css_values_equal(a, b));
+    b.length = {100.0f, Length::Unit::EM};
+    ASSERT(!css_values_equal(a, b));  // same value, different unit
+
+    a.type = b.type = CSSValue::Type::COLOR;
+    a.color = {255, 0, 0, 255};
+    b.color = {255, 0, 0, 255};
+    ASSERT(css_values_equal(a, b));
+    b.color.g = 1;
+    ASSERT(!css_values_equal(a, b));
+
+    a.type = b.type = CSSValue::Type::KEYWORD;
+    a.keyword = "none";
+    b.keyword = "none";
+    ASSERT(css_values_equal(a, b));
+    b.keyword = "block";
+    ASSERT(!css_values_equal(a, b));
+
+    a.type = CSSValue::Type::STRING;
+    b.type = CSSValue::Type::KEYWORD;  // different types never equal
+    ASSERT(!css_values_equal(a, b));
+})
+
+TEST(css_values_equality_transform_vectors, {
+    using namespace browser::css;
+    CSSValue a, b;
+    a.type = b.type = CSSValue::Type::TRANSFORM;
+    TransformFunc ta, tb;
+    ta.type = tb.type = TransformFunc::Type::TRANSLATE_X;
+    ta.args = {10.0f};
+    tb.args = {10.0f};
+    a.transforms = {ta};
+    b.transforms = {tb};
+    ASSERT(css_values_equal(a, b));
+    tb.args[0] = 12.5f;
+    b.transforms = {tb};
+    ASSERT(!css_values_equal(a, b));
 })
