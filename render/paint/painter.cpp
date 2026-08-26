@@ -142,10 +142,10 @@ namespace browser::render {
             // Set the element's border box rect for FBO sizing (executor adds blur padding)
             f32 bx = ox - node->padding.left - node->border.left;
             f32 by = oy - node->padding.top - node->border.top;
-            f32 bw = node->content.width + node->padding.left + node->padding.right +
-                     node->border.left + node->border.right;
-            f32 bh = node->content.height + node->padding.top + node->padding.bottom +
-                     node->border.top + node->border.bottom;
+            f32 bw =
+                node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
+            f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
+                     node->border.bottom;
             push_cmd.rect = {bx, by, bw, bh};
             list.push(push_cmd);
         }
@@ -169,28 +169,34 @@ namespace browser::render {
             bool disabled = el->has_attribute("disabled");
             // Resolve accent-color and caret-color from computed style (inherited)
             Color accent = {0.2f, 0.4f, 0.9f, 1};  // default blue
-            Color caret_col = {0, 0, 0, 1};           // default black
+            Color caret_col = {0, 0, 0, 1};        // default black
             auto *acc = node->style().get("accent-color");
             if (acc && acc->type == css::CSSValue::Type::COLOR) {
                 accent = {static_cast<f32>(acc->color.r) / 255.0f,
                           static_cast<f32>(acc->color.g) / 255.0f,
-                          static_cast<f32>(acc->color.b) / 255.0f, 1.0f};
+                          static_cast<f32>(acc->color.b) / 255.0f,
+                          1.0f};
             } else if (acc && acc->type == css::CSSValue::Type::KEYWORD) {
                 auto named = css::Color::from_name(acc->keyword);
                 if (named.a != 0 || acc->keyword == "transparent")
-                    accent = {static_cast<f32>(named.r) / 255.0f, static_cast<f32>(named.g) / 255.0f,
-                              static_cast<f32>(named.b) / 255.0f, static_cast<f32>(named.a) / 255.0f};
+                    accent = {static_cast<f32>(named.r) / 255.0f,
+                              static_cast<f32>(named.g) / 255.0f,
+                              static_cast<f32>(named.b) / 255.0f,
+                              static_cast<f32>(named.a) / 255.0f};
             }
             auto *caret_css = node->style().get("caret-color");
             if (caret_css && caret_css->type == css::CSSValue::Type::COLOR) {
                 caret_col = {static_cast<f32>(caret_css->color.r) / 255.0f,
                              static_cast<f32>(caret_css->color.g) / 255.0f,
-                             static_cast<f32>(caret_css->color.b) / 255.0f, 1.0f};
+                             static_cast<f32>(caret_css->color.b) / 255.0f,
+                             1.0f};
             } else if (caret_css && caret_css->type == css::CSSValue::Type::KEYWORD) {
                 auto named = css::Color::from_name(caret_css->keyword);
                 if (named.a != 0 || caret_css->keyword == "transparent")
-                    caret_col = {static_cast<f32>(named.r) / 255.0f, static_cast<f32>(named.g) / 255.0f,
-                                 static_cast<f32>(named.b) / 255.0f, static_cast<f32>(named.a) / 255.0f};
+                    caret_col = {static_cast<f32>(named.r) / 255.0f,
+                                 static_cast<f32>(named.g) / 255.0f,
+                                 static_cast<f32>(named.b) / 255.0f,
+                                 static_cast<f32>(named.a) / 255.0f};
             }
             bool focused = (html::g_form_state.focused_element == el);
             bool hovered = (html::g_form_state.hovered_element == el);
@@ -204,14 +210,18 @@ namespace browser::render {
 
             if (el->tag_name == "input" && type == "hidden") {
                 // Hidden inputs are not rendered
-            } else if (el->tag_name == "input" && (type.empty() || type == "text" || type == "email" || type == "search" || type == "url")) {
-                form_controls::paint_text_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, disabled, caret_col);
+            } else if (el->tag_name == "input" &&
+                       (type.empty() || type == "text" || type == "email" || type == "search" || type == "url")) {
+                form_controls::paint_text_input(
+                    list, fx, fy, fw, fh, value, placeholder, caret, focused, disabled, caret_col);
             } else if (el->tag_name == "input" && type == "number") {
                 f32 spin_active = 0;
-                form_controls::paint_number_input(list, fx, fy, fw, fh, value, placeholder, caret, focused, spin_active, disabled, caret_col);
+                form_controls::paint_number_input(
+                    list, fx, fy, fw, fh, value, placeholder, caret, focused, spin_active, disabled, caret_col);
             } else if (el->tag_name == "input" && type == "password") {
                 std::string display(value.size(), '*');
-                form_controls::paint_text_input(list, fx, fy, fw, fh, display, placeholder, caret, focused, disabled, caret_col);
+                form_controls::paint_text_input(
+                    list, fx, fy, fw, fh, display, placeholder, caret, focused, disabled, caret_col);
             } else if (el->tag_name == "input" && type == "checkbox") {
                 bool checked = html::g_form_state.is_checked(el);
                 form_controls::paint_checkbox(list, fx, fy, 13, checked, accent);
@@ -219,7 +229,9 @@ namespace browser::render {
                 bool checked = html::g_form_state.is_checked(el);
                 form_controls::paint_radio(list, fx, fy, 13, checked, accent);
             } else if (el->tag_name == "button" || (el->tag_name == "input" && (type == "submit" || type == "reset"))) {
-                std::string label = value.empty() ? (type == "reset" ? "Reset" : (el->tag_name == "button" ? "Button" : "Submit")) : value;
+                std::string label = value.empty()
+                                        ? (type == "reset" ? "Reset" : (el->tag_name == "button" ? "Button" : "Submit"))
+                                        : value;
                 form_controls::paint_button(list, fx, fy, fw, fh, label, hovered, focused);
             } else if (el->tag_name == "select") {
                 bool is_open = (html::g_form_state.open_select == el);
@@ -230,13 +242,15 @@ namespace browser::render {
                 if (is_multiple) {
                     // Multiple select: render as a list box, always showing all options
                     int opt_count = 0;
-                    std::function<int(html::Node*)> count_opts = [&](html::Node *parent) -> int {
+                    std::function<int(html::Node *)> count_opts = [&](html::Node *parent) -> int {
                         int n = 0;
                         for (auto &c : parent->children) {
                             if (c->type == html::NodeType::ELEMENT) {
-                                auto *ch = static_cast<html::Element*>(c.get());
-                                if (ch->tag_name == "option") n++;
-                                else if (ch->tag_name == "optgroup") n += count_opts(ch);
+                                auto *ch = static_cast<html::Element *>(c.get());
+                                if (ch->tag_name == "option")
+                                    n++;
+                                else if (ch->tag_name == "optgroup")
+                                    n += count_opts(ch);
                             }
                         }
                         return n;
@@ -247,43 +261,59 @@ namespace browser::render {
                         f32 opt_y = fy + fh;
                         f32 opt_w = fw;
                         // Border around list
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y + list_h - 1, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, 1, list_h}, Color{0.5f, 0.5f, 0.5f, 1}));
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + opt_w - 1, opt_y, 1, list_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(
+                            make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                           {fx, opt_y + list_h - 1, opt_w, 1},
+                                           Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(
+                            PaintCommand::Type::FILL_RECT, {fx, opt_y, 1, list_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                           {fx + opt_w - 1, opt_y, 1, list_h},
+                                           Color{0.5f, 0.5f, 0.5f, 1}));
 
                         // Store dropdown rect for hit testing
                         html::g_form_state.select_dropdown_rect = {fx, opt_y, opt_w, list_h};
 
                         int idx = 0;
                         f32 yy = 0;
-                        std::function<void(html::Node*, f32&)> render_mult = [&](html::Node *parent, f32 &ypos) {
+                        std::function<void(html::Node *, f32 &)> render_mult = [&](html::Node *parent, f32 &ypos) {
                             for (auto &c : parent->children) {
-                                if (c->type != html::NodeType::ELEMENT) continue;
-                                auto *ch = static_cast<html::Element*>(c.get());
+                                if (c->type != html::NodeType::ELEMENT)
+                                    continue;
+                                auto *ch = static_cast<html::Element *>(c.get());
                                 if (ch->tag_name == "option") {
                                     std::string opt_text = ch->get_attribute("label");
                                     if (opt_text.empty()) {
                                         for (auto &tc : ch->children)
                                             if (tc->type == html::NodeType::TEXT)
-                                                opt_text += static_cast<html::Text*>(tc.get())->data;
+                                                opt_text += static_cast<html::Text *>(tc.get())->data;
                                     }
-                                    if (opt_text.empty()) opt_text = ch->get_attribute("value");
+                                    if (opt_text.empty())
+                                        opt_text = ch->get_attribute("value");
                                     Color opt_color = (idx == sel_idx) ? Color{0.2f, 0.4f, 0.9f, 1} : Color{0, 0, 0, 1};
                                     if (idx == sel_idx) {
                                         list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                                            {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.8f, 0.85f, 1.0f, 1}));
+                                                           {fx + 1, opt_y + ypos, opt_w - 2, 20.0f},
+                                                           Color{0.8f, 0.85f, 1.0f, 1}));
                                     }
                                     list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                                        {fx + 4, opt_y + ypos + 2, opt_w - 8, 18.0f}, opt_color, opt_text, 14));
+                                                       {fx + 4, opt_y + ypos + 2, opt_w - 8, 18.0f},
+                                                       opt_color,
+                                                       opt_text,
+                                                       14));
                                     idx++;
                                     ypos += 20.0f;
                                 } else if (ch->tag_name == "optgroup") {
                                     std::string grp_label = ch->get_attribute("label");
                                     list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                                        {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.94f, 0.94f, 0.94f, 1}));
+                                                       {fx + 1, opt_y + ypos, opt_w - 2, 20.0f},
+                                                       Color{0.94f, 0.94f, 0.94f, 1}));
                                     list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                                        {fx + 8, opt_y + ypos + 2, opt_w - 12, 18.0f}, Color{0.35f, 0.35f, 0.35f, 1}, grp_label, 13));
+                                                       {fx + 8, opt_y + ypos + 2, opt_w - 12, 18.0f},
+                                                       Color{0.35f, 0.35f, 0.35f, 1},
+                                                       grp_label,
+                                                       13));
                                     ypos += 20.0f;
                                     f32 saved_x = fx;
                                     fx += 14.0f;
@@ -298,13 +328,15 @@ namespace browser::render {
                     }
                 } else if (is_open) {
                     // Count visible options (including those in optgroups)
-                    std::function<int(html::Node*)> count_options = [&](html::Node *parent) -> int {
+                    std::function<int(html::Node *)> count_options = [&](html::Node *parent) -> int {
                         int n = 0;
                         for (auto &c : parent->children) {
                             if (c->type == html::NodeType::ELEMENT) {
-                                auto *ch = static_cast<html::Element*>(c.get());
-                                if (ch->tag_name == "option") n++;
-                                else if (ch->tag_name == "optgroup") n += count_options(ch);
+                                auto *ch = static_cast<html::Element *>(c.get());
+                                if (ch->tag_name == "option")
+                                    n++;
+                                else if (ch->tag_name == "optgroup")
+                                    n += count_options(ch);
                             }
                         }
                         return n;
@@ -318,38 +350,59 @@ namespace browser::render {
                         // Store dropdown rect for hit testing
                         html::g_form_state.select_dropdown_rect = {fx, opt_y, opt_w, opt_h};
                         // Dropdown background
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, opt_h}, Color{1, 1, 1, 1}));
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y + opt_h - 1, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, 1, opt_h}, Color{0.5f, 0.5f, 0.5f, 1}));
-                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + opt_w - 1, opt_y, 1, opt_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(
+                            make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, opt_h}, Color{1, 1, 1, 1}));
+                        list.push(
+                            make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, opt_w, 1}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                           {fx, opt_y + opt_h - 1, opt_w, 1},
+                                           Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(
+                            make_cmd(PaintCommand::Type::FILL_RECT, {fx, opt_y, 1, opt_h}, Color{0.5f, 0.5f, 0.5f, 1}));
+                        list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                           {fx + opt_w - 1, opt_y, 1, opt_h},
+                                           Color{0.5f, 0.5f, 0.5f, 1}));
 
                         int idx = 0;
-                        std::function<void(html::Node*, f32&)> render_opts = [&](html::Node *parent, f32 &ypos) {
+                        std::function<void(html::Node *, f32 &)> render_opts = [&](html::Node *parent, f32 &ypos) {
                             for (auto &child : parent->children) {
-                                if (child->type != html::NodeType::ELEMENT) continue;
-                                auto *opt = static_cast<html::Element*>(child.get());
+                                if (child->type != html::NodeType::ELEMENT)
+                                    continue;
+                                auto *opt = static_cast<html::Element *>(child.get());
                                 if (opt->tag_name == "option") {
                                     std::string opt_text = opt->get_attribute("label");
                                     if (opt_text.empty()) {
                                         for (auto &tc : opt->children) {
                                             if (tc->type == html::NodeType::TEXT)
-                                                opt_text += static_cast<html::Text*>(tc.get())->data;
+                                                opt_text += static_cast<html::Text *>(tc.get())->data;
                                         }
                                     }
-                                    if (opt_text.empty()) opt_text = opt->get_attribute("value");
+                                    if (opt_text.empty())
+                                        opt_text = opt->get_attribute("value");
                                     Color opt_color = (idx == sel_idx) ? Color{0.2f, 0.4f, 0.9f, 1} : Color{0, 0, 0, 1};
                                     if (idx == sel_idx) {
-                                        list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.8f, 0.85f, 1.0f, 1}));
+                                        list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                                           {fx + 1, opt_y + ypos, opt_w - 2, 20.0f},
+                                                           Color{0.8f, 0.85f, 1.0f, 1}));
                                     }
-                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {fx + 4, opt_y + ypos + 2, opt_w - 8, 18.0f}, opt_color, opt_text, 14));
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                                       {fx + 4, opt_y + ypos + 2, opt_w - 8, 18.0f},
+                                                       opt_color,
+                                                       opt_text,
+                                                       14));
                                     idx++;
                                     ypos += 20.0f;
                                 } else if (opt->tag_name == "optgroup") {
                                     // Render optgroup label
                                     std::string grp_label = opt->get_attribute("label");
-                                    list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fx + 1, opt_y + ypos, opt_w - 2, 20.0f}, Color{0.94f, 0.94f, 0.94f, 1}));
-                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, {fx + 8, opt_y + ypos + 2, opt_w - 12, 18.0f}, Color{0.35f, 0.35f, 0.35f, 1}, grp_label, 13));
+                                    list.push(make_cmd(PaintCommand::Type::FILL_RECT,
+                                                       {fx + 1, opt_y + ypos, opt_w - 2, 20.0f},
+                                                       Color{0.94f, 0.94f, 0.94f, 1}));
+                                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                                       {fx + 8, opt_y + ypos + 2, opt_w - 12, 18.0f},
+                                                       Color{0.35f, 0.35f, 0.35f, 1},
+                                                       grp_label,
+                                                       13));
                                     ypos += 20.0f;
                                     // Render children with indent
                                     f32 saved_x = fx;
@@ -389,8 +442,10 @@ namespace browser::render {
                 f32 min_val = 0, max_val = 100;
                 std::string min_str = el->get_attribute("min");
                 std::string max_str = el->get_attribute("max");
-                if (!min_str.empty()) min_val = std::strtof(min_str.c_str(), nullptr);
-                if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
+                if (!min_str.empty())
+                    min_val = std::strtof(min_str.c_str(), nullptr);
+                if (!max_str.empty())
+                    max_val = std::strtof(max_str.c_str(), nullptr);
                 f32 cur = std::strtof(value.c_str(), nullptr);
                 form_controls::paint_range(list, fx, fy, fw, fh, cur, min_val, max_val, focused, accent);
             } else if (el->tag_name == "input" && type == "color") {
@@ -402,7 +457,8 @@ namespace browser::render {
             } else if (el->tag_name == "progress") {
                 f32 max_val = 1.0f;
                 std::string max_str = el->get_attribute("max");
-                if (!max_str.empty()) max_val = std::strtof(max_str.c_str(), nullptr);
+                if (!max_str.empty())
+                    max_val = std::strtof(max_str.c_str(), nullptr);
                 f32 cur = std::strtof(value.c_str(), nullptr);
                 form_controls::paint_progress(list, fx, fy, fw, fh, cur, max_val, accent);
             } else if (el->tag_name == "fieldset") {
@@ -436,13 +492,20 @@ namespace browser::render {
                     list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby, fbw, 1}, {0.5f, 0.5f, 0.5f, 1}));
                 } else {
                     f32 left_w = legend_gap_start - fbx;
-                    if (left_w > 0) list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby, left_w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+                    if (left_w > 0)
+                        list.push(
+                            make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby, left_w, 1}, {0.5f, 0.5f, 0.5f, 1}));
                     f32 right_start = legend_gap_end;
                     f32 right_w = fbx + fbw - right_start;
-                    if (right_w > 0) list.push(make_cmd(PaintCommand::Type::FILL_RECT, {right_start, fby, right_w, 1}, {0.5f, 0.5f, 0.5f, 1}));
+                    if (right_w > 0)
+                        list.push(make_cmd(
+                            PaintCommand::Type::FILL_RECT, {right_start, fby, right_w, 1}, {0.5f, 0.5f, 0.5f, 1}));
                     // Legend text
                     list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                        {legend_gap_start + 2, fby - 6, legend_w + 2, 14.0f}, {0, 0, 0, 1}, legend_text, 14));
+                                       {legend_gap_start + 2, fby - 6, legend_w + 2, 14.0f},
+                                       {0, 0, 0, 1},
+                                       legend_text,
+                                       14));
                 }
                 // Bottom border
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby + fbh - 1, fbw, 1}, {0.5f, 0.5f, 0.5f, 1}));
@@ -588,10 +651,10 @@ namespace browser::render {
         // Clip box (default border-box)
         f32 clip_bx = ox - node->padding.left;
         f32 clip_by = oy - node->padding.top;
-        f32 clip_bw = node->content.width + node->padding.left + node->padding.right +
-                      node->border.left + node->border.right;
-        f32 clip_bh = node->content.height + node->padding.top + node->padding.bottom +
-                      node->border.top + node->border.bottom;
+        f32 clip_bw =
+            node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right;
+        f32 clip_bh =
+            node->content.height + node->padding.top + node->padding.bottom + node->border.top + node->border.bottom;
 
         // Origin box for positioning (default padding-box)
         f32 origin_bx = ox - node->padding.left;
@@ -622,10 +685,10 @@ namespace browser::render {
             if (bg_origin->keyword == "border-box") {
                 origin_bx = ox - node->padding.left - node->border.left;
                 origin_by = oy - node->padding.top - node->border.top;
-                origin_bw = node->content.width + node->padding.left + node->padding.right +
-                            node->border.left + node->border.right;
-                origin_bh = node->content.height + node->padding.top + node->padding.bottom +
-                            node->border.top + node->border.bottom;
+                origin_bw = node->content.width + node->padding.left + node->padding.right + node->border.left +
+                            node->border.right;
+                origin_bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
+                            node->border.bottom;
             } else if (bg_origin->keyword == "content-box") {
                 origin_bx = ox;
                 origin_by = oy;
@@ -636,8 +699,13 @@ namespace browser::render {
         }
 
         if (bg_img && bg_img->type == css::CSSValue::Type::GRADIENT) {
-            list.push(make_cmd(
-                PaintCommand::Type::DRAW_GRADIENT, {clip_bx, clip_by, clip_bw, clip_bh}, Color::TRANSPARENT, "", 0, 0, bg_img->gradient));
+            list.push(make_cmd(PaintCommand::Type::DRAW_GRADIENT,
+                               {clip_bx, clip_by, clip_bw, clip_bh},
+                               Color::TRANSPARENT,
+                               "",
+                               0,
+                               0,
+                               bg_img->gradient));
             return;
         }
 
@@ -645,7 +713,8 @@ namespace browser::render {
         if (bg_img && (bg_img->type == css::CSSValue::Type::KEYWORD || bg_img->type == css::CSSValue::Type::STRING ||
                        bg_img->type == css::CSSValue::Type::URL)) {
             std::string val = (bg_img->type == css::CSSValue::Type::URL) ? bg_img->string_value : bg_img->keyword;
-            if (val.empty()) val = bg_img->string_value;
+            if (val.empty())
+                val = bg_img->string_value;
 
             // url() background image
             if (val.size() >= 4 && val.substr(0, 4) == "url(" && val.back() == ')') {
@@ -659,8 +728,10 @@ namespace browser::render {
                         auto *img = it->second.get();
                         f32 img_w = static_cast<f32>(img->width);
                         f32 img_h = static_cast<f32>(img->height);
-                        if (img_w <= 0) img_w = clip_bw;
-                        if (img_h <= 0) img_h = clip_bh;
+                        if (img_w <= 0)
+                            img_w = clip_bw;
+                        if (img_h <= 0)
+                            img_h = clip_bh;
                         ImageId id = reinterpret_cast<ImageId>(img);
 
                         // Check background-repeat
@@ -722,23 +793,41 @@ namespace browser::render {
 
                         if (repeat == "no-repeat") {
                             list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
-                                {pos_x, pos_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                                               {pos_x, pos_y, draw_w, draw_h},
+                                               Color::WHITE,
+                                               "",
+                                               0,
+                                               id));
                         } else if (repeat == "repeat-x") {
                             for (f32 tx = pos_x; tx < origin_bx + origin_bw; tx += draw_w) {
                                 list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
-                                    {tx, pos_y, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                                                   {tx, pos_y, draw_w, draw_h},
+                                                   Color::WHITE,
+                                                   "",
+                                                   0,
+                                                   id));
                             }
                         } else if (repeat == "repeat-y") {
                             for (f32 ty = pos_y; ty < origin_by + origin_bh; ty += draw_h) {
                                 list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
-                                    {pos_x, ty, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                                                   {pos_x, ty, draw_w, draw_h},
+                                                   Color::WHITE,
+                                                   "",
+                                                   0,
+                                                   id));
                             }
                         } else {
                             // repeat: tile both directions (clip to clip box)
-                            for (f32 tx = pos_x - std::fmod(pos_x - clip_bx, draw_w); tx < clip_bx + clip_bw; tx += draw_w) {
-                                for (f32 ty = pos_y - std::fmod(pos_y - clip_by, draw_h); ty < clip_by + clip_bh; ty += draw_h) {
+                            for (f32 tx = pos_x - std::fmod(pos_x - clip_bx, draw_w); tx < clip_bx + clip_bw;
+                                 tx += draw_w) {
+                                for (f32 ty = pos_y - std::fmod(pos_y - clip_by, draw_h); ty < clip_by + clip_bh;
+                                     ty += draw_h) {
                                     list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
-                                        {tx, ty, draw_w, draw_h}, Color::WHITE, "", 0, id));
+                                                       {tx, ty, draw_w, draw_h},
+                                                       Color::WHITE,
+                                                       "",
+                                                       0,
+                                                       id));
                                 }
                             }
                         }
@@ -754,7 +843,8 @@ namespace browser::render {
             return;
 
         auto *br = node->style().get("border-top-left-radius");
-        if (!br) br = node->style().get("border-radius");
+        if (!br)
+            br = node->style().get("border-radius");
         f32 radius = 0;
         if (br && br->type == css::CSSValue::Type::LENGTH) {
             radius = br->length.value;
@@ -768,7 +858,8 @@ namespace browser::render {
         }
 
         if (radius > 0) {
-            list.push(make_cmd(PaintCommand::Type::DRAW_ROUNDED_RECT, {clip_bx, clip_by, clip_bw, clip_bh}, bg, "", 0, 0, {}, radius));
+            list.push(make_cmd(
+                PaintCommand::Type::DRAW_ROUNDED_RECT, {clip_bx, clip_by, clip_bw, clip_bh}, bg, "", 0, 0, {}, radius));
         } else {
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {clip_bx, clip_by, clip_bw, clip_bh}, bg));
         }
@@ -788,9 +879,8 @@ namespace browser::render {
 
             f32 bx = ox - node->padding.left + off_x - spread;
             f32 by = oy - node->padding.top + off_y - spread;
-            f32 bw =
-                node->content.width + node->padding.left + node->padding.right + node->border.left + node->border.right +
-                2 * spread;
+            f32 bw = node->content.width + node->padding.left + node->padding.right + node->border.left +
+                     node->border.right + 2 * spread;
             f32 bh = node->content.height + node->padding.top + node->padding.bottom + node->border.top +
                      node->border.bottom + 2 * spread;
 
@@ -835,17 +925,19 @@ namespace browser::render {
                         } else if (tt->keyword == "capitalize") {
                             bool new_word = true;
                             for (char &c : text) {
-                                if (c == ' ' || c == '\t' || c == '\n') { new_word = true; continue; }
-                                if (new_word) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); new_word = false; }
+                                if (c == ' ' || c == '\t' || c == '\n') {
+                                    new_word = true;
+                                    continue;
+                                }
+                                if (new_word) {
+                                    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                                    new_word = false;
+                                }
                             }
                         }
                     }
                     css::Rect line_rect = {ox + off_x, oy + li.y + off_y, node->content.width, font_size};
-                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
-                                       line_rect,
-                                       shadow_color,
-                                       text,
-                                       font_size));
+                    list.push(make_cmd(PaintCommand::Type::DRAW_TEXT, line_rect, shadow_color, text, font_size));
                 }
             } else {
                 std::string text = node->text();
@@ -858,8 +950,14 @@ namespace browser::render {
                     } else if (tt->keyword == "capitalize") {
                         bool new_word = true;
                         for (char &c : text) {
-                            if (c == ' ' || c == '\t' || c == '\n') { new_word = true; continue; }
-                            if (new_word) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); new_word = false; }
+                            if (c == ' ' || c == '\t' || c == '\n') {
+                                new_word = true;
+                                continue;
+                            }
+                            if (new_word) {
+                                c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                                new_word = false;
+                            }
                         }
                     }
                 }
@@ -944,27 +1042,42 @@ namespace browser::render {
         auto *dec_line = node->style().get("text-decoration-line");
         if (dec_line && dec_line->type == css::CSSValue::Type::KEYWORD) {
             const std::string &dl = dec_line->keyword;
-            if (dl.find("underline") != std::string::npos) has_underline = true;
-            if (dl.find("overline") != std::string::npos) has_overline = true;
-            if (dl.find("line-through") != std::string::npos) has_line_through = true;
-            if (dl == "none") { has_underline = false; has_overline = false; has_line_through = false; }
+            if (dl.find("underline") != std::string::npos)
+                has_underline = true;
+            if (dl.find("overline") != std::string::npos)
+                has_overline = true;
+            if (dl.find("line-through") != std::string::npos)
+                has_line_through = true;
+            if (dl == "none") {
+                has_underline = false;
+                has_overline = false;
+                has_line_through = false;
+            }
         }
         // Fallback to text-decoration shorthand
         if (!has_underline && !has_overline && !has_line_through) {
             auto *dec_val = node->style().get("text-decoration");
             if (dec_val && dec_val->type == css::CSSValue::Type::KEYWORD) {
                 const std::string &dk = dec_val->keyword;
-                if (dk.find("underline") != std::string::npos) has_underline = true;
-                if (dk.find("overline") != std::string::npos) has_overline = true;
-                if (dk.find("line-through") != std::string::npos) has_line_through = true;
-                if (dk == "none") { has_underline = false; has_overline = false; has_line_through = false; }
+                if (dk.find("underline") != std::string::npos)
+                    has_underline = true;
+                if (dk.find("overline") != std::string::npos)
+                    has_overline = true;
+                if (dk.find("line-through") != std::string::npos)
+                    has_line_through = true;
+                if (dk == "none") {
+                    has_underline = false;
+                    has_overline = false;
+                    has_line_through = false;
+                }
             }
         }
         // text-decoration-color
         auto *dec_color_val = node->style().get("text-decoration-color");
         if (dec_color_val) {
             Color c = resolve_color(node->style(), "text-decoration-color", text_color);
-            if (c.r != 0 || c.g != 0 || c.b != 0 || c.a != 0) dec_color = c;
+            if (c.r != 0 || c.g != 0 || c.b != 0 || c.a != 0)
+                dec_color = c;
         }
         // text-decoration-thickness
         auto *dec_thick = node->style().get("text-decoration-thickness");
@@ -1039,8 +1152,14 @@ namespace browser::render {
             } else if (tt->keyword == "capitalize") {
                 bool new_word = true;
                 for (char &c : s) {
-                    if (c == ' ' || c == '\t' || c == '\n') { new_word = true; continue; }
-                    if (new_word) { c = static_cast<char>(std::toupper(static_cast<unsigned char>(c))); new_word = false; }
+                    if (c == ' ' || c == '\t' || c == '\n') {
+                        new_word = true;
+                        continue;
+                    }
+                    if (new_word) {
+                        c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+                        new_word = false;
+                    }
                 }
             }
             return s;
@@ -1187,7 +1306,18 @@ namespace browser::render {
             list.push(make_cmd(PaintCommand::Type::PUSH_CLIP, {ox, oy, box_w, box_h}, Color::TRANSPARENT));
         }
 
-        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE, {draw_x, draw_y, draw_w, draw_h}, Color::WHITE, "", 0, id, {}, 0, {}, 1.0f, 0, img_flags));
+        list.push(make_cmd(PaintCommand::Type::DRAW_IMAGE,
+                           {draw_x, draw_y, draw_w, draw_h},
+                           Color::WHITE,
+                           "",
+                           0,
+                           id,
+                           {},
+                           0,
+                           {},
+                           1.0f,
+                           0,
+                           img_flags));
 
         if (needs_clip) {
             list.push(make_cmd(PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT));
@@ -1224,6 +1354,8 @@ namespace browser::render {
         cmd.color = Color::WHITE;
         cmd.canvas_data_w = canvas->width();
         cmd.canvas_data_h = canvas->height();
+        cmd.canvas_id = canvas;
+        cmd.canvas_version = canvas->version();
         {
             const u8 *pixels = canvas->pixels();
             u32 count = cmd.canvas_data_w * cmd.canvas_data_h * 4;
@@ -1273,7 +1405,8 @@ namespace browser::render {
 
         // Determine outline style
         std::string ostyle = "solid";
-        if (os && os->type == css::CSSValue::Type::KEYWORD) ostyle = os->keyword;
+        if (os && os->type == css::CSSValue::Type::KEYWORD)
+            ostyle = os->keyword;
 
         if (ostyle == "dotted") {
             // Draw dots along each edge
@@ -1283,22 +1416,26 @@ namespace browser::render {
             // Top edge
             for (f32 dx = bx; dx < bx + bw; dx += step) {
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {dx, by, std::min(dot_size, bx + bw - dx), dot_size}, outline_color));
+                                   {dx, by, std::min(dot_size, bx + bw - dx), dot_size},
+                                   outline_color));
             }
             // Bottom edge
             for (f32 dx = bx; dx < bx + bw; dx += step) {
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {dx, by + bh - dot_size, std::min(dot_size, bx + bw - dx), dot_size}, outline_color));
+                                   {dx, by + bh - dot_size, std::min(dot_size, bx + bw - dx), dot_size},
+                                   outline_color));
             }
             // Left edge
             for (f32 dy = by + step; dy < by + bh - step; dy += step) {
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {bx, dy, dot_size, std::min(dot_size, by + bh - dy)}, outline_color));
+                                   {bx, dy, dot_size, std::min(dot_size, by + bh - dy)},
+                                   outline_color));
             }
             // Right edge
             for (f32 dy = by + step; dy < by + bh - step; dy += step) {
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {bx + bw - dot_size, dy, dot_size, std::min(dot_size, by + bh - dy)}, outline_color));
+                                   {bx + bw - dot_size, dy, dot_size, std::min(dot_size, by + bh - dy)},
+                                   outline_color));
             }
         } else if (ostyle == "dashed") {
             // Draw dashes along each edge
@@ -1308,30 +1445,29 @@ namespace browser::render {
             // Top edge
             for (f32 dx = bx; dx < bx + bw; dx += step) {
                 f32 len = std::min(dash_len, bx + bw - dx);
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {dx, by, len, outline_width}, outline_color));
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {dx, by, len, outline_width}, outline_color));
             }
             // Bottom edge
             for (f32 dx = bx; dx < bx + bw; dx += step) {
                 f32 len = std::min(dash_len, bx + bw - dx);
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {dx, by + bh - outline_width, len, outline_width}, outline_color));
+                list.push(make_cmd(
+                    PaintCommand::Type::FILL_RECT, {dx, by + bh - outline_width, len, outline_width}, outline_color));
             }
             // Left edge
             for (f32 dy = by + step; dy < by + bh - step; dy += step) {
                 f32 len = std::min(dash_len, by + bh - dy);
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {bx, dy, outline_width, len}, outline_color));
+                list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, dy, outline_width, len}, outline_color));
             }
             // Right edge
             for (f32 dy = by + step; dy < by + bh - step; dy += step) {
                 f32 len = std::min(dash_len, by + bh - dy);
-                list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                    {bx + bw - outline_width, dy, outline_width, len}, outline_color));
+                list.push(make_cmd(
+                    PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, dy, outline_width, len}, outline_color));
             }
         } else if (ostyle == "double") {
             f32 db_order = outline_width / 3.0f;
-            if (db_order < 1.0f) db_order = 1.0f;
+            if (db_order < 1.0f)
+                db_order = 1.0f;
             // Outer
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, db_order}, outline_color));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - db_order, by, db_order, bh}, outline_color));
@@ -1340,13 +1476,17 @@ namespace browser::render {
             // Inner
             f32 inner_off = db_order * 2;
             list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                {bx + inner_off, by + inner_off, bw - 2 * inner_off, db_order}, outline_color));
+                               {bx + inner_off, by + inner_off, bw - 2 * inner_off, db_order},
+                               outline_color));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                {bx + bw - db_order - inner_off, by + inner_off, db_order, bh - 2 * inner_off}, outline_color));
+                               {bx + bw - db_order - inner_off, by + inner_off, db_order, bh - 2 * inner_off},
+                               outline_color));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                {bx + inner_off, by + bh - db_order - inner_off, bw - 2 * inner_off, db_order}, outline_color));
+                               {bx + inner_off, by + bh - db_order - inner_off, bw - 2 * inner_off, db_order},
+                               outline_color));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT,
-                {bx + inner_off, by + inner_off, db_order, bh - 2 * inner_off}, outline_color));
+                               {bx + inner_off, by + inner_off, db_order, bh - 2 * inner_off},
+                               outline_color));
         } else if (ostyle == "groove" || ostyle == "ridge") {
             Color c1 = outline_color;
             Color c2 = {c1.r * 0.5f, c1.g * 0.5f, c1.b * 0.5f, c1.a};
@@ -1354,7 +1494,8 @@ namespace browser::render {
             Color outer_c = dark_first ? c2 : c1;
             Color inner_c = dark_first ? c1 : c2;
             f32 hw = outline_width / 2.0f;
-            if (hw < 1.0f) hw = 1.0f;
+            if (hw < 1.0f)
+                hw = 1.0f;
             // Outer half
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, hw}, outer_c));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - hw, by, hw, bh}, outer_c));
@@ -1372,11 +1513,15 @@ namespace browser::render {
                 c_top = {outline_color.r * 0.5f, outline_color.g * 0.5f, outline_color.b * 0.5f, outline_color.a};
                 c_s1 = {outline_color.r * 0.7f, outline_color.g * 0.7f, outline_color.b * 0.7f, outline_color.a};
                 c_s2 = {outline_color.r * 1.3f, outline_color.g * 1.3f, outline_color.b * 1.3f, outline_color.a};
-                c_bottom = {std::min(outline_color.r * 1.6f, 1.0f), std::min(outline_color.g * 1.6f, 1.0f),
-                            std::min(outline_color.b * 1.6f, 1.0f), outline_color.a};
+                c_bottom = {std::min(outline_color.r * 1.6f, 1.0f),
+                            std::min(outline_color.g * 1.6f, 1.0f),
+                            std::min(outline_color.b * 1.6f, 1.0f),
+                            outline_color.a};
             } else {
-                c_top = {std::min(outline_color.r * 1.5f, 1.0f), std::min(outline_color.g * 1.5f, 1.0f),
-                         std::min(outline_color.b * 1.5f, 1.0f), outline_color.a};
+                c_top = {std::min(outline_color.r * 1.5f, 1.0f),
+                         std::min(outline_color.g * 1.5f, 1.0f),
+                         std::min(outline_color.b * 1.5f, 1.0f),
+                         outline_color.a};
                 c_s1 = {outline_color.r * 1.2f, outline_color.g * 1.2f, outline_color.b * 1.2f, outline_color.a};
                 c_s2 = {outline_color.r * 0.7f, outline_color.g * 0.7f, outline_color.b * 0.7f, outline_color.a};
                 c_bottom = {outline_color.r * 0.5f, outline_color.g * 0.5f, outline_color.b * 0.5f, outline_color.a};
@@ -1384,12 +1529,15 @@ namespace browser::render {
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, outline_width}, c_top));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, outline_width, bh}, c_s1));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, c_s2));
-            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, c_bottom));
+            list.push(
+                make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, c_bottom));
         } else {
             // solid (default)
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, bw, outline_width}, outline_color));
-            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, outline_color));
-            list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, outline_color));
+            list.push(make_cmd(
+                PaintCommand::Type::FILL_RECT, {bx + bw - outline_width, by, outline_width, bh}, outline_color));
+            list.push(make_cmd(
+                PaintCommand::Type::FILL_RECT, {bx, by + bh - outline_width, bw, outline_width}, outline_color));
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {bx, by, outline_width, bh}, outline_color));
         }
     }

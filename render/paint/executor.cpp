@@ -127,8 +127,20 @@ namespace browser::render {
         return ptr;
     }
 
-    void PaintExecutor::execute(const DisplayList &list) {
+    void PaintExecutor::invalidate_page_caches() {
+        // Image and canvas pointers died with the old document; gradient
+        // textures are value-keyed but cheap to rebuild lazily.
+        texture_cache_.clear();
         canvas_cache_.clear();
+        gradient_cache_.clear();
+    }
+
+    const Texture2D *PaintExecutor::cached_canvas_texture(void *canvas_id) const {
+        auto it = canvas_cache_.find(canvas_id);
+        return it == canvas_cache_.end() ? nullptr : it->second.tex.get();
+    }
+
+    void PaintExecutor::execute(const DisplayList &list) {
         for (const auto &cmd : list.commands()) {
             switch (cmd.type) {
                 case PaintCommand::Type::FILL_RECT: {
@@ -300,22 +312,43 @@ namespace browser::render {
                         transform_rect(x, y, w, h);
                     }
 
-                    // Cache canvas texture by pointer to pixel data (stable within one execute)
-                    void *pix_ptr = const_cast<u8 *>(cmd.canvas_pixels.data());
-                    auto cache_it = canvas_cache_.find(pix_ptr);
+                    // R-P1: cache keyed by the canvas object identity, reused
+                    // across frames; upload only when the canvas version moved
+                    // on or the buffer was resized. The pixel-buffer address is
+                    // never a cache key (it is not stable).
+                    auto cache_it = canvas_cache_.find(cmd.canvas_id);
                     if (cache_it == canvas_cache_.end()) {
                         auto tex = std::make_unique<Texture2D>();
                         auto r = tex->create(cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_pixels.data(), true);
                         if (r.is_err())
                             break;
-                        canvas_cache_[pix_ptr] = std::move(tex);
-                        cache_it = canvas_cache_.find(pix_ptr);
-                        if (cache_it == canvas_cache_.end())
-                            break;
+                        CanvasTextureEntry entry;
+                        entry.tex = std::move(tex);
+                        entry.version = cmd.canvas_version;
+                        entry.width = cmd.canvas_data_w;
+                        entry.height = cmd.canvas_data_h;
+                        cache_it = canvas_cache_.emplace(cmd.canvas_id, std::move(entry)).first;
+                    } else if (cache_it->second.version != cmd.canvas_version ||
+                               cache_it->second.width != cmd.canvas_data_w ||
+                               cache_it->second.height != cmd.canvas_data_h) {
+                        if (cache_it->second.width != cmd.canvas_data_w ||
+                            cache_it->second.height != cmd.canvas_data_h) {
+                            // Resized: full re-create (dimensions changed).
+                            auto r = cache_it->second.tex->create(
+                                cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_pixels.data(), true);
+                            if (r.is_err())
+                                break;
+                        } else {
+                            cache_it->second.tex->update_sub(
+                                0, 0, cmd.canvas_data_w, cmd.canvas_data_h, cmd.canvas_pixels.data(), true);
+                        }
+                        cache_it->second.version = cmd.canvas_version;
+                        cache_it->second.width = cmd.canvas_data_w;
+                        cache_it->second.height = cmd.canvas_data_h;
                     }
                     Color c = cmd.color;
                     c.a *= current_opacity_;
-                    renderer_->draw_textured_quad(x, y, w, h, c, cache_it->second.get());
+                    renderer_->draw_textured_quad(x, y, w, h, c, cache_it->second.tex.get());
                     break;
                 }
                 case PaintCommand::Type::DRAW_ROUNDED_RECT: {
@@ -385,16 +418,18 @@ namespace browser::render {
                     bool has_drop_shadow = false;
                     f32 ds_off_x = 0, ds_off_y = 0;
                     css::Color ds_color = {0, 0, 0, 255};
-                    for (const auto& f : cmd.filters) {
+                    for (const auto &f : cmd.filters) {
                         if (f.type == css::CSSFilterFunc::Type::BLUR) {
                             needs_fbo = true;
                             f32 r = f.length_param.value;
-                            if (r > max_blur) max_blur = r;
+                            if (r > max_blur)
+                                max_blur = r;
                         } else if (f.type == css::CSSFilterFunc::Type::DROP_SHADOW) {
                             needs_fbo = true;
                             has_drop_shadow = true;
                             f32 r = f.amount;
-                            if (r > max_blur) max_blur = r;
+                            if (r > max_blur)
+                                max_blur = r;
                             ds_off_x = f.length_param.value;
                             ds_off_y = f.length_param2.value;
                             ds_color = f.color_param;
@@ -403,16 +438,21 @@ namespace browser::render {
 
                     // Only create FBO if there isn't already one active
                     bool has_active_fbo = false;
-                    for (auto& se : filter_stack_) {
-                        if (se.fbo_state.fbo) { has_active_fbo = true; break; }
+                    for (auto &se : filter_stack_) {
+                        if (se.fbo_state.fbo) {
+                            has_active_fbo = true;
+                            break;
+                        }
                     }
 
                     if (needs_fbo && !has_active_fbo) {
                         f32 pad = std::ceil(max_blur) * 2.0f;
                         f32 fb_w = cmd.rect.width + pad;
                         f32 fb_h = cmd.rect.height + pad;
-                        if (fb_w < 1) fb_w = 1;
-                        if (fb_h < 1) fb_h = 1;
+                        if (fb_w < 1)
+                            fb_w = 1;
+                        if (fb_h < 1)
+                            fb_h = 1;
                         u32 fbo_w = static_cast<u32>(fb_w);
                         u32 fbo_h = static_cast<u32>(fb_h);
 
@@ -478,17 +518,19 @@ namespace browser::render {
 
                             if (entry.fbo_state.has_drop_shadow) {
                                 // Shadow color tint
-                                Color shadow_tint = {
-                                    static_cast<f32>(entry.fbo_state.ds_color.r) / 255.0f,
-                                    static_cast<f32>(entry.fbo_state.ds_color.g) / 255.0f,
-                                    static_cast<f32>(entry.fbo_state.ds_color.b) / 255.0f,
-                                    static_cast<f32>(entry.fbo_state.ds_color.a) / 255.0f
-                                };
+                                Color shadow_tint = {static_cast<f32>(entry.fbo_state.ds_color.r) / 255.0f,
+                                                     static_cast<f32>(entry.fbo_state.ds_color.g) / 255.0f,
+                                                     static_cast<f32>(entry.fbo_state.ds_color.b) / 255.0f,
+                                                     static_cast<f32>(entry.fbo_state.ds_color.a) / 255.0f};
                                 // Draw shadow: blurred version at offset position, tinted
                                 f32 sx = ex + entry.fbo_state.ds_offset_x - pad / 2.0f;
                                 f32 sy = ey + entry.fbo_state.ds_offset_y - pad / 2.0f;
                                 renderer_->draw_blurred_texture(
-                                    sx, sy, ew + pad, eh + pad, tex_id,
+                                    sx,
+                                    sy,
+                                    ew + pad,
+                                    eh + pad,
+                                    tex_id,
                                     entry.fbo_state.blur_radius > 0 ? entry.fbo_state.blur_radius : 0.0f,
                                     shadow_tint);
                                 // Re-apply scissor after draw
@@ -501,18 +543,18 @@ namespace browser::render {
                                 }
                                 // Draw original unblurred on top (no tint = white = identity)
                                 renderer_->draw_blurred_texture(
-                                    ex - pad / 2.0f, ey - pad / 2.0f,
-                                    ew + pad, eh + pad, tex_id, 0.0f, Color::WHITE);
+                                    ex - pad / 2.0f, ey - pad / 2.0f, ew + pad, eh + pad, tex_id, 0.0f, Color::WHITE);
                             } else if (entry.fbo_state.blur_radius > 0.0f) {
-                                renderer_->draw_blurred_texture(
-                                    ex - pad / 2.0f, ey - pad / 2.0f,
-                                    ew + pad, eh + pad, tex_id,
-                                    entry.fbo_state.blur_radius);
+                                renderer_->draw_blurred_texture(ex - pad / 2.0f,
+                                                                ey - pad / 2.0f,
+                                                                ew + pad,
+                                                                eh + pad,
+                                                                tex_id,
+                                                                entry.fbo_state.blur_radius);
                             } else {
                                 // FBO with no blur and no drop-shadow: just draw as-is
                                 renderer_->draw_blurred_texture(
-                                    ex - pad / 2.0f, ey - pad / 2.0f,
-                                    ew + pad, eh + pad, tex_id, 0.0f);
+                                    ex - pad / 2.0f, ey - pad / 2.0f, ew + pad, eh + pad, tex_id, 0.0f);
                             }
                             // Re-apply scissor after blur draw (which disables it internally)
                             if (!clip_stack_.empty()) {

@@ -39,6 +39,10 @@ namespace browser {
                 html::g_form_state.input_values.clear();
                 html::g_form_state.check_states.clear();
                 html::g_form_state.select_indices.clear();
+                // BR-P1: GPU caches keyed by pointers owned by the old
+                // document (images, canvases) must go with it.
+                if (paint_executor_)
+                    paint_executor_->invalidate_page_caches();
                 // Set up animations for the newly loaded page
                 setup_animations();
             }
@@ -80,14 +84,15 @@ namespace browser {
         chrome_.rects.scrollbar = {static_cast<f32>(viewport_width_) - sb_w, content_y, sb_w, content_h};
 
         namespace pgl = browser::platform;
-        render::PaintExecutor executor(renderer_.get(), text_renderer_.get());
-        executor.set_offset(0, content_y - static_cast<f32>(chrome_.scroll_y));
-        executor.set_base_clip(0, content_y, static_cast<f32>(viewport_width_), content_h);
-        executor.set_image_data(page.images);
+        if (!paint_executor_)
+            return;
+        paint_executor_->set_offset(0, content_y - static_cast<f32>(chrome_.scroll_y));
+        paint_executor_->set_base_clip(0, content_y, static_cast<f32>(viewport_width_), content_h);
+        paint_executor_->set_image_data(page.images);
         renderer_->fill_rect(0, content_y, static_cast<f32>(viewport_width_), content_h, theme_.page_bg);
         renderer_->flush();
         if (page.display_list)
-            executor.execute(*page.display_list);
+            paint_executor_->execute(*page.display_list);
         renderer_->flush();
 
         // Text selection highlight

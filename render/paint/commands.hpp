@@ -44,6 +44,8 @@ namespace browser::render {
         std::vector<u8> canvas_pixels;
         u32 canvas_data_w = 0;
         u32 canvas_data_h = 0;
+        void *canvas_id = nullptr;  // owning Canvas2D* — stable cache key
+        u32 canvas_version = 0;     // R-P1: upload only when this advances
         std::vector<css::CSSFilterFunc> filters;
     };
 

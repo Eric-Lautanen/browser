@@ -1,15 +1,16 @@
 #pragma once
-#include "../../css/layout.hpp"
 #include "../../css/animation.hpp"
+#include "../../css/layout.hpp"
 #include "../../platform/window.hpp"
 #include "../../render/font/atlas.hpp"
+#include "../../render/paint_executor.hpp"
 #include "../../render/renderer.hpp"
 #include "../../render/texture.hpp"
 #include "../devtools.hpp"
 #include "../download_manager.hpp"
 #include "../find_bar.hpp"
-#include "../page_loader.hpp"
 #include "../history.hpp"
+#include "../page_loader.hpp"
 #include "../session.hpp"
 #include "../theme.hpp"
 
@@ -166,6 +167,10 @@ namespace browser {
         std::unique_ptr<render::Renderer> renderer_;
         std::unique_ptr<render::TextRenderer> text_renderer_;
         std::unique_ptr<render::FontManager> fm_;
+        // BR-P1: one executor for the whole session. Its GPU caches (images,
+        // gradients, canvases) persist across frames; only page swaps drop
+        // page-owned entries via invalidate_page_caches().
+        std::unique_ptr<render::PaintExecutor> paint_executor_;
         std::unique_ptr<PageLoader> page_loader_;
         ChromeUI chrome_;
         Theme theme_;

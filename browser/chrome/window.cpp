@@ -94,6 +94,8 @@ namespace browser {
         fm_ = std::make_unique<render::FontManager>();
         text_renderer_->initialize(fm_.get());
 
+        paint_executor_ = std::make_unique<render::PaintExecutor>(renderer_.get(), text_renderer_.get());
+
         page_loader_ = std::make_unique<PageLoader>(
             telemetry_.get(), settings_.get(), tracker_.get(), text_renderer_.get(), fm_.get());
         render::setup_canvas_bindings();

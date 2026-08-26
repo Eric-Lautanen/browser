@@ -39,7 +39,26 @@ namespace browser::render {
         void set_image_data(const std::unordered_map<std::string, std::shared_ptr<image::Image>> &images);
         void set_base_clip(f32 x, f32 y, f32 w, f32 h);
 
+        // BR-P1: the executor is persistent across frames so its GPU texture
+        // caches survive. Caches keyed by pointers owned by the CURRENT page
+        // (image buffers, canvases) must be dropped when that page dies —
+        // recycled addresses must never resolve to a stale texture.
+        void invalidate_page_caches();
+
+        // Observability for tests/diagnostics: the live cached texture for a
+        // canvas id, or nullptr when none (or no longer) cached.
+        const class Texture2D *cached_canvas_texture(void *canvas_id) const;
+
     private:
+        // R-P1: canvas textures are reused across frames via version-guarded
+        // upload; the pixel buffer address is never used as a cache key.
+        struct CanvasTextureEntry {
+            std::unique_ptr<class Texture2D> tex;
+            u32 version = 0;
+            u32 width = 0;
+            u32 height = 0;
+        };
+
         Renderer *renderer_;
         TextRenderer *text_renderer_;
         f32 offset_x_ = 0, offset_y_ = 0;
@@ -55,7 +74,7 @@ namespace browser::render {
         std::vector<f32> opacity_stack_;
         f32 current_opacity_ = 1.0f;
         std::unordered_map<uint64_t, std::unique_ptr<class Texture2D>> gradient_cache_;
-        std::unordered_map<void *, std::unique_ptr<class Texture2D>> canvas_cache_;
+        std::unordered_map<void *, CanvasTextureEntry> canvas_cache_;
         class Texture2D *get_or_create_gradient_texture(const css::CSSGradient &grad, f32 w, f32 h);
 
         // Filter state stack
