@@ -88,7 +88,12 @@ void Mesh2D::upload() {
 
     pgl::glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo_);
     GLsizeiptr ib_size = (GLsizeiptr)(indices_.size() * sizeof(u32));
-    if (ib_size > 0) {
+    // R-G2: grow like the VBO path. The old code allocated kBufferCapacity
+    // once and silently truncated anything past it (corrupt draws).
+    if (ib_size > (GLsizeiptr)kBufferCapacity) {
+        pgl::glBufferData(GL_ELEMENT_ARRAY_BUFFER, ib_size, nullptr, GL_DYNAMIC_DRAW);
+        pgl::glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, ib_size, indices_.data());
+    } else if (ib_size > 0) {
         if (first_init) {
             pgl::glBufferData(GL_ELEMENT_ARRAY_BUFFER, kBufferCapacity, nullptr, GL_DYNAMIC_DRAW);
         }

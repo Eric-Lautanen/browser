@@ -87,12 +87,15 @@ void main() {
 }
 )";
 
-// Single-pass Gaussian blur fragment shader
-constexpr const char* BLUR_FRAGMENT_SHADER = R"(
+// R-P2: separable Gaussian blur — one axis per pass (uBlurDir is (1,0) or
+// (0,1)). Two O(radius) passes replace the old O(radius²) single pass:
+// blur(500px) went from ~1,000,000 taps/pixel to 2×501.
+constexpr const char *BLUR_FRAGMENT_SHADER = R"(
 #version 330 core
 in vec2 vTexCoord;
 uniform sampler2D uBlurTexture;
 uniform float uBlurRadius;
+uniform vec2 uBlurDir;
 out vec4 FragColor;
 
 float gauss(float x, float sigma) {
@@ -101,21 +104,18 @@ float gauss(float x, float sigma) {
 
 void main() {
     vec2 texSize = textureSize(uBlurTexture, 0);
-    vec2 step = vec2(1.0 / texSize.x, 1.0 / texSize.y);
+    vec2 stepv = vec2(1.0 / texSize.x, 1.0 / texSize.y);
     float sigma = max(uBlurRadius / 2.0, 0.5);
     int radius = int(ceil(uBlurRadius));
     vec4 sum = vec4(0.0);
     float totalWeight = 0.0;
-    for (int dx = -radius; dx <= radius; dx++) {
-        for (int dy = -radius; dy <= radius; dy++) {
-            float w = gauss(float(dx), sigma) * gauss(float(dy), sigma);
-            vec2 offset = vec2(float(dx) * step.x, float(dy) * step.y);
-            sum += texture(uBlurTexture, vTexCoord + offset) * w;
-            totalWeight += w;
-        }
+    for (int i = -radius; i <= radius; i++) {
+        float w = gauss(float(i), sigma);
+        vec2 offset = vec2(float(i)) * stepv * uBlurDir;
+        sum += texture(uBlurTexture, vTexCoord + offset) * w;
+        totalWeight += w;
     }
     FragColor = sum / totalWeight;
 }
 )";
-
 }

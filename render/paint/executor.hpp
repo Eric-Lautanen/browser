@@ -15,20 +15,23 @@
 namespace browser::render {
 
     struct FilterFBOState {
-        std::unique_ptr<OffscreenTarget> fbo;
-        css::Rect element_rect;   // element rect in screen space (with offset applied)
+        // R-P3: the target is borrowed from the executor's pool (owned
+        // there), so it survives across frames instead of being destroyed
+        // and reallocated for every filtered element.
+        class OffscreenTarget *fbo_borrowed = nullptr;
+        css::Rect element_rect;  // element rect in screen space (with offset applied)
         f32 saved_offset_x = 0;
         f32 saved_offset_y = 0;
-        f32 blur_radius = 0;      // for blur filter
+        f32 blur_radius = 0;  // for blur filter
         bool has_drop_shadow = false;
-        f32 ds_offset_x = 0;      // drop-shadow horizontal offset
-        f32 ds_offset_y = 0;      // drop-shadow vertical offset
-        css::Color ds_color = {0, 0, 0, 255}; // drop-shadow color
+        f32 ds_offset_x = 0;                   // drop-shadow horizontal offset
+        f32 ds_offset_y = 0;                   // drop-shadow vertical offset
+        css::Color ds_color = {0, 0, 0, 255};  // drop-shadow color
     };
 
     struct FilterStackEntry {
         std::vector<css::CSSFilterFunc> filters;
-        FilterFBOState fbo_state;  // valid only if fbo_state.fbo != nullptr
+        FilterFBOState fbo_state;  // valid only if fbo_state.fbo_borrowed != nullptr
     };
 
     class PaintExecutor {
@@ -48,6 +51,9 @@ namespace browser::render {
         // Observability for tests/diagnostics: the live cached texture for a
         // canvas id, or nullptr when none (or no longer) cached.
         const class Texture2D *cached_canvas_texture(void *canvas_id) const;
+
+        // Observability for tests/diagnostics: number of pooled FBOs.
+        size_t pooled_fbo_count() const { return fbo_pool_.size(); }
 
     private:
         // R-P1: canvas textures are reused across frames via version-guarded
@@ -79,6 +85,9 @@ namespace browser::render {
 
         // Filter state stack
         std::vector<FilterStackEntry> filter_stack_;
+
+        // R-P3: pooled offscreen targets reused across frames and elements.
+        std::vector<std::unique_ptr<class OffscreenTarget>> fbo_pool_;
 
         void apply_clip_rect(const css::Rect &r);
         void transform_rect(f32 &x, f32 &y, f32 &w, f32 &h) const;

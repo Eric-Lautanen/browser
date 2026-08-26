@@ -100,8 +100,12 @@ using GLViewportFunc = void (APIENTRY*)(GLint, GLint, GLsizei, GLsizei);
 using GLActiveTextureFunc = void (APIENTRY*)(GLenum);
 using GLEnableFunc = void (APIENTRY*)(GLenum);
 using GLDisableFunc = void (APIENTRY*)(GLenum);
+using GLIsEnabledFunc = GLboolean(APIENTRY *)(GLenum);
+using GLGetErrorFunc = GLenum(APIENTRY *)(void);
+using GLGetIntegerVFunc = void(APIENTRY *)(GLenum, GLint *);
 using GLBlendFuncFunc = void (APIENTRY*)(GLenum, GLenum);
 using GLScissorFunc = void (APIENTRY*)(GLint, GLint, GLsizei, GLsizei);
+using GLUniform2fFunc = void(APIENTRY *)(GLint, GLfloat, GLfloat);
 
 // Framebuffer objects
 using GLGenFramebuffersFunc = void (APIENTRY*)(GLsizei, GLuint*);
@@ -178,6 +182,10 @@ extern GLEnableFunc glEnable;
 extern GLDisableFunc glDisable;
 extern GLBlendFuncFunc glBlendFunc;
 extern GLScissorFunc glScissor;
+extern GLIsEnabledFunc glIsEnabled;
+extern GLGetErrorFunc glGetError;
+extern GLGetIntegerVFunc glGetIntegerv;
+extern GLUniform2fFunc glUniform2f;
 
 // Framebuffer objects
 extern GLGenFramebuffersFunc glGenFramebuffers;

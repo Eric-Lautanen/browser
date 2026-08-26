@@ -59,8 +59,18 @@ namespace browser::render {
         void set_filter_uniforms(const std::vector<css::CSSFilterFunc> &filters);
         void clear_filter_uniforms();
 
-        // Post-process: draw a texture with Gaussian blur applied, optionally tinted
-        void draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius,
+        // Post-process: draw a texture with Gaussian blur applied, optionally
+        // tinted. R-P2: separable two-pass through a pooled scratch FBO;
+        // radius clamped to kMaxBlurRadius (64). R-G1: saves/restores scissor.
+        static constexpr f32 kMaxBlurRadius = 64.0f;
+        void draw_blurred_texture(f32 x,
+                                  f32 y,
+                                  f32 w,
+                                  f32 h,
+                                  u32 texture_id,
+                                  u32 src_w,
+                                  u32 src_h,
+                                  f32 blur_radius,
                                   const Color &tint = Color::WHITE);
 
         // FPS overlay
@@ -88,8 +98,16 @@ namespace browser::render {
         bool initialized_ = false;
         u32 current_texture_id_ = 0;
         bool textured_mode_ = false;
+        // R-G5: tracks which sampler-uniform state the shader program is
+        // actually in, so begin/end_textured can skip redundant rewrites.
+        enum class ShaderMode { Color, Tex, SDF };
+        ShaderMode shader_mode_ = ShaderMode::Color;
         bool needs_redraw_ = true;
         std::unique_ptr<IconAtlas> icon_atlas_;
+
+        // R-P3: pooled scratch targets for the two-pass blur (reuse by size).
+        class OffscreenTarget *obtain_blur_scratch(u32 w, u32 h);
+        std::vector<std::unique_ptr<class OffscreenTarget>> blur_scratch_pool_;
 
         // FPS overlay state
         bool fps_overlay_ = false;

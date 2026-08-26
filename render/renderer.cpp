@@ -1,12 +1,46 @@
 #include "renderer.hpp"
 
 #include "icons.hpp"
+#include "offscreen_target.hpp"
 #include "shaders.hpp"
 #include "texture.hpp"
 
 namespace browser::render {
 
     namespace pgl = browser::platform;
+
+    // R-P3: reuse-or-create a scratch FBO at least as large as requested.
+    // Filtered elements churn per frame; reallocating an FBO + texture for
+    // each one each frame hammers the driver's memory manager.
+    OffscreenTarget *Renderer::obtain_blur_scratch(u32 w, u32 h) {
+        OffscreenTarget *best = nullptr;
+        size_t best_idx = SIZE_MAX;
+        for (size_t i = 0; i < blur_scratch_pool_.size(); i++) {
+            auto &t = blur_scratch_pool_[i];
+            if (t->width() >= w && t->height() >= h) {
+                if (!best || (t->width() * t->height()) < (best->width() * best->height())) {
+                    best = t.get();
+                    best_idx = i;
+                }
+            }
+        }
+        if (best) {
+            // Round-robin: move to the back so concurrent-size requests don't
+            // thrash one target.
+            if (best_idx + 1 != blur_scratch_pool_.size()) {
+                auto owned = std::move(blur_scratch_pool_[best_idx]);
+                blur_scratch_pool_.erase(blur_scratch_pool_.begin() + static_cast<std::ptrdiff_t>(best_idx));
+                blur_scratch_pool_.push_back(std::move(owned));
+                return blur_scratch_pool_.back().get();
+            }
+            return blur_scratch_pool_.back().get();
+        }
+        auto t = std::make_unique<OffscreenTarget>();
+        if (t->create(w, h).is_err())
+            return nullptr;
+        blur_scratch_pool_.push_back(std::move(t));
+        return blur_scratch_pool_.back().get();
+    }
 
     const Color Color::RED = {1.0f, 0.0f, 0.0f, 1.0f};
     const Color Color::GREEN = {0.0f, 1.0f, 0.0f, 1.0f};
@@ -82,18 +116,9 @@ namespace browser::render {
     }
 
     void Renderer::end_frame() {
-        if (textured_mode_)
+        // R-G5: end_textured() is a no-op when already in color mode.
+        if (textured_mode_ || shader_mode_ != ShaderMode::Color)
             end_textured();
-        shader_->bind();
-        const auto &u = shader_->uniforms();
-        if (u.texture >= 0)
-            pgl::glUniform1i(u.texture, 0);
-        if (u.use_texture >= 0)
-            pgl::glUniform1i(u.use_texture, 0);
-        if (u.texture_is_rgba >= 0)
-            pgl::glUniform1i(u.texture_is_rgba, 0);
-        if (u.use_sdf >= 0)
-            pgl::glUniform1i(u.use_sdf, 0);
 
         if (fps_overlay_) {
             // Semi-transparent dark background in top-right corner
@@ -192,30 +217,43 @@ namespace browser::render {
     }
 
     void Renderer::begin_textured(Texture2D *texture) {
+        if (textured_mode_ && shader_mode_ == ShaderMode::Tex && current_texture_id_ == texture->id()) {
+            // R-G5: identical textured batch in flight — no state to rewrite.
+            return;
+        }
         flush();
         shader_->bind();
         const auto &u = shader_->uniforms();
-        if (u.use_texture >= 0)
-            pgl::glUniform1i(u.use_texture, 1);
-        if (u.texture_is_rgba >= 0)
-            pgl::glUniform1i(u.texture_is_rgba, texture->is_rgba() ? 1 : 0);
-        if (u.use_sdf >= 0)
-            pgl::glUniform1i(u.use_sdf, 0);
+        if (shader_mode_ != ShaderMode::Tex) {
+            if (u.use_texture >= 0)
+                pgl::glUniform1i(u.use_texture, 1);
+            if (u.texture_is_rgba >= 0)
+                pgl::glUniform1i(u.texture_is_rgba, texture->is_rgba() ? 1 : 0);
+            if (u.use_sdf >= 0)
+                pgl::glUniform1i(u.use_sdf, 0);
+            shader_mode_ = ShaderMode::Tex;
+        }
         texture->bind(0);
         current_texture_id_ = texture->id();
         textured_mode_ = true;
     }
 
     void Renderer::begin_textured_sdf(Texture2D *texture) {
+        if (textured_mode_ && shader_mode_ == ShaderMode::SDF && current_texture_id_ == texture->id()) {
+            return;  // R-G5
+        }
         flush();
         shader_->bind();
         const auto &u = shader_->uniforms();
-        if (u.use_texture >= 0)
-            pgl::glUniform1i(u.use_texture, 1);
-        if (u.texture_is_rgba >= 0)
-            pgl::glUniform1i(u.texture_is_rgba, 0);
-        if (u.use_sdf >= 0)
-            pgl::glUniform1i(u.use_sdf, 1);
+        if (shader_mode_ != ShaderMode::SDF) {
+            if (u.use_texture >= 0)
+                pgl::glUniform1i(u.use_texture, 1);
+            if (u.texture_is_rgba >= 0)
+                pgl::glUniform1i(u.texture_is_rgba, 0);
+            if (u.use_sdf >= 0)
+                pgl::glUniform1i(u.use_sdf, 1);
+            shader_mode_ = ShaderMode::SDF;
+        }
         texture->bind(0);
         current_texture_id_ = texture->id();
         textured_mode_ = true;
@@ -234,8 +272,10 @@ namespace browser::render {
             flush();
         textured_mode_ = false;
         current_texture_id_ = 0;
-        // Reset shader to non-textured mode so subsequent solid-color
-        // quads are not drawn with stale textured/SDF uniforms.
+        // R-G5: reset to non-textured only when the program is not already
+        // in color mode — repeated begin/end pairs wrote these every frame.
+        if (shader_mode_ == ShaderMode::Color)
+            return;
         shader_->bind();
         const auto &u = shader_->uniforms();
         if (u.use_texture >= 0)
@@ -244,6 +284,7 @@ namespace browser::render {
             pgl::glUniform1i(u.texture_is_rgba, 0);
         if (u.use_sdf >= 0)
             pgl::glUniform1i(u.use_sdf, 0);
+        shader_mode_ = ShaderMode::Color;
     }
 
     void Renderer::draw_icon(Icon icon, f32 x, f32 y, f32 size, const Color &color) {
@@ -261,19 +302,13 @@ namespace browser::render {
         height_ = height;
         pgl::glViewport(0, 0, (GLsizei)width, (GLsizei)height);
 
+        // R-G5: only the projection depends on the viewport; sampler uniforms
+        // are owned by the shader_mode_ cache (begin/end_textured).
         Mat4 proj = Mat4::ortho(0.0f, (f32)width, (f32)height, 0.0f);
         shader_->bind();
         const auto &u = shader_->uniforms();
         if (u.projection >= 0)
             pgl::glUniformMatrix4fv(u.projection, 1, GL_FALSE, proj.data);
-        if (u.texture >= 0)
-            pgl::glUniform1i(u.texture, 0);
-        if (u.use_texture >= 0)
-            pgl::glUniform1i(u.use_texture, 0);
-        if (u.texture_is_rgba >= 0)
-            pgl::glUniform1i(u.texture_is_rgba, 0);
-        if (u.use_sdf >= 0)
-            pgl::glUniform1i(u.use_sdf, 0);
     }
 
     void Renderer::set_filter_uniforms(const std::vector<css::CSSFilterFunc> &filters) {
@@ -368,10 +403,25 @@ namespace browser::render {
             pgl::glUniform1f(u.filter_opacity, 1.0f);
     }
 
-    void Renderer::draw_blurred_texture(f32 x, f32 y, f32 w, f32 h, u32 texture_id, f32 blur_radius,
-                                      const Color &tint) {
+    void Renderer::draw_blurred_texture(
+        f32 x, f32 y, f32 w, f32 h, u32 texture_id, u32 src_w, u32 src_h, f32 blur_radius, const Color &tint) {
         if (texture_id == 0)
             return;
+
+        // R-G1: save scissor state; this path temporarily disables clipping
+        // and restores it exactly, so no caller needs to know.
+        GLboolean scissor_was_enabled = pgl::glIsEnabled(GL_SCISSOR_TEST);
+        GLint saved_scissor[4] = {0, 0, 0, 0};
+        pgl::glGetIntegerv(GL_SCISSOR_BOX, saved_scissor);
+
+        auto restore_scissor = [&]() {
+            if (scissor_was_enabled) {
+                pgl::glEnable(GL_SCISSOR_TEST);
+                pgl::glScissor(saved_scissor[0], saved_scissor[1], saved_scissor[2], saved_scissor[3]);
+            } else {
+                pgl::glDisable(GL_SCISSOR_TEST);
+            }
+        };
 
         if (blur_radius <= 0.0f) {
             // No blur: draw directly with main shader as a textured quad with tint
@@ -393,35 +443,74 @@ namespace browser::render {
 
             // Reset to non-textured mode
             if (u.use_texture >= 0) pgl::glUniform1i(u.use_texture, 0);
+            shader_mode_ = ShaderMode::Color;
+            restore_scissor();
             return;
         }
 
-        if (!blur_shader_)
+        if (!blur_shader_) {
+            restore_scissor();
             return;
+        }
         flush();
 
-        blur_shader_->bind();
+        // R-P2: hard cap on blur radius â€” beyond ~64 px the two-pass kernel is
+        // already enormous and unbounded radii risk GPU TDR.
+        if (blur_radius > kMaxBlurRadius)
+            blur_radius = kMaxBlurRadius;
 
-        // Set projection (same ortho as main shader)
+        // R-P2: separable two-pass blur through a pooled scratch target.
+        if (src_w == 0 || src_h == 0) {
+            restore_scissor();
+            return;
+        }
+        OffscreenTarget *scratch = obtain_blur_scratch(src_w, src_h);
+        if (!scratch) {
+            restore_scissor();
+            return;
+        }
+
         Mat4 proj = Mat4::ortho(0.0f, (f32)width_, (f32)height_, 0.0f);
         i32 blur_proj = blur_shader_->get_uniform_location("uProjection");
-        if (blur_proj >= 0)
-            pgl::glUniformMatrix4fv(blur_proj, 1, GL_FALSE, proj.data);
+        i32 blur_dir = blur_shader_->get_uniform_location("uBlurDir");
 
-        // Set blur-specific uniforms
+        // Pass 1: horizontal blur into the scratch FBO at source resolution.
+        flush();
+        scratch->bind();
+        pgl::glViewport(0, 0, (GLsizei)src_w, (GLsizei)src_h);
+        blur_shader_->bind();
+        Mat4 scratch_proj = Mat4::ortho(0.0f, (f32)src_w, (f32)src_h, 0.0f);
+        if (blur_proj >= 0)
+            pgl::glUniformMatrix4fv(blur_proj, 1, GL_FALSE, scratch_proj.data);
         if (blur_uniform_texture_ >= 0)
             pgl::glUniform1i(blur_uniform_texture_, 0);
         if (blur_uniform_radius_ >= 0)
             pgl::glUniform1f(blur_uniform_radius_, blur_radius);
-
-        // Disable scissor during post-process draw (caller must restore)
+        if (blur_dir >= 0)
+            pgl::glUniform2f(blur_dir, 1.0f, 0.0f);
         pgl::glDisable(GL_SCISSOR_TEST);
-
-        // Bind source texture
         pgl::glActiveTexture(GL_TEXTURE0);
         pgl::glBindTexture(GL_TEXTURE_2D, texture_id);
 
-        // Draw quad with tint and flush immediately
+        batch_mesh_->clear();
+        batch_mesh_->add_quad_tex(0, 0, (f32)src_w, (f32)src_h, 1, 1, 1, 1, 0.0f, 0.0f, 1.0f, 1.0f);
+        batch_mesh_->upload();
+        batch_mesh_->draw();
+        batch_mesh_->clear();
+
+        // Pass 2: vertical blur from scratch onto the main framebuffer.
+        scratch->unbind();
+        pgl::glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        pgl::glViewport(0, 0, (GLsizei)width_, (GLsizei)height_);
+        blur_shader_->bind();
+        if (blur_proj >= 0)
+            pgl::glUniformMatrix4fv(blur_proj, 1, GL_FALSE, proj.data);
+        if (blur_dir >= 0)
+            pgl::glUniform2f(blur_dir, 0.0f, 1.0f);
+        pgl::glDisable(GL_SCISSOR_TEST);
+        pgl::glActiveTexture(GL_TEXTURE0);
+        pgl::glBindTexture(GL_TEXTURE_2D, scratch->texture_id());
+
         batch_mesh_->clear();
         batch_mesh_->add_quad_tex(x, y, w, h, tint.r, tint.g, tint.b, tint.a, 0.0f, 0.0f, 1.0f, 1.0f);
         batch_mesh_->upload();
@@ -435,6 +524,8 @@ namespace browser::render {
             pgl::glUniformMatrix4fv(u.projection, 1, GL_FALSE, proj.data);
         if (u.use_texture >= 0)
             pgl::glUniform1i(u.use_texture, 0);
+        shader_mode_ = ShaderMode::Color;
+        restore_scissor();
     }
 
 }  // namespace browser::render

@@ -90,8 +90,12 @@ GLActiveTextureFunc glActiveTexture = nullptr;
 // Blending / depth
 GLEnableFunc glEnable = nullptr;
 GLDisableFunc glDisable = nullptr;
+GLIsEnabledFunc glIsEnabled = nullptr;
+GLGetErrorFunc glGetError = nullptr;
+GLGetIntegerVFunc glGetIntegerv = nullptr;
 GLBlendFuncFunc glBlendFunc = nullptr;
 GLScissorFunc glScissor = nullptr;
+GLUniform2fFunc glUniform2f = nullptr;
 
 // Framebuffer objects
 GLGenFramebuffersFunc glGenFramebuffers = nullptr;
@@ -153,8 +157,12 @@ bool load_opengl_functions() {
     LOAD_GL_FUNC(glActiveTexture);
     LOAD_GL_FUNC(glEnable);
     LOAD_GL_FUNC(glDisable);
+    LOAD_GL_FUNC(glIsEnabled);
+    LOAD_GL_FUNC(glGetError);
+    LOAD_GL_FUNC(glGetIntegerv);
     LOAD_GL_FUNC(glBlendFunc);
     LOAD_GL_FUNC(glScissor);
+    LOAD_GL_FUNC(glUniform2f);
 
     LOAD_GL_FUNC(glGenFramebuffers);
     LOAD_GL_FUNC(glDeleteFramebuffers);

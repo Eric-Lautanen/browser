@@ -436,10 +436,14 @@ namespace browser::render {
                         }
                     }
 
+                    // R-P2: clamp blur so the (separable) kernel stays sane.
+                    if (max_blur > Renderer::kMaxBlurRadius)
+                        max_blur = Renderer::kMaxBlurRadius;
+
                     // Only create FBO if there isn't already one active
                     bool has_active_fbo = false;
                     for (auto &se : filter_stack_) {
-                        if (se.fbo_state.fbo) {
+                        if (se.fbo_state.fbo_borrowed) {
                             has_active_fbo = true;
                             break;
                         }
@@ -456,9 +460,26 @@ namespace browser::render {
                         u32 fbo_w = static_cast<u32>(fb_w);
                         u32 fbo_h = static_cast<u32>(fb_h);
 
-                        auto fbo = std::make_unique<OffscreenTarget>();
-                        if (fbo->create(fbo_w, fbo_h).is_ok()) {
-                            entry.fbo_state.fbo = std::move(fbo);
+                        // R-P3: take a pooled target that fits; allocate only
+                        // when none does. Targets live in the pool for the
+                        // executor's lifetime and are reused every frame.
+                        OffscreenTarget *fbo = nullptr;
+                        for (auto &t : fbo_pool_) {
+                            if (t->width() >= fbo_w && t->height() >= fbo_h) {
+                                fbo = t.get();
+                                break;
+                            }
+                        }
+                        if (!fbo) {
+                            auto fresh = std::make_unique<OffscreenTarget>();
+                            if (fresh->create(fbo_w, fbo_h).is_ok()) {
+                                fbo = fresh.get();
+                                fbo_pool_.push_back(std::move(fresh));
+                            }
+                        }
+
+                        if (fbo) {
+                            entry.fbo_state.fbo_borrowed = fbo;
                             entry.fbo_state.element_rect = cmd.rect;
                             entry.fbo_state.saved_offset_x = offset_x_;
                             entry.fbo_state.saved_offset_y = offset_y_;
@@ -468,8 +489,8 @@ namespace browser::render {
                             entry.fbo_state.ds_offset_y = ds_off_y;
                             entry.fbo_state.ds_color = ds_color;
 
-                            entry.fbo_state.fbo->bind();
-                            pgl::glViewport(0, 0, (GLsizei)fbo_w, (GLsizei)fbo_h);
+                            fbo->bind();
+                            pgl::glViewport(0, 0, (GLsizei)fbo->width(), (GLsizei)fbo->height());
                             pgl::glClearColor(0, 0, 0, 0);
                             pgl::glClear(GL_COLOR_BUFFER_BIT);
                             // Disable scissor while rendering to FBO; clips would use wrong viewport height
@@ -490,23 +511,18 @@ namespace browser::render {
                     if (!filter_stack_.empty()) {
                         auto &entry = filter_stack_.back();
 
-                        if (entry.fbo_state.fbo) {
+                        if (entry.fbo_state.fbo_borrowed) {
+                            OffscreenTarget *fbo = entry.fbo_state.fbo_borrowed;
+
                             // Unbind FBO, restore main framebuffer
-                            entry.fbo_state.fbo->unbind();
+                            fbo->unbind();
                             pgl::glViewport(0, 0, (GLsizei)renderer_->width(), (GLsizei)renderer_->height());
 
                             // Restore offset
                             offset_x_ = entry.fbo_state.saved_offset_x;
                             offset_y_ = entry.fbo_state.saved_offset_y;
-
-                            // Restore scissor based on current clip state
-                            if (!clip_stack_.empty()) {
-                                apply_clip_rect(clip_stack_.back());
-                            } else if (has_base_clip_) {
-                                apply_clip_rect(base_clip_);
-                            } else {
-                                pgl::glDisable(GL_SCISSOR_TEST);
-                            }
+                            // R-G1: draw_blurred_texture restores scissor itself;
+                            // the executor's clip state is untouched.
 
                             // Composite FBO texture to main framebuffer
                             f32 ex = entry.fbo_state.element_rect.x + offset_x_;
@@ -514,7 +530,9 @@ namespace browser::render {
                             f32 ew = entry.fbo_state.element_rect.width;
                             f32 eh = entry.fbo_state.element_rect.height;
                             f32 pad = std::ceil(entry.fbo_state.blur_radius) * 2.0f;
-                            u32 tex_id = entry.fbo_state.fbo->texture_id();
+                            u32 tex_id = fbo->texture_id();
+                            u32 src_w = fbo->width();
+                            u32 src_h = fbo->height();
 
                             if (entry.fbo_state.has_drop_shadow) {
                                 // Shadow color tint
@@ -531,38 +549,33 @@ namespace browser::render {
                                     ew + pad,
                                     eh + pad,
                                     tex_id,
+                                    src_w,
+                                    src_h,
                                     entry.fbo_state.blur_radius > 0 ? entry.fbo_state.blur_radius : 0.0f,
                                     shadow_tint);
-                                // Re-apply scissor after draw
-                                if (!clip_stack_.empty()) {
-                                    apply_clip_rect(clip_stack_.back());
-                                } else if (has_base_clip_) {
-                                    apply_clip_rect(base_clip_);
-                                } else {
-                                    pgl::glDisable(GL_SCISSOR_TEST);
-                                }
                                 // Draw original unblurred on top (no tint = white = identity)
-                                renderer_->draw_blurred_texture(
-                                    ex - pad / 2.0f, ey - pad / 2.0f, ew + pad, eh + pad, tex_id, 0.0f, Color::WHITE);
+                                renderer_->draw_blurred_texture(ex - pad / 2.0f,
+                                                                ey - pad / 2.0f,
+                                                                ew + pad,
+                                                                eh + pad,
+                                                                tex_id,
+                                                                src_w,
+                                                                src_h,
+                                                                0.0f,
+                                                                Color::WHITE);
                             } else if (entry.fbo_state.blur_radius > 0.0f) {
                                 renderer_->draw_blurred_texture(ex - pad / 2.0f,
                                                                 ey - pad / 2.0f,
                                                                 ew + pad,
                                                                 eh + pad,
                                                                 tex_id,
+                                                                src_w,
+                                                                src_h,
                                                                 entry.fbo_state.blur_radius);
                             } else {
                                 // FBO with no blur and no drop-shadow: just draw as-is
                                 renderer_->draw_blurred_texture(
-                                    ex - pad / 2.0f, ey - pad / 2.0f, ew + pad, eh + pad, tex_id, 0.0f);
-                            }
-                            // Re-apply scissor after blur draw (which disables it internally)
-                            if (!clip_stack_.empty()) {
-                                apply_clip_rect(clip_stack_.back());
-                            } else if (has_base_clip_) {
-                                apply_clip_rect(base_clip_);
-                            } else {
-                                pgl::glDisable(GL_SCISSOR_TEST);
+                                    ex - pad / 2.0f, ey - pad / 2.0f, ew + pad, eh + pad, tex_id, src_w, src_h, 0.0f);
                             }
                         }
 

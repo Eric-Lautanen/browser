@@ -248,3 +248,122 @@ TEST(gpu_executor_page_invalidation_drops_caches, {
     ASSERT(fresh_tex != nullptr);
     window->set_should_close(true);
 })
+
+// ── R-P2 / R-P3 / R-G1: separable clamped blur + FBO pooling + scissor ──
+
+static render::PaintCommand make_filter_cmd(f32 blur_radius) {
+    render::PaintCommand cmd;
+    cmd.type = render::PaintCommand::Type::PUSH_FILTER;
+    cmd.rect = {10, 10, 100, 80};
+    css::CSSFilterFunc f;
+    f.type = css::CSSFilterFunc::Type::BLUR;
+    f.length_param.value = blur_radius;
+    f.length_param.unit = css::Length::Unit::PX;
+    cmd.filters.push_back(f);
+    return cmd;
+}
+
+static render::DisplayList make_blur_frame(void *canvas_id, f32 blur_radius) {
+    render::DisplayList list;
+    list.push(make_filter_cmd(blur_radius));
+    list.push(make_canvas_cmd(canvas_id, 1, 200, 200, 200));
+    render::PaintCommand pop;
+    pop.type = render::PaintCommand::Type::POP_FILTER;
+    list.push(pop);
+    return list;
+}
+
+TEST(gpu_blur_huge_radius_clamped_and_safe, {
+    auto result = platform::Window::create_window("GPU Smoketest", 320, 240);
+    if (result.is_err())
+        return true;
+    auto &window = result.unwrap();
+    window->make_context_current();
+    platform::load_opengl_functions();
+    auto renderer = std::make_unique<render::Renderer>();
+    ASSERT(renderer->initialize(320, 240).is_ok());
+
+    // blur(500px) used to compile to a single-pass O(radius^2) kernel:
+    // ~1,000,000 taps per pixel -> driver reset territory. It must now run
+    // as two O(radius<=64) passes without hanging or crashing.
+    int dummy_canvas = 0;
+    render::PaintExecutor exec(renderer.get(), nullptr);
+    auto list = make_blur_frame(&dummy_canvas, 500.0f);
+
+    renderer->begin_frame();
+    exec.execute(list);
+    renderer->end_frame();
+    window->swap_buffers();
+    window->set_should_close(true);
+})
+
+TEST(gpu_filter_fbos_are_pooled_across_frames, {
+    auto result = platform::Window::create_window("GPU Smoketest", 320, 240);
+    if (result.is_err())
+        return true;
+    auto &window = result.unwrap();
+    window->make_context_current();
+    platform::load_opengl_functions();
+    auto renderer = std::make_unique<render::Renderer>();
+    ASSERT(renderer->initialize(320, 240).is_ok());
+
+    int dummy_canvas = 0;
+    render::PaintExecutor exec(renderer.get(), nullptr);
+
+    for (int frame = 0; frame < 4; frame++) {
+        auto list = make_blur_frame(&dummy_canvas, 6.0f);
+        renderer->begin_frame();
+        exec.execute(list);
+        renderer->end_frame();
+        // The pooled target must be returned and reused — never re-allocated
+        // per filtered element per frame (old behavior churned one FBO per
+        // PUSH_FILTER).
+        ASSERT(exec.pooled_fbo_count() == 1);
+    }
+    window->set_should_close(true);
+})
+
+TEST(gpu_draw_blurred_texture_restores_scissor, {
+    auto result = platform::Window::create_window("GPU Smoketest", 320, 240);
+    if (result.is_err())
+        return true;
+    auto &window = result.unwrap();
+    window->make_context_current();
+    platform::load_opengl_functions();
+    auto renderer = std::make_unique<render::Renderer>();
+    ASSERT(renderer->initialize(320, 240).is_ok());
+    if (!renderer->width())
+        return true;
+
+    namespace pgl = browser::platform;
+
+    // Enable a distinctive scissor box; the blur path disables scissor
+    // internally and must restore it exactly (old code: "caller must restore").
+    pgl::glEnable(GL_SCISSOR_TEST);
+    pgl::glScissor(11, 22, 33, 44);
+
+    u32 tex = 0;
+    pgl::glGenTextures(1, &tex);
+    pgl::glBindTexture(GL_TEXTURE_2D, tex);
+    u8 px[4] = {255, 255, 255, 255};
+    pgl::glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, px);
+
+    renderer->begin_frame();
+    renderer->draw_blurred_texture(10, 10, 50, 50, tex, 1, 1, 8.0f);
+    renderer->end_frame();
+
+    GLint box[4] = {0, 0, 0, 0};
+    pgl::glGetIntegerv(GL_SCISSOR_BOX, box);
+    ASSERT(box[0] == 11 && box[1] == 22 && box[2] == 33 && box[3] == 44);
+    ASSERT(pgl::glIsEnabled(GL_SCISSOR_TEST) != 0);
+
+    // Also verify the disabled case stays disabled.
+    pgl::glDisable(GL_SCISSOR_TEST);
+    renderer->begin_frame();
+    renderer->draw_blurred_texture(10, 10, 50, 50, tex, 1, 1, 8.0f);
+    renderer->end_frame();
+    ASSERT(pgl::glIsEnabled(GL_SCISSOR_TEST) == 0);
+
+    pgl::glDeleteTextures(1, &tex);
+    window->set_should_close(true);
+})
