@@ -76,6 +76,8 @@ namespace browser::js {
         JSValue get(const std::string &name) const;
         JSValue get_property(const std::string &name) const;
         void set_property(const std::string &name, const JSValue &val);
+        // J-C6: removes an own property; returns whether it existed.
+        bool del_property(const std::string &name);
         void set(const std::string &name, const JSValue &val);
 
         // Helper: check if a value's prototype chain contains a given prototype

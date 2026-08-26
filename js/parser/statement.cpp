@@ -47,6 +47,9 @@ namespace browser::js {
             if (kw == "break") {
                 return parse_break();
             }
+            if (kw == "continue") {
+                return parse_continue();
+            }
             if (kw == "throw") {
                 return parse_throw();
             }
@@ -331,6 +334,30 @@ namespace browser::js {
         if (current_.type == TokenType::SEMICOLON) {
             advance();
         } else if (current_.type != TokenType::RBRACE && current_.type != TokenType::EOF_TOKEN) {
+        }
+
+        return std::make_unique<Stmt>(std::move(*stmt));
+    }
+
+    // ---------------------------------------------------------------------------
+    // Continue (J-C6)
+    // ---------------------------------------------------------------------------
+
+    std::unique_ptr<Stmt> Parser::parse_continue() {
+        auto stmt = std::make_unique<ContinueStmt>();
+        stmt->line = current_.line;
+        stmt->column = current_.column;
+        u32 continue_line = current_.line;
+        advance();  // consume 'continue'
+
+        // ASI: label must be on same line
+        if (current_.type == TokenType::IDENTIFIER && current_.line == continue_line) {
+            stmt->label = current_.text;
+            advance();
+        }
+
+        if (current_.type == TokenType::SEMICOLON) {
+            advance();
         }
 
         return std::make_unique<Stmt>(std::move(*stmt));

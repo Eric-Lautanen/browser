@@ -152,7 +152,12 @@ namespace browser::js {
         stack_.clear();
         frames_.clear();
         push(JSValue::undefined());
-        frames_.push_back({func, 0, 0, func->num_locals, 0, JSValue::undefined(), JSValue::undefined()});
+        CallFrame entry_frame;
+        entry_frame.function = func;
+        entry_frame.local_count = func->num_locals;
+        entry_frame.this_value = JSValue::undefined();
+        entry_frame.new_object = JSValue::undefined();
+        frames_.push_back(std::move(entry_frame));
         for (u32 i = 0; i < func->num_locals; i++) {
             push(JSValue::undefined());
         }
@@ -371,6 +376,12 @@ namespace browser::js {
                 case Opcode::SET_PROP_COMPUTED:
                     op_set_prop_computed();
                     break;
+                case Opcode::DELETE_PROP:
+                    op_delete_prop(std::get<std::string>(instr.operand));
+                    break;
+                case Opcode::DELETE_PROP_COMPUTED:
+                    op_delete_prop_computed();
+                    break;
                 case Opcode::NEW_ARRAY:
                     op_new_array(std::get<u32>(instr.operand));
                     break;
@@ -411,13 +422,15 @@ namespace browser::js {
                     op_throw();
                     break;
                 case Opcode::TRY: {
-                    frames_.back().try_catch_ip = std::get<u32>(instr.operand);
+                    // J-C3: push onto the per-frame handler stack.
+                    frames_.back().handlers.push_back(std::get<u32>(instr.operand));
                     break;
                 }
                 case Opcode::CATCH:
                     break;
                 case Opcode::END_TRY: {
-                    frames_.back().try_catch_ip = 0;
+                    if (!frames_.back().handlers.empty())
+                        frames_.back().handlers.pop_back();
                     break;
                 }
                 case Opcode::YIELD:

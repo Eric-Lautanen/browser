@@ -27,6 +27,8 @@ namespace browser::js {
             compile_arrow(*arrow);
         } else if (auto *tpl = std::get_if<TemplateExpr>(&expr)) {
             compile_template(*tpl);
+        } else if (auto *cond = std::get_if<ConditionalExpr>(&expr)) {
+            compile_conditional(*cond);
         }
     }
 
@@ -176,6 +178,54 @@ namespace browser::js {
             compile_inc_dec(un);
             return;
         }
+        // J-C6: keyword unary operators are distinguished by op_name.
+        if (un.op == TokenType::IDENTIFIER && !un.op_name.empty()) {
+            if (un.op_name == "typeof") {
+                compile_expr(*un.argument);
+                current_->emit(Opcode::TYPEOF);
+                return;
+            }
+            if (un.op_name == "void") {
+                compile_expr(*un.argument);
+                current_->emit(Opcode::VOID);
+                return;
+            }
+            if (un.op_name == "delete") {
+                if (auto *mem = std::get_if<MemberExpr>(un.argument.get())) {
+                    if (!mem->computed) {
+                        compile_expr(*mem->object);
+                        if (auto *prop = std::get_if<IdentExpr>(mem->property.get())) {
+                            current_->emit(Opcode::DELETE_PROP, prop->name);
+                            return;
+                        }
+                        // Unreachable via the parser (non-computed properties
+                        // always hold IdentExpr), but stay safe: evaluate and
+                        // fall through to a plain true.
+                        current_->emit(Opcode::POP);
+                    } else {
+                        compile_expr(*mem->object);
+                        compile_expr(*mem->property);
+                        current_->emit(Opcode::DELETE_PROP_COMPUTED);
+                        return;
+                    }
+                } else {
+                    // Deleting an unqualified name or any other expression
+                    // evaluates it and yields true.
+                    compile_expr(*un.argument);
+                    current_->emit(Opcode::POP);
+                }
+                BytecodeFunction::Constant true_c;
+                true_c.type = BytecodeFunction::Constant::Type::BOOL;
+                true_c.boolean = true;
+                current_->emit(Opcode::PUSH_BOOL, add_constant(true_c));
+                return;
+            }
+            // Unknown keyword unary: treat as typeof of the argument to avoid
+            // silent stack imbalance (J-M8).
+            compile_expr(*un.argument);
+            current_->emit(Opcode::TYPEOF);
+            return;
+        }
         compile_expr(*un.argument);
         switch (un.op) {
             case TokenType::MINUS:
@@ -196,6 +246,17 @@ namespace browser::js {
             default:
                 break;
         }
+    }
+
+    void Compiler::compile_conditional(ConditionalExpr &cond) {
+        // J-C6: test ? consequent : alternate.
+        compile_expr(*cond.test);
+        u32 else_jump = emit_jump(Opcode::JMP_IF_FALSE);
+        compile_expr(*cond.consequent);
+        u32 end_jump = emit_jump(Opcode::JMP);
+        patch_jump(else_jump);
+        compile_expr(*cond.alternate);
+        patch_jump(end_jump);
     }
 
     void Compiler::compile_inc_dec(UnaryExpr &un) {

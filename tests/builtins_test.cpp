@@ -127,6 +127,198 @@ TEST(constructor_instance_survives_gc_during_construction, {
 })
 
 // ---------------------------------------------------------------------------
+// J-C7: numbers format with shortest round-trip digits and JS exponent rules.
+// ---------------------------------------------------------------------------
+
+TEST(number_formatting_shortest_round_trip, {
+    BuiltinFixture f;
+    // std::to_string produced "0.300000" (six fixed decimals).
+    JSValue t = f.eval("0.1 + 0.2 + '';");
+    ASSERT(t.type == JSValue::Type::STRING);
+    ASSERT(t.string_val == "0.30000000000000004");
+
+    JSValue one = f.eval("var n1 = 1; n1 + '';");
+    ASSERT(one.type == JSValue::Type::STRING);
+    ASSERT(one.string_val == "1");
+
+    JSValue half = f.eval("2.5 + '';");
+    ASSERT(half.string_val == "2.5");
+})
+
+TEST(number_formatting_exponent_thresholds, {
+    BuiltinFixture f;
+    // >= 1e21 switches to exponential with explicit plus sign.
+    JSValue big = f.eval("1e21 + '';");
+    ASSERT(big.type == JSValue::Type::STRING);
+    ASSERT(big.string_val == "1e+21");
+    // < 1e-6 switches to exponential.
+    JSValue tiny = f.eval("0.0000001 + '';");
+    ASSERT(tiny.type == JSValue::Type::STRING);
+    ASSERT(tiny.string_val == "1e-7");
+    // Inside the band stays fixed.
+    JSValue mid = f.eval("0.000001 + '';");
+    ASSERT(mid.type == JSValue::Type::STRING);
+    ASSERT(mid.string_val == "0.000001");
+})
+
+// ---------------------------------------------------------------------------
+// J-C6: void / delete / ternary / continue.
+// ---------------------------------------------------------------------------
+
+TEST(void_operator_yields_undefined_not_typeof_string, {
+    BuiltinFixture f;
+    // Previously `void 0` compiled to TYPEOF and produced the STRING "undefined".
+    JSValue t = f.eval("void 0;");
+    ASSERT(t.type == JSValue::Type::UNDEFINED);
+
+    JSValue t2 = f.eval("void (1 + 1);");
+    ASSERT(t2.type == JSValue::Type::UNDEFINED);
+})
+
+TEST(delete_removes_object_property, {
+    BuiltinFixture f;
+    // Before J-C6 `delete obj.x` evaluated typeof obj.x and deleted nothing.
+    JSValue r = f.eval(
+        "var obj = {a: 1, b: 2};"
+        "var gone = delete obj.a;"
+        "obj.a === undefined && obj.b === 2 && gone === true;");
+    ASSERT(r.type == JSValue::Type::BOOLEAN);
+    ASSERT(r.bool_val);
+})
+
+TEST(conditional_expression_selects_branch, {
+    BuiltinFixture f;
+    JSValue a = f.eval("true ? 'yes' : 'no';");
+    ASSERT(a.type == JSValue::Type::STRING);
+    ASSERT(a.string_val == "yes");
+
+    JSValue b = f.eval("0 ? 'yes' : 'no';");
+    ASSERT(b.type == JSValue::Type::STRING);
+    ASSERT(b.string_val == "no");
+})
+
+TEST(continue_skips_to_next_loop_iteration, {
+    BuiltinFixture f;
+    // continue had no keyword handling: the rest of the body fell through.
+    JSValue sum = f.eval(
+        "var total = 0;"
+        "for (var i = 0; i < 5; i = i + 1) {"
+        "  if (i % 2) { continue; }"
+        "  total = total + i;"
+        "}"
+        "total;");
+    ASSERT(sum.type == JSValue::Type::NUMBER);
+    ASSERT(sum.number_val == 6.0);  // 0 + 2 + 4
+})
+
+TEST(while_continue_retests_condition, {
+    BuiltinFixture f;
+    JSValue out = f.eval(
+        "var n = 5;"
+        "var seen = '';"
+        "while (n > 0) {"
+        "  n = n - 1;"
+        "  if (n === 2) { continue; }"
+        "  seen = n + seen;"
+        "}"
+        "seen;");
+    ASSERT(out.type == JSValue::Type::STRING);
+    // Prepends 4, 3, skips 2 via continue, then 1, 0.
+    ASSERT(out.string_val == "0134");
+})
+
+// ---------------------------------------------------------------------------
+// J-C3: nested try/catch uses a per-frame handler STACK; the old single
+// scalar was cleared by the inner END_TRY so a throw in the catch body
+// unwound the whole frame.
+// ---------------------------------------------------------------------------
+
+TEST(nested_try_catch_outer_handler_survives, {
+    BuiltinFixture f;
+    JSValue t = f.eval(
+        "var log = '';"
+        "try {"
+        "  try { throw 'inner'; } catch (e) { log = log + 'c1:' + e + ';'; throw 'outer'; }"
+        "} catch (e2) {"
+        "  log = log + 'c2:' + e2;"
+        "}"
+        "log;");
+    ASSERT(t.type == JSValue::Type::STRING);
+    ASSERT(t.string_val == "c1:inner;c2:outer");
+})
+
+TEST(throw_in_try_after_nested_catch_caught_by_outer, {
+    BuiltinFixture f;
+    JSValue t = f.eval(
+        "var ok = false;"
+        "try {"
+        "  try { throw 'x'; } catch (e) { ok = true; }"
+        "  throw 'late';"
+        "} catch (e) {"
+        "  ok = ok && e === 'late';"
+        "}"
+        "ok;");
+    ASSERT(t.type == JSValue::Type::BOOLEAN);
+    ASSERT(t.bool_val);
+})
+
+// ---------------------------------------------------------------------------
+// J-C4: finally semantics.
+// ---------------------------------------------------------------------------
+
+TEST(finally_runs_on_normal_completion, {
+    BuiltinFixture f;
+    JSValue t = f.eval(
+        "var log = '';"
+        "try { log = log + 'b'; } finally { log = log + 'f'; }"
+        "log;");
+    ASSERT(t.type == JSValue::Type::STRING);
+    ASSERT(t.string_val == "bf");
+})
+
+TEST(finally_runs_and_rethrows_when_no_handler, {
+    BuiltinFixture f;
+    // Previously `try{throw}finally{...}` swallowed the exception.
+    JSValue t = f.eval(
+        "var ran = false;"
+        "var caught = '';"
+        "try {"
+        "  try { throw 'boom'; } finally { ran = true; }"
+        "} catch (e) { caught = e; }"
+        "ran && caught === 'boom';");
+    ASSERT(t.type == JSValue::Type::BOOLEAN);
+    ASSERT(t.bool_val);
+})
+
+TEST(finally_runs_after_catch_handles_then_rethrows_catch_body_throw, {
+    BuiltinFixture f;
+    JSValue t = f.eval(
+        "var order = '';"
+        "var caught = '';"
+        "try {"
+        "  try {"
+        "    try { throw 'a'; } catch (e) { order = order + 'c;'; throw 'b'; }"
+        "  } finally { order = order + 'f;'; }"
+        "} catch (e2) { caught = e2; }"
+        "(order === 'c;f;' && caught === 'b') ? 1 : 0;");
+    ASSERT(t.type == JSValue::Type::NUMBER);
+    ASSERT(t.number_val == 1.0);
+})
+
+TEST(return_inside_try_still_runs_finally, {
+    BuiltinFixture f;
+    JSValue t = f.eval(
+        "function work() {"
+        "  try { return 'value'; } finally { log = log + 'f;'; }"
+        "}"
+        "var log = '';"
+        "var r = work();"
+        "log + '|' + r;");
+    ASSERT(t.type == JSValue::Type::STRING);
+    ASSERT(t.string_val == "f;|value");
+})
+
+// ---------------------------------------------------------------------------
 // Date
 // ---------------------------------------------------------------------------
 

@@ -1,6 +1,7 @@
 #include "gc.hpp"
 #include "vm.hpp"
 
+#include <charconv>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -11,16 +12,73 @@ namespace browser::js {
     // JSValue / JSObject methods
     // ---------------------------------------------------------------------------
 
+    // J-C7: shortest round-trip formatting per the ECMAScript number-to-string
+    // algorithm. std::to_string produced fixed six decimals (0.1+0.2 printed
+    // "0.300000"), losing precision and diverging from JS everywhere strings
+    // are built. std::to_chars yields the shortest representation that
+    // round-trips; we only normalize the exponent form to JS rules.
     static std::string format_number(f64 val) {
-        std::string s = std::to_string(val);
-        auto dot = s.find('.');
-        if (dot != std::string::npos) {
-            auto end = s.find_last_not_of('0');
-            if (end == dot)
-                end--;
-            s = s.substr(0, end + 1);
+        if (std::isnan(val))
+            return "NaN";
+        if (std::isinf(val))
+            return val > 0 ? "Infinity" : "-Infinity";
+        if (val == 0)
+            return "0";
+
+        char buf[64];
+        auto res = std::to_chars(buf, buf + sizeof(buf), val);
+        std::string s(buf, res.ptr);
+
+        const bool negative = !s.empty() && s[0] == '-';
+        const std::string body = negative ? s.substr(1) : s;
+
+        const std::size_t epos = body.find('e');
+        if (epos == std::string::npos) {
+            // Fixed notation: to_chars already emits the shortest digits.
+            return s;
         }
-        return s;
+
+        // Scientific: d[.ddd]e±X — decide between fixed and exponential using
+        // the JS thresholds. With n = exponent + 1 (digits before the point),
+        // the spec uses plain notation while -6 < n <= 21.
+        const std::string mantissa = body.substr(0, epos);
+        int exponent = std::atoi(body.c_str() + epos + 1);
+
+        std::string digits;
+        for (char ch : mantissa)
+            if (ch != '.')
+                digits += ch;
+        // Strip trailing zeros of the digit string (to_chars shouldn't emit
+        // them, but be defensive).
+        while (digits.size() > 1 && digits.back() == '0') digits.pop_back();
+
+        if (exponent >= -6 && exponent < 21) {
+            // Expand to plain decimal notation.
+            std::string out;
+            const int point = exponent + 1;  // digits before the decimal point
+            if (point <= 0) {
+                out = "0.";
+                out.append(static_cast<std::size_t>(-point), '0');
+                out += digits;
+            } else if (static_cast<std::size_t>(point) >= digits.size()) {
+                out = digits;
+                out.append(static_cast<std::size_t>(point) - digits.size(), '0');
+            } else {
+                out = digits.substr(0, static_cast<std::size_t>(point));
+                out += '.';
+                out += digits.substr(static_cast<std::size_t>(point));
+            }
+            return negative ? "-" + out : out;
+        }
+
+        // Exponential form with explicit sign and no leading zeros.
+        std::string out = digits.substr(0, 1);
+        if (digits.size() > 1)
+            out += "." + digits.substr(1);
+        out += "e";
+        out += exponent < 0 ? '-' : '+';
+        out += std::to_string(exponent < 0 ? -exponent : exponent);
+        return negative ? "-" + out : out;
     }
 
     bool JSValue::is_truthy() const {
@@ -132,6 +190,11 @@ namespace browser::js {
             }
         }
         properties[name] = val;
+    }
+
+    bool JSObject::del_property(const std::string &name) {
+        // J-C6: `delete obj.prop`.
+        return properties.erase(name) > 0;
     }
 
     void JSObject::set(const std::string &name, const JSValue &val) {
@@ -382,6 +445,23 @@ namespace browser::js {
         push(val);
     }
 
+    void VM::op_delete_prop(const std::string &prop) {
+        auto obj_val = pop();
+        bool removed = false;
+        if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val)
+            removed = obj_val.object_val->del_property(prop);
+        push(JSValue::boolean(removed));
+    }
+
+    void VM::op_delete_prop_computed() {
+        auto key_val = pop();
+        auto obj_val = pop();
+        bool removed = false;
+        if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val)
+            removed = obj_val.object_val->del_property(key_val.to_string());
+        push(JSValue::boolean(removed));
+    }
+
     void VM::op_typeof() {
         auto v = pop();
         switch (v.type) {
@@ -495,9 +575,10 @@ namespace browser::js {
         thrown_value_ = val;
         while (!frames_.empty()) {
             auto &f = frames_.back();
-            if (f.try_catch_ip > 0) {
-                f.ip = f.try_catch_ip;
-                f.try_catch_ip = 0;
+            // J-C3: unwind to the innermost active handler across frames.
+            if (!f.handlers.empty()) {
+                f.ip = f.handlers.back();
+                f.handlers.pop_back();
                 push(val);
                 thrown_value_ = JSValue::undefined();
                 break;

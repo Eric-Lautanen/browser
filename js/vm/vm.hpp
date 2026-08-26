@@ -20,7 +20,9 @@ namespace browser::js {
         u32 ip = 0;
         u32 base = 0;
         u32 local_count = 0;
-        u32 try_catch_ip = 0;
+        // J-C3: stack of active handler IPs. Nested TRY blocks in one frame
+        // previously clobbered the single scalar, losing the outer handler.
+        std::vector<u32> handlers;
         JSValue this_value;
         JSValue new_object;
     };
@@ -117,6 +119,8 @@ namespace browser::js {
         void op_get_prop_computed();
         void op_set_prop(const std::string &prop);
         void op_set_prop_computed();
+        void op_delete_prop(const std::string &prop);
+        void op_delete_prop_computed();
         void op_typeof();
         void op_instanceof();
         void op_negate();

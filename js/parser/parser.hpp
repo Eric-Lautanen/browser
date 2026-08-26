@@ -31,6 +31,7 @@ namespace browser::js {
         std::unique_ptr<Stmt> parse_block();
         std::unique_ptr<Stmt> parse_return();
         std::unique_ptr<Stmt> parse_break();
+        std::unique_ptr<Stmt> parse_continue();
         std::unique_ptr<Stmt> parse_throw();
         std::unique_ptr<Stmt> parse_try();
         std::unique_ptr<Stmt> parse_for();

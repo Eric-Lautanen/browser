@@ -81,6 +81,30 @@ namespace browser::js {
 
         left = parse_binary_rhs(std::move(left), min_precedence);
 
+        // J-C6: conditional (ternary) operator. Sits just above assignment in
+        // precedence; branches are parsed permissively so nested conditionals
+        // associate right (a ? b : c ? d : e === a ? b : (c ? d : e)).
+        if (min_precedence <= 2 && current_.type == TokenType::QUESTION) {
+            u32 cond_line = current_.line;
+            advance();
+            auto cond = std::make_unique<ConditionalExpr>();
+            cond->line = cond_line;
+            cond->test = std::move(left);
+            cond->consequent = parse_expression(0);
+            if (!cond->consequent)
+                return nullptr;
+            if (current_.type == TokenType::COLON) {
+                advance();
+            } else {
+                error("expected ':' in conditional expression");
+                return nullptr;
+            }
+            cond->alternate = parse_expression(0);
+            if (!cond->alternate)
+                return nullptr;
+            left = std::make_unique<Expr>(std::move(*cond));
+        }
+
         return left;
     }
 
@@ -469,11 +493,14 @@ namespace browser::js {
                     }
 
                     // Single element inside parens
+                    bool closed_group = false;
                     if (current_.type == TokenType::RPAREN) {
                         advance();
                         if (current_.type == TokenType::ARROW) {
                             advance();
                             is_arrow = true;
+                        } else {
+                            closed_group = true;
                         }
                     }
 
@@ -488,14 +515,39 @@ namespace browser::js {
                         return std::make_unique<Expr>(std::move(*arrow));
                     }
 
-                    // Not an arrow — convert param back to identifier expression for grouping
-                    if (first_param && std::holds_alternative<IdentPattern>(*first_param)) {
+                    // Not an arrow. A closed group holding a lone identifier is
+                    // a plain grouping expression: "(a)".
+                    if (closed_group && first_param && std::holds_alternative<IdentPattern>(*first_param)) {
                         auto &ip = std::get<IdentPattern>(*first_param);
                         auto ident = std::make_unique<IdentExpr>();
                         ident->line = ip.line;
                         ident->column = ip.column;
                         ident->name = ip.name;
                         return std::make_unique<Expr>(std::move(*ident));
+                    }
+
+                    // An unclosed group whose identifier starts a full
+                    // expression ("(a === 1)", "(a.b)", "(a + b)"): continue
+                    // parsing postfix/binary operators, then require ')'.
+                    if (!closed_group && first_param && std::holds_alternative<IdentPattern>(*first_param)) {
+                        auto &ip = std::get<IdentPattern>(*first_param);
+                        auto ident = std::make_unique<IdentExpr>();
+                        ident->line = ip.line;
+                        ident->column = ip.column;
+                        ident->name = ip.name;
+                        auto left = std::make_unique<Expr>(std::move(*ident));
+                        left = parse_postfix_expr(std::move(left));
+                        if (!left)
+                            return nullptr;
+                        left = parse_binary_rhs(std::move(left), 0);
+                        if (!left)
+                            return nullptr;
+                        if (current_.type == TokenType::RPAREN) {
+                            advance();
+                            return left;
+                        }
+                        error("expected ')' after parenthesized expression");
+                        return nullptr;
                     }
                     if (first_param && std::holds_alternative<ObjPattern>(*first_param)) {
                         // ({a, b}) creates an object literal expression from the pattern
@@ -527,13 +579,17 @@ namespace browser::js {
                 return nullptr;
             }
             case TokenType::IDENTIFIER: {
-                // Keyword-unary operators: typeof, void, delete
+                // Keyword-unary operators: typeof, void, delete.
+                // J-C6: the keyword text is recorded so the compiler emits the
+                // right operation (previously all three compiled to typeof).
                 if (current_.text == "typeof" || current_.text == "void" || current_.text == "delete") {
+                    std::string kw = current_.text;
                     advance();
                     auto unary = std::make_unique<UnaryExpr>();
                     unary->line = line;
                     unary->column = col;
                     unary->op = TokenType::IDENTIFIER;
+                    unary->op_name = kw;
                     unary->prefix = true;
                     unary->argument = parse_expression(13);
                     if (!unary->argument)

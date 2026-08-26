@@ -20,7 +20,22 @@ namespace browser::js {
         bool at_top_level_ = true;
         std::vector<std::unordered_map<std::string, u32>> scope_stack_;
         std::vector<std::vector<u32>> break_jumps_;
+        // J-C6: pending continue jumps per loop; patched to the loop's update
+        // (for) or restart (while) position once the body is compiled.
+        std::vector<std::vector<u32>> continue_jumps_;
         std::vector<u32> continue_targets_;
+        // J-C4: finalizer depth captured when each loop opens, so break /
+        // continue only unwind fins enclosed by that loop.
+        std::vector<size_t> break_fin_depth_;
+        std::vector<size_t> continue_fin_depth_;
+
+        // Enclosing try/finally blocks; return/break/continue tunnel through
+        // their bodies (re-emitted inline) before completing.
+        struct ActiveFinalizer {
+            Stmt *stmt;
+            u32 value_slot;  // temp local carrying a return value across the fin
+        };
+        std::vector<ActiveFinalizer> active_finalizers_;
 
         void compile_stmt(Stmt &stmt);
         void compile_expr(Expr &expr);
@@ -41,6 +56,7 @@ namespace browser::js {
         void compile_while(WhileStmt &while_stmt);
         void compile_for(ForStmt &for_stmt);
         void compile_try(TryStmt &trys);
+        void compile_conditional(ConditionalExpr &cond);
         u32 resolve_local(const std::string &name);
         u32 allocate_local(const std::string &name);
         u32 add_constant(const BytecodeFunction::Constant &c);
