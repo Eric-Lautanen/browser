@@ -25,10 +25,24 @@ namespace browser::js::dom_bindings {
         net::http::Headers requestHeaders;
         net::http::Headers responseHeaders;
         bool aborted = false;
-        JSValue onreadystatechange;
+        // J-M4: the handler lives as a GC-traced hidden property on the
+        // wrapper object instead of an unrooted JSValue in this heap struct.
+        JSObject *self = nullptr;
         VM *vm = nullptr;
         std::string page_url;
     };
+
+    static constexpr const char *kHandlerProp = "!onreadystatechange";
+
+    static void fire_state_change(XHRInstance *xhr) {
+        if (!xhr->self || !xhr->vm)
+            return;
+        JSValue handler = xhr->self->get(kHandlerProp);
+        if (handler.type == JSValue::Type::FUNCTION && handler.function_val) {
+            VM::NativeCallScope gc_guard(*xhr->vm);
+            xhr->vm->invoke(handler, {JSValue::object(xhr->self)});
+        }
+    }
 
     static JSValue xhr_open(const std::vector<JSValue> &args, void *context) {
         auto *xhr = static_cast<XHRInstance *>(context);
@@ -158,11 +172,7 @@ namespace browser::js::dom_bindings {
         if (resp_r.is_err()) {
             xhr->readyState = 4;
             xhr->status = 0;
-            if (xhr->onreadystatechange.type == JSValue::Type::FUNCTION && xhr->onreadystatechange.function_val &&
-                xhr->onreadystatechange.function_val->native_fn) {
-                xhr->onreadystatechange.function_val->native_fn({},
-                                                                xhr->onreadystatechange.function_val->native_context);
-            }
+            fire_state_change(xhr);
             return JSValue::undefined();
         }
         auto resp = resp_r.unwrap();
@@ -172,11 +182,7 @@ namespace browser::js::dom_bindings {
             if (!check_cors_xhr(xhr->page_url, resolved_url, resp, cors_error)) {
                 xhr->readyState = 4;
                 xhr->status = 0;
-                if (xhr->onreadystatechange.type == JSValue::Type::FUNCTION && xhr->onreadystatechange.function_val &&
-                    xhr->onreadystatechange.function_val->native_fn) {
-                    xhr->onreadystatechange.function_val->native_fn(
-                        {}, xhr->onreadystatechange.function_val->native_context);
-                }
+                fire_state_change(xhr);
                 return JSValue::undefined();
             }
         }
@@ -189,10 +195,7 @@ namespace browser::js::dom_bindings {
             xhr->responseHeaders.set(hk, hv);
         }
 
-        if (xhr->onreadystatechange.type == JSValue::Type::FUNCTION && xhr->onreadystatechange.function_val &&
-            xhr->onreadystatechange.function_val->native_fn) {
-            xhr->onreadystatechange.function_val->native_fn({}, xhr->onreadystatechange.function_val->native_context);
-        }
+        fire_state_change(xhr);
         return JSValue::undefined();
     }
 
@@ -259,14 +262,16 @@ namespace browser::js::dom_bindings {
 
     static JSValue xhr_get_onreadystatechange(const std::vector<JSValue> &, void *context) {
         auto *xhr = static_cast<XHRInstance *>(context);
-        return xhr->onreadystatechange;
+        if (!xhr->self)
+            return JSValue::undefined();
+        return xhr->self->get(kHandlerProp);
     }
 
     static JSValue xhr_set_onreadystatechange(const std::vector<JSValue> &args, void *context) {
         auto *xhr = static_cast<XHRInstance *>(context);
-        if (args.size() < 2)
+        if (args.size() < 2 || !xhr->self)
             return JSValue::undefined();
-        xhr->onreadystatechange = args[1];
+        xhr->self->set(kHandlerProp, args[1]);
         return JSValue::undefined();
     }
 
@@ -276,10 +281,10 @@ namespace browser::js::dom_bindings {
         xhr->vm = ctx->vm;
         xhr->page_url = ctx->page_url;
         xhr->readyState = 0;
-        xhr->onreadystatechange = JSValue::undefined();
 
         auto *obj_gc = ctx->vm->heap()->alloc_object();
         auto &obj = obj_gc->obj;
+        xhr->self = &obj;
 
         obj.set("open", JSValue::function(ctx->vm->create_native_fn(xhr_open, false, xhr)));
         obj.set("send", JSValue::function(ctx->vm->create_native_fn(xhr_send, false, xhr)));

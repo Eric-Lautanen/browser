@@ -287,16 +287,47 @@ namespace browser::js {
         push(JSValue::boolean(a.to_number() >= b.to_number()));
     }
 
+    // J-C2: prototype for primitive receivers so "abc".trim(), (5).toFixed()
+    // and friends resolve through String/Number/Boolean.prototype.
+    JSValue VM::primitive_prototype_for(const JSValue &v) const {
+        const char *ctor_name = nullptr;
+        if (v.type == JSValue::Type::STRING)
+            ctor_name = "String";
+        else if (v.type == JSValue::Type::NUMBER)
+            ctor_name = "Number";
+        else if (v.type == JSValue::Type::BOOLEAN)
+            ctor_name = "Boolean";
+        if (!ctor_name)
+            return JSValue::undefined();
+        JSValue ctor = global_->obj.get(ctor_name);
+        if (ctor.type == JSValue::Type::FUNCTION && ctor.function_val &&
+            ctor.function_val->prototype_property.type == JSValue::Type::OBJECT)
+            return ctor.function_val->prototype_property;
+        return JSValue::undefined();
+    }
+
     void VM::op_get_prop(const std::string &prop) {
         auto obj_val = pop();
         if (obj_val.type == JSValue::Type::OBJECT && obj_val.object_val) {
             push(obj_val.object_val->get_property(prop));
         } else if (obj_val.type == JSValue::Type::FUNCTION && obj_val.function_val) {
-            // Statics like Date.now / Promise.resolve live on the function itself.
+            // Statics like Date.now / Promise.resolve live on the function
+            // itself; "prototype" resolves to the constructor's prototype.
             auto it = obj_val.function_val->properties.find(prop);
-            push(it != obj_val.function_val->properties.end() ? it->second : JSValue::undefined());
-        } else if (obj_val.type == JSValue::Type::STRING) {
-            push(JSValue::undefined());
+            if (it != obj_val.function_val->properties.end()) {
+                push(it->second);
+            } else if (prop == "prototype") {
+                push(obj_val.function_val->prototype_property);
+            } else {
+                push(JSValue::undefined());
+            }
+        } else if (obj_val.type == JSValue::Type::STRING || obj_val.type == JSValue::Type::NUMBER ||
+                   obj_val.type == JSValue::Type::BOOLEAN) {
+            JSValue proto = primitive_prototype_for(obj_val);
+            if (proto.type == JSValue::Type::OBJECT && proto.object_val)
+                push(proto.object_val->get_property(prop));
+            else
+                push(JSValue::undefined());
         } else {
             push(JSValue::undefined());
         }
@@ -309,7 +340,20 @@ namespace browser::js {
             push(obj_val.object_val->get_property(key_val.to_string()));
         } else if (obj_val.type == JSValue::Type::FUNCTION && obj_val.function_val) {
             auto it = obj_val.function_val->properties.find(key_val.to_string());
-            push(it != obj_val.function_val->properties.end() ? it->second : JSValue::undefined());
+            if (it != obj_val.function_val->properties.end()) {
+                push(it->second);
+            } else if (key_val.to_string() == "prototype") {
+                push(obj_val.function_val->prototype_property);
+            } else {
+                push(JSValue::undefined());
+            }
+        } else if (obj_val.type == JSValue::Type::STRING || obj_val.type == JSValue::Type::NUMBER ||
+                   obj_val.type == JSValue::Type::BOOLEAN) {
+            JSValue proto = primitive_prototype_for(obj_val);
+            if (proto.type == JSValue::Type::OBJECT && proto.object_val)
+                push(proto.object_val->get_property(key_val.to_string()));
+            else
+                push(JSValue::undefined());
         } else {
             push(JSValue::undefined());
         }
@@ -466,6 +510,15 @@ namespace browser::js {
 
     void VM::op_new_object() {
         auto *obj = heap_->alloc_object();
+        // J-C2: literals get the canonical Object.prototype. The "Object"
+        // global is registered as a plain object whose "prototype" property
+        // holds the shared prototype object.
+        JSValue ctor = global_->obj.get("Object");
+        JSValue proto;
+        if (ctor.type == JSValue::Type::OBJECT && ctor.object_val)
+            proto = ctor.object_val->get("prototype");
+        if (proto.type == JSValue::Type::OBJECT && proto.object_val)
+            obj->obj.prototype = proto;
         push(JSValue::object(&obj->obj));
     }
 
@@ -476,6 +529,11 @@ namespace browser::js {
         }
         auto *arr = heap_->alloc_object();
         arr->obj.is_array = true;
+        // J-C2: array literals get Array.prototype so [1,2].push() works.
+        JSValue ctor = global_->obj.get("Array");
+        if (ctor.type == JSValue::Type::FUNCTION && ctor.function_val &&
+            ctor.function_val->prototype_property.type == JSValue::Type::OBJECT)
+            arr->obj.prototype = ctor.function_val->prototype_property;
         u32 start = (u32)stack_.size() - count;
         for (u32 i = 0; i < count; i++) {
             arr->obj.array_elements.push_back(stack_[start + i]);
@@ -533,7 +591,7 @@ namespace browser::js {
         }
         JSValue callee;
         JSValue receiver_val;
-        auto fn_property = [](const JSValue &recv, const std::string &name) -> JSValue {
+        auto fn_property = [&](const JSValue &recv, const std::string &name) -> JSValue {
             if (recv.type == JSValue::Type::OBJECT && recv.object_val)
                 return recv.object_val->get_property(name);
             if (recv.type == JSValue::Type::FUNCTION && recv.function_val) {
@@ -541,6 +599,11 @@ namespace browser::js {
                 if (it != recv.function_val->properties.end())
                     return it->second;
             }
+            // J-C2: primitive receivers resolve methods via their wrapper
+            // prototype ("abc".trim(), (5).toFixed(2), true.toString()).
+            JSValue proto = primitive_prototype_for(recv);
+            if (proto.type == JSValue::Type::OBJECT && proto.object_val)
+                return proto.object_val->get_property(name);
             return JSValue::undefined();
         };
         auto resolve_method = [&]() {

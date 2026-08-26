@@ -78,14 +78,11 @@ void DOMBindings::fire_event(html::Node* node, const std::string& event_type, VM
         if (entry.type != event_type) continue;
         auto& handler = entry.handler;
         if (handler.type == JSValue::Type::FUNCTION && handler.function_val) {
-            auto* fn = handler.function_val;
-            if (fn->native_fn) {
-                fn->native_fn({}, fn->native_context);
-            } else if (fn->bytecode) {
-                auto saved = vm->save_state();
-                vm->execute(fn->bytecode);
-                vm->restore_state(std::move(saved));
-            }
+            // J-M5: dispatch through invoke() so bytecode handlers run in a
+            // contained call frame, and keep the GC suspended while we hold
+            // handler values only in C++ locals.
+            VM::NativeCallScope gc_guard(*vm);
+            vm->invoke(handler, {});
         }
     }
 }

@@ -40,6 +40,13 @@ namespace browser::js {
         roots.push_back(&global_root_);
         if (thrown_value_.type != JSValue::Type::UNDEFINED)
             roots.push_back(&thrown_value_);
+        // J-M1: constructor instances live only in frame slots until RETURN
+        // pushes them; without frame roots any allocation-triggered collection
+        // during the constructor body sweeps the object being constructed.
+        for (auto &f : frames_) {
+            roots.push_back(&f.this_value);
+            roots.push_back(&f.new_object);
+        }
         for (auto &provider : gc_root_providers_) {
             auto extra = provider();
             roots.insert(roots.end(), extra.begin(), extra.end());

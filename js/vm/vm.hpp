@@ -45,6 +45,8 @@ namespace browser::js {
         void add_gc_root_provider(std::function<std::vector<JSValue *>()> provider);
         JSFunction *create_native_fn(JSFunction::NativeFn fn, bool is_constructor = false, void *context = nullptr);
         JSValue add(const JSValue &a, const JSValue &b);
+        // J-C2: prototype carrying methods for primitive receivers.
+        JSValue primitive_prototype_for(const JSValue &v) const;
         // Calls a function value (native or bytecode) with the given arguments.
         // Usable from inside native functions (promise reactions, timer callbacks).
         // A throw inside the callee is contained: invoke returns undefined and

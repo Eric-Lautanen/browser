@@ -1,5 +1,7 @@
 #include "builtins.hpp"
 
+#include <cmath>
+
 namespace browser::js::builtins {
 
 struct ArrCtx { VM* vm; };
@@ -36,61 +38,57 @@ static JSValue arr_unshift(const std::vector<JSValue>& args, void*) {
     return JSValue::number(static_cast<f64>(el.size()));
 }
 
-static JSValue arr_for_each(const std::vector<JSValue>& args, void*) {
-    auto& el = elems(args[0]);
+static JSValue arr_for_each(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
+    // J-M6: snapshot elements; callbacks may mutate the receiver array and
+    // reallocate its storage out from under the loop.
+    const std::vector<JSValue> el = elems(args[0]);
     if (args.size() < 2) return JSValue::undefined();
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::undefined();
+    // J-C1: bytecode callbacks are invoked through VM::invoke.
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        if (callback.function_val->native_fn)
-            callback.function_val->native_fn(cb_args, callback.function_val->native_context);
+        ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
     }
     return JSValue::undefined();
 }
 
 static JSValue arr_map(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
-    auto& el = elems(args[0]);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
-    if (args.size() < 2) return JSValue::object(&result_gc->obj);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
+    if (args.size() < 2)
+        return result_val;
     JSValue callback = args[1];
-    if (callback.type != JSValue::Type::FUNCTION) return JSValue::object(&result_gc->obj);
+    if (callback.type != JSValue::Type::FUNCTION)
+        return result_val;
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        if (callback.function_val->native_fn)
-            result.push_back(callback.function_val->native_fn(cb_args, callback.function_val->native_context));
-        else
-            result.push_back(JSValue::undefined());
+        result.push_back(ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]));
     }
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 static JSValue arr_filter(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
-    auto& el = elems(args[0]);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
-    if (args.size() < 2) return JSValue::object(&result_gc->obj);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
+    if (args.size() < 2)
+        return result_val;
     JSValue callback = args[1];
-    if (callback.type != JSValue::Type::FUNCTION) return JSValue::object(&result_gc->obj);
+    if (callback.type != JSValue::Type::FUNCTION)
+        return result_val;
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        JSValue keep;
-        if (callback.function_val->native_fn)
-            keep = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
-        else
-            keep = JSValue::boolean(false);
+        JSValue keep = ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
         if (keep.is_truthy()) result.push_back(el[i]);
     }
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
-static JSValue arr_reduce(const std::vector<JSValue>& args, void*) {
-    auto& el = elems(args[0]);
+static JSValue arr_reduce(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
     if (args.size() < 2) return JSValue::undefined();
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::undefined();
@@ -107,15 +105,14 @@ static JSValue arr_reduce(const std::vector<JSValue>& args, void*) {
         return JSValue::undefined();
     }
     for (u32 i = start; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], acc, el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        if (callback.function_val->native_fn)
-            acc = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
+        acc = ctx->vm->invoke(callback, {acc, el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
     }
     return acc;
 }
 
-static JSValue arr_reduce_right(const std::vector<JSValue>& args, void*) {
-    auto& el = elems(args[0]);
+static JSValue arr_reduce_right(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
     if (args.size() < 2) return JSValue::undefined();
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::undefined();
@@ -132,77 +129,60 @@ static JSValue arr_reduce_right(const std::vector<JSValue>& args, void*) {
         return JSValue::undefined();
     }
     for (i32 i = start; i >= 0; i--) {
-        std::vector<JSValue> cb_args = {args[0], acc, el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        if (callback.function_val->native_fn)
-            acc = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
+        acc = ctx->vm->invoke(callback, {acc, el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
     }
     return acc;
 }
 
-static JSValue arr_find(const std::vector<JSValue>& args, void*) {
-    auto& el = elems(args[0]);
+static JSValue arr_find(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
     if (args.size() < 2) return JSValue::undefined();
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::undefined();
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        JSValue found;
-        if (callback.function_val->native_fn)
-            found = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
-        else
-            found = JSValue::boolean(false);
+        JSValue found = ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
         if (found.is_truthy()) return el[i];
     }
     return JSValue::undefined();
 }
 
-static JSValue arr_find_index(const std::vector<JSValue>& args, void*) {
-    auto& el = elems(args[0]);
+static JSValue arr_find_index(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
     if (args.size() < 2) return JSValue::number(-1);
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::number(-1);
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        JSValue found;
-        if (callback.function_val->native_fn)
-            found = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
-        else
-            found = JSValue::boolean(false);
+        JSValue found = ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
         if (found.is_truthy()) return JSValue::number(static_cast<f64>(i));
     }
     return JSValue::number(-1);
 }
 
-static JSValue arr_some(const std::vector<JSValue>& args, void*) {
-    auto& el = elems(args[0]);
+static JSValue arr_some(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
     if (args.size() < 2) return JSValue::boolean(false);
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::boolean(false);
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        JSValue found;
-        if (callback.function_val->native_fn)
-            found = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
-        else
-            found = JSValue::boolean(false);
+        JSValue found = ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
         if (found.is_truthy()) return JSValue::boolean(true);
     }
     return JSValue::boolean(false);
 }
 
-static JSValue arr_every(const std::vector<JSValue>& args, void*) {
-    auto& el = elems(args[0]);
+static JSValue arr_every(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
     if (args.size() < 2) return JSValue::boolean(true);
     JSValue callback = args[1];
     if (callback.type != JSValue::Type::FUNCTION) return JSValue::boolean(true);
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        JSValue found;
-        if (callback.function_val->native_fn)
-            found = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
-        else
-            found = JSValue::boolean(true);
-        if (!found.is_truthy()) return JSValue::boolean(false);
+        JSValue ok = ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
+        if (!ok.is_truthy())
+            return JSValue::boolean(false);
     }
     return JSValue::boolean(true);
 }
@@ -273,9 +253,8 @@ static JSValue arr_splice_fn(const std::vector<JSValue>& args, void* context) {
     u32 dc = args.size() > 2 ? static_cast<u32>(std::max(0, get_int_arg(args, 2))) : static_cast<u32>(el.size());
     std::vector<JSValue> items;
     for (u32 i = 3; i < args.size(); i++) items.push_back(args[i]);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
     if (start < 0) start = std::max(0, static_cast<i32>(el.size()) + start);
     if (start > static_cast<i32>(el.size())) start = static_cast<i32>(el.size());
     u32 ustart = static_cast<u32>(start);
@@ -284,15 +263,14 @@ static JSValue arr_splice_fn(const std::vector<JSValue>& args, void* context) {
     auto it = el.begin() + ustart;
     el.erase(it, it + dc_clamped);
     el.insert(el.begin() + ustart, items.begin(), items.end());
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 static JSValue arr_slice(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
     auto& el = elems(args[0]);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
     i32 start = get_int_arg(args, 1, 0);
     i32 end_val = args.size() > 2 ? get_int_arg(args, 2) : static_cast<i32>(el.size());
     i32 len = static_cast<i32>(el.size());
@@ -300,7 +278,7 @@ static JSValue arr_slice(const std::vector<JSValue>& args, void* context) {
     if (end_val < 0) end_val = std::max(0, len + end_val);
     if (end_val > len) end_val = len;
     for (i32 i = start; i < end_val && i < len; i++) result.push_back(el[i]);
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 static JSValue arr_join(const std::vector<JSValue>& args, void*) {
@@ -317,9 +295,8 @@ static JSValue arr_join(const std::vector<JSValue>& args, void*) {
 static JSValue arr_concat(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
     auto& el = elems(args[0]);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
     result.insert(result.end(), el.begin(), el.end());
     for (u32 i = 1; i < args.size(); i++) {
         if (is_array(args[i])) {
@@ -329,7 +306,7 @@ static JSValue arr_concat(const std::vector<JSValue>& args, void* context) {
             result.push_back(args[i]);
         }
     }
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 static JSValue arr_reverse(const std::vector<JSValue>& args, void*) {
@@ -338,14 +315,19 @@ static JSValue arr_reverse(const std::vector<JSValue>& args, void*) {
     return args[0];
 }
 
-static JSValue arr_sort(const std::vector<JSValue>& args, void*) {
+static JSValue arr_sort(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<ArrCtx *>(context);
     auto& el = elems(args[0]);
     JSValue cmp_fn = args.size() > 1 ? args[1] : JSValue::undefined();
-    if (cmp_fn.type == JSValue::Type::FUNCTION && cmp_fn.function_val->native_fn) {
-        std::sort(el.begin(), el.end(), [&](const JSValue& a, const JSValue& b) {
-            std::vector<JSValue> cb_args = {args[0], a, b};
-            JSValue r = cmp_fn.function_val->native_fn(cb_args, cmp_fn.function_val->native_context);
-            return r.to_number() < 0;
+    if (cmp_fn.type == JSValue::Type::FUNCTION) {
+        // J-C9: sanitize comparator results to avoid inconsistent strict-weak
+        // ordering (NaN returns previously caused UB in std::sort).
+        std::sort(el.begin(), el.end(), [&](const JSValue &a, const JSValue &b) {
+            JSValue r = ctx->vm->invoke(cmp_fn, {a, b}, args[0]);
+            f64 n = r.to_number();
+            if (std::isnan(n))
+                return false;
+            return n < 0;
         });
     } else {
         std::sort(el.begin(), el.end(), [](const JSValue& a, const JSValue& b) {
@@ -371,9 +353,8 @@ static JSValue arr_flat(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
     auto& el = elems(args[0]);
     i32 depth = get_int_arg(args, 1, 1);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
     std::function<void(const std::vector<JSValue>&, i32)> flatten = [&](const std::vector<JSValue>& src, i32 d) {
         for (auto& v : src) {
             if (d > 0 && is_array(v)) {
@@ -384,23 +365,21 @@ static JSValue arr_flat(const std::vector<JSValue>& args, void* context) {
         }
     };
     flatten(el, depth);
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 static JSValue arr_flat_map(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
-    auto& el = elems(args[0]);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
-    if (args.size() < 2) return JSValue::object(&result_gc->obj);
+    const std::vector<JSValue> el = elems(args[0]);  // J-M6: snapshot
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
+    if (args.size() < 2)
+        return result_val;
     JSValue callback = args[1];
-    if (callback.type != JSValue::Type::FUNCTION) return JSValue::object(&result_gc->obj);
+    if (callback.type != JSValue::Type::FUNCTION)
+        return result_val;
     for (u32 i = 0; i < el.size(); i++) {
-        std::vector<JSValue> cb_args = {args[0], el[i], JSValue::number(static_cast<f64>(i)), args[0]};
-        JSValue mapped;
-        if (callback.function_val->native_fn)
-            mapped = callback.function_val->native_fn(cb_args, callback.function_val->native_context);
+        JSValue mapped = ctx->vm->invoke(callback, {el[i], JSValue::number(static_cast<f64>(i)), args[0]}, args[0]);
         if (is_array(mapped)) {
             auto& mapped_el = get_array_elements(mapped);
             result.insert(result.end(), mapped_el.begin(), mapped_el.end());
@@ -408,7 +387,7 @@ static JSValue arr_flat_map(const std::vector<JSValue>& args, void* context) {
             result.push_back(mapped);
         }
     }
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 static JSValue arr_is_array(const std::vector<JSValue>& args, void*) {
@@ -417,33 +396,28 @@ static JSValue arr_is_array(const std::vector<JSValue>& args, void*) {
 
 static JSValue arr_from(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
     if (args.size() > 1 && is_array(args[1])) {
         auto& src = get_array_elements(args[1]);
-        if (args.size() > 2) {
+        if (args.size() > 2 && args[2].type == JSValue::Type::FUNCTION) {
             JSValue map_fn = args[2];
-            if (map_fn.type == JSValue::Type::FUNCTION && map_fn.function_val->native_fn) {
-                for (u32 i = 0; i < src.size(); i++) {
-                    std::vector<JSValue> cb_args = {args[0], src[i], JSValue::number(static_cast<f64>(i)), args[1]};
-                    result.push_back(map_fn.function_val->native_fn(cb_args, map_fn.function_val->native_context));
-                }
-                return JSValue::object(&result_gc->obj);
+            for (u32 i = 0; i < src.size(); i++) {
+                result.push_back(ctx->vm->invoke(map_fn, {src[i], JSValue::number(static_cast<f64>(i))}, args[0]));
             }
+            return result_val;
         }
         result = src;
     }
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 static JSValue arr_of(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<ArrCtx*>(context);
-    auto* result_gc = ctx->vm->heap()->alloc_object();
-    result_gc->obj.is_array = true;
-    auto& result = result_gc->obj.array_elements;
+    JSValue result_val = make_array_value(ctx->vm);
+    auto &result = result_val.object_val->array_elements;
     for (u32 i = 1; i < args.size(); i++) result.push_back(args[i]);
-    return JSValue::object(&result_gc->obj);
+    return result_val;
 }
 
 void register_array_prototype(VM* vm) {
@@ -454,15 +428,15 @@ void register_array_prototype(VM* vm) {
     set_prototype_method(&arr_proto->obj, "pop", make_fn(vm, arr_pop));
     set_prototype_method(&arr_proto->obj, "shift", make_fn(vm, arr_shift));
     set_prototype_method(&arr_proto->obj, "unshift", make_fn(vm, arr_unshift));
-    set_prototype_method(&arr_proto->obj, "forEach", make_fn(vm, arr_for_each));
+    set_prototype_method(&arr_proto->obj, "forEach", make_fn(vm, arr_for_each, false, ctx));
     set_prototype_method(&arr_proto->obj, "map", make_fn(vm, arr_map, false, ctx));
     set_prototype_method(&arr_proto->obj, "filter", make_fn(vm, arr_filter, false, ctx));
-    set_prototype_method(&arr_proto->obj, "reduce", make_fn(vm, arr_reduce));
-    set_prototype_method(&arr_proto->obj, "reduceRight", make_fn(vm, arr_reduce_right));
-    set_prototype_method(&arr_proto->obj, "find", make_fn(vm, arr_find));
-    set_prototype_method(&arr_proto->obj, "findIndex", make_fn(vm, arr_find_index));
-    set_prototype_method(&arr_proto->obj, "some", make_fn(vm, arr_some));
-    set_prototype_method(&arr_proto->obj, "every", make_fn(vm, arr_every));
+    set_prototype_method(&arr_proto->obj, "reduce", make_fn(vm, arr_reduce, false, ctx));
+    set_prototype_method(&arr_proto->obj, "reduceRight", make_fn(vm, arr_reduce_right, false, ctx));
+    set_prototype_method(&arr_proto->obj, "find", make_fn(vm, arr_find, false, ctx));
+    set_prototype_method(&arr_proto->obj, "findIndex", make_fn(vm, arr_find_index, false, ctx));
+    set_prototype_method(&arr_proto->obj, "some", make_fn(vm, arr_some, false, ctx));
+    set_prototype_method(&arr_proto->obj, "every", make_fn(vm, arr_every, false, ctx));
     set_prototype_method(&arr_proto->obj, "includes", make_fn(vm, arr_includes));
     set_prototype_method(&arr_proto->obj, "indexOf", make_fn(vm, arr_index_of));
     set_prototype_method(&arr_proto->obj, "lastIndexOf", make_fn(vm, arr_last_index_of));
@@ -471,7 +445,7 @@ void register_array_prototype(VM* vm) {
     set_prototype_method(&arr_proto->obj, "join", make_fn(vm, arr_join));
     set_prototype_method(&arr_proto->obj, "concat", make_fn(vm, arr_concat, false, ctx));
     set_prototype_method(&arr_proto->obj, "reverse", make_fn(vm, arr_reverse));
-    set_prototype_method(&arr_proto->obj, "sort", make_fn(vm, arr_sort));
+    set_prototype_method(&arr_proto->obj, "sort", make_fn(vm, arr_sort, false, ctx));
     set_prototype_method(&arr_proto->obj, "fill", make_fn(vm, arr_fill));
     set_prototype_method(&arr_proto->obj, "flat", make_fn(vm, arr_flat, false, ctx));
     set_prototype_method(&arr_proto->obj, "flatMap", make_fn(vm, arr_flat_map, false, ctx));

@@ -64,7 +64,7 @@ namespace browser::js::builtins {
     static void adopt_pending(VM *vm, JSObject *target, const JSValue &inner) {
         auto *ctx_ok = new FwdCtx{vm, target, true};
         auto *ctx_err = new FwdCtx{vm, target, false};
-        JSValue h_ok = JSValue::function(vm->create_native_fn(
+        JSFunction *ok_fn = vm->create_native_fn(
             [](const std::vector<JSValue> &args, void *c) -> JSValue {
                 auto *cx = static_cast<FwdCtx *>(c);
                 JSValue v = args.size() > 1 ? args[1] : JSValue::undefined();
@@ -72,8 +72,8 @@ namespace browser::js::builtins {
                 return JSValue::undefined();
             },
             false,
-            ctx_ok));
-        JSValue h_err = JSValue::function(vm->create_native_fn(
+            ctx_ok);
+        JSFunction *err_fn = vm->create_native_fn(
             [](const std::vector<JSValue> &args, void *c) -> JSValue {
                 auto *cx = static_cast<FwdCtx *>(c);
                 JSValue v = args.size() > 1 ? args[1] : JSValue::undefined();
@@ -81,7 +81,16 @@ namespace browser::js::builtins {
                 return JSValue::undefined();
             },
             false,
-            ctx_err));
+            ctx_err);
+
+        // J-M3: the reaction array keeps these handler functions alive, but the
+        // raw target pointer inside the context is invisible to the GC. Anchor
+        // the target through the handler's GC-traced property map.
+        ok_fn->properties["!fwd_target"] = JSValue::object(target);
+        err_fn->properties["!fwd_target"] = JSValue::object(target);
+
+        JSValue h_ok = JSValue::function(ok_fn);
+        JSValue h_err = JSValue::function(err_fn);
 
         JSValue arr = inner.object_val->get(kReactions);
         if (arr.type != JSValue::Type::OBJECT || !arr.object_val) {
@@ -127,6 +136,9 @@ namespace browser::js::builtins {
     }
 
     static void drain_reactions(VM *vm, JSObject *p, bool fulfilled) {
+        // J-M5: reaction handlers re-enter bytecode via invoke(); keep GC
+        // suspended so p2 promises / values held only in C++ locals survive.
+        VM::NativeCallScope gc_guard(*vm);
         JSValue reactions = p->get(kReactions);
         // Reset before running; settle() ignores further additions to a settled p.
         if (auto *fresh = vm->heap()->alloc_object()) {
@@ -187,7 +199,7 @@ namespace browser::js::builtins {
         auto *rref = new ResolveRef{vm, p.object_val};
         auto *eref = new ResolveRef{vm, p.object_val};
 
-        JSValue resolve_fn = JSValue::function(vm->create_native_fn(
+        JSFunction *resolve_raw = vm->create_native_fn(
             [](const std::vector<JSValue> &a, void *c) -> JSValue {
                 auto *ref = static_cast<ResolveRef *>(c);
                 JSValue v = a.size() > 1 ? a[1] : JSValue::undefined();
@@ -195,8 +207,8 @@ namespace browser::js::builtins {
                 return JSValue::undefined();
             },
             false,
-            rref));
-        JSValue reject_fn = JSValue::function(vm->create_native_fn(
+            rref);
+        JSFunction *reject_raw = vm->create_native_fn(
             [](const std::vector<JSValue> &a, void *c) -> JSValue {
                 auto *ref = static_cast<ResolveRef *>(c);
                 JSValue v = a.size() > 1 ? a[1] : JSValue::undefined();
@@ -204,7 +216,13 @@ namespace browser::js::builtins {
                 return JSValue::undefined();
             },
             false,
-            eref));
+            eref);
+        // J-M3: script may keep only the resolve/reject functions alive; the
+        // anchored property keeps the promise object reachable through them.
+        resolve_raw->properties["!anchored_promise"] = p;
+        reject_raw->properties["!anchored_promise"] = p;
+        JSValue resolve_fn = JSValue::function(resolve_raw);
+        JSValue reject_fn = JSValue::function(reject_raw);
 
         if (args.size() >= 2 && args[1].type == JSValue::Type::FUNCTION && args[1].function_val) {
             vm->invoke(args[1], {resolve_fn, reject_fn});
@@ -225,6 +243,9 @@ namespace browser::js::builtins {
             bool fulfilled = state.string_val == "fulfilled";
             JSValue result = p.object_val->get(kResult);
             if (fulfilled || on_rejected.type == JSValue::Type::FUNCTION) {
+                // J-M5: p2 exists only in C++ locals here; the handler's
+                // invoke() must not trigger a collection that could sweep it.
+                VM::NativeCallScope gc_guard(*vm);
                 JSValue out = result;
                 if ((fulfilled ? on_fulfilled : on_rejected).type == JSValue::Type::FUNCTION)
                     out = vm->invoke(fulfilled ? on_fulfilled : on_rejected, {result});
@@ -363,7 +384,7 @@ namespace browser::js::builtins {
                 u32 index;
             };
             auto *ic = new IdxCtx{ac, i};
-            JSValue on_ok = JSValue::function(vm->create_native_fn(
+            JSFunction *ok_raw = vm->create_native_fn(
                 [](const std::vector<JSValue> &a, void *c) -> JSValue {
                     auto *ix = static_cast<IdxCtx *>(c);
                     JSValue v = a.size() > 1 ? a[1] : JSValue::undefined();
@@ -374,8 +395,8 @@ namespace browser::js::builtins {
                     return JSValue::undefined();
                 },
                 false,
-                ic));
-            JSValue on_err = JSValue::function(vm->create_native_fn(
+                ic);
+            JSFunction *err_raw = vm->create_native_fn(
                 [](const std::vector<JSValue> &a, void *c) -> JSValue {
                     auto *ix = static_cast<IdxCtx *>(c);
                     ix->ac->rejected = true;
@@ -384,7 +405,14 @@ namespace browser::js::builtins {
                     return JSValue::undefined();
                 },
                 false,
-                ic));
+                ic);
+            // J-M3: keep aggregate + results reachable through the handlers.
+            ok_raw->properties["!anchored_aggregate"] = agg;
+            err_raw->properties["!anchored_aggregate"] = agg;
+            ok_raw->properties["!anchored_results"] = JSValue::object(&results_obj->obj);
+            err_raw->properties["!anchored_results"] = JSValue::object(&results_obj->obj);
+            JSValue on_ok = JSValue::function(ok_raw);
+            JSValue on_err = JSValue::function(err_raw);
             add_reaction(vm, el.object_val, on_ok, JSValue::undefined(), true);
             add_reaction(vm, el.object_val, on_err, JSValue::undefined(), false);
             if (promise_like(el)) {
@@ -422,22 +450,27 @@ namespace browser::js::builtins {
             bool settled = st.type == JSValue::Type::STRING && st.string_val != "pending";
             auto *ok_ctx = new FwdCtx{vm, agg.object_val, true};
             auto *err_ctx = new FwdCtx{vm, agg.object_val, false};
-            JSValue on_ok = JSValue::function(vm->create_native_fn(
+            JSFunction *ok_raw = vm->create_native_fn(
                 [](const std::vector<JSValue> &a, void *c) -> JSValue {
                     auto *cx = static_cast<FwdCtx *>(c);
                     settle(cx->vm, cx->target, true, a.size() > 1 ? a[1] : JSValue::undefined());
                     return JSValue::undefined();
                 },
                 false,
-                ok_ctx));
-            JSValue on_err = JSValue::function(vm->create_native_fn(
+                ok_ctx);
+            JSFunction *err_raw = vm->create_native_fn(
                 [](const std::vector<JSValue> &a, void *c) -> JSValue {
                     auto *cx = static_cast<FwdCtx *>(c);
                     settle(cx->vm, cx->target, false, a.size() > 1 ? a[1] : JSValue::undefined());
                     return JSValue::undefined();
                 },
                 false,
-                err_ctx));
+                err_ctx);
+            // J-M3: anchor the aggregate promise through the handlers.
+            ok_raw->properties["!fwd_target"] = agg;
+            err_raw->properties["!fwd_target"] = agg;
+            JSValue on_ok = JSValue::function(ok_raw);
+            JSValue on_err = JSValue::function(err_raw);
             add_reaction(vm, el.object_val, on_ok, JSValue::undefined(), true);
             add_reaction(vm, el.object_val, on_err, JSValue::undefined(), false);
             if (settled) {

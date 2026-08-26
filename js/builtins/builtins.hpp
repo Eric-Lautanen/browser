@@ -99,4 +99,17 @@ namespace browser::js::builtins {
     // hands promises to scripts must use this instead of raw alloc_object().
     JSValue make_promise_object(VM *vm);
 
+    // J-C2: allocates an array object wired to Array.prototype so builtin-
+    // created arrays (map/filter/concat/slice results, ...) support method
+    // calls exactly like array literals.
+    inline JSValue make_array_value(VM *vm) {
+        auto *gc_obj = vm->heap()->alloc_object();
+        gc_obj->obj.is_array = true;
+        JSValue ctor = vm->global_object()->get("Array");
+        if (ctor.type == JSValue::Type::FUNCTION && ctor.function_val &&
+            ctor.function_val->prototype_property.type == JSValue::Type::OBJECT)
+            gc_obj->obj.prototype = ctor.function_val->prototype_property;
+        return JSValue::object(&gc_obj->obj);
+    }
+
 }  // namespace browser::js::builtins

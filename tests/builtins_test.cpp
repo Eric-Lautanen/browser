@@ -41,6 +41,92 @@ namespace {
 }  // namespace
 
 // ---------------------------------------------------------------------------
+// J-C1 / J-C2: higher-order builtins invoke bytecode callbacks; array and
+// object literals carry their canonical prototypes; primitives resolve
+// methods through String/Number/Boolean.prototype.
+// ---------------------------------------------------------------------------
+
+TEST(array_map_invokes_bytecode_callback, {
+    BuiltinFixture f;
+    JSValue t = f.eval("[1, 2, 3].map(function(v) { return v * 2; }).join(',');");
+    ASSERT(t.type == JSValue::Type::STRING);
+    ASSERT(t.string_val == "2,4,6");
+})
+
+TEST(array_filter_reduce_find_run_bytecode_callbacks, {
+    BuiltinFixture f;
+    JSValue sum = f.eval(
+        "[1, 2, 3, 4].filter(function(v) { return v % 2 === 0; })"
+        ".reduce(function(a, b) { return a + b; }, 0);");
+    ASSERT(sum.type == JSValue::Type::NUMBER);
+    ASSERT(sum.number_val == 6.0);
+
+    JSValue found = f.eval("[{v:1},{v:5},{v:9}].find(function(o) { return o.v > 4; }).v;");
+    ASSERT(found.type == JSValue::Type::NUMBER);
+    ASSERT(found.number_val == 5.0);
+})
+
+TEST(array_literal_has_array_prototype_methods, {
+    BuiltinFixture f;
+    // Before J-C2 the literal's prototype was undefined so .push was missing.
+    JSValue len = f.eval("var a = [1, 2]; a.push(3); a.length;");
+    ASSERT(len.type == JSValue::Type::NUMBER);
+    ASSERT(len.number_val == 3.0);
+
+    JSValue joined = f.eval("[9, 8].concat([7]).join('|');");
+    ASSERT(joined.type == JSValue::Type::STRING);
+    ASSERT(joined.string_val == "9|8|7");
+})
+
+TEST(object_literal_inherits_object_prototype, {
+    BuiltinFixture f;
+    // Object.prototype is shared: a method placed there is reachable.
+    // (Parenthesized bare object literals are not yet parsed, so bind first.)
+    JSValue t = f.eval(
+        "var proto_marker = 'loud';"
+        "Object.prototype.shout = function() { return proto_marker; };"
+        "var holder = {a:1};"
+        "holder.shout();");
+    ASSERT(t.type == JSValue::Type::STRING);
+    ASSERT(t.string_val == "loud");
+})
+
+TEST(string_primitive_resolves_prototype_methods, {
+    BuiltinFixture f;
+    JSValue trimmed = f.eval("\"  abc \".trim();");
+    ASSERT(trimmed.type == JSValue::Type::STRING);
+    ASSERT(trimmed.string_val == "abc");
+
+    JSValue upper = f.eval("\"abc\".toUpperCase();");
+    ASSERT(upper.type == JSValue::Type::STRING);
+    ASSERT(upper.string_val == "ABC");
+
+    JSValue idx = f.eval("\"hello\".indexOf(\"ll\");");
+    ASSERT(idx.type == JSValue::Type::NUMBER);
+    ASSERT(idx.number_val == 2.0);
+})
+
+// ---------------------------------------------------------------------------
+// J-M1: constructor instances must survive collections triggered while the
+// constructor body runs (frames were invisible to gc_roots()).
+// ---------------------------------------------------------------------------
+
+TEST(constructor_instance_survives_gc_during_construction, {
+    BuiltinFixture f;
+    // Enough garbage allocations inside the constructor to push heap past the
+    // collection threshold mid-construction. The instance being built lives
+    // only in frame slots until RETURN.
+    JSValue t = f.eval(
+        "function Big() {"
+        "  for (var i = 0; i < 40000; i++) { var junk = {n: i}; }"
+        "  this.marker = 41;"
+        "}"
+        "new Big().marker + 1;");
+    ASSERT(t.type == JSValue::Type::NUMBER);
+    ASSERT(t.number_val == 42.0);
+})
+
+// ---------------------------------------------------------------------------
 // Date
 // ---------------------------------------------------------------------------
 
