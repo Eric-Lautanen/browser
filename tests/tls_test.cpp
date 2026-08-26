@@ -649,3 +649,89 @@ TEST(poly1305_rfc8439_vector_exact_block, {
         0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
     ASSERT(poly1305_tag_matches(kPolyKey, block, sizeof(block), "a18a0de2ba299128303a398e28bde4f0"));
 })
+
+// -- N-P1/N-P2: word-at-a-time ChaCha20 + buffered Poly1305 must stay
+// bit-identical to the spec byte-loop across chunk boundaries. --
+
+TEST(chacha20_chunked_equals_oneshot, {
+    // 200 bytes spans three 64-byte blocks plus an 8-byte tail.
+    std::vector<u8> msg(200);
+    for (size_t i = 0; i < msg.size(); i++) msg[i] = static_cast<u8>(i * 7 + 3);
+
+    ChaCha20 one;
+    one.set_key(chacha_key);
+    one.set_nonce(chacha_nonce);
+    one.set_counter(0);
+    std::vector<u8> ref(msg.size());
+    one.encrypt(msg.data(), msg.size(), ref.data());
+
+    // Chunked at awkward sizes: partial words, exact words, block edges.
+    static const size_t chunks[] = {1, 7, 64, 128};
+    ChaCha20 inc;
+    inc.set_key(chacha_key);
+    inc.set_nonce(chacha_nonce);
+    inc.set_counter(0);
+    std::vector<u8> got(msg.size());
+    size_t off = 0;
+    for (size_t c : chunks) {
+        if (off >= got.size())
+            break;
+        size_t n = (off + c > got.size()) ? got.size() - off : c;
+        inc.encrypt(msg.data() + off, n, got.data() + off);
+        off += n;
+    }
+    if (off < got.size())
+        inc.encrypt(msg.data() + off, got.size() - off, got.data() + off);
+
+    ASSERT(got == ref);
+})
+
+TEST(chacha20_first_block_matches_rfc_keystream_at_offsets, {
+    // Encrypt a 128-byte zero buffer and check both the first 64 bytes
+    // against the RFC vector and the second block's presence (multi-block
+    // counter advance through the fast path).
+    std::vector<u8> input(128, 0);
+    ChaCha20 cc;
+    cc.set_key(chacha_key);
+    cc.set_nonce(chacha_nonce);
+    cc.set_counter(0);
+    std::vector<u8> out(128);
+    cc.encrypt(input.data(), input.size(), out.data());
+    for (int i = 0; i < 64; i++) ASSERT_EQ(out[i], chacha_expected_keystream[i]);
+    // Counter moved: second block must differ from the first somewhere.
+    bool differs = false;
+    for (int i = 0; i < 64 && !differs; i++) differs = out[64 + i] != out[i];
+    ASSERT(differs);
+})
+
+TEST(poly1305_incremental_update_matches_oneshot, {
+    std::vector<u8> msg(53);  // not a multiple of 16
+    for (size_t i = 0; i < msg.size(); i++) msg[i] = static_cast<u8>(i * 11 + 5);
+
+    u8 key[32];
+    for (int i = 0; i < 32; i++) key[i] = static_cast<u8>(0x41 + i);
+
+    Poly1305 one;
+    one.set_key(key);
+    one.update(msg.data(), msg.size());
+    u8 mac_one[16];
+    one.finish(mac_one);
+
+    // Byte-at-a-time updates exercise the partial-buffer refill path.
+    Poly1305 inc;
+    inc.set_key(key);
+    for (size_t i = 0; i < msg.size(); i++) inc.update(msg.data() + i, 1);
+    u8 mac_inc[16];
+    inc.finish(mac_inc);
+    for (int i = 0; i < 16; i++) ASSERT_EQ(mac_inc[i], mac_one[i]);
+
+    // Odd-size chunks exercise buffer-fill + direct-block paths together.
+    Poly1305 mix;
+    mix.set_key(key);
+    mix.update(msg.data(), 3);
+    mix.update(msg.data() + 3, 16);
+    mix.update(msg.data() + 19, 34);
+    u8 mac_mix[16];
+    mix.finish(mac_mix);
+    for (int i = 0; i < 16; i++) ASSERT_EQ(mac_mix[i], mac_one[i]);
+})
