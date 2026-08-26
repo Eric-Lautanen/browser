@@ -329,28 +329,41 @@ std::vector<u8> SHA384::hash(const u8* data, std::size_t len) {
 // ---------------------------------------------------------------------------
 // HMAC-SHA256  (RFC 2104)
 // ---------------------------------------------------------------------------
-std::vector<u8> hmac_sha256(const std::vector<u8>& key, const std::vector<u8>& data) {
-    std::vector<u8> k(key);
-    if (k.size() > 64) {
-        k = SHA256::hash(k.data(), k.size());
-    }
-    if (k.size() < 64) {
-        k.resize(64, 0);
+void hmac_sha256_ptr(const u8 *key, std::size_t key_len, const u8 *data, std::size_t data_len, u8 out[32]) {
+    // N-P4: incremental SHA-256 over ipad||msg and opad||inner � the old
+    // version built two full-size concatenation vectors per call.
+    u8 kblock[64];
+    std::memset(kblock, 0, sizeof(kblock));
+    if (key_len > 64) {
+        auto h = SHA256::hash(key, key_len);
+        std::memcpy(kblock, h.data(), h.size());
+    } else if (key_len > 0) {
+        std::memcpy(kblock, key, key_len);
     }
 
     u8 ipad[64], opad[64];
     for (int i = 0; i < 64; i++) {
-        ipad[i] = static_cast<u8>(k[i] ^ 0x36);
-        opad[i] = static_cast<u8>(k[i] ^ 0x5c);
+        ipad[i] = static_cast<u8>(kblock[i] ^ 0x36);
+        opad[i] = static_cast<u8>(kblock[i] ^ 0x5c);
     }
 
-    std::vector<u8> inner_input(ipad, ipad + 64);
-    inner_input.insert(inner_input.end(), data.begin(), data.end());
-    std::vector<u8> inner_hash = SHA256::hash(inner_input.data(), inner_input.size());
+    SHA256 inner;
+    inner.update(ipad, 64);
+    if (data_len > 0)
+        inner.update(data, data_len);
+    auto inner_hash = inner.digest();
 
-    std::vector<u8> outer_input(opad, opad + 64);
-    outer_input.insert(outer_input.end(), inner_hash.begin(), inner_hash.end());
-    return SHA256::hash(outer_input.data(), outer_input.size());
+    SHA256 outer;
+    outer.update(opad, 64);
+    outer.update(inner_hash.data(), inner_hash.size());
+    auto mac = outer.digest();
+    std::memcpy(out, mac.data(), 32);
+}
+
+std::vector<u8> hmac_sha256(const std::vector<u8> &key, const std::vector<u8> &data) {
+    u8 mac[32];
+    hmac_sha256_ptr(key.data(), key.size(), data.data(), data.size(), mac);
+    return std::vector<u8>(mac, mac + 32);
 }
 
 // ---------------------------------------------------------------------------
@@ -365,19 +378,49 @@ std::vector<u8> HKDF::extract(const std::vector<u8>& salt, const std::vector<u8>
 }
 
 std::vector<u8> HKDF::expand(const std::vector<u8>& prk, const std::vector<u8>& info, std::size_t length) {
+    // N-P4: each T_i = HMAC(prk, T_{i-1} || info || counter) is computed
+    // incrementally — no per-iteration concatenation vector, and the key
+    // schedule (ipad/opad) is derived once outside the loop.
     std::vector<u8> output;
     output.reserve(length);
+
+    u8 kblock[64];
+    std::memset(kblock, 0, sizeof(kblock));
+    {
+        const u8 *p = prk.data();
+        std::size_t n = prk.size();
+        if (n > 64) {
+            auto h = SHA256::hash(p, n);
+            std::memcpy(kblock, h.data(), h.size());
+        } else if (n > 0) {
+            std::memcpy(kblock, p, n);
+        }
+    }
+    u8 ipad[64], opad[64];
+    for (int i = 0; i < 64; i++) {
+        ipad[i] = static_cast<u8>(kblock[i] ^ 0x36);
+        opad[i] = static_cast<u8>(kblock[i] ^ 0x5c);
+    }
+
     std::vector<u8> t_prev;
     u8 counter = 1;
 
     while (output.size() < length) {
-        std::vector<u8> input;
-        input.insert(input.end(), t_prev.begin(), t_prev.end());
-        input.insert(input.end(), info.begin(), info.end());
-        input.push_back(counter);
+        SHA256 inner;
+        inner.update(ipad, 64);
+        if (!t_prev.empty())
+            inner.update(t_prev.data(), t_prev.size());
+        if (!info.empty())
+            inner.update(info.data(), info.size());
+        inner.update(&counter, 1);
+        auto inner_hash = inner.digest();
         counter++;
 
-        std::vector<u8> t = hmac_sha256(prk, input);
+        SHA256 outer;
+        outer.update(opad, 64);
+        outer.update(inner_hash.data(), inner_hash.size());
+        std::vector<u8> t = outer.digest();
+
         std::size_t needed = length - output.size();
         std::size_t take = (needed < t.size()) ? needed : t.size();
         output.insert(output.end(), t.begin(), t.begin() + static_cast<std::ptrdiff_t>(take));

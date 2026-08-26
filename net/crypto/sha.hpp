@@ -53,6 +53,10 @@ private:
 
 std::vector<u8> hmac_sha256(const std::vector<u8>& key, const std::vector<u8>& data);
 
+// N-P4: pointer-based HMAC over caller memory — no message concatenation
+// copies. out receives 32 bytes.
+void hmac_sha256_ptr(const u8 *key, std::size_t key_len, const u8 *data, std::size_t data_len, u8 out[32]);
+
 class HKDF {
 public:
     static std::vector<u8> extract(const std::vector<u8>& salt, const std::vector<u8>& ikm);
