@@ -10,6 +10,9 @@
 namespace browser {
 
     void BrowserWindow::render_page() {
+        // BR-N1: drain any navigation queued while a load was in flight
+        if (page_loader_)
+            page_loader_->pump_pending();
         // Check for loaded pages
         if (page_loader_) {
             auto loaded = page_loader_->try_get_loaded_page();

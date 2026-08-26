@@ -1,4 +1,5 @@
 #include "../browser/browser_window.hpp"
+#include "../src/crash_report.hpp"
 #include "../css/cascade.hpp"
 #include "../css/layout.hpp"
 #include "../css/parser.hpp"
@@ -868,6 +869,7 @@ static std::string collect_css_from_dom(browser::html::Node *node) {
 static int run_test_suite(const std::string &test_dir, const std::string &filter_str);
 
 static int run_browser(const std::string &url) {
+    ::browser::install_crash_reporter("browser");
     browser::BrowserWindow browser;
     auto r = browser.initialize();
     if (r.is_err()) {

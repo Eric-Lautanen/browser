@@ -73,6 +73,11 @@ namespace browser {
         // BR-N3: invalidates the in-flight load (it publishes nothing) and
         // drops any queued navigation.
         void cancel();
+        // BR-N1: called each frame from the UI thread; drains any queued
+        // navigation left by superseded loads. Deliberately NOT done inside
+        // finish_load() — chaining there caused infinite synchronous
+        // recursion (finish→launch→coroutine→checkpoint→finish→…).
+        void pump_pending();
         bool is_loading() const;
         void set_viewport_size(u32 w, u32 h) {
             viewport_width_ = w;
@@ -106,6 +111,7 @@ namespace browser {
 
         bool is_current(u64 gen) const { return generation_.load(std::memory_order_acquire) == gen; }
         void launch(const std::string &url);
+        // Clears loading_ when no pending URL remains. Never launches.
         void finish_load();
         async::task<void> load(std::string url_str, u64 gen);
         async::task<void> load_html(std::string html, u64 gen);

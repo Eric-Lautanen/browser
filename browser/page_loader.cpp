@@ -60,27 +60,40 @@ namespace browser {
 
     void PageLoader::launch(const std::string &url) {
         u64 gen = generation_.fetch_add(1, std::memory_order_acq_rel) + 1;
-        load_task_ = load(url, gen);
+        auto new_task = load(url, gen);
+        // BR-N2/N3: finish_load() may call launch() from within the OLD
+        // coroutine (its frame is on our callstack right now). Assigning
+        // directly to load_task_ would destroy that frame mid-execution.
+        // Detach the old frame instead — bounded leak, never a UAF.
+        load_task_.abandon();
+        load_task_ = std::move(new_task);
         load_task_.start();
     }
 
-    // Single-flight slot release: chain the queued navigation if one arrived
-    // while we ran, otherwise clear the loading flag. Called from EVERY
-    // terminal point of load()/load_html().
+    // Clears the single-flight slot. Deliberately does NOT launch pending
+    // navigations — chaining here caused infinite recursion because the new
+    // coroutine could synchronously hit a checkpoint that re-entered
+    // finish_load(). Pending URLs are drained by pump_pending() on the UI
+    // thread instead.
     void PageLoader::finish_load() {
+        loading_.store(false, std::memory_order_release);
+    }
+
+    void PageLoader::pump_pending() {
+        if (loading_.load(std::memory_order_acquire))
+            return;
         std::string next;
         {
             std::lock_guard<std::mutex> lock(pending_mutex_);
             if (!pending_url_.empty()) {
                 next = std::move(pending_url_);
                 pending_url_.clear();
+            } else {
+                return;
             }
         }
-        if (!next.empty()) {
-            launch(next);
-            return;
-        }
-        finish_load();
+        loading_.store(true, std::memory_order_release);
+        launch(next);
     }
 
     void PageLoader::start_load(const std::string &url_str) {
