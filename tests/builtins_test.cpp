@@ -319,6 +319,62 @@ TEST(return_inside_try_still_runs_finally, {
 })
 
 // ---------------------------------------------------------------------------
+// X-C2: hostile nesting must not overflow the stack.
+// ---------------------------------------------------------------------------
+
+TEST(json_parse_deep_nesting_capped, {
+    BuiltinFixture f;
+    // Deeply nested arrays previously recursed until stack exhaustion; the
+    // 512-level cap now rejects them. Just past the cap is enough to prove
+    // the bail-out without burning time.
+    std::string src = "JSON.parse('";
+    src.append(700, '[');
+    src.append("');\"done\";");
+    JSValue t = f.eval(src);
+    ASSERT(t.type == JSValue::Type::STRING);
+    ASSERT(t.string_val == "done");
+})
+
+TEST(json_parse_shallow_still_works_after_cap, {
+    BuiltinFixture f;
+    JSValue t = f.eval("JSON.parse('{\"a\": [1, {\"b\": null}]}').a[1].b;");
+    ASSERT(t.type == JSValue::Type::NULL_VAL);
+})
+
+TEST(parser_deep_expression_nesting_capped, {
+    BuiltinFixture f;
+    // Deep paren nesting previously recursed in parse_primary until stack
+    // death. Now the whole program is rejected cleanly (undefined) instead.
+    std::string src(4000, '(');
+    src += "1";
+    src.append(4000, ')');
+    src += ";\"alive\";";
+    JSValue t = f.eval(src);
+    ASSERT(t.type == JSValue::Type::UNDEFINED);
+
+    // Sanity: normal expressions still evaluate.
+    JSValue ok = f.eval("((((1)))) + 1;");
+    ASSERT(ok.type == JSValue::Type::NUMBER);
+    ASSERT(ok.number_val == 2.0);
+})
+
+TEST(gc_marking_survives_deep_object_chain, {
+    BuiltinFixture f;
+    // A reachable chain deep enough that the old RECURSIVE mark_children
+    // would overflow the default stack (~12k nested frames), while staying
+    // small enough that the handful of collections it triggers remain cheap.
+    JSValue t = f.eval(
+        "var head = null;"
+        "for (var i = 0; i < 12000; i++) { head = {n: head}; }"
+        "var depth = 0;"
+        "var cur = head;"
+        "while (cur) { depth = depth + 1; cur = cur.n; }"
+        "depth === 12000;");
+    ASSERT(t.type == JSValue::Type::BOOLEAN);
+    ASSERT(t.bool_val);
+})
+
+// ---------------------------------------------------------------------------
 // Date
 // ---------------------------------------------------------------------------
 

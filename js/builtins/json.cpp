@@ -26,6 +26,12 @@ static std::string json_escape(const std::string& s) {
 }
 
 static void json_stringify_value(std::string& out, const JSValue& val, const std::string& indent, i32 depth) {
+    // X-C2: cyclic structures (a.b = a) previously recursed forever.
+    constexpr i32 kMaxStringifyDepth = 512;
+    if (depth > kMaxStringifyDepth) {
+        out += "null";
+        return;
+    }
     switch (val.type) {
         case JSValue::Type::NULL_VAL: out += "null"; break;
         case JSValue::Type::UNDEFINED: out += "null"; break;
@@ -74,53 +80,103 @@ static JSValue json_parse(const std::vector<JSValue>& args, void* context) {
     if (args.size() < 2) return JSValue::undefined();
     std::string s = args[1].to_string();
     size_t pos = 0;
+    // X-C2: cap nesting depth — '[[[[...' from fetched content previously
+    // recursed until the stack overflowed.
+    constexpr i32 kMaxDepth = 512;
+    bool exceeded = false;
     // Simple recursive descent JSON parser
-    std::function<JSValue()> parse_value = [&]() -> JSValue {
+    std::function<JSValue(i32)> parse_value = [&](i32 depth) -> JSValue {
+        if (depth > kMaxDepth) {
+            // X-C2: starve every enclosing array/object loop by exhausting
+            // the input — returning without consuming would spin them
+            // forever (observed as unbounded memory growth).
+            exceeded = true;
+            pos = s.size();
+            return JSValue::undefined();
+        }
         while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++;
-        if (pos >= s.size()) return JSValue::undefined();
+        if (pos >= s.size())
+            return JSValue::undefined();
         if (s[pos] == '"') {
             std::string str;
             pos++; // skip "
             while (pos < s.size() && s[pos] != '"') {
                 if (s[pos] == '\\') {
                     pos++;
-                    if (pos >= s.size()) break;
+                    if (pos >= s.size())
+                        break;
                     switch (s[pos]) {
-                        case '"': str += '"'; break;
-                        case '\\': str += '\\'; break;
-                        case '/': str += '/'; break;
-                        case 'b': str += '\b'; break;
-                        case 'f': str += '\f'; break;
-                        case 'n': str += '\n'; break;
-                        case 'r': str += '\r'; break;
-                        case 't': str += '\t'; break;
+                        case '"':
+                            str += '"';
+                            break;
+                        case '\\':
+                            str += '\\';
+                            break;
+                        case '/':
+                            str += '/';
+                            break;
+                        case 'b':
+                            str += '\b';
+                            break;
+                        case 'f':
+                            str += '\f';
+                            break;
+                        case 'n':
+                            str += '\n';
+                            break;
+                        case 'r':
+                            str += '\r';
+                            break;
+                        case 't':
+                            str += '\t';
+                            break;
                         case 'u': {
                             if (pos + 4 < s.size()) {
                                 std::string hex = s.substr(pos + 1, 4);
                                 char32_t cp = std::strtol(hex.c_str(), nullptr, 16);
-                                if (cp <= 0x7F) str += static_cast<char>(cp);
-                                else if (cp <= 0x7FF) { str += static_cast<char>(0xC0 | (cp >> 6)); str += static_cast<char>(0x80 | (cp & 0x3F)); }
-                                else { str += static_cast<char>(0xE0 | (cp >> 12)); str += static_cast<char>(0x80 | ((cp >> 6) & 0x3F)); str += static_cast<char>(0x80 | (cp & 0x3F)); }
+                                if (cp <= 0x7F)
+                                    str += static_cast<char>(cp);
+                                else if (cp <= 0x7FF) {
+                                    str += static_cast<char>(0xC0 | (cp >> 6));
+                                    str += static_cast<char>(0x80 | (cp & 0x3F));
+                                } else {
+                                    str += static_cast<char>(0xE0 | (cp >> 12));
+                                    str += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                                    str += static_cast<char>(0x80 | (cp & 0x3F));
+                                }
                                 pos += 4;
                             }
                             break;
                         }
-                        default: str += s[pos]; break;
+                        default:
+                            str += s[pos];
+                            break;
                     }
                 } else {
                     str += s[pos];
                 }
                 pos++;
             }
-            if (pos < s.size()) pos++; // skip "
+            if (pos < s.size())
+                pos++;  // skip "
             return JSValue::string(str);
         }
-        if (s.substr(pos, 4) == "true") { pos += 4; return JSValue::boolean(true); }
-        if (s.substr(pos, 5) == "false") { pos += 5; return JSValue::boolean(false); }
-        if (s.substr(pos, 4) == "null") { pos += 4; return JSValue::null(); }
+        if (s.substr(pos, 4) == "true") {
+            pos += 4;
+            return JSValue::boolean(true);
+        }
+        if (s.substr(pos, 5) == "false") {
+            pos += 5;
+            return JSValue::boolean(false);
+        }
+        if (s.substr(pos, 4) == "null") {
+            pos += 4;
+            return JSValue::null();
+        }
         if (s[pos] == '-' || s[pos] == '+' || (s[pos] >= '0' && s[pos] <= '9')) {
             size_t start = pos;
-            if (s[pos] == '-' || s[pos] == '+') pos++;
+            if (s[pos] == '-' || s[pos] == '+')
+                pos++;
             while (pos < s.size() && s[pos] >= '0' && s[pos] <= '9') pos++;
             if (pos < s.size() && s[pos] == '.') {
                 pos++;
@@ -128,7 +184,8 @@ static JSValue json_parse(const std::vector<JSValue>& args, void* context) {
             }
             if (pos < s.size() && (s[pos] == 'e' || s[pos] == 'E')) {
                 pos++;
-                if (pos < s.size() && (s[pos] == '-' || s[pos] == '+')) pos++;
+                if (pos < s.size() && (s[pos] == '-' || s[pos] == '+'))
+                    pos++;
                 while (pos < s.size() && s[pos] >= '0' && s[pos] <= '9') pos++;
             }
             return JSValue::number(std::strtod(s.substr(start, pos - start).c_str(), nullptr));
@@ -140,13 +197,18 @@ static JSValue json_parse(const std::vector<JSValue>& args, void* context) {
             auto& el = arr_gc->obj.array_elements;
             while (pos < s.size() && s[pos] != ']') {
                 while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++;
-                if (s[pos] == ']') break;
-                el.push_back(parse_value());
+                if (s[pos] == ']')
+                    break;
+                el.push_back(parse_value(depth + 1));
                 while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++;
-                if (s[pos] == ',') { pos++;
-                    while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++; }
+                if (s[pos] == ',') {
+                    pos++;
+                    while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r'))
+                        pos++;
+                }
             }
-            if (pos < s.size()) pos++;
+            if (pos < s.size())
+                pos++;
             return JSValue::object(&arr_gc->obj);
         }
         if (s[pos] == '{') {
@@ -155,23 +217,32 @@ static JSValue json_parse(const std::vector<JSValue>& args, void* context) {
             JSObject* obj = &obj_gc->obj;
             while (pos < s.size() && s[pos] != '}') {
                 while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++;
-                if (s[pos] == '}') break;
-                JSValue key = parse_value();
+                if (s[pos] == '}')
+                    break;
+                JSValue key = parse_value(depth + 1);
                 while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++;
-                if (s[pos] == ':') pos++;
+                if (s[pos] == ':')
+                    pos++;
                 while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++;
-                JSValue val = parse_value();
+                JSValue val = parse_value(depth + 1);
                 obj->set(key.to_string(), val);
                 while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++;
-                if (s[pos] == ',') { pos++;
-                    while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r')) pos++; }
+                if (s[pos] == ',') {
+                    pos++;
+                    while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\n' || s[pos] == '\r'))
+                        pos++;
+                }
             }
-            if (pos < s.size()) pos++;
+            if (pos < s.size())
+                pos++;
             return JSValue::object(obj);
         }
         return JSValue::undefined();
     };
-    return parse_value();
+    JSValue result = parse_value(0);
+    if (exceeded)
+        return JSValue::undefined();
+    return result;
 }
 
 void register_json_builtins(VM* vm) {

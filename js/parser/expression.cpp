@@ -62,9 +62,19 @@ namespace browser::js {
     // ---------------------------------------------------------------------------
 
     std::unique_ptr<Expr> Parser::parse_expression(int min_precedence) {
-        auto left = parse_primary();
-        if (!left)
+        // X-C2: bound parser recursion over attacker-shaped nesting.
+        if (expr_depth_ >= kMaxExprDepth) {
+            error("expression nesting too deep");
             return nullptr;
+        }
+        ++expr_depth_;
+        auto depth_guard = [&]() { --expr_depth_; };
+
+        auto left = parse_primary();
+        if (!left) {
+            depth_guard();
+            return nullptr;
+        }
 
         left = parse_postfix_expr(std::move(left));
 
@@ -91,20 +101,26 @@ namespace browser::js {
             cond->line = cond_line;
             cond->test = std::move(left);
             cond->consequent = parse_expression(0);
-            if (!cond->consequent)
+            if (!cond->consequent) {
+                depth_guard();
                 return nullptr;
+            }
             if (current_.type == TokenType::COLON) {
                 advance();
             } else {
                 error("expected ':' in conditional expression");
+                depth_guard();
                 return nullptr;
             }
             cond->alternate = parse_expression(0);
-            if (!cond->alternate)
+            if (!cond->alternate) {
+                depth_guard();
                 return nullptr;
+            }
             left = std::make_unique<Expr>(std::move(*cond));
         }
 
+        depth_guard();
         return left;
     }
 

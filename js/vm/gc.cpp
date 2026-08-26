@@ -13,6 +13,14 @@ namespace browser::js {
         return (f32)((f64)(now.QuadPart - start.QuadPart) * 1000.0 / (f64)freq.QuadPart);
     }
 
+    // X-C2: first mark queues the object for iterative processing.
+    void GCObject::mark(GCHeap &heap) {
+        if (marked_)
+            return;
+        marked_ = true;
+        heap.defer_mark(this);
+    }
+
     GCHeap::~GCHeap() {
         for (auto *o : objects_) delete o;
         for (auto *f : functions_) delete f;
@@ -40,6 +48,13 @@ namespace browser::js {
         for (auto *obj : objects_) obj->unmark();
         for (auto *fn : functions_) fn->unmark();
         mark_roots(roots);
+        // X-C2: drain the marking worklist iteratively — deep script-built
+        // object chains no longer recurse in mark_children.
+        while (!mark_stack_.empty()) {
+            GCObject *obj = mark_stack_.back();
+            mark_stack_.pop_back();
+            obj->mark_children(*this);
+        }
         u32 pre_count = (u32)(objects_.size() + functions_.size());
         sweep();
         u32 freed = pre_count - (u32)(objects_.size() + functions_.size());
@@ -47,6 +62,15 @@ namespace browser::js {
         last_collected_ = freed;
         total_collected_ += freed;
         last_pause_ms_ = elapsed_ms_from(start);
+
+        // J-P2: when the working set legitimately lives above the threshold
+        // (a large persistent structure), a fixed threshold re-collects on
+        // EVERY allocation/instruction — quadratic thrash that pegged the
+        // CPU and memory. Grow the threshold so total collection work stays
+        // amortized linear in bytes allocated.
+        if (allocated_ + allocated_ / 2 > threshold_) {
+            threshold_ = allocated_ + allocated_ / 2;
+        }
     }
 
     void GCHeap::mark_roots(const std::vector<JSValue *> &roots) {

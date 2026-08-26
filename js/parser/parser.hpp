@@ -18,6 +18,13 @@ namespace browser::js {
         Lexer lexer_;
         Token current_;
         u32 brace_depth_ = 0;
+        // X-C2: recursion depth of expression parsing. A page with tens of
+        // thousands of nested parens/unary ops previously overflowed the
+        // stack and killed the process. The cap must stay well under the
+        // thread stack budget: each level costs roughly 1 KB of parser
+        // frames, so 256 keeps us near 25% of the default 1 MB stack.
+        u32 expr_depth_ = 0;
+        static constexpr u32 kMaxExprDepth = 256;
 
         void advance();
         void expect(TokenType type);

@@ -14,15 +14,14 @@ namespace browser::js {
         virtual ~GCObject() = default;
         virtual void mark_children(GCHeap &heap) = 0;
         bool is_marked() const { return marked_; }
-        void mark(GCHeap &heap) {
-            if (marked_)
-                return;
-            marked_ = true;
-            mark_children(heap);
-        }
+        // X-C2: marking is iterative — mark() flags the object and queues it
+        // on the heap's worklist; the collector drains the list, calling
+        // mark_children once per object. No recursion over heap graphs.
+        void mark(GCHeap &heap);
         void unmark() { marked_ = false; }
 
     private:
+        friend class GCHeap;
         bool marked_ = false;
     };
 
@@ -71,6 +70,13 @@ namespace browser::js {
         u32 last_collected_ = 0;
         f32 last_pause_ms_ = 0;
         u32 cycle_count_ = 0;
+        // X-C2: iterative marking worklist.
+        std::vector<GCObject *> mark_stack_;
+
+    public:
+        void defer_mark(GCObject *obj) { mark_stack_.push_back(obj); }
+
+    private:
         void mark_roots(const std::vector<JSValue *> &roots);
         void sweep();
         std::unordered_map<JSObject *, GCJSObject *> obj_map_;
