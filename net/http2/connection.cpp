@@ -2,10 +2,111 @@
 
 #include "internal.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <sstream>
 
 namespace browser::net::http2 {
+
+    namespace {
+
+        inline constexpr u32 kFlagEndStream = 0x01;
+        inline constexpr u32 kFlagEndHeaders = 0x04;
+
+        enum class Action { Continue, Done, Fail };
+
+        // Shared response state machine for both execute paths (dedupes the
+        // previously diverged execute/execute_async). Handles header-block
+        // fragmentation (HEADERS+CONTINUATION decoded once, N-C7), trailers,
+        // DATA accumulation and RST_STREAM.
+        struct ResponseAssembler {
+            u32 stream_id = 0;
+            HPack &hpack;
+
+            std::vector<HPackEntry> entries;
+            std::vector<u8> frag;     // header-block fragment accumulator
+            bool collecting = false;  // HEADERS seen, awaiting END_HEADERS
+            bool headers_done = false;
+            bool in_trailers = false;  // N-C7: header block after body is trailers
+            bool has_body = false;
+            bool done = false;
+            std::vector<u8> body;
+
+            explicit ResponseAssembler(u32 sid, HPack &hp) : stream_id(sid), hpack(hp) {}
+
+            // Consumes one frame belonging to our stream. On Done the response
+            // is complete; consumed receives DATA bytes for window updates.
+            Action on_frame(const FrameHeader &fh, const std::vector<u8> &payload, u32 &consumed, std::string &err) {
+                consumed = 0;
+                switch (fh.type) {
+                    case HEADERS:
+                    case CONTINUATION: {
+                        if (!collecting) {
+                            collecting = true;
+                            frag.clear();
+                            if (headers_done)
+                                in_trailers = true;  // N-C7: trailer HEADERS after DATA
+                        }
+                        frag.insert(frag.end(), payload.begin(), payload.begin() + fh.length);
+
+                        const bool end_headers = (fh.flags & kFlagEndHeaders) != 0;
+                        const bool end_stream = (fh.flags & kFlagEndStream) != 0;
+                        if (end_headers) {
+                            auto decoded = hpack.decode(frag.data(), static_cast<u32>(frag.size()));
+                            frag.clear();
+                            collecting = false;
+                            if (in_trailers) {
+                                // Trailers are not merged into the response headers.
+                                in_trailers = false;
+                            } else {
+                                entries.insert(entries.end(), decoded.begin(), decoded.end());
+                                headers_done = true;
+                            }
+                            if (end_stream)
+                                done = true;
+                        }
+                        return done ? Action::Done : Action::Continue;
+                    }
+
+                    case DATA: {
+                        if (!collecting && !headers_done) {
+                            err = "DATA before HEADERS complete";
+                            return Action::Fail;
+                        }
+                        has_body = true;
+                        body.insert(body.end(), payload.begin(), payload.begin() + fh.length);
+                        consumed = fh.length;
+                        if (fh.flags & kFlagEndStream)
+                            done = true;
+                        return done ? Action::Done : Action::Continue;
+                    }
+
+                    case RST_STREAM: {
+                        u32 err_code = 0;
+                        if (fh.length >= 4) {
+                            err_code = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
+                                       (static_cast<u32>(payload[2]) << 8) | payload[3];
+                        }
+                        err = "RST_STREAM: err=" + std::to_string(err_code);
+                        return Action::Fail;
+                    }
+
+                    default:
+                        return Action::Continue;
+                }
+            }
+        };
+
+        // Plans DATA frame chunk sizes honouring the peer's frame-size limit and
+        // both flow-control windows (N-C3). Returns the chunk length starting at
+        // `off`; 0 means "must wait for a WINDOW_UPDATE".
+        inline u32 data_chunk_len(
+            std::size_t remaining, std::size_t off, u32 max_frame, u32 conn_window, u32 stream_window) {
+            u64 allowed = std::min<std::size_t>({remaining - off, max_frame, conn_window, stream_window});
+            return static_cast<u32>(allowed);
+        }
+
+    }  // namespace
 
     HTTP2Client::HTTP2Client() = default;
     HTTP2Client::~HTTP2Client() = default;
@@ -252,19 +353,68 @@ namespace browser::net::http2 {
         auto entries = request_to_hpack(req);
         auto hpack_data = hpack_.encode(entries);
 
-        u8 flags = 0x04;
-        if (req.body.empty())
-            flags |= 0x01;
-        auto sr = send_frame(HEADERS, flags, stream_id, hpack_data);
-        if (sr.is_err())
-            return std::string("send headers: " + sr.unwrap_err());
+        {
+            u8 flags = kFlagEndHeaders;
+            if (req.body.empty())
+                flags |= kFlagEndStream;
+            auto sr = send_frame(HEADERS, flags, stream_id, hpack_data);
+            if (sr.is_err())
+                return std::string("send headers: " + sr.unwrap_err());
+        }
 
-        std::vector<HPackEntry> resp_entries;
-        bool headers_complete = false;
-        bool has_body = false;
-        std::vector<u8> body;
+        // N-C3: send the request body as DATA frames honouring frame size and
+        // flow-control windows; wait for WINDOW_UPDATE when the window is dry.
+        u32 stream_window = server_initial_window_size_;
+        std::size_t off = 0;
+        while (off < req.body.size()) {
+            u32 len = data_chunk_len(req.body.size(), off, server_max_frame_size_, server_window_, stream_window);
+            if (len == 0) {
+                // Window dry: pump one frame (window updates / pings) and retry.
+                auto fh_r = read_frame();
+                if (fh_r.is_err()) {
+                    close();
+                    return std::string("read frame: " + fh_r.unwrap_err());
+                }
+                auto fh = fh_r.unwrap();
+                std::vector<u8> payload;
+                if (fh.length > 0) {
+                    auto pr = read_frame_payload(fh, payload);
+                    if (pr.is_err()) {
+                        close();
+                        return std::string("read payload: " + pr.unwrap_err());
+                    }
+                }
+                if (fh.type == GOAWAY)
+                    return std::string("GOAWAY while sending body");
+                if (fh.type == PING && (fh.flags & 0x01) == 0) {
+                    auto sr = send_frame(PING, 0x01, 0, payload);
+                    if (sr.is_err())
+                        return std::string("ping ack: " + sr.unwrap_err());
+                }
+                if (fh.type == WINDOW_UPDATE && fh.length >= 4) {
+                    u32 inc = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
+                              (static_cast<u32>(payload[2]) << 8) | payload[3];
+                    if (fh.stream_id == 0)
+                        server_window_ += inc;
+                    else if (fh.stream_id == stream_id)
+                        stream_window += inc;
+                }
+                continue;
+            }
+            const bool last = (off + len >= req.body.size());
+            const u8 flags = last ? kFlagEndStream : 0;
+            std::vector<u8> chunk(req.body.begin() + off, req.body.begin() + off + len);
+            auto sr = send_frame(DATA, flags, stream_id, chunk);
+            if (sr.is_err())
+                return std::string("send body: " + sr.unwrap_err());
+            server_window_ -= len;
+            stream_window -= len;
+            off += len;
+        }
 
-        while (true) {
+        ResponseAssembler asm_(stream_id, hpack_);
+        std::string err;
+        while (!asm_.done) {
             auto fh_r = read_frame();
             if (fh_r.is_err()) {
                 close();
@@ -278,28 +428,18 @@ namespace browser::net::http2 {
             }
 
             std::vector<u8> payload;
-            auto pr = read_frame_payload(fh, payload);
-            if (pr.is_err()) {
-                close();
-                return std::string("read payload: " + pr.unwrap_err());
+            if (fh.length > 0) {
+                auto pr = read_frame_payload(fh, payload);
+                if (pr.is_err()) {
+                    close();
+                    return std::string("read payload: " + pr.unwrap_err());
+                }
             }
 
+            // Connection-level frames.
             if (fh.stream_id == 0) {
-                if (fh.type == GOAWAY) {
-                    u32 last_stream = 0;
-                    u32 err_code = 0;
-                    if (fh.length >= 8) {
-                        last_stream = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
-                                      (static_cast<u32>(payload[2]) << 8) | payload[3];
-                        err_code = (static_cast<u32>(payload[4]) << 24) | (static_cast<u32>(payload[5]) << 16) |
-                                   (static_cast<u32>(payload[6]) << 8) | payload[7];
-                    } else if (fh.length >= 4) {
-                        last_stream = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
-                                      (static_cast<u32>(payload[2]) << 8) | payload[3];
-                    }
-                    return std::string("GOAWAY: stream=" + std::to_string(last_stream) +
-                                       " err=" + std::to_string(err_code));
-                }
+                if (fh.type == GOAWAY)
+                    return std::string("GOAWAY received");
                 if (fh.type == PING && (fh.flags & 0x01) == 0) {
                     auto sr = send_frame(PING, 0x01, 0, payload);
                     if (sr.is_err()) {
@@ -315,78 +455,46 @@ namespace browser::net::http2 {
                 continue;
             }
 
-            if (fh.stream_id != stream_id) {
+            if (fh.stream_id != asm_.stream_id)
                 continue;
-            }
 
-            if (fh.type == HEADERS || fh.type == CONTINUATION) {
-                auto new_entries = hpack_.decode(payload.data(), fh.length);
-                resp_entries.insert(resp_entries.end(), new_entries.begin(), new_entries.end());
-                if (fh.flags & 0x04) {
-                    headers_complete = true;
-                }
-                if (fh.flags & 0x01) {
-                    has_body = false;
+            u32 consumed = 0;
+            switch (asm_.on_frame(fh, payload, consumed, err)) {
+                case Action::Continue:
                     break;
-                }
-            } else if (fh.type == DATA) {
-                if (!headers_complete) {
+                case Action::Done:
+                    break;
+                case Action::Fail:
                     close();
-                    return std::string("DATA before HEADERS complete");
-                }
-                if (fh.length > server_window_) {
-                    close();
-                    return std::string("flow control window exceeded");
-                }
-                has_body = true;
-                body.insert(body.end(), payload.begin(), payload.begin() + fh.length);
-                server_window_ -= fh.length;
-                auto sr1 = send_window_update(stream_id, fh.length);
-                auto sr2 = send_window_update(0, fh.length);
+                    return err;
+            }
+            if (consumed > 0) {
+                // Restore the windows we just consumed.
+                auto sr1 = send_window_update(asm_.stream_id, consumed);
+                auto sr2 = send_window_update(0, consumed);
                 if (sr1.is_err() || sr2.is_err()) {
                     close();
                     return std::string("window update failed");
                 }
-                if (fh.flags & 0x01) {
-                    break;
-                }
-            } else if (fh.type == RST_STREAM) {
-                u32 err_code = 0;
-                if (fh.length >= 4) {
-                    err_code = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
-                               (static_cast<u32>(payload[2]) << 8) | payload[3];
-                }
-                return std::string("RST_STREAM: err=" + std::to_string(err_code));
-            } else if (fh.type == GOAWAY) {
-                return std::string("server sent GOAWAY");
-            } else if (fh.type == WINDOW_UPDATE && fh.length >= 4) {
-                u32 inc = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
-                          (static_cast<u32>(payload[2]) << 8) | payload[3];
-                server_window_ += inc;
             }
         }
 
-        if (!headers_complete) {
-            close();
-            return std::string("incomplete headers");
-        }
-
-        auto resp_r = hpack_to_response(resp_entries);
+        auto resp_r = hpack_to_response(asm_.entries);
         if (resp_r.is_err())
             return resp_r;
         auto resp = resp_r.unwrap();
 
-        if (has_body) {
+        if (asm_.has_body) {
             if (resp.headers.has("content-length")) {
                 std::string cl = resp.headers.get("content-length");
                 char *cl_end = nullptr;
                 long cl_val = std::strtol(cl.c_str(), &cl_end, 10);
                 if (*cl_end == '\0' && cl_val >= 0) {
-                    if (body.size() > static_cast<std::size_t>(cl_val))
-                        body.resize(static_cast<std::size_t>(cl_val));
+                    if (asm_.body.size() > static_cast<std::size_t>(cl_val))
+                        asm_.body.resize(static_cast<std::size_t>(cl_val));
                 }
             }
-            resp.body = std::move(body);
+            resp.body = std::move(asm_.body);
         }
 
         return resp;
@@ -403,32 +511,97 @@ namespace browser::net::http2 {
         auto hpack_data = hpack_.encode(entries);
 
         {
-            u8 flags = 0x04;
+            u8 flags = kFlagEndHeaders;
             if (req.body.empty())
-                flags |= 0x01;
+                flags |= kFlagEndStream;
             FrameHeader hdr;
             hdr.length = static_cast<u32>(hpack_data.size());
             hdr.type = HEADERS;
             hdr.flags = flags;
             hdr.stream_id = stream_id;
             auto frame = serialize_frame(hdr, hpack_data.data());
-            if (use_tls_) {
-                auto r = co_await tls_->send_all_async(frame.data(), static_cast<u32>(frame.size()));
-                if (r.is_err())
-                    co_return std::string("send headers: ") + r.unwrap_err();
-            } else {
-                auto r = co_await tcp_->send_all_async(frame.data(), static_cast<u32>(frame.size()));
-                if (r.is_err())
-                    co_return std::string("send headers: ") + r.unwrap_err();
-            }
+            auto r = use_tls_ ? co_await tls_->send_all_async(frame.data(), static_cast<u32>(frame.size()))
+                              : co_await tcp_->send_all_async(frame.data(), static_cast<u32>(frame.size()));
+            if (r.is_err())
+                co_return std::string("send headers: ") + r.unwrap_err();
         }
 
-        std::vector<HPackEntry> resp_entries;
-        bool headers_complete = false;
-        bool has_body = false;
-        std::vector<u8> body;
+        // N-C3: request body as DATA frames; pump frames while the window is dry.
+        u32 stream_window = server_initial_window_size_;
+        std::size_t off = 0;
+        while (off < req.body.size()) {
+            u32 len = data_chunk_len(req.body.size(), off, server_max_frame_size_, server_window_, stream_window);
+            if (len == 0) {
+                u8 header[9];
+                u32 got = 0;
+                while (got < 9) {
+                    auto rr = use_tls_ ? co_await tls_->receive_async(header + got, 9 - got)
+                                       : co_await tcp_->receive_async(header + got, 9 - got);
+                    if (rr.is_err())
+                        co_return std::string("read frame header: ") + rr.unwrap_err();
+                    u32 n = rr.unwrap();
+                    if (n == 0)
+                        co_return std::string("connection closed");
+                    got += n;
+                }
+                u32 pos = 0;
+                auto fh_r = parse_frame_header(header, 9, pos);
+                if (fh_r.is_err())
+                    co_return fh_r.unwrap_err();
+                auto fh = fh_r.unwrap();
+                std::vector<u8> payload;
+                if (fh.length > 0) {
+                    payload.resize(fh.length);
+                    u32 pgot = 0;
+                    while (pgot < fh.length) {
+                        auto rr = use_tls_ ? co_await tls_->receive_async(payload.data() + pgot, fh.length - pgot)
+                                           : co_await tcp_->receive_async(payload.data() + pgot, fh.length - pgot);
+                        if (rr.is_err())
+                            co_return std::string("read payload: ") + rr.unwrap_err();
+                        u32 n = rr.unwrap();
+                        if (n == 0)
+                            co_return std::string("connection closed");
+                        pgot += n;
+                    }
+                }
+                if (fh.type == GOAWAY)
+                    co_return std::string("GOAWAY while sending body");
+                if (fh.type == PING && (fh.flags & 0x01) == 0) {
+                    FrameHeader ack_hdr;
+                    ack_hdr.length = fh.length;
+                    ack_hdr.type = PING;
+                    ack_hdr.flags = kFlagEndStream;
+                    ack_hdr.stream_id = 0;
+                    auto ack = serialize_frame(ack_hdr, payload.data());
+                    auto ar = use_tls_ ? co_await tls_->send_all_async(ack.data(), static_cast<u32>(ack.size()))
+                                       : co_await tcp_->send_all_async(ack.data(), static_cast<u32>(ack.size()));
+                    if (ar.is_err())
+                        co_return std::string("ping ack: ") + ar.unwrap_err();
+                }
+                if (fh.type == WINDOW_UPDATE && fh.length >= 4) {
+                    u32 inc = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
+                              (static_cast<u32>(payload[2]) << 8) | payload[3];
+                    if (fh.stream_id == 0)
+                        server_window_ += inc;
+                    else if (fh.stream_id == stream_id)
+                        stream_window += inc;
+                }
+                continue;
+            }
+            const bool last = (off + len >= req.body.size());
+            const u8 flags = last ? kFlagEndStream : 0;
+            std::vector<u8> chunk(req.body.begin() + off, req.body.begin() + off + len);
+            auto sr = send_frame(DATA, flags, stream_id, chunk);
+            if (sr.is_err())
+                co_return std::string("send body: ") + sr.unwrap_err();
+            server_window_ -= len;
+            stream_window -= len;
+            off += len;
+        }
 
-        while (true) {
+        ResponseAssembler asm_(stream_id, hpack_);
+        std::string err;
+        while (!asm_.done) {
             u8 header[9];
             u32 got = 0;
             while (got < 9) {
@@ -470,28 +643,20 @@ namespace browser::net::http2 {
             }
 
             if (fh.stream_id == 0) {
-                if (fh.type == GOAWAY) {
-                    co_return std::string("GOAWAY");
-                }
+                if (fh.type == GOAWAY)
+                    co_return std::string("GOAWAY received");
                 if (fh.type == PING && (fh.flags & 0x01) == 0) {
                     FrameHeader ack_hdr;
                     ack_hdr.length = fh.length;
                     ack_hdr.type = PING;
-                    ack_hdr.flags = 0x01;
+                    ack_hdr.flags = kFlagEndStream;
                     ack_hdr.stream_id = 0;
                     auto ack = serialize_frame(ack_hdr, payload.data());
-                    if (use_tls_) {
-                        auto r = co_await tls_->send_all_async(ack.data(), static_cast<u32>(ack.size()));
-                        if (r.is_err()) {
-                            close();
-                            co_return std::string("ping ack: ") + r.unwrap_err();
-                        }
-                    } else {
-                        auto r = co_await tcp_->send_all_async(ack.data(), static_cast<u32>(ack.size()));
-                        if (r.is_err()) {
-                            close();
-                            co_return std::string("ping ack: ") + r.unwrap_err();
-                        }
+                    auto ar = use_tls_ ? co_await tls_->send_all_async(ack.data(), static_cast<u32>(ack.size()))
+                                       : co_await tcp_->send_all_async(ack.data(), static_cast<u32>(ack.size()));
+                    if (ar.is_err()) {
+                        close();
+                        co_return std::string("ping ack: ") + ar.unwrap_err();
                     }
                 }
                 if (fh.type == WINDOW_UPDATE && fh.length >= 4) {
@@ -502,72 +667,45 @@ namespace browser::net::http2 {
                 continue;
             }
 
-            if (fh.stream_id != stream_id)
+            if (fh.stream_id != asm_.stream_id)
                 continue;
 
-            if (fh.type == HEADERS || fh.type == CONTINUATION) {
-                auto new_entries = hpack_.decode(payload.data(), fh.length);
-                resp_entries.insert(resp_entries.end(), new_entries.begin(), new_entries.end());
-                if (fh.flags & 0x04)
-                    headers_complete = true;
-                if (fh.flags & 0x01) {
-                    has_body = false;
+            u32 consumed = 0;
+            switch (asm_.on_frame(fh, payload, consumed, err)) {
+                case Action::Continue:
                     break;
-                }
-            } else if (fh.type == DATA) {
-                if (!headers_complete) {
-                    close();
-                    co_return std::string("DATA before HEADERS");
-                }
-                if (fh.length > server_window_) {
-                    close();
-                    co_return std::string("flow control");
-                }
-                has_body = true;
-                body.insert(body.end(), payload.begin(), payload.begin() + fh.length);
-                server_window_ -= fh.length;
-                {
-                    auto sup1 = send_window_update(stream_id, fh.length);
-                    auto sup2 = send_window_update(0, fh.length);
-                    if (sup1.is_err() || sup2.is_err()) {
-                        close();
-                        co_return std::string("window update failed");
-                    }
-                }
-                if (fh.flags & 0x01)
+                case Action::Done:
                     break;
-            } else if (fh.type == RST_STREAM) {
-                co_return std::string("RST_STREAM");
-            } else if (fh.type == GOAWAY) {
-                co_return std::string("GOAWAY");
-            } else if (fh.type == WINDOW_UPDATE && fh.length >= 4) {
-                u32 inc = (static_cast<u32>(payload[0]) << 24) | (static_cast<u32>(payload[1]) << 16) |
-                          (static_cast<u32>(payload[2]) << 8) | payload[3];
-                server_window_ += inc;
+                case Action::Fail:
+                    close();
+                    co_return err;
+            }
+            if (consumed > 0) {
+                auto sr1 = send_window_update(asm_.stream_id, consumed);
+                auto sr2 = send_window_update(0, consumed);
+                if (sr1.is_err() || sr2.is_err()) {
+                    close();
+                    co_return std::string("window update failed");
+                }
             }
         }
 
-        if (!headers_complete) {
-            close();
-            co_return std::string("incomplete headers");
-        }
-
-        auto resp_r = hpack_to_response(resp_entries);
+        auto resp_r = hpack_to_response(asm_.entries);
         if (resp_r.is_err())
             co_return resp_r.unwrap_err();
         auto resp = resp_r.unwrap();
 
-        if (has_body) {
+        if (asm_.has_body) {
             if (resp.headers.has("content-length")) {
                 std::string cl = resp.headers.get("content-length");
                 char *cl_end = nullptr;
                 long cl_val = std::strtol(cl.c_str(), &cl_end, 10);
                 if (*cl_end == '\0' && cl_val >= 0) {
-                    if (body.size() > static_cast<std::size_t>(cl_val))
-                        body.resize(static_cast<std::size_t>(cl_val));
+                    if (asm_.body.size() > static_cast<std::size_t>(cl_val))
+                        asm_.body.resize(static_cast<std::size_t>(cl_val));
                 }
             }
-            resp.body = std::move(body);
+            resp.body = std::move(asm_.body);
         }
 
         co_return resp;

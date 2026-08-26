@@ -609,6 +609,35 @@ TEST(http2_connect_google, {
     client.close();
 })
 
+// N-C3: request bodies must actually be sent as DATA frames. httpbin.org
+// echoes the received body back as JSON.
+TEST(http2_post_body_sent, {
+    browser::net::http2::HTTP2Client client;
+    auto r = client.connect("httpbin.org", 443, true);
+    if (r.is_err())
+        return true;  // network unavailable
+    ASSERT(client.is_connected());
+
+    browser::net::http::Request req;
+    req.method = browser::net::http::Method::POST;
+    auto url_r = browser::net::URL::parse("https://httpbin.org/post");
+    if (url_r.is_err())
+        return true;
+    req.url = url_r.unwrap();
+    const std::string payload = "nc3-marker=body-was-sent";
+    req.body.assign(payload.begin(), payload.end());
+    req.headers.set("Content-Type", "application/x-www-form-urlencoded");
+
+    auto resp = client.execute(req);
+    // Once connected, failure here means the server never got our body
+    // (the old behavior: it waited forever for DATA frames).
+    ASSERT(resp.is_ok());
+    ASSERT_EQ(resp.unwrap().status.code, 200);
+    const std::string body(resp.unwrap().body.begin(), resp.unwrap().body.end());
+    ASSERT(body.find("nc3-marker=body-was-sent") != std::string::npos);
+    client.close();
+})
+
 TEST(http_client_get_example, {
     browser::net::HTTPClient client;
     auto r = client.get("http://example.com/");
