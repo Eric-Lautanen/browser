@@ -1,10 +1,12 @@
 #pragma once
+#include "../iocp.hpp"
+#include "types.hpp"
+
+#include <atomic>
+#include <coroutine>
+#include <mswsock.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <mswsock.h>
-#include "types.hpp"
-#include "../iocp.hpp"
-#include <coroutine>
 
 namespace browser::net {
 
@@ -43,7 +45,7 @@ namespace browser::net {
         Result<void> ensure_iocp();
         Result<void> load_connect_ex();
 
-        static int wsa_refcount_;
+        static std::atomic<int> wsa_refcount_;
         static bool iocp_initialized_;
     };
 

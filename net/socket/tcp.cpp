@@ -1,23 +1,28 @@
-#include "socket_win32.hpp"
 #include "../../async/executor.hpp"
+#include "socket_win32.hpp"
+
 #include <cstring>
 
 namespace browser::net {
 
-    int Win32TCPSocket::wsa_refcount_ = 0;
+    std::atomic<int> Win32TCPSocket::wsa_refcount_{0};
     bool Win32TCPSocket::iocp_initialized_ = false;
 
     Result<void> Win32TCPSocket::ensure_wsa_started() {
-        if (wsa_refcount_ > 0) {
-            wsa_refcount_++;
-            return {};
+        // BR-P5: concurrent resource fetches create sockets from pool
+        // threads, so the refcount is atomic and startup is race-checked.
+        int expected = wsa_refcount_.load(std::memory_order_acquire);
+        while (expected > 0) {
+            if (wsa_refcount_.compare_exchange_weak(expected, expected + 1, std::memory_order_relaxed)) {
+                return {};
+            }
         }
         WSADATA wsaData;
         int ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
         if (ret != 0) {
             return std::string("WSAStartup failed");
         }
-        wsa_refcount_ = 1;
+        wsa_refcount_.store(1, std::memory_order_release);
 
         if (!iocp_initialized_) {
             auto &iocp = IOCP::global();
@@ -40,11 +45,8 @@ namespace browser::net {
     }
 
     void Win32TCPSocket::wsa_cleanup() {
-        if (wsa_refcount_ > 0) {
-            wsa_refcount_--;
-            if (wsa_refcount_ == 0) {
-                WSACleanup();
-            }
+        if (wsa_refcount_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            WSACleanup();
         }
     }
 

@@ -563,7 +563,6 @@ namespace browser {
             if (paint_r.is_ok()) {
                 page.display_list = std::move(paint_r.unwrap());
             }
-
         }
 
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
@@ -775,16 +774,17 @@ namespace browser {
     async::task<bool> PageLoader::fetch_css_content(std::string &merged_css) {
         co_await async::thread_pool_executor{};
         // resource_loader_ already has CSS URLs queued from collect_css.
-        // We need to fetch those CSS files and merge their content.
-        // Create a temporary loader for CSS only, or fetch them one by one.
-        for (const auto &url : resource_loader_.pending_urls()) {
-            auto resp = resource_loader_.fetch_single(url, html::ResourcePriority::CSS);
+        // BR-P5: fetch them concurrently instead of one blocking round trip
+        // per stylesheet (render-blocking path).
+        auto responses_r = co_await resource_loader_.fetch_all_parallel();
+        if (responses_r.is_err())
+            co_return false;
+        for (const auto &resp : responses_r.unwrap()) {
             if (resp.success && !resp.data.empty()) {
                 std::string css_text(reinterpret_cast<const char *>(resp.data.data()), resp.data.size());
                 merged_css += css_text + "\n";
             }
         }
-        // Also fetch from the main list (but don't re-fetch what's already done)
         co_return true;
     }
 
@@ -890,7 +890,12 @@ namespace browser {
 
     async::task<bool> PageLoader::load_and_decode_images(const std::string &) {
         co_await async::thread_pool_executor{};
-        auto resources = resource_loader_.fetch_all();
+        // BR-P5: images/scripts/fonts download concurrently instead of one
+        // blocking round trip at a time.
+        auto resources_r = co_await resource_loader_.fetch_all_parallel();
+        if (resources_r.is_err())
+            co_return false;
+        auto resources = std::move(resources_r.unwrap());
         for (auto &res : resources) {
             if (!res.success || res.data.empty())
                 continue;
@@ -914,7 +919,8 @@ namespace browser {
         co_return true;
     }
 
-    async::task<bool> PageLoader::load_font_faces(const std::vector<css::FontFaceRule> &font_faces, const net::URL &base_url) {
+    async::task<bool> PageLoader::load_font_faces(const std::vector<css::FontFaceRule> &font_faces,
+                                                  const net::URL &base_url) {
         co_await async::thread_pool_executor{};
         for (const auto &rule : font_faces) {
             if (rule.src.empty())
@@ -924,8 +930,7 @@ namespace browser {
             size_t url_pos = rule.src.find("url(");
             if (url_pos != std::string::npos) {
                 size_t start = url_pos + 4;
-                while (start < rule.src.size() && (rule.src[start] == ' ' || rule.src[start] == '\t'))
-                    start++;
+                while (start < rule.src.size() && (rule.src[start] == ' ' || rule.src[start] == '\t')) start++;
                 char quote = 0;
                 if (rule.src[start] == '"' || rule.src[start] == '\'') {
                     quote = rule.src[start];
@@ -935,7 +940,8 @@ namespace browser {
                 if (quote) {
                     end = rule.src.find(quote, start);
                 } else {
-                    while (end < rule.src.size() && rule.src[end] != ')' && rule.src[end] != ' ' && rule.src[end] != '\t')
+                    while (end < rule.src.size() && rule.src[end] != ')' && rule.src[end] != ' ' &&
+                           rule.src[end] != '\t')
                         end++;
                 }
                 if (end > start) {
