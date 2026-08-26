@@ -1,5 +1,9 @@
-#include "../../async/executor.hpp"
+// clang-format off
+// winsock2.h must precede windows.h; clang-format's IncludeOrder reorders
+// these into a #warning.
 #include "socket_win32.hpp"
+#include "../../async/executor.hpp"
+// clang-format on
 
 #include <cstring>
 
