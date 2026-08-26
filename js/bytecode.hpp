@@ -35,7 +35,9 @@ namespace browser::js {
         NEGATE,
         NOT,
         TYPEOF,
-        VOID,
+        // Not "VOID": windows.h defines VOID as a macro and this header is
+        // included after winsock/windows in several TUs.
+        VOID_OP,
         BITWISE_NOT,
         ADD,
         SUB,

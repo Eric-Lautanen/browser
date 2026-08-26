@@ -64,4 +64,23 @@ bool ScriptRunner::all_executed() const {
     return true;
 }
 
+void ScriptRunner::attach_external_data(const std::string &url, std::vector<u8> data) {
+    for (auto &entry : scripts_) {
+        if (entry.kind == ScriptKind::EXTERNAL && entry.url == url && !entry.executed) {
+            entry.data = std::move(data);
+            // Convert source bytes into the text the parser consumes.
+            entry.source.assign(entry.data.begin(), entry.data.end());
+            return;
+        }
+    }
+}
+
+bool ScriptRunner::has_pending_external(const std::string &url) const {
+    for (const auto &entry : scripts_) {
+        if (entry.kind == ScriptKind::EXTERNAL && entry.url == url && !entry.executed)
+            return true;
+    }
+    return false;
+}
+
 } // namespace browser::js

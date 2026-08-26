@@ -187,7 +187,7 @@ namespace browser::js {
             }
             if (un.op_name == "void") {
                 compile_expr(*un.argument);
-                current_->emit(Opcode::VOID);
+                current_->emit(Opcode::VOID_OP);
                 return;
             }
             if (un.op_name == "delete") {

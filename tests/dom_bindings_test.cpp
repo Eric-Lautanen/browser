@@ -1,10 +1,13 @@
+#include "../js/dom_bindings.hpp"
+
+#include "../html/dom.hpp"
+#include "../html/parser.hpp"
+#include "../html/traversal.hpp"
+#include "../js/gc.hpp"
+#include "../js/script_runner.hpp"
+#include "../js/vm.hpp"
 #include "test_framework.hpp"
 #include "utility.hpp"
-#include "../js/dom_bindings.hpp"
-#include "../js/vm.hpp"
-#include "../js/gc.hpp"
-#include "../html/dom.hpp"
-#include "../html/traversal.hpp"
 
 using namespace browser::js;
 using namespace browser::html;
@@ -177,4 +180,75 @@ TEST(dom_prototype_chain, {
     JSValue result = obj->obj.get_property("customMethod");
     ASSERT(result.type == JSValue::Type::STRING);
     ASSERT_EQ(result.string_val, "works");
+})
+
+// ---------------------------------------------------------------------------
+static std::string g_last_data_ran;
+
+static void br_c11_probe() {
+    ::browser::html::Parser parser;
+    auto doc = parser.parse(
+        "<html><body><div id=host></div>"
+        "<script>var h = document.getElementById('host');"
+        "h.setAttribute('data-ran', 'yes');</script>"
+        "</body></html>");
+    if (!doc)
+        return;
+    ::browser::js::VM vm;
+    vm.register_builtins();
+    ::browser::js::DOMBindings bindings;
+    bindings.register_dom_bindings(&vm, static_cast<::browser::html::Element *>(doc->children.front().get()));
+
+    std::string source;
+    bool found = false;
+    ::browser::html::traverse_depth_first(doc.get(), [&](::browser::html::Node *n) {
+        if (n->type != ::browser::html::NodeType::ELEMENT)
+            return;
+        auto *el = static_cast<::browser::html::Element *>(n);
+        if (el->tag_name != "script" || found)
+            return;
+        found = true;
+        source = ::browser::html::inner_text(el);
+    });
+    if (!found || source.empty())
+        return;
+
+    ::browser::js::ScriptRunner runner(&vm);
+    ::browser::js::ScriptEntry entry;
+    entry.kind = ::browser::js::ScriptKind::INLINE;
+    entry.phase = ::browser::js::ScriptPhase::IMMEDIATE;
+    entry.source = source;
+    runner.add_script(std::move(entry));
+    runner.execute_immediate();
+    if (!runner.errors().empty())
+        return;
+
+    ::browser::html::Element *host = ::browser::html::find_element_by_tag(doc.get(), "div");
+    if (!host)
+        return;
+    g_last_data_ran = host->get_attribute("data-ran");
+}
+
+TEST(inline_script_mutates_dom_via_bindings, {
+    br_c11_probe();
+    ASSERT(!g_last_data_ran.empty());
+    ASSERT(g_last_data_ran == "yes");
+})
+
+TEST(external_script_bytes_execute_after_attach, {
+    ::browser::js::VM vm;
+    vm.register_builtins();
+    ::browser::js::ScriptRunner runner(&vm);
+
+    ::browser::js::ScriptEntry entry;
+    entry.kind = ::browser::js::ScriptKind::EXTERNAL;
+    entry.phase = ::browser::js::ScriptPhase::DEFER;
+    entry.url = "https://example.com/app.js";
+    runner.add_script(std::move(entry));
+
+    std::vector<browser::u8> payload = {'v', 'a', 'r', ' ', 'x', ' ', '=', ' ', '4', '2', ';'};
+    runner.attach_external_data(entry.url, std::move(payload));
+    runner.execute_deferred();
+    ASSERT(runner.errors().empty());
+    ASSERT(runner.all_executed());
 })

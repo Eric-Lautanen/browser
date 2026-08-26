@@ -394,7 +394,7 @@ namespace browser::js {
                 case Opcode::TYPEOF:
                     op_typeof();
                     break;
-                case Opcode::VOID:
+                case Opcode::VOID_OP:
                     op_void();
                     break;
                 case Opcode::BITWISE_NOT:

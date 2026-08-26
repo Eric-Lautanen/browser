@@ -32,7 +32,12 @@ namespace browser {
     namespace render {
         class TextRenderer;
         class FontManager;
-    }
+    }  // namespace render
+    namespace js {
+        class VM;
+        class DOMBindings;
+        class ScriptRunner;
+    }  // namespace js
 
     struct LoadedPage {
         std::unique_ptr<html::Document> dom;
@@ -114,6 +119,15 @@ namespace browser {
         static u64 elapsed_ms(std::chrono::steady_clock::time_point start);
         std::unordered_map<std::string, std::shared_ptr<image::Image>> loaded_images_;
         DownloadCheckCallback download_callback_;
+
+        // BR-C11: per-page script execution. A VM + DOM bindings pair is
+        // created for each parsed document; inline <script> content runs
+        // before layout, external scripts are fetched through the resource
+        // loader and executed once their bytes arrive.
+        void setup_page_scripts(html::Document *doc, const net::URL &base_url);
+        std::unique_ptr<js::VM> script_vm_;
+        std::unique_ptr<js::DOMBindings> script_bindings_;
+        std::unique_ptr<js::ScriptRunner> script_runner_;
 
     public:
         const net::CSPPolicy &csp_policy() const { return current_csp_; }

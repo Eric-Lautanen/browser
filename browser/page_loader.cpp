@@ -1,5 +1,4 @@
 #include "page_loader.hpp"
-#include "../parsers.hpp"
 
 #include "../async/executor.hpp"
 #include "../css/cascade.hpp"
@@ -8,10 +7,14 @@
 #include "../html/parser.hpp"
 #include "../html/traversal.hpp"
 #include "../image/decoder.hpp"
+#include "../js/dom_bindings.hpp"
+#include "../js/script_runner.hpp"
+#include "../js/vm.hpp"
 #include "../net/deflate.hpp"
 #include "../net/http_client.hpp"
 #include "../net/tracker_blocker.hpp"
 #include "../net/url.hpp"
+#include "../parsers.hpp"
 #include "../render/painter.hpp"
 #include "paths.hpp"
 #include "settings.hpp"
@@ -580,6 +583,12 @@ namespace browser {
         if (title_el)
             page.page_title = html::inner_text(title_el);
 
+        // BR-C11: run the page's scripts between DOM construction and
+        // layout so script-driven DOM mutation is reflected in rendering.
+        setup_page_scripts(page.dom.get(), net::URL());
+        if (script_runner_)
+            script_runner_->execute_immediate();
+
         std::string merged_css;
         net::URL empty_base;
         collect_css(page.dom.get(), merged_css, empty_base);
@@ -613,13 +622,16 @@ namespace browser {
             }
         }
 
+        // BR-C11: deferred/external scripts execute after the DOM is final.
+        if (script_runner_)
+            script_runner_->execute_deferred();
+
         if (page.layout) {
             render::Painter painter(text_renderer_);
             auto paint_r = co_await painter.paint_async(page.layout.get());
             if (paint_r.is_ok()) {
                 page.display_list = std::move(paint_r.unwrap());
             }
-
         }
 
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
@@ -763,6 +775,72 @@ namespace browser {
         co_return true;
     }
 
+    // BR-C11: collect <script> elements and run them through ScriptRunner.
+    // Inline scripts execute immediately (before layout); external scripts
+    // are queued on the resource loader and executed once fetched. CSP
+    // script-src / default-src gates both paths.
+    void PageLoader::setup_page_scripts(html::Document *doc, const net::URL &base_url) {
+        script_vm_ = std::make_unique<js::VM>();
+        script_vm_->register_builtins();
+        script_bindings_ = std::make_unique<js::DOMBindings>();
+        // The document element (<html>) backs the `document` binding.
+        html::Element *doc_el = nullptr;
+        for (auto &child : doc->children) {
+            if (child->type == html::NodeType::ELEMENT) {
+                doc_el = static_cast<html::Element *>(child.get());
+                break;
+            }
+        }
+        if (!doc_el)
+            return;
+        script_bindings_->register_dom_bindings(script_vm_.get(), doc_el);
+        script_runner_ = std::make_unique<js::ScriptRunner>(script_vm_.get());
+
+        bool csp_script_gate = current_csp_.has_directive("script-src") || current_csp_.has_directive("default-src");
+
+        html::traverse_depth_first(doc, [&](html::Node *node) {
+            if (node->type != html::NodeType::ELEMENT)
+                return;
+            auto *el = static_cast<html::Element *>(node);
+            if (el->tag_name != "script")
+                return;
+
+            js::ScriptEntry entry;
+            entry.element = el;
+            entry.kind = js::ScriptKind::INLINE;
+            entry.phase = js::ScriptPhase::IMMEDIATE;
+
+            auto src = el->get_attribute("src");
+            if (!src.empty()) {
+                auto url_r = base_url.resolve(src);
+                if (url_r.is_err())
+                    return;
+                entry.kind = js::ScriptKind::EXTERNAL;
+                entry.phase = js::ScriptPhase::DEFER;  // executed post-DOM
+                entry.url = url_r.unwrap().to_string();
+                if (csp_script_gate && !current_csp_.allows("script-src", entry.url) &&
+                    !current_csp_.allows("default-src", entry.url)) {
+                    return;
+                }
+                if (script_runner_->has_pending_external(entry.url))
+                    return;
+                html::ResourceRequest rreq;
+                rreq.url = entry.url;
+                rreq.priority = html::ResourcePriority::JS;
+                resource_loader_.request(rreq);
+            } else {
+                entry.source = html::inner_text(el);
+                if (entry.source.empty())
+                    return;
+                if (csp_script_gate && !current_csp_.allows("script-src", "") &&
+                    !current_csp_.allows("default-src", "")) {
+                    return;
+                }
+            }
+            script_runner_->add_script(std::move(entry));
+        });
+    }
+
     void PageLoader::collect_resources(html::Document *doc, const net::URL &base_url) {
         html::traverse_depth_first(doc, [&](html::Node *node) {
             if (node->type != html::NodeType::ELEMENT)
@@ -803,6 +881,11 @@ namespace browser {
         for (auto &res : resources) {
             if (!res.success || res.data.empty())
                 continue;
+            // BR-C11: feed fetched external scripts to the runner.
+            if (script_runner_ && script_runner_->has_pending_external(res.url)) {
+                script_runner_->attach_external_data(res.url, res.data);
+                continue;
+            }
             auto fmt = image::detect_format(res.data.data(), res.data.size());
             if (fmt == image::ImageFormat::UNKNOWN)
                 continue;

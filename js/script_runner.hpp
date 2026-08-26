@@ -30,11 +30,14 @@ class ScriptRunner {
 public:
     ScriptRunner(VM* vm);
     void add_script(ScriptEntry entry);
+    // BR-C11: attaches fetched bytes to an external script queued earlier.
+    void attach_external_data(const std::string &url, std::vector<u8> data);
     void execute_immediate();
     void execute_deferred();
     void execute_async(const std::string& url);
     void fetch_and_execute_external(const std::string& url, html::Element* element);
     bool all_executed() const;
+    bool has_pending_external(const std::string &url) const;
     std::vector<std::string> errors() const { return errors_; }
 private:
     VM* vm_;
