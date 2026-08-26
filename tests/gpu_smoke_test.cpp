@@ -367,3 +367,76 @@ TEST(gpu_draw_blurred_texture_restores_scissor, {
     pgl::glDeleteTextures(1, &tex);
     window->set_should_close(true);
 })
+
+// ── R-P4 / R-P6: atlas lifecycle ──
+
+TEST(gpu_atlas_pages_reclaimed_after_overflow, {
+    auto result = platform::Window::create_window("GPU Smoketest", 320, 240);
+    if (result.is_err())
+        return true;
+    auto &window = result.unwrap();
+    window->make_context_current();
+    platform::load_opengl_functions();
+    auto renderer = std::make_unique<render::Renderer>();
+    ASSERT(renderer->initialize(320, 240).is_ok());
+    auto fm = std::make_unique<render::FontManager>();
+    auto tr = std::make_unique<render::TextRenderer>();
+    auto ir = tr->initialize(fm.get());
+    if (ir.is_err())
+        return true;
+
+    // Large glyph sizes fill a 1024x1024 page in ~40 glyphs; this churns
+    // through several full-page overflows. The old growth path pushed new
+    // pages until the cap and NEVER reclaimed them on reset (stale VRAM
+    // held forever); the shared reset path must collapse back to one page.
+    render::Color white{1, 1, 1, 1};
+    for (u32 size = 200; size < 260; size += 2) {
+        tr->render_text(renderer.get(), "Test", 10, 10, white, size);
+    }
+    ASSERT(tr->atlas_page_count() == 1);
+    ASSERT(tr->glyph_cache_size() > 0);
+    window->set_should_close(true);
+})
+
+TEST(gpu_glyph_cache_lru_retains_under_cap, {
+    auto result = platform::Window::create_window("GPU Smoketest", 320, 240);
+    if (result.is_err())
+        return true;
+    auto &window = result.unwrap();
+    window->make_context_current();
+    platform::load_opengl_functions();
+    auto renderer = std::make_unique<render::Renderer>();
+    ASSERT(renderer->initialize(320, 240).is_ok());
+    auto fm = std::make_unique<render::FontManager>();
+    auto tr = std::make_unique<render::TextRenderer>();
+    auto ir = tr->initialize(fm.get());
+    if (ir.is_err())
+        return true;
+
+    // 250 sizes x 4 distinct glyphs ("Test") = 1000 distinct cache entries.
+    // Under the old nuke-at-2048 policy nothing here would be evicted, so
+    // assert the count is exact; the LRU sweep at the higher 8192 cap keeps
+    // every entry alive while bounding worst-case memory.
+    render::Color white{1, 1, 1, 1};
+    // The embedded font covers 414 of these codepoints; six pixel sizes give
+    // 2484 distinct {glyph,size} entries — past the OLD nuke-at-2048 policy
+    // (which would wholesale-clear and leave ~436), while staying small
+    // enough that a single 1024x1024 atlas page holds everything (no reset).
+    std::string all;
+    for (u32 cp = 0x21; cp < 0x400; cp++) {
+        if (cp < 0x80 || (cp >= 0xA0 && cp <= 0x24F) || (cp >= 0x370 && cp <= 0x3FF)) {
+            if (cp < 0x80) {
+                all += static_cast<char>(cp);
+            } else if (cp < 0x800) {
+                all += static_cast<char>(0xC0 | (cp >> 6));
+                all += static_cast<char>(0x80 | (cp & 0x3F));
+            }
+        }
+    }
+    for (u32 size = 16; size <= 21; size++) {
+        tr->render_text(renderer.get(), all, 10, 10, white, size);
+    }
+    ASSERT(tr->atlas_page_count() == 1);
+    ASSERT(tr->glyph_cache_size() == 2484);
+    window->set_should_close(true);
+})

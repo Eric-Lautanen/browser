@@ -30,6 +30,17 @@ namespace browser::render {
         return {};
     }
 
+    void TextRenderer::reset_atlas() {
+        // R-P4: reclaim every page — the old overflow path only re-created
+        // page 0 and left pages 1..N allocated (with dead content) forever.
+        // R-P5: both caches must die together; emoji entries reference
+        // page-0 UVs that are about to be overwritten.
+        glyph_cache_.clear();
+        emoji_cache_.clear();
+        cache_stamp_ = 0;
+        create_atlas();
+    }
+
     Result<void> TextRenderer::initialize(FontManager *fm) {
         fm_ = fm;
         auto r = fm_->load_default_font();
@@ -63,11 +74,24 @@ namespace browser::render {
 
         GlyphCacheKey key{face, (u32)glyph_id, pixel_size};
         auto it = glyph_cache_.find(key);
-        if (it != glyph_cache_.end())
+        if (it != glyph_cache_.end()) {
+            // R-P6: refresh recency so hot glyphs survive eviction sweeps.
+            it->second.last_used = ++cache_stamp_;
             return &it->second;
+        }
 
-        if (glyph_cache_.size() >= 2048)
-            glyph_cache_.clear();
+        if (glyph_cache_.size() >= kGlyphCacheCap) {
+            // R-P6: evict the least-recently-used half instead of clearing
+            // everything (the old full clear discarded hot ASCII alongside
+            // cold CJK and forced mass re-rasterization on the GL thread).
+            std::vector<std::pair<u64, GlyphCacheKey>> items;
+            items.reserve(glyph_cache_.size());
+            for (const auto &kv : glyph_cache_) items.emplace_back(kv.second.last_used, kv.first);
+            auto mid = items.begin() + static_cast<std::ptrdiff_t>(items.size() / 2);
+            std::nth_element(
+                items.begin(), mid, items.end(), [](const auto &a, const auto &b) { return a.first < b.first; });
+            for (auto it2 = mid; it2 != items.end(); ++it2) glyph_cache_.erase(it2->second);
+        }
 
         auto rr = face->rasterize_glyph_by_gid(glyph_id, pixel_size);
         if (rr.is_err())
@@ -87,24 +111,7 @@ namespace browser::render {
         }
 
         if (atlas_cy_ + h > kAtlasHeight) {
-            if (atlas_page_ + 1 < kMaxAtlasPages) {
-                atlas_page_++;
-                Texture2D page;
-                std::vector<u8> empty(kAtlasWidth * kAtlasHeight, 0);
-                auto r = page.create(kAtlasWidth, kAtlasHeight, empty.data());
-                if (r.is_err()) return nullptr;
-                atlas_pages_.push_back(std::move(page));
-                atlas_cx_ = 0; atlas_cy_ = 0; atlas_row_h_ = 0;
-            } else {
-                glyph_cache_.clear();
-                Texture2D page;
-                std::vector<u8> empty(kAtlasWidth * kAtlasHeight, 0);
-                auto r = page.create(kAtlasWidth, kAtlasHeight, empty.data());
-                if (r.is_err()) return nullptr;
-                atlas_pages_[0] = std::move(page);
-                atlas_page_ = 0;
-                atlas_cx_ = 0; atlas_cy_ = 0; atlas_row_h_ = 0;
-            }
+            reset_atlas();
         }
 
         atlas_pages_[atlas_page_].update_sub(atlas_cx_, atlas_cy_, w, h, gb.bitmap.data(), gb.has_color);
@@ -129,27 +136,17 @@ namespace browser::render {
         if (h + kGutter > atlas_row_h_)
             atlas_row_h_ = h + kGutter;
 
+        entry.last_used = ++cache_stamp_;
         auto [it2, inserted] = glyph_cache_.emplace(key, entry);
         return &it2->second;
     }
 
     TextRenderer::GlyphAtlasEntry *TextRenderer::prepare_emoji_glyph(u32 codepoint, const u8 *bitmap_data, u32 pixel_size) {
         (void)codepoint;
-        struct EmojiKey {
-            const u8 *data;
-            u32 pixel_size;
-            bool operator==(const EmojiKey &o) const { return data == o.data && pixel_size == o.pixel_size; }
-        };
-        struct EmojiHash {
-            u64 operator()(const EmojiKey &k) const {
-                return reinterpret_cast<u64>(k.data) ^ ((u64)k.pixel_size << 16);
-            }
-        };
-        static std::unordered_map<EmojiKey, GlyphAtlasEntry, EmojiHash> emoji_cache;
 
-        EmojiKey ek{bitmap_data, pixel_size};
-        auto cit = emoji_cache.find(ek);
-        if (cit != emoji_cache.end())
+        EmojiCacheKey ek{bitmap_data, pixel_size};
+        auto cit = emoji_cache_.find(ek);
+        if (cit != emoji_cache_.end())
             return &cit->second;
 
         GlyphBitmap gb = make_emoji_bitmap(bitmap_data, pixel_size);
@@ -162,25 +159,7 @@ namespace browser::render {
             atlas_row_h_ = 0;
         }
         if (atlas_cy_ + h > kAtlasHeight) {
-            if (atlas_page_ + 1 < kMaxAtlasPages) {
-                atlas_page_++;
-                Texture2D page;
-                std::vector<u8> empty(kAtlasWidth * kAtlasHeight, 0);
-                auto r = page.create(kAtlasWidth, kAtlasHeight, empty.data());
-                if (r.is_err()) return nullptr;
-                atlas_pages_.push_back(std::move(page));
-                atlas_cx_ = 0; atlas_cy_ = 0; atlas_row_h_ = 0;
-            } else {
-                glyph_cache_.clear();
-                emoji_cache.clear();
-                Texture2D page;
-                std::vector<u8> empty(kAtlasWidth * kAtlasHeight, 0);
-                auto r = page.create(kAtlasWidth, kAtlasHeight, empty.data());
-                if (r.is_err()) return nullptr;
-                atlas_pages_[0] = std::move(page);
-                atlas_page_ = 0;
-                atlas_cx_ = 0; atlas_cy_ = 0; atlas_row_h_ = 0;
-            }
+            reset_atlas();
         }
 
         atlas_pages_[atlas_page_].update_sub(atlas_cx_, atlas_cy_, w, h, gb.bitmap.data(), false);
@@ -205,7 +184,7 @@ namespace browser::render {
         if (h + kGutter > atlas_row_h_)
             atlas_row_h_ = h + kGutter;
 
-        auto [it2, inserted] = emoji_cache.emplace(ek, entry);
+        auto [it2, inserted] = emoji_cache_.emplace(ek, entry);
         return &it2->second;
     }
 
