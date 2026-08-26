@@ -13,6 +13,14 @@ namespace browser::net::tls {
 
     enum ContentType : u8 { CHANGE_CIPHER_SPEC = 20, ALERT = 21, HANDSHAKE = 22, APPLICATION_DATA = 23 };
 
+    // TLS maximum plaintext fragment per record (RFC 8446 §5.1). Larger
+    // payloads are split into multiple records (audit N-C6).
+    inline constexpr u32 kMaxPlaintextFragment = 16384;
+    // Maximum ciphertext record we accept on receive: 2^14 + 256.
+    inline constexpr u32 kMaxCiphertextRecord = 16640;
+    // Safety cap for handshake-message reassembly across records (N-C10).
+    inline constexpr u32 kMaxHandshakeBuffer = 1024u * 1024u;
+
     enum HandshakeType : u8 {
         HS_CLIENT_HELLO = 1,
         HS_SERVER_HELLO = 2,
@@ -53,6 +61,16 @@ namespace browser::net::tls {
         bool app_keys_set_ = false;
         std::string alpn_;
 
+        // N-C2: plaintext left over from a decrypted record whose payload
+        // exceeded the caller's buffer. Delivered before the next record is read.
+        std::vector<u8> recv_pending_;
+        std::size_t recv_pending_pos_ = 0;
+        // Set when close_notify was received (clean EOF) or the TCP peer closed.
+        bool recv_eof_ = false;
+        // Set by the record layer when the TCP peer closed underneath us; lets
+        // receive_all deliver a partial body instead of masking a hard error.
+        bool tcp_closed_ = false;
+
         u64 client_seq_ = 0;
         u64 server_seq_ = 0;
         u16 cipher_suite_ = 0;
@@ -83,6 +101,15 @@ namespace browser::net::tls {
 
         void reset_state();
 
+        // Drains buffered plaintext / reads encrypted records until application
+        // data is available in recv_pending_ or the stream ends.
+        // Sync: Result<bool> — true = data available, false = clean EOF (close_notify).
+        // Async: task carries Result<bool> with the same contract.
+        // Errors from decryption/protocol violations propagate as errors; an
+        // abrupt TCP close sets tcp_closed_ and is reported by receive_all.
+        Result<bool> fill_recv_pending();
+        async::task<bool> fill_recv_pending_async();  // ok+true=data, ok+false=eof, err=error
+
         // Sync record layer
         Result<void> send_raw_record(u8 type, const std::vector<u8> &data);
         Result<std::vector<u8>> read_raw_record(u8 *out_type = nullptr);
@@ -94,11 +121,21 @@ namespace browser::net::tls {
         // Encrypted record layer
         Result<void> send_encrypted_record(
             u8 inner_type, const std::vector<u8> &data, const u8 key[32], const u8 iv[12], u64 &seq);
-        Result<std::vector<u8>> read_encrypted_record(const u8 key[32], const u8 iv[12], u64 &seq);
+        // Reads one encrypted record; on success returns its decrypted payload
+        // and (when non-null) stores the INNER content type. An empty payload
+        // means "nothing to deliver, read again" (zero-length fragment,
+        // change-cipher-spec or skipped post-handshake content).
+        Result<std::vector<u8>> read_encrypted_record(const u8 key[32],
+                                                      const u8 iv[12],
+                                                      u64 &seq,
+                                                      u8 *out_inner = nullptr);
 
         async::task<bool> send_encrypted_record_async(
             u8 inner_type, const std::vector<u8> &data, const u8 key[32], const u8 iv[12], u64 &seq);
-        async::task<std::vector<u8>> read_encrypted_record_async(const u8 key[32], const u8 iv[12], u64 &seq);
+        async::task<std::vector<u8>> read_encrypted_record_async(const u8 key[32],
+                                                                 const u8 iv[12],
+                                                                 u64 &seq,
+                                                                 u8 *out_inner = nullptr);
 
         // Shared handshake-message processing used by both connect() paths.
         // Parses the ServerHello body, derives handshake keys; returns server key share.

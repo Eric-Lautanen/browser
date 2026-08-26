@@ -144,10 +144,8 @@ namespace browser::net::tls {
             std::memset(server_hs_key_ + hs_key_size, 0, 32 - hs_key_size);
         std::memcpy(server_hs_iv_, s_iv.data(), 12);
 
-        if (cipher_suite_ != 0x1303) {
-            aes_encrypt_.set_key(client_hs_key_, 16);
-            aes_decrypt_.set_key(server_hs_key_, 16);
-        }
+        // Note: aead_encrypt/aead_decrypt set the AES key per call from their
+        // key argument; no member-state setup is needed here.
     }
 
     void TLSConnection::derive_application_keys() {
@@ -176,11 +174,6 @@ namespace browser::net::tls {
         if (app_key_size < 32)
             std::memset(server_app_key_ + app_key_size, 0, 32 - app_key_size);
         std::memcpy(server_app_iv_, s_iv.data(), 12);
-
-        if (cipher_suite_ != 0x1303) {
-            aes_encrypt_.set_key(client_app_key_, 16);
-            aes_decrypt_.set_key(server_app_key_, 16);
-        }
 
         app_keys_set_ = true;
     }
@@ -521,35 +514,49 @@ namespace browser::net::tls {
             return sh.unwrap_err();
 
         int msgs_needed = 4;
+        // N-C10: handshake messages may straddle record boundaries — accumulate
+        // the stream and process every complete message available.
+        std::vector<u8> hs_buf;
         while (msgs_needed > 0) {
             if (GetTickCount64() > deadline)
                 return std::string("handshake timeout");
-            auto rec_r = read_encrypted_record(server_hs_key_, server_hs_iv_, server_seq_);
-            if (rec_r.is_err())
+            u8 inner = 0;
+            auto rec_r = read_encrypted_record(server_hs_key_, server_hs_iv_, server_seq_, &inner);
+            if (rec_r.is_err()) {
                 return std::string("read hs record: " + rec_r.unwrap_err());
+            }
             auto &rec_data = rec_r.unwrap();
             if (rec_data.empty())
                 continue;
+            if (inner == ALERT)
+                return std::string("alert during handshake");
+            if (inner != HANDSHAKE)
+                continue;  // not a handshake payload; ignore
+
+            hs_buf.insert(hs_buf.end(), rec_data.begin(), rec_data.end());
+            if (hs_buf.size() > kMaxHandshakeBuffer)
+                return std::string("handshake buffer overflow");
 
             std::size_t msg_off = 0;
-            while (msg_off < rec_data.size() && msgs_needed > 0) {
+            while (msgs_needed > 0) {
                 ParsedHS phs;
-                if (!parse_hs_header(rec_data, msg_off, phs))
-                    return std::string("bad hs header in encrypted record");
-
+                if (!parse_hs_header(hs_buf, msg_off, phs))
+                    break;  // need more bytes
                 u32 total_len = 4 + phs.body_len;
-                if (msg_off + total_len > rec_data.size())
-                    return std::string("truncated hs msg");
+                if (hs_buf.size() - msg_off < total_len)
+                    break;  // N-C10: message continues in the next record(s)
 
-                auto msg_bytes = std::vector<u8>(rec_data.begin() + msg_off, rec_data.begin() + msg_off + total_len);
-                auto body = std::vector<u8>(rec_data.begin() + msg_off + 4, rec_data.begin() + msg_off + total_len);
+                auto msg_bytes = std::vector<u8>(hs_buf.begin() + msg_off, hs_buf.begin() + msg_off + total_len);
+                auto body = std::vector<u8>(hs_buf.begin() + msg_off + 4, hs_buf.begin() + msg_off + total_len);
 
                 auto pr = process_hs_message(phs.type, msg_bytes, body, msgs_needed);
-                if (pr.is_err())
+                if (pr.is_err()) {
                     return pr.unwrap_err();
+                }
 
                 msg_off += total_len;
             }
+            hs_buf.erase(hs_buf.begin(), hs_buf.begin() + msg_off);
         }
 
         if (msgs_needed != 0)
@@ -571,7 +578,11 @@ namespace browser::net::tls {
 
         append_handshake_to_transcript(HS_FINISHED, finished_body);
 
-        auto r2 = send_encrypted_record(HANDSHAKE, finished_body, client_hs_key_, client_hs_iv_, client_seq_);
+        // The record payload must be the complete handshake message including
+        // the 4-byte header — sending the bare verify_data made every real
+        // server abort with bad_record_mac / unexpected_message.
+        auto finished_msg = make_handshake_msg(HS_FINISHED, finished_body);
+        auto r2 = send_encrypted_record(HANDSHAKE, finished_msg, client_hs_key_, client_hs_iv_, client_seq_);
         if (r2.is_err())
             return std::string("send finished: " + r2.unwrap_err());
 
@@ -606,28 +617,39 @@ namespace browser::net::tls {
             co_return sh.unwrap_err();
 
         int msgs_needed = 4;
+        // N-C10: handshake messages may straddle record boundaries — accumulate
+        // the stream and process every complete message available.
+        std::vector<u8> hs_buf;
         while (msgs_needed > 0) {
             if (GetTickCount64() > deadline)
                 co_return std::string("handshake timeout");
-            auto rec_r = co_await read_encrypted_record_async(server_hs_key_, server_hs_iv_, server_seq_);
+            u8 inner = 0;
+            auto rec_r = co_await read_encrypted_record_async(server_hs_key_, server_hs_iv_, server_seq_, &inner);
             if (rec_r.is_err())
                 co_return std::string("read hs record: ") + rec_r.unwrap_err();
             auto rec_data = rec_r.unwrap();
             if (rec_data.empty())
                 continue;
+            if (inner == ALERT)
+                co_return std::string("alert during handshake");
+            if (inner != HANDSHAKE)
+                continue;  // not a handshake payload; ignore
+
+            hs_buf.insert(hs_buf.end(), rec_data.begin(), rec_data.end());
+            if (hs_buf.size() > kMaxHandshakeBuffer)
+                co_return std::string("handshake buffer overflow");
 
             std::size_t msg_off = 0;
-            while (msg_off < rec_data.size() && msgs_needed > 0) {
+            while (msgs_needed > 0) {
                 ParsedHS phs;
-                if (!parse_hs_header(rec_data, msg_off, phs))
-                    co_return std::string("bad hs header in encrypted record");
-
+                if (!parse_hs_header(hs_buf, msg_off, phs))
+                    break;  // need more bytes
                 u32 total_len = 4 + phs.body_len;
-                if (msg_off + total_len > rec_data.size())
-                    co_return std::string("truncated hs msg");
+                if (hs_buf.size() - msg_off < total_len)
+                    break;  // N-C10: message continues in the next record(s)
 
-                auto msg_bytes = std::vector<u8>(rec_data.begin() + msg_off, rec_data.begin() + msg_off + total_len);
-                auto body = std::vector<u8>(rec_data.begin() + msg_off + 4, rec_data.begin() + msg_off + total_len);
+                auto msg_bytes = std::vector<u8>(hs_buf.begin() + msg_off, hs_buf.begin() + msg_off + total_len);
+                auto body = std::vector<u8>(hs_buf.begin() + msg_off + 4, hs_buf.begin() + msg_off + total_len);
 
                 auto pr = process_hs_message(phs.type, msg_bytes, body, msgs_needed);
                 if (pr.is_err())
@@ -635,6 +657,7 @@ namespace browser::net::tls {
 
                 msg_off += total_len;
             }
+            hs_buf.erase(hs_buf.begin(), hs_buf.begin() + msg_off);
         }
 
         if (msgs_needed != 0)
@@ -655,8 +678,10 @@ namespace browser::net::tls {
         derive_application_keys();
         append_handshake_to_transcript(HS_FINISHED, finished_body);
 
+        // Full handshake message on the wire (see sync path).
+        auto finished_msg = make_handshake_msg(HS_FINISHED, finished_body);
         auto r2 =
-            co_await send_encrypted_record_async(HANDSHAKE, finished_body, client_hs_key_, client_hs_iv_, client_seq_);
+            co_await send_encrypted_record_async(HANDSHAKE, finished_msg, client_hs_key_, client_hs_iv_, client_seq_);
         if (r2.is_err())
             co_return std::string("send finished: ") + r2.unwrap_err();
 

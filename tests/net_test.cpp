@@ -10,7 +10,10 @@
 #include "utility.hpp"
 
 #include <cstring>
+#include <thread>
 #include <vector>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 
 static const browser::u8 expected_basic[] = {3, 'w', 'w', 'w', 6, 'g', 'o', 'o', 'g', 'l', 'e', 3, 'c', 'o', 'm', 0};
 static const browser::u8 expected_single[] = {9, 'l', 'o', 'c', 'a', 'l', 'h', 'o', 's', 't', 0};
@@ -131,7 +134,10 @@ TEST(connection_create_close, {
 TEST(connection_send_no_open, {
     browser::net::Connection conn;
     browser::u8 buf[4];
-    buf[0] = 1; buf[1] = 2; buf[2] = 3; buf[3] = 4;
+    buf[0] = 1;
+    buf[1] = 2;
+    buf[2] = 3;
+    buf[3] = 4;
     auto r = conn.send(buf, 4);
     ASSERT(r.is_err());
 })
@@ -146,12 +152,12 @@ TEST(dns_resolve_google, {
     browser::net::DNSResolver resolver;
     auto task = resolver.resolve_a("www.google.com");
     auto result = task.sync_wait();
-    if (result.is_err()) return true;
+    if (result.is_err())
+        return true;
     auto addrs = result.unwrap();
     ASSERT(addrs.size() > 0);
-    for (auto& addr : addrs) {
-        ASSERT(addr.octets[0] != 0 || addr.octets[1] != 0 ||
-               addr.octets[2] != 0 || addr.octets[3] != 0);
+    for (auto &addr : addrs) {
+        ASSERT(addr.octets[0] != 0 || addr.octets[1] != 0 || addr.octets[2] != 0 || addr.octets[3] != 0);
     }
 })
 
@@ -159,7 +165,8 @@ TEST(dns_resolve_localhost, {
     browser::net::DNSResolver resolver;
     auto task = resolver.resolve_a("localhost");
     auto result = task.sync_wait();
-    if (result.is_err()) return true;
+    if (result.is_err())
+        return true;
     auto addrs = result.unwrap();
     ASSERT(addrs.size() > 0);
 })
@@ -169,11 +176,12 @@ TEST(connection_http, {
     browser::net::ConnectionConfig cfg;
     cfg.read_timeout_ms = 15000;
     auto r = conn.open("httpbin.org", 80, cfg);
-    if (r.is_err()) return true;
+    if (r.is_err())
+        return true;
     ASSERT(conn.is_open());
-    const char* req = "GET /get HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n";
+    const char *req = "GET /get HTTP/1.1\r\nHost: httpbin.org\r\nConnection: close\r\n\r\n";
     auto req_len = static_cast<browser::u32>(std::strlen(req));
-    auto sr = conn.send_all((const browser::u8*)(req), req_len);
+    auto sr = conn.send_all((const browser::u8 *)(req), req_len);
     ASSERT(sr.is_ok());
     auto resp = conn.receive_until_close();
     ASSERT(resp.is_ok());
@@ -187,7 +195,8 @@ TEST(connection_move, {
     browser::net::ConnectionConfig cfg;
     cfg.read_timeout_ms = 15000;
     auto r = conn.open("example.com", 80, cfg);
-    if (r.is_err()) return true;
+    if (r.is_err())
+        return true;
     ASSERT(conn.is_open());
     browser::net::Connection conn2(std::move(conn));
     ASSERT(!conn.is_open());
@@ -201,7 +210,8 @@ TEST(connection_move, {
 TEST(connection_move_assign, {
     browser::net::Connection conn;
     auto r = conn.open("example.com", 80);
-    if (r.is_err()) return true;
+    if (r.is_err())
+        return true;
     browser::net::Connection conn2;
     conn2 = std::move(conn);
     ASSERT(!conn.is_open());
@@ -214,7 +224,8 @@ TEST(dns_set_server, {
     resolver.set_dns_server(browser::net::IPv4Address(1, 1, 1, 1));
     auto task = resolver.resolve_a("example.com");
     auto result = task.sync_wait();
-    if (result.is_err()) return true;
+    if (result.is_err())
+        return true;
     auto addrs = result.unwrap();
     ASSERT(addrs.size() > 0);
 })
@@ -222,7 +233,8 @@ TEST(dns_set_server, {
 TEST(connection_socket_accessor, {
     browser::net::Connection conn;
     auto r = conn.open("example.com", 80);
-    if (r.is_err()) return true;
+    if (r.is_err())
+        return true;
     ASSERT(conn.socket() != nullptr);
     conn.close();
     ASSERT(conn.socket() == nullptr);
@@ -233,11 +245,12 @@ TEST(connection_http_example, {
     browser::net::ConnectionConfig cfg;
     cfg.read_timeout_ms = 15000;
     auto r = conn.open("example.com", 80, cfg);
-    if (r.is_err()) return true;
+    if (r.is_err())
+        return true;
     ASSERT(conn.is_open());
-    const char* req = "GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n";
+    const char *req = "GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n";
     auto req_len = static_cast<browser::u32>(std::strlen(req));
-    auto sr = conn.send_all((const browser::u8*)(req), req_len);
+    auto sr = conn.send_all((const browser::u8 *)(req), req_len);
     ASSERT(sr.is_ok());
     auto resp = conn.receive_until_close();
     ASSERT(resp.is_ok());
@@ -413,7 +426,7 @@ TEST(url_encode_decode, {
 
 TEST(http_parse_response_simple, {
     auto raw = "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nHello";
-    auto r = browser::net::http::Response::parse((const browser::u8*)raw, (browser::u32)std::strlen(raw));
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw));
     ASSERT(r.is_ok());
     auto resp = r.unwrap();
     ASSERT_EQ(resp.status.code, 200);
@@ -425,7 +438,7 @@ TEST(http_parse_response_simple, {
 
 TEST(http_parse_response_chunked, {
     auto raw = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n";
-    auto r = browser::net::http::Response::parse((const browser::u8*)raw, (browser::u32)std::strlen(raw));
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw));
     ASSERT(r.is_ok());
     auto resp = r.unwrap();
     ASSERT_EQ(resp.status.code, 200);
@@ -435,14 +448,14 @@ TEST(http_parse_response_chunked, {
 
 TEST(http_parse_response_no_body, {
     auto raw = "HTTP/1.1 204 No Content\r\n\r\n";
-    auto r = browser::net::http::Response::parse((const browser::u8*)raw, (browser::u32)std::strlen(raw));
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw));
     ASSERT(r.is_ok());
     ASSERT_EQ(r.unwrap().body.size(), 0u);
 })
 
 TEST(http_parse_response_headers, {
     auto raw = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nServer: test\r\nContent-Length: 0\r\n\r\n";
-    auto r = browser::net::http::Response::parse((const browser::u8*)raw, (browser::u32)std::strlen(raw));
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw));
     ASSERT(r.is_ok());
     auto resp = r.unwrap();
     ASSERT_EQ(resp.headers.get("content-type"), "text/html");
@@ -454,12 +467,14 @@ TEST(http_get_example, {
     browser::net::http::Request req;
     req.method = browser::net::http::Method::GET;
     auto url_r = browser::net::URL::parse("http://example.com/");
-    if (url_r.is_err()) return true;
+    if (url_r.is_err())
+        return true;
     req.url = url_r.unwrap();
     req.headers.set("Host", "example.com");
     req.headers.set("Connection", "close");
     auto resp = client.execute(req);
-    if (resp.is_err()) return true;
+    if (resp.is_err())
+        return true;
     ASSERT_EQ(resp.unwrap().status.code, 200);
     ASSERT(resp.unwrap().body.size() > 0);
 })
@@ -573,18 +588,23 @@ TEST(http2_hpack_roundtrip, {
 TEST(http2_connect_google, {
     browser::net::http2::HTTP2Client client;
     auto r = client.connect("google.com", 443, true);
-    // This may fail if network is unavailable or server doesn't support h2
-    if (r.is_err()) return true;
+    // This may fail if network is unavailable
+    if (r.is_err())
+        return true;
     ASSERT(client.is_connected());
     // Send GET request
     browser::net::http::Request req;
     req.method = browser::net::http::Method::GET;
     auto url_r = browser::net::URL::parse("https://google.com/");
-    if (url_r.is_err()) return true;
+    if (url_r.is_err())
+        return true;
     req.url = url_r.unwrap();
     auto resp = client.execute(req);
-    if (resp.is_err()) return true;
-    ASSERT_EQ(resp.unwrap().status.code, 200);
+    // Once connected, a failed request is a real bug — google.com answers
+    // with a 301 redirect to www.google.com (or 200 directly).
+    ASSERT(resp.is_ok());
+    browser::u16 code = resp.unwrap().status.code;
+    ASSERT(code == 200 || code == 301);
     ASSERT(resp.unwrap().body.size() > 0);
     client.close();
 })
@@ -592,17 +612,16 @@ TEST(http2_connect_google, {
 TEST(http_client_get_example, {
     browser::net::HTTPClient client;
     auto r = client.get("http://example.com/");
-    if (r.is_err()) return true;
+    if (r.is_err())
+        return true;
     ASSERT_EQ(r.unwrap().status.code, 200);
 })
 
 TEST(http_client_get_https, {
-    // Note: This test may hang on slow networks or when example.com:443 is unreachable.
-    // The sync TLS handshake can block indefinitely on IOCP-associated sockets.
-    // Pre-existing issue; guarded with timeout.
     browser::net::HTTPClient client;
     auto r = client.get("https://example.com/");
-    if (r.is_err()) return true;
+    if (r.is_err())
+        return true;  // network unavailable
     ASSERT_EQ(r.unwrap().status.code, 200);
 })
 
@@ -654,9 +673,8 @@ TEST(hpack_decode_table_size_update, {
     // Prepend the 001 prefix bits (first byte should be 0x20 | enc[0] for value < 31,
     // or 0x3F for value >= 31, with enc[0] being 31 = 0x1F)
     std::vector<browser::u8> data;
-    data.push_back(0x20 | enc[0]); // 001 + 11111 = 0x3F
-    for (std::size_t i = 1; i < enc.size(); i++)
-        data.push_back(enc[i]);
+    data.push_back(0x20 | enc[0]);  // 001 + 11111 = 0x3F
+    for (std::size_t i = 1; i < enc.size(); i++) data.push_back(enc[i]);
 
     auto entries = hp.decode(data.data(), (browser::u32)data.size());
     ASSERT_EQ(entries.size(), 0u);
@@ -744,4 +762,180 @@ TEST(url_accepts_percent_encoded_controls, {
     // Percent-encoded forms are safe and must keep parsing.
     auto r = browser::net::URL::parse("http://example.com/a%0d%0aX-Inj:%201");
     ASSERT(r.is_ok());
+})
+
+// ---- N-C1: response completeness tracking ----
+
+TEST(http_parse_incomplete_content_length_flag, {
+    auto raw = "HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\n0123456789";
+    auto state = browser::net::http::BodyState::COMPLETE;
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw), &state);
+    ASSERT(r.is_ok());
+    ASSERT_EQ(r.unwrap().body.size(), 10u);
+    // Without the fix the partial body was reported as a complete response.
+    ASSERT(state != browser::net::http::BodyState::COMPLETE);
+})
+
+TEST(http_parse_exact_content_length_complete_flag, {
+    auto raw = "HTTP/1.1 200 OK\r\nContent-Length: 10\r\n\r\n0123456789";
+    auto state = browser::net::http::BodyState::INCOMPLETE;
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw), &state);
+    ASSERT(r.is_ok());
+    ASSERT(state == browser::net::http::BodyState::COMPLETE);
+    ASSERT_EQ(r.unwrap().body.size(), 10u);
+})
+
+TEST(http_parse_partial_chunked_not_complete, {
+    auto raw = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\nA\r\n0123456789";
+    auto state = browser::net::http::BodyState::COMPLETE;
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw), &state);
+    ASSERT(r.is_ok());
+    ASSERT_EQ(r.unwrap().body.size(), 15u);
+    ASSERT(state != browser::net::http::BodyState::COMPLETE);  // no terminating chunk seen
+})
+
+TEST(http_parse_chunked_with_terminator_complete, {
+    auto raw = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nHello\r\n0\r\n\r\n";
+    auto state = browser::net::http::BodyState::INCOMPLETE;
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw), &state);
+    ASSERT(r.is_ok());
+    ASSERT(state == browser::net::http::BodyState::COMPLETE);
+})
+
+TEST(http_parse_204_reports_complete, {
+    auto raw = "HTTP/1.1 204 No Content\r\n\r\n";
+    auto state = browser::net::http::BodyState::INCOMPLETE;
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw), &state);
+    ASSERT(r.is_ok());
+    ASSERT(state == browser::net::http::BodyState::COMPLETE);
+})
+
+TEST(http_parse_close_delimited_never_complete, {
+    auto raw = "HTTP/1.1 200 OK\r\n\r\nbody-bytes";
+    auto state = browser::net::http::BodyState::COMPLETE;
+    auto r = browser::net::http::Response::parse((const browser::u8 *)raw, (browser::u32)std::strlen(raw), &state);
+    ASSERT(r.is_ok());
+    // Close-delimited bodies can only be completed by the connection closing.
+    ASSERT(state != browser::net::http::BodyState::COMPLETE);
+    ASSERT(!r.unwrap().body.empty());
+})
+
+// ---- N-C1 end-to-end: loopback HTTP servers exercising the completeness loop ----
+
+static void drain_request_headers(SOCKET c) {
+    char buf[4096];
+    std::string req;
+    for (;;) {
+        int n = ::recv(c, buf, sizeof(buf), 0);
+        if (n <= 0)
+            return;
+        req.append(buf, buf + n);
+        if (req.find("\r\n\r\n") != std::string::npos)
+            return;
+    }
+}
+
+// Sends headers claiming `kTotal` body bytes but only half of them before
+// closing — the client must report an error instead of truncated success.
+TEST(http_response_truncated_body_detected_as_error, {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
+
+    SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ASSERT(listener != INVALID_SOCKET);
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = 0;
+    ASSERT(::bind(listener, (sockaddr *)&addr, sizeof(addr)) == 0);
+    sockaddr_in bound{};
+    int blen = sizeof(bound);
+    ::getsockname(listener, (sockaddr *)&bound, &blen);
+    u16 port = ntohs(bound.sin_port);
+    ASSERT(::listen(listener, 1) == 0);
+
+    const u32 kTotal = 100000;
+    std::thread server([&]() {
+        SOCKET c = ::accept(listener, nullptr, nullptr);
+        if (c == INVALID_SOCKET)
+            return;
+        drain_request_headers(c);
+        std::string hdr =
+            "HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(kTotal) + "\r\nConnection: close\r\n\r\n";
+        ::send(c, hdr.data(), (int)hdr.size(), 0);
+        std::vector<char> body(kTotal / 2, 'x');
+        ::send(c, body.data(), (int)body.size(), 0);
+        ::closesocket(c);  // truncate: never send the rest
+    });
+
+    net::http::HTTP1Client client;
+    auto url_r = net::URL::parse("http://127.0.0.1:" + std::to_string(port) + "/");
+    ASSERT(url_r.is_ok());
+    net::http::Request req;
+    req.url = url_r.unwrap();
+    auto resp = client.execute(req);
+
+    ::closesocket(listener);
+    server.join();
+
+    // Old behavior returned the partial body as success.
+    ASSERT(resp.is_err());
+})
+
+// Full large body delivered in small writes must arrive completely; the old
+// TLS batch cap / parse-on-first-success logic truncated such responses.
+TEST(http_response_large_body_fully_delivered, {
+    WSADATA wsa;
+    WSAStartup(MAKEWORD(2, 2), &wsa);
+
+    SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ASSERT(listener != INVALID_SOCKET);
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = 0;
+    ASSERT(::bind(listener, (sockaddr *)&addr, sizeof(addr)) == 0);
+    sockaddr_in bound{};
+    int blen = sizeof(bound);
+    ::getsockname(listener, (sockaddr *)&bound, &blen);
+    u16 port = ntohs(bound.sin_port);
+    ASSERT(::listen(listener, 1) == 0);
+
+    const u32 kTotal = 300000;
+    std::thread server([&]() {
+        SOCKET c = ::accept(listener, nullptr, nullptr);
+        if (c == INVALID_SOCKET)
+            return;
+        drain_request_headers(c);
+        std::string hdr =
+            "HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(kTotal) + "\r\nConnection: close\r\n\r\n";
+        ::send(c, hdr.data(), (int)hdr.size(), 0);
+        u32 off = 0;
+        while (off < kTotal) {
+            char chunk[16384];
+            u32 n = sizeof(chunk);
+            if (off + n > kTotal)
+                n = kTotal - off;
+            std::memset(chunk, 'A' + (off / 16384) % 26, n);
+            int s = ::send(c, chunk, (int)n, 0);
+            if (s <= 0)
+                break;
+            off += (u32)s;
+        }
+        ::shutdown(c, SD_SEND);
+        ::closesocket(c);
+    });
+
+    net::http::HTTP1Client client;
+    auto url_r = net::URL::parse("http://127.0.0.1:" + std::to_string(port) + "/");
+    ASSERT(url_r.is_ok());
+    net::http::Request req;
+    req.url = url_r.unwrap();
+    auto resp = client.execute(req);
+
+    ::closesocket(listener);
+    server.join();
+
+    ASSERT(resp.is_ok());
+    ASSERT_EQ(resp.unwrap().body.size(), kTotal);
 })

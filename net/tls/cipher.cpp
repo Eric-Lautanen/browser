@@ -166,6 +166,11 @@ namespace browser::net::tls {
         aad[3] = static_cast<u8>((ct_len >> 8) & 0xFF);
         aad[4] = static_cast<u8>(ct_len & 0xFF);
 
+        // Honor the caller's key: handshake and application records share the
+        // same AES member, so the key must be set per call (a stale member key
+        // encrypted the client Finished under the application traffic key,
+        // which every real server rejects with bad_record_mac).
+        aes_encrypt_.set_key(key, cipher_suite_ == 0x1301 ? 16 : 32);
         aes_encrypt_.set_iv(nonce, 12);
         u8 tag[16];
         auto ct = aes_encrypt_.encrypt_gcm(pt.data(), pt.size(), aad, 5, tag);
@@ -199,6 +204,8 @@ namespace browser::net::tls {
         aad[3] = static_cast<u8>((ct_len >> 8) & 0xFF);
         aad[4] = static_cast<u8>(ct_len & 0xFF);
 
+        // Honor the caller's key (see aead_encrypt).
+        aes_decrypt_.set_key(key, cipher_suite_ == 0x1301 ? 16 : 32);
         aes_decrypt_.set_iv(nonce, 12);
         auto pt = aes_decrypt_.decrypt_gcm_return(ciphertext, encrypted_len, aad, 5, tag);
         if (pt.empty()) {

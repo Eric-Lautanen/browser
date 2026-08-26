@@ -13,6 +13,17 @@
 
 namespace browser::net::http {
 
+    // Hard cap on accumulated response bytes; guards against servers that
+    // stream forever without completing the response (audit N-C1).
+    inline constexpr u32 kMaxResponseBytes = 32u * 1024u * 1024u;
+
+    // Whether a parsed response's body is fully contained by the input bytes.
+    enum class BodyState {
+        COMPLETE,        // framing satisfied (content-length met / last chunk seen)
+        INCOMPLETE,      // explicit framing present but bytes still missing
+        CLOSE_DELIMITED  // no framing; only connection close completes the body
+    };
+
 #ifdef DELETE
 #undef DELETE
 #endif
@@ -66,7 +77,13 @@ namespace browser::net::http {
         std::vector<u8> body;
         std::string http_version;
 
-        static Result<Response> parse(const u8 *data, u32 len);
+        // Parses a response from `len` bytes. When `state` is non-null it
+        // receives whether the body is fully contained (Content-Length
+        // satisfied, terminating chunk seen, no body expected), still missing
+        // bytes under explicit framing, or delimited only by connection close.
+        // Callers loop for more data until COMPLETE or connection close;
+        // a close while INCOMPLETE is a truncation error (audit N-C1).
+        static Result<Response> parse(const u8 *data, u32 len, BodyState *state = nullptr);
     };
 
     class HTTP1Client {

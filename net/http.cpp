@@ -116,7 +116,9 @@ namespace browser::net::http {
 
     // --- Response ---
 
-    Result<Response> Response::parse(const u8 *data, u32 len) {
+    Result<Response> Response::parse(const u8 *data, u32 len, BodyState *state) {
+        if (state)
+            *state = BodyState::INCOMPLETE;
         Response resp;
         u32 pos = 0;
 
@@ -166,7 +168,7 @@ namespace browser::net::http {
                        resp.headers.get("transfer-encoding").find("chunked") != std::string::npos;
 
         if (chunked) {
-            // Chunked transfer encoding
+            bool saw_last_chunk = false;
             while (pos < len) {
                 // Read chunk size line
                 std::string size_line;
@@ -207,11 +209,12 @@ namespace browser::net::http {
                     // Skip trailing CRLF after last chunk
                     if (pos + 1 < len && data[pos] == '\r' && data[pos + 1] == '\n')
                         pos += 2;
+                    saw_last_chunk = true;
                     break;
                 }
 
                 if (pos + chunk_size > len) {
-                    // Partial chunk — store what we have
+                    // Partial chunk — store what we have; response is incomplete
                     resp.body.insert(resp.body.end(), data + pos, data + len);
                     pos = len;
                     break;
@@ -224,19 +227,33 @@ namespace browser::net::http {
                 if (pos + 1 < len && data[pos] == '\r' && data[pos + 1] == '\n')
                     pos += 2;
             }
+            if (saw_last_chunk && state)
+                *state = BodyState::COMPLETE;
         } else if (resp.headers.has("content-length")) {
             std::string cl = resp.headers.get("content-length");
             char *cl_end = nullptr;
             long cl_val = std::strtol(cl.c_str(), &cl_end, 10);
             if (*cl_end != '\0' || cl_val < 0)
                 return std::string("bad content-length");
+            if (static_cast<u64>(cl_val) > kMaxResponseBytes)
+                return std::string("content-length exceeds response limit");
             u32 remaining = static_cast<u32>(cl_val);
             u32 available = (pos < len) ? len - pos : 0;
             u32 to_copy = remaining < available ? remaining : available;
             resp.body.assign(data + pos, data + pos + to_copy);
             pos += to_copy;
-        } else if (resp.status.code >= 200 && resp.status.code != 204 && resp.status.code != 304) {
-            // No content-length, no chunked — read until connection close
+            // N-C1: only report complete when the whole body is present.
+            if (state && resp.body.size() >= remaining)
+                *state = BodyState::COMPLETE;
+        } else if (resp.status.code == 204 || resp.status.code == 304) {
+            // No body for these statuses regardless of framing.
+            if (state)
+                *state = BodyState::COMPLETE;
+        } else if (resp.status.code >= 200) {
+            // No content-length, no chunked — read until connection close.
+            // Never reports COMPLETE; the connection close ends delivery.
+            if (state)
+                *state = BodyState::CLOSE_DELIMITED;
             if (pos < len) {
                 resp.body.assign(data + pos, data + len);
             }
@@ -322,40 +339,50 @@ namespace browser::net::http {
     }
 
     Result<Response> HTTP1Client::read_response() {
+        // N-C1: accumulate until Response::parse reports a complete body.
+        // Truncation past 64KiB over TLS used to be delivered silently; now
+        // every framing (content-length, chunked, close-delimited) is honored,
+        // and a connection closing mid-body is an error rather than success.
         std::vector<u8> all_data;
 
-        // Read until we have complete headers
-        auto try_parse = [&]() -> Result<Response> {
-            return Response::parse(all_data.data(), static_cast<u32>(all_data.size()));
-        };
+        while (true) {
+            BodyState state = BodyState::INCOMPLETE;
+            auto parsed = Response::parse(all_data.data(), static_cast<u32>(all_data.size()), &state);
+            bool have_parse = parsed.is_ok();
+            if (have_parse && state == BodyState::COMPLETE)
+                return parsed;
 
-        if (use_tls_) {
-            while (true) {
+            if (all_data.size() >= kMaxResponseBytes)
+                return std::string("response exceeds size limit");
+
+            if (use_tls_) {
                 auto r = tls_->receive_all(65536);
-                if (r.is_err()) {
-                    if (all_data.empty())
-                        return std::string("receive: " + r.unwrap_err());
-                    break;
-                }
+                if (r.is_err())
+                    return std::string("receive: " + r.unwrap_err());
                 auto &chunk = r.unwrap();
-                if (chunk.empty())
-                    break;
+                if (chunk.empty()) {
+                    // Clean EOF (close_notify). Only close-delimited bodies may
+                    // end here without a complete parse.
+                    if (have_parse && state == BodyState::CLOSE_DELIMITED)
+                        return parsed;
+                    return std::string("connection closed before response was complete");
+                }
                 all_data.insert(all_data.end(), chunk.begin(), chunk.end());
-
-                auto parsed = try_parse();
-                if (parsed.is_ok())
-                    return parsed;
-                if (all_data.size() > 1024 * 1024)
-                    break;
+            } else {
+                u8 buf[65536];
+                auto r = tcp_->receive(buf, sizeof(buf));
+                if (r.is_err())
+                    return std::string("receive: " + r.unwrap_err());
+                u32 n = r.unwrap();
+                if (n == 0) {
+                    // Peer closed. Close-delimited bodies legitimately end here.
+                    if (have_parse && state == BodyState::CLOSE_DELIMITED)
+                        return parsed;
+                    return std::string("connection closed before response was complete");
+                }
+                all_data.insert(all_data.end(), buf, buf + n);
             }
-        } else {
-            auto r = tcp_->receive_until_close(65536);
-            if (r.is_err())
-                return std::string("receive: " + r.unwrap_err());
-            all_data = std::move(r.unwrap());
         }
-
-        return try_parse();
     }
 
     Result<Response> HTTP1Client::execute(const Request &req) {
@@ -395,41 +422,40 @@ namespace browser::net::http {
                 co_return std::string("send: ") + sr.unwrap_err();
         }
 
-        // Read response using async methods
+        // Read response until the body framing reports complete (N-C1).
         std::vector<u8> all_data;
-        auto try_parse = [&]() -> Result<Response> {
-            return Response::parse(all_data.data(), static_cast<u32>(all_data.size()));
-        };
 
-        if (use_tls_) {
-            while (true) {
-                u8 buf[65536];
+        while (true) {
+            BodyState state = BodyState::INCOMPLETE;
+            auto parsed = Response::parse(all_data.data(), static_cast<u32>(all_data.size()), &state);
+            bool have_parse = parsed.is_ok();
+            if (have_parse && state == BodyState::COMPLETE)
+                co_return parsed.unwrap();
+
+            if (all_data.size() >= kMaxResponseBytes)
+                co_return std::string("response exceeds size limit");
+
+            u8 buf[65536];
+            u32 n = 0;
+            if (use_tls_) {
                 auto r = co_await tls_->receive_async(buf, sizeof(buf));
-                if (r.is_err()) {
-                    if (all_data.empty())
-                        co_return std::string("receive: ") + r.unwrap_err();
-                    break;
-                }
-                u32 n = r.unwrap();
-                if (n == 0)
-                    break;
-                all_data.insert(all_data.end(), buf, buf + n);
-
-                auto parsed = try_parse();
-                if (parsed.is_ok())
-                    co_return parsed.unwrap();
-                if (all_data.size() > 1024 * 1024)
-                    break;
+                if (r.is_err())
+                    co_return std::string("receive: ") + r.unwrap_err();
+                n = r.unwrap();
+            } else {
+                auto r = co_await tcp_->receive_async(buf, sizeof(buf));
+                if (r.is_err())
+                    co_return std::string("receive: ") + r.unwrap_err();
+                n = r.unwrap();
             }
-        } else {
-            auto r = co_await tcp_->receive_until_close_async(65536);
-            if (r.is_err())
-                co_return std::string("receive: ") + r.unwrap_err();
-            auto vec = r.unwrap();
-            all_data = std::move(vec);
+            if (n == 0) {
+                // Clean EOF. Only close-delimited bodies may end here.
+                if (have_parse && state == BodyState::CLOSE_DELIMITED)
+                    co_return parsed.unwrap();
+                co_return std::string("connection closed before response was complete");
+            }
+            all_data.insert(all_data.end(), buf, buf + n);
         }
-
-        co_return try_parse();
     }
 
     void HTTP1Client::close() {

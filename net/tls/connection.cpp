@@ -35,6 +35,10 @@ namespace browser::net::tls {
         server_app_traffic_.clear();
         client_app_traffic_.clear();
         peer_certs_.clear();
+        recv_pending_.clear();
+        recv_pending_pos_ = 0;
+        recv_eof_ = false;
+        tcp_closed_ = false;
     }
 
     std::string TLSConnection::negotiated_alpn() const {
@@ -70,18 +74,94 @@ namespace browser::net::tls {
         return {};
     }
 
+    Result<bool> TLSConnection::fill_recv_pending() {
+        for (;;) {
+            if (recv_pending_pos_ < recv_pending_.size())
+                return true;
+            recv_pending_.clear();
+            recv_pending_pos_ = 0;
+            if (recv_eof_)
+                return false;
+
+            u8 inner = 0;
+            auto r = read_encrypted_record(server_app_key_, server_app_iv_, server_seq_, &inner);
+            if (r.is_err())
+                return std::string("receive: " + r.unwrap_err());
+            auto payload = std::move(r.unwrap());
+            if (payload.empty())
+                continue;  // zero-length fragment or skipped record
+
+            if (inner == APPLICATION_DATA) {
+                recv_pending_ = std::move(payload);
+                recv_pending_pos_ = 0;
+                return true;
+            }
+            if (inner == HANDSHAKE)
+                continue;  // post-handshake message (e.g. NewSessionTicket): not app data
+            if (inner == ALERT) {
+                // TLS 1.3: alerts arrive as [level, description] payloads.
+                if (payload.size() >= 2 && payload[1] == 0) {  // close_notify
+                    recv_eof_ = true;
+                    return false;
+                }
+                if (payload.size() >= 2)
+                    return std::string("tls alert: description " + std::to_string(payload[1]));
+                return std::string("malformed tls alert record");
+            }
+            return std::string("unexpected inner content type " + std::to_string(inner));
+        }
+    }
+
+    async::task<bool> TLSConnection::fill_recv_pending_async() {
+        for (;;) {
+            if (recv_pending_pos_ < recv_pending_.size())
+                co_return true;
+            recv_pending_.clear();
+            recv_pending_pos_ = 0;
+            if (recv_eof_)
+                co_return false;
+
+            u8 inner = 0;
+            auto r = co_await read_encrypted_record_async(server_app_key_, server_app_iv_, server_seq_, &inner);
+            if (r.is_err())
+                co_return std::string("receive: ") + r.unwrap_err();
+            auto payload = r.unwrap();
+            if (payload.empty())
+                continue;
+
+            if (inner == APPLICATION_DATA) {
+                recv_pending_ = std::move(payload);
+                recv_pending_pos_ = 0;
+                co_return true;
+            }
+            if (inner == HANDSHAKE)
+                continue;
+            if (inner == ALERT) {
+                if (payload.size() >= 2 && payload[1] == 0) {
+                    recv_eof_ = true;
+                    co_return false;
+                }
+                if (payload.size() >= 2)
+                    co_return std::string("tls alert: description ") + std::to_string(payload[1]);
+                co_return std::string("malformed tls alert record");
+            }
+            co_return std::string("unexpected inner content type ") + std::to_string(inner);
+        }
+    }
+
     Result<u32> TLSConnection::receive(u8 *buf, u32 len) {
         if (!is_connected())
             return std::string("not connected");
-        auto r = read_encrypted_record(server_app_key_, server_app_iv_, server_seq_);
-        if (r.is_err())
-            return std::string("receive: " + r.unwrap_err());
-        auto &data = r.unwrap();
-        u32 copy_len = static_cast<u32>(data.size());
-        if (copy_len > len)
-            copy_len = len;
-        std::memcpy(buf, data.data(), copy_len);
-        return copy_len;
+        auto f = fill_recv_pending();
+        if (f.is_err())
+            return f.unwrap_err();
+        if (!f.unwrap())
+            return 0u;  // clean EOF: nothing buffered, close_notify received
+        u32 avail = static_cast<u32>(recv_pending_.size() - recv_pending_pos_);
+        u32 n = avail < len ? avail : len;
+        std::memcpy(buf, recv_pending_.data() + recv_pending_pos_, n);
+        recv_pending_pos_ += n;
+        return n;
     }
 
     Result<std::vector<u8>> TLSConnection::receive_all(u32 max_size) {
@@ -90,16 +170,23 @@ namespace browser::net::tls {
         std::vector<u8> result;
         u32 cap = max_size > 0 ? max_size : (1024u * 1024u);
         while (result.size() < cap) {
-            auto r = read_encrypted_record(server_app_key_, server_app_iv_, server_seq_);
-            if (r.is_err()) {
-                if (result.empty())
-                    return std::string("receive_all: " + r.unwrap_err());
-                break;
+            // Drain whatever is already decrypted.
+            while (result.size() < cap && recv_pending_pos_ < recv_pending_.size()) {
+                result.push_back(recv_pending_[recv_pending_pos_++]);
             }
-            auto &data = r.unwrap();
-            if (data.empty())
+            if (result.size() >= cap)
                 break;
-            result.insert(result.end(), data.begin(), data.end());
+            auto f = fill_recv_pending();
+            if (f.is_err()) {
+                // N-C2: only an abrupt TCP close may end delivery early (with the
+                // partial data); protocol/decrypt errors propagate. The HTTP layer
+                // validates completeness independently.
+                if (tcp_closed_)
+                    break;
+                return f.unwrap_err();
+            }
+            if (!f.unwrap())  // close_notify
+                break;
         }
         return result;
     }
@@ -115,15 +202,16 @@ namespace browser::net::tls {
     async::task<u32> TLSConnection::receive_async(u8 *buf, u32 len) {
         if (!is_connected())
             co_return std::string("not connected");
-        auto r = co_await read_encrypted_record_async(server_app_key_, server_app_iv_, server_seq_);
-        if (r.is_err())
-            co_return std::string("receive: ") + r.unwrap_err();
-        auto data = r.unwrap();
-        u32 copy_len = static_cast<u32>(data.size());
-        if (copy_len > len)
-            copy_len = len;
-        std::memcpy(buf, data.data(), copy_len);
-        co_return copy_len;
+        auto f = co_await fill_recv_pending_async();
+        if (f.is_err())
+            co_return f.unwrap_err();
+        if (!f.unwrap())
+            co_return 0u;  // clean EOF
+        u32 avail = static_cast<u32>(recv_pending_.size() - recv_pending_pos_);
+        u32 n = avail < len ? avail : len;
+        std::memcpy(buf, recv_pending_.data() + recv_pending_pos_, n);
+        recv_pending_pos_ += n;
+        co_return n;
     }
 
 }  // namespace browser::net::tls

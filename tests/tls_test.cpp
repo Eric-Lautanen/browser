@@ -4,6 +4,7 @@
 #include "../net/crypto/bignum.hpp"
 #include "../net/crypto/chacha20.hpp"
 #include "../net/crypto/ecc.hpp"
+#include "../net/crypto/poly1305.hpp"
 #include "../net/crypto/sha.hpp"
 #include "../net/crypto/x25519.hpp"
 #include "../net/tls/cert_verify.hpp"
@@ -595,4 +596,56 @@ TEST(tls_connect_google, {
     ASSERT(resp.is_ok());
     ASSERT(resp.unwrap().size() > 0);
     tls->close();
+})
+
+// ---- N-C2/N-C6 regression: Poly1305 must match RFC 8439 test vectors.
+// The previous implementation stored r in four 26-bit limbs (dropping r's
+// high bits), polluted limbs with oversized masks, and applied the full-block
+// pad bit to partial tails — every tag over one block was wrong, which made
+// TLS_CHACHA20_POLY1305 handshakes fail and hid real server alerts.
+
+static bool poly1305_tag_matches(const char *key_hex, const unsigned char *msg, size_t len, const char *tag_hex) {
+    u8 key[32];
+    for (int i = 0; i < 32; i++) {
+        unsigned int b = 0;
+        if (sscanf(key_hex + i * 2, "%2x", &b) != 1)
+            return false;
+        key[i] = static_cast<u8>(b);
+    }
+    Poly1305 p;
+    p.set_key(key);
+    if (len > 0)
+        p.update(msg, len);
+    u8 mac[16];
+    p.finish(mac);
+    for (int i = 0; i < 16; i++) {
+        unsigned int b = 0;
+        if (sscanf(tag_hex + i * 2, "%2x", &b) != 1)
+            return false;
+        if (mac[i] != static_cast<u8>(b))
+            return false;
+    }
+    return true;
+}
+
+static const char kPolyKey[] = "85d6be7857556d337f4452fe42d506a80103808afb0db2fd4abff6af4149f51b";
+
+TEST(poly1305_rfc8439_vector_multi_block, {
+    // RFC 8439 section 2.5.2 (34 bytes: two full blocks + a partial tail).
+    ASSERT(poly1305_tag_matches(kPolyKey,
+                                reinterpret_cast<const u8 *>("Cryptographic Forum Research Group"),
+                                34,
+                                "a8061dc1305136c6c22b8baf0c0127a9"));
+})
+
+TEST(poly1305_rfc8439_vector_empty_message, {
+    // Empty message: tag is just s.
+    ASSERT(poly1305_tag_matches(kPolyKey, nullptr, 0, "0103808afb0db2fd4abff6af4149f51b"));
+})
+
+TEST(poly1305_rfc8439_vector_exact_block, {
+    // One exact 16-byte block.
+    const unsigned char block[16] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
+    ASSERT(poly1305_tag_matches(kPolyKey, block, sizeof(block), "a18a0de2ba299128303a398e28bde4f0"));
 })
