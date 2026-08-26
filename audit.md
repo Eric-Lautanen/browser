@@ -761,18 +761,19 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | CSP 'self', URL control-char rejection, decompression-bomb cap, header-line cap | N-S4, N-S5, N-S8, N-S11 | ✅ DONE |
 
 ### Wave 2 — Functional correctness
-| Item | Where |
-|---|---|
-| IOCP lost-wakeup race | N-C4 |
-| TLS receive buffering + record chunking + response completeness loop | N-C1, N-C2, N-C6, N-C9, N-C10 |
-| HTTP/2 request bodies + CONTINUATION/trailers | N-C3, N-C7 |
-| WebSocket receive path + payload caps + SHA-1 fix | N-C5, N-C14 |
-| JS GC rooting (frames, timers, promise targets, XHR handlers) | J-M1…J-M5 |
-| Builtins invoke bytecode callbacks + prototype wiring | J-C1, J-C2 |
-| Handler stack, finally, closures, void/delete/ternary/continue, number formatting | J-C3…J-C7 |
-| Navigation generation counter + shutdown drain + stale-pointer invalidation point | BR-N1…N3, BR-C2, BR-C3 |
-| PNG inflate fix (raw-deflate/zlib detection; also fixes Content-Encoding: deflate) | I-C2 |
-| Wire JS execution into page pipeline (or stop fetching scripts) | BR-C11 |
+| Item | Where | Status |
+|---|---|---|
+| IOCP lost-wakeup race | N-C4 | ✅ DONE (63fbe5d) |
+| TLS receive buffering + record chunking + response completeness loop | N-C1, N-C2, N-C6, N-C9, N-C10 | ✅ DONE (535b791) |
+| HTTP/2 request bodies + CONTINUATION/trailers | N-C3, N-C7 | ✅ DONE (ea0c551) |
+| WebSocket receive path + payload caps + SHA-1 fix | N-C5, N-C14 | ✅ DONE (9eaba8d) |
+| JS GC rooting (frames, timers, promise targets, XHR handlers) | J-M1…J-M5 | ✅ DONE (0352ec1) |
+| Builtins invoke bytecode callbacks + prototype wiring | J-C1, J-C2 | ✅ DONE (0352ec1) |
+| Handler stack, finally, closures, void/delete/ternary/continue, number formatting | J-C3…J-C7 | ✅ DONE EXCEPT closures (3a092f4); **J-C5 closure capture remains open** |
+| Navigation generation counter + shutdown drain + stale-pointer invalidation point | BR-N1…N3, BR-C2, BR-C3 | ✅ DONE (ca13372) |
+| PNG inflate fix (raw-deflate/zlib detection; also fixes Content-Encoding: deflate) | I-C2 | ✅ DONE session 1 |
+| Wire JS execution into page pipeline (or stop fetching scripts) | BR-C11 | ✅ DONE (7c6ebba) |
+| Iterative traverse_depth_first + GC marking; JSON.parse cap; JS parser nesting cap | X-C2 remainder | ✅ DONE (ccfce06) |
 
 ### Wave 3 — Performance
 | Item | Where |
@@ -821,6 +822,46 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | N-S3 | Certificate message parser rejects list_len/context/ext lengths exceeding body instead of reading OOB; extracted as testable `parse_certificate_message()` | net/tls/handshake.cpp, connection.hpp, tests/tls_test.cpp | 8 new hostile-input tests (oversized list_len, truncated context, zero-len cert, stray tail…) | cdbcce7 |
 | N-S2 | Validator fails closed: untrusted root / partial chain / bad signature / chain-build failure / decode failure / store failure all reject; wildcard matches exactly one label; CN fallback only when SAN absent; malloc→vector | net/tls/cert_verify.cpp, tests/tls_test.cpp | 3 new fail-closed tests; tls_test 37/37 | ea87b37 |
 | N-S1 | Handshake verifies server CertificateVerify signature over transcript (RSA-PSS-SHA256 + ECDSA-P256 via new DER reader + SPKI extraction), then validates chain against system roots before completing. Fixed two latent bugs found during work `[NEW]`: SAN CryptDecodeObjectEx call pattern was invalid (SAN matching never worked — now two-call size query + NOCOPY); DER INTEGER leading-zero pad in RSA modulus broke PSS alignment | net/tls/cert_verify.{hpp,cpp}, net/tls/handshake.cpp, tests/tls_test.cpp | Live validated handshakes vs google.com/github.com; CNG signing-oracle cross-check; 12 new unit tests; tls_test 41/41, net_test 58/58 | 5b6b6d8 |
+
+### Session 2 — Wave 2 (functional correctness)
+
+| Audit ID | Fix | Files | Verification | Commit |
+|---|---|---|---|---|
+| N-C4 | IOCP lost-wakeup race closed: `co_iocp(ol, init)` registers the resume target BEFORE issuing the operation; synchronous failures resume inline. Resume pointer moved out of `OVERLAPPED::hEvent` into an atomic `IoOverlapped::coro` member — the kernel validates hEvent as an event object when non-null at initiation (observed error 6). Racy `iocp_awaiter` deleted; all 6 send/recv/connect sites migrated | async/executor.hpp, net/iocp.{hpp,cpp}, net/socket/{tcp,udp}.cpp, tests/iocp_test.cpp | Register-before-initiate invariant test; inline-resume on immediate failure; 64-round loopback echo stress through the async socket API (hangs under old ordering). iocp_test 7/7 | 63fbe5d |
+| N-C2 + N-C9 + N-C10 + **[NEW] N-CX1/N-CX2** | TLS receive buffering (`recv_pending_`), close_notify → clean EOF, alerts surfaced as errors instead of data, post-handshake records skipped, send chunking to ≤16KiB fragments with per-record seq (N-C6), handshake reassembly across records with kMaxHandshakeBuffer cap. Two deeper defects found while debugging: **(CX1)** aead_encrypt/decrypt ignored their key argument on the AES-GCM path and used shared member state that derive_application_keys() re-set before the client Finished was sent — every real server rejected our Finished with bad_record_mac since forever; keys now set per call. **(CX2)** the client Finished went on the wire as a bare verify_data without its 4-byte handshake header (every server: unexpected_message). Verified against local `openssl s_server -msg` | net/tls/{connection,record,cipher,handshake}.* , net/http.{hpp,cpp} | Live: tls_connect_google green end-to-end, http_client_get_https returns real content; openssl s_server accepts handshake ("server accepts that finished") | 535b791 |
+| N-C1 + N-C9(HTTP) | Response completeness: BodyState tri-state from Response::parse; clients loop until COMPLETE or clean close; a close mid-body under explicit framing is now an ERROR, not truncated success. kMaxResponseBytes named cap replaces silent 1 MB cut | net/http.{hpp,cpp}, tests/net_test.cpp | 6 parse-flag unit tests; loopback servers: half-sent Content-Length body detected as error, 300 KB body delivered fully | 535b791 |
+| N-C3 + N-C7 | HTTP/2 request bodies sent as DATA frames honouring SETTINGS_MAX_FRAME_SIZE and both flow-control windows (pumps WINDOW_UPDATE/PING when dry) — POST/PUT no longer deadlock; header blocks accumulate across HEADERS+CONTINUATION and HPACK-decode once; post-body HEADERS treated as trailers; execute/execute_async share one ResponseAssembler state machine | net/http2/connection.cpp, tests/net_test.cpp | Live httpbin.org/post echoes our body back (http2_post_body_sent); http2_connect_google does a real h2 GET (was silently passing via error escape hatch) | ea0c551 |
+| N-C5 + N-C14 | WebSocket receive rewritten: header parsed on the wire (≤14 B, fixing a stack overflow on masked 64-bit headers), payload read separately — payloads were NEVER deliverable before ("payload truncated" on every data frame). RFC 6455 validation: reserved bits/opcodes, control-frame FIN+≤125+no extended length, server frames must be unmasked. Fragment assembly (TEXT/BINARY + CONTINUATION until FIN) with transparent PING interleave; PONG uses a fresh local mask key. SHA-1 update() mis-copied every multi-block input (accept key only worked because its input fit one block) | net/websocket.{hpp,cpp}, tests/websocket_test.cpp | RFC-vector accept keys incl. multi-block SHA-1; hostile-frame rejection tests; loopback WS server delivering PING + fragmented message + complete frame end-to-end. websocket_test 12/12 | 9eaba8d |
+| J-M1…J-M5 (+J-M6) | GC rooting: frame roots for constructor instances (J-M1); per-VM timer/microtask state exposed via root provider with heap-cell entries (J-M2); promise forwarding/all/race/executor contexts anchor targets as '!fwd_target'/'!anchored_*' properties on handler functions (J-M3); XHR handler mirrored to wrapper property and fired via invoke (J-M4); drain_reactions / settled-then / timer firing / event dispatch run under NativeCallScope (J-M5); array iteration snapshots elements before invoking callbacks so mutation can't dangle the loop (J-M6) | js/vm/vm.cpp, js/builtins/timers.cpp, js/builtins/promise.cpp, js/dom_bindings/xhr.cpp, js/dom_bindings.cpp | builtins_test constructor-GC test (40k allocations during construction); gc/js/vm/dom_bindings suites green | 0352ec1 |
+| J-C1 + J-C2 (+J-C9) | Higher-order builtins route callbacks through VM::invoke — map/filter/reduce/reduceRight/find/findIndex/some/every/forEach/sort/flatMap and Array.from previously ran script functions as silent no-ops. sort sanitizes NaN comparators (J-C9). Prototypes: object/array literals get canonical prototypes; builtin-created arrays use make_array_value(); primitive receivers resolve String/Number/Boolean.prototype ('abc'.trim(), (5).toFixed()); 'prototype' access on constructors resolves prototype_property | js/builtins/array.cpp, js/builtins/builtins.hpp, js/vm/ops.cpp, js/vm/vm.hpp | New builtins tests: [1,2,3].map(bytecode fn).join() == "2,4,6"; literal .push/.concat; Object.prototype method reachability; 'abc'.trim(). builtins_test 31→44 green | 0352ec1 |
+| J-C3 + J-C4 + J-C6 + J-C7 | Per-frame handler STACK (nested try no longer loses outer handler); try/finally compiles to normal-path + exceptional stash/rethrow copies so finalizers run on every exit and bare `try{throw}finally{}` rethrows instead of swallowing; return/break/continue tunnel through enclosing finalizers via per-level value slots with loop-scoped fin depth. void/delete/ternary/continue: typeof/void/delete distinguished by keyword (all three previously compiled to TYPEOF), DELETE_PROP/DELETE_PROP_COMPUTED opcodes + JSObject::del_property, ConditionalExpr parse/compile, ContinueStmt + continue-jump lists (for-loop targets registered before body). Number-to-string via std::to_chars shortest round-trip with JS exponent thresholds. Parser fix `[NEW]`: '(ident === x)' misrouted into arrow-param parsing and silently truncated at the identifier | js/ast.hpp, js/bytecode.hpp, js/parser/expression.cpp, js/parser/statement.cpp, js/parser/parser.hpp, js/vm/compiler/*.cpp, js/vm/vm.{hpp,cpp}, js/vm/ops.cpp, js/value.hpp, tests/builtins_test.cpp | 13 new tests: nested try rethrow ordering, finally-on-normal/rethrow/return-tunnel, void≠typeof-string, delete removes property, ternary branches, for/while continue semantics, 0.1+0.2 formatting + exponent thresholds | 3a092f4 |
+| X-C2 remainder + J-P2(thrash) | traverse_depth_first iterative (explicit stack); GC marking iterative (mark queues to heap worklist, collect drains — deep chains no longer recurse in mark_children); JSON.parse depth cap 512 whose bail-out starves the input so enclosing loops terminate (the naive version spun with unbounded pushes — observed as multi-GB memory); JSON.stringify cyclic cap; JS expression nesting capped at 256 (~25% of thread stack). **Adaptive GC threshold**: a live set above the fixed threshold caused a full collection on EVERY instruction (quadratic thrash — reproduced as minutes of CPU + multi-GB RSS by a new regression test); threshold now grows after a collection that fails to free below it | html/traversal.hpp, js/vm/gc.{hpp,cpp}, js/builtins/json.cpp, js/parser/parser.hpp, js/parser/expression.cpp, tests/builtins_test.cpp | Deep-chain marking test (old recursive marker would overflow ~12k frames); JSON 700-bracket + parser 4000-paren caps hit in milliseconds; full builtins_test 120 s/hang → 4 s | ccfce06 |
+| BR-N1 + BR-N2 + BR-N3 | PageLoader generation counter: loads capture a generation and abandon at checkpoints when superseded; queued-latest navigation drains through the single-flight slot (no more dropped navigations with URL/history already updated); cancel() invalidates by generation instead of racing flags; dtor detaches in-flight task via new task::abandon() (destroying it freed a frame IOCP may still resume) | browser/page_loader.{hpp,cpp}, async/task.hpp, tests/async_test.cpp | task abandon-without-destroy test; supersede/stale-publish ordering test | ca13372 |
+| BR-C2 + BR-C3 | render_page()'s page swap is THE invalidation point: textarea resize pointers, find matches, selection, form focus/hover/select dropdown and the pointer-keyed value maps are cleared when the old document dies — kills the keystroke-after-navigation UAF and recycled-address form bleed | browser/chrome/page_view.cpp, browser/chrome/window.hpp | Covered by chrome/window smoke paths; pointer clears are asserted implicitly by subsequent navigation tests | ca13372 |
+| BR-C11 | Page scripts execute: per-page VM + DOMBindings + ScriptRunner created after DOM parse; inline scripts run pre-layout (mutations visible to cascade/layout/paint); external scripts queue at ResourcePriority::JS and execute after bytes arrive; CSP script-src/default-src gates both. Opcode::VOID renamed VOID_OP (windows.h macro collision) | browser/page_loader.{hpp,cpp}, js/script_runner.{hpp,cpp}, js/bytecode.hpp, js/vm/compiler/expr.cpp, js/vm/vm.cpp, tests/dom_bindings_test.cpp | Inline script mutating DOM via document.getElementById+setAttribute visible to engine; external attach+execute. dom_bindings_test 10/10 | 7c6ebba |
+
+### J-C5 status (deferred)
+
+Closure variable capture (cells/upvalues across function boundaries) is the one
+Wave-2 item NOT addressed: it requires environment objects carried by function
+values, LOAD/STORE cell opcodes, compiler scope analysis for captured locals,
+and GC tracing of environments. Everything else in J-C3…J-C7 shipped. Top-level
+`var`/global functions work; nested functions reading enclosing locals resolve
+LOAD_GLOBAL and observe undefined.
+
+### Session 2 verification
+
+- Full harness suite: **90/90 PASS** (0 critical, 0 minor), tools/results/latest_run.json
+- All 42 *_test.exe exit 0 (incl. live tls_connect_google, http2_connect_google
+  which now perform REAL application-data exchanges over TLS)
+- Build clean under -Wall -Wextra -Wpedantic -Werror
+
+**Process notes (session 2):** PowerShell heredocs/backticks mangle inline
+python — write helper scripts with the Write tool instead. git clang-format's
+IncludeOrder sorts winsock2.h after windows.h; guard with clang-format off/on.
+New JS tests must stay millisecond-scale: an all-live allocation chain above
+the GC threshold used to trigger per-instruction collections (now adaptive,
+see X-C2 row).
 
 
 ### Session 1 final verification
