@@ -27,20 +27,30 @@ namespace sha1 {
             count = 0;
         }
 
-        void update(const u8* data, u32 len) {
+        void update(const u8 *data, u32 len) {
+            // N-C14: the previous implementation mis-copied the trailing bytes
+            // for any input >= 64 bytes or non-zero initial residue (wrong
+            // offset AND length), corrupting every multi-block hash.
             u32 idx = static_cast<u32>(count & 63);
             count += len;
-            u32 part = 64 - idx;
-            if (len >= part) {
-                std::memcpy(buffer + idx, data, part);
+            if (idx > 0) {
+                u32 need = 64 - idx;
+                if (len < need) {
+                    std::memcpy(buffer + idx, data, len);
+                    return;
+                }
+                std::memcpy(buffer + idx, data, need);
                 transform(buffer);
-                for (u32 i = part; i + 63 < len; i += 64)
-                    transform(data + i);
-                idx = 0;
-            } else {
-                part = len;
+                data += need;
+                len -= need;
             }
-            std::memcpy(buffer + idx, data + (len - part), part);
+            while (len >= 64) {
+                transform(data);
+                data += 64;
+                len -= 64;
+            }
+            if (len > 0)
+                std::memcpy(buffer, data, len);
         }
 
         std::vector<u8> digest() {
@@ -315,32 +325,64 @@ std::vector<u8> WebSocket::encode_frame(const WebSocketFrame& frame) {
     return data;
 }
 
-Result<WebSocketFrame> WebSocket::decode_frame(const u8* data, u32 len, u32& consumed) {
+static bool is_control_opcode(u8 op) {
+    return (op & 0x8) != 0;
+}
+
+Result<WebSocketFrame> WebSocket::decode_frame(const u8 *data, u32 len, u32 &consumed) {
     WebSocketFrame frame = {};
     consumed = 0;
 
-    if (len < 2) return std::string("frame too short");
+    if (len < 2)
+        return std::string("frame too short");
+
+    // N-C14: reserved bits must be zero (no extensions negotiated).
+    if (data[0] & 0x70)
+        return std::string("reserved bits set in frame header");
 
     frame.fin = (data[0] & 0x80) != 0;
-    frame.opcode = static_cast<Opcode>(data[0] & 0x0F);
+    u8 opcode = data[0] & 0x0F;
+    // N-C14: reject reserved opcodes (0x3-0x7 data, 0xB-0xF control).
+    if (opcode >= 0x3 && opcode <= 0x7)
+        return std::string("reserved data opcode");
+    if (opcode >= 0xB)
+        return std::string("reserved control opcode");
+    frame.opcode = static_cast<Opcode>(opcode);
     frame.masked = (data[1] & 0x80) != 0;
 
     u32 pos = 2;
     u64 payload_len = data[1] & 0x7F;
+    const bool control = is_control_opcode(opcode);
+
+    // N-C14: control frames MUST be short (<=125), use no extended length
+    // encoding, and have FIN set.
+    if (control) {
+        if (!frame.fin)
+            return std::string("fragmented control frame");
+        if (data[1] & 0x7F) {
+            if (payload_len >= 126)
+                return std::string("extended length on control frame");
+        }
+        if (payload_len > 125)
+            return std::string("oversized control frame");
+    }
+
     if (payload_len == 126) {
-        if (pos + 2 > len) return std::string("frame truncated at 16-bit len");
+        if (pos + 2 > len)
+            return std::string("frame truncated at 16-bit len");
         payload_len = (static_cast<u64>(data[pos]) << 8) | data[pos + 1];
         pos += 2;
     } else if (payload_len == 127) {
-        if (pos + 8 > len) return std::string("frame truncated at 64-bit len");
+        if (pos + 8 > len)
+            return std::string("frame truncated at 64-bit len");
         payload_len = 0;
-        for (int i = 0; i < 8; i++)
-            payload_len = (payload_len << 8) | data[pos + i];
+        for (int i = 0; i < 8; i++) payload_len = (payload_len << 8) | data[pos + i];
         pos += 8;
     }
 
     if (frame.masked) {
-        if (pos + 4 > len) return std::string("frame truncated at mask");
+        if (pos + 4 > len)
+            return std::string("frame truncated at mask");
         std::memcpy(frame.mask_key, data + pos, 4);
         pos += 4;
     }
@@ -351,12 +393,12 @@ Result<WebSocketFrame> WebSocket::decode_frame(const u8* data, u32 len, u32& con
     if (payload_len > kMaxWebSocketPayload)
         return std::string("frame payload exceeds limit");
 
-    if (pos + payload_len > len) return std::string("payload truncated");
+    if (pos + payload_len > len)
+        return std::string("payload truncated");
 
     frame.payload.assign(data + pos, data + pos + static_cast<u32>(payload_len));
     if (frame.masked) {
-        for (u64 i = 0; i < payload_len; i++)
-            frame.payload[i] ^= frame.mask_key[i % 4];
+        for (u64 i = 0; i < payload_len; i++) frame.payload[i] ^= frame.mask_key[i % 4];
     }
 
     consumed = pos + static_cast<u32>(payload_len);
@@ -470,91 +512,217 @@ async::task<bool> WebSocket::send_close(CloseCode code, const std::string& reaso
     co_return r;
 }
 
-async::task<WebSocketFrame> WebSocket::receive_frame() {
-    u8 header[10];
+void WebSocket::fill_random_mask(u8 mask[4]) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 255);
+    for (int i = 0; i < 4; i++) mask[i] = static_cast<u8>(dis(gen));
+}
+
+async::task<bool> WebSocket::receive_one_frame(WebSocketFrame &out, std::string &err) {
+    // N-C5: the old code fed only the header bytes into decode_frame, so
+    // any frame with a payload failed with "payload truncated" and the
+    // payload-reading loop below was unreachable. Parse the header here
+    // (it is at most 14 bytes: 2 + 8 extended length + 4 mask) and then
+    // read the payload separately.
+    u8 hdr[14] = {};
     u32 hdr_pos = 0;
-
     while (hdr_pos < 2) {
-        auto r = co_await recv_raw(header + hdr_pos, 2 - hdr_pos);
-        if (r.is_err()) co_return std::string("recv header: ") + r.unwrap_err();
+        auto r = co_await recv_raw(hdr + hdr_pos, 2 - hdr_pos);
+        if (r.is_err()) {
+            err = "recv header: " + r.unwrap_err();
+            co_return false;
+        }
         u32 n = r.unwrap();
-        if (n == 0) co_return std::string("connection closed");
+        if (n == 0) {
+            err = "connection closed";
+            co_return false;
+        }
         hdr_pos += n;
     }
 
-    u8 first_len_byte = header[1] & 0x7F;
-    u32 extra_header = 0;
-    if (first_len_byte == 126) extra_header = 2;
-    else if (first_len_byte == 127) extra_header = 8;
-    if (header[1] & 0x80) extra_header += 4;
+    // N-C14: servers must not mask; reserved bits must be zero.
+    if (hdr[0] & 0x70) {
+        err = "reserved bits set in frame header";
+        co_return false;
+    }
+    if (hdr[1] & 0x80) {
+        err = "server frames must not be masked";
+        co_return false;
+    }
 
-    while (hdr_pos < 2 + extra_header) {
-        auto r = co_await recv_raw(header + hdr_pos, 2 + extra_header - hdr_pos);
-        if (r.is_err()) co_return std::string("recv ext header: ") + r.unwrap_err();
+    const u8 opcode = hdr[0] & 0x0F;
+    if (opcode >= 0x3 && opcode <= 0x7) {
+        err = "reserved data opcode";
+        co_return false;
+    }
+    if (opcode >= 0xB) {
+        err = "reserved control opcode";
+        co_return false;
+    }
+    const bool control = is_control_opcode(opcode);
+    if (control && !(hdr[0] & 0x80)) {
+        err = "fragmented control frame";
+        co_return false;
+    }
+
+    u8 len7 = hdr[1] & 0x7F;
+    if (control && len7 >= 126) {
+        err = "extended length on control frame";
+        co_return false;
+    }
+
+    u32 extra = 0;
+    if (len7 == 126)
+        extra = 2;
+    else if (len7 == 127)
+        extra = 8;
+    while (hdr_pos < 2 + extra) {
+        auto r = co_await recv_raw(hdr + hdr_pos, 2 + extra - hdr_pos);
+        if (r.is_err()) {
+            err = "recv ext header: " + r.unwrap_err();
+            co_return false;
+        }
         u32 n = r.unwrap();
-        if (n == 0) co_return std::string("connection closed");
+        if (n == 0) {
+            err = "connection closed";
+            co_return false;
+        }
         hdr_pos += n;
     }
 
-    u32 consumed = 0;
-    auto frame_r = decode_frame(header, hdr_pos, consumed);
-    if (frame_r.is_err()) co_return frame_r.unwrap_err();
-    auto frame = frame_r.unwrap();
+    u64 payload_len = len7;
+    if (len7 == 126)
+        payload_len = (static_cast<u64>(hdr[2]) << 8) | hdr[3];
+    else if (len7 == 127)
+        payload_len = (static_cast<u64>(hdr[2]) << 56) | (static_cast<u64>(hdr[3]) << 48) |
+                      (static_cast<u64>(hdr[4]) << 40) | (static_cast<u64>(hdr[5]) << 32) |
+                      (static_cast<u64>(hdr[6]) << 24) | (static_cast<u64>(hdr[7]) << 16) |
+                      (static_cast<u64>(hdr[8]) << 8) | static_cast<u64>(hdr[9]);
 
-    if (frame.payload_length > 0) {
-        frame.payload.resize(static_cast<std::size_t>(frame.payload_length));
+    if (payload_len > kMaxWebSocketPayload) {
+        err = "frame payload exceeds limit";
+        co_return false;
+    }
+    if (control && payload_len > 125) {
+        err = "oversized control frame";
+        co_return false;
+    }
+
+    out = WebSocketFrame{};
+    out.fin = (hdr[0] & 0x80) != 0;
+    out.opcode = static_cast<Opcode>(opcode);
+    out.masked = false;
+    out.payload_length = payload_len;
+
+    if (payload_len > 0) {
+        out.payload.resize(static_cast<std::size_t>(payload_len));
         u32 got = 0;
-        while (got < frame.payload_length) {
-            auto r = co_await recv_raw(frame.payload.data() + got, static_cast<u32>(frame.payload_length - got));
-            if (r.is_err()) co_return std::string("recv payload: ") + r.unwrap_err();
+        while (got < payload_len) {
+            auto r = co_await recv_raw(out.payload.data() + got, static_cast<u32>(out.payload_length - got));
+            if (r.is_err()) {
+                err = "recv payload: " + r.unwrap_err();
+                co_return false;
+            }
             u32 n = r.unwrap();
-            if (n == 0) co_return std::string("connection closed");
+            if (n == 0) {
+                err = "connection closed";
+                co_return false;
+            }
             got += n;
         }
-
-        if (frame.masked) {
-            for (u64 i = 0; i < frame.payload_length; i++)
-                frame.payload[i] ^= frame.mask_key[i % 4];
-        }
     }
+    co_return true;
+}
 
-    if (frame.opcode == Opcode::PING) {
-        WebSocketFrame pong;
-        pong.fin = true;
-        pong.opcode = Opcode::PONG;
-        pong.masked = true;
-        pong.payload_length = frame.payload_length;
-        pong.payload = frame.payload;
-        std::memcpy(pong.mask_key, frame.mask_key, 4);
-        co_await send_frame(pong);
-        auto next = co_await receive_frame();
-        co_return next;
-    }
+async::task<WebSocketFrame> WebSocket::receive_frame() {
+    // Assemble messages from fragments (N-C14): TEXT/BINARY frames with
+    // FIN=0 are followed by CONTINUATION frames; control frames may
+    // interleave and are handled transparently.
+    WebSocketFrame assembled = {};
+    bool have_base = false;
 
-    if (frame.opcode == Opcode::CLOSE) {
-        connected_ = false;
-        closing_ = true;
-        co_await send_close(CloseCode::NORMAL);
-        if (on_close_cb_) {
-            CloseCode cc = CloseCode::NORMAL;
-            if (frame.payload.size() >= 2) {
-                cc = static_cast<CloseCode>((static_cast<u16>(frame.payload[0]) << 8) | frame.payload[1]);
+    for (;;) {
+        WebSocketFrame frame;
+        std::string err;
+        auto ok = co_await receive_one_frame(frame, err);
+        if (ok.is_err() || !ok.unwrap())
+            co_return err;
+
+        switch (frame.opcode) {
+            case Opcode::PING: {
+                // Pong with identical application data but OUR fresh mask
+                // key (the old code reused the peer's mask key).
+                WebSocketFrame pong;
+                pong.fin = true;
+                pong.opcode = Opcode::PONG;
+                pong.masked = true;
+                fill_random_mask(pong.mask_key);
+                pong.payload_length = frame.payload_length;
+                pong.payload = frame.payload;
+                co_await send_frame(pong);
+                continue;
             }
-            std::string reason;
-            if (frame.payload.size() > 2)
-                reason.assign(reinterpret_cast<const char*>(frame.payload.data() + 2), frame.payload.size() - 2);
-            on_close_cb_(cc, reason);
-        }
-        co_return frame;
-    }
 
-    if (frame.opcode == Opcode::TEXT || frame.opcode == Opcode::BINARY) {
-        if (on_message_cb_ && frame.opcode == Opcode::TEXT) {
-            on_message_cb_(std::string(reinterpret_cast<const char*>(frame.payload.data()), frame.payload.size()));
-        }
-    }
+            case Opcode::PONG:
+                continue;  // unsolicited pongs are ignored
 
-    co_return frame;
+            case Opcode::CLOSE: {
+                connected_ = false;
+                closing_ = true;
+                co_await send_close(CloseCode::NORMAL);
+                if (on_close_cb_) {
+                    CloseCode cc = CloseCode::NORMAL;
+                    if (frame.payload.size() >= 2) {
+                        cc = static_cast<CloseCode>((static_cast<u16>(frame.payload[0]) << 8) | frame.payload[1]);
+                    }
+                    std::string reason;
+                    if (frame.payload.size() > 2)
+                        reason.assign(reinterpret_cast<const char *>(frame.payload.data() + 2),
+                                      frame.payload.size() - 2);
+                    on_close_cb_(cc, reason);
+                }
+                co_return frame;
+            }
+
+            case Opcode::TEXT:
+            case Opcode::BINARY: {
+                if (have_base) {
+                    co_return std::string("nested data frame during fragmentation");
+                }
+                have_base = true;
+                assembled = frame;  // keeps opcode and this fragment's payload
+                if (!frame.fin)
+                    continue;  // more fragments follow
+                break;         // complete single-frame message
+            }
+
+            case Opcode::CONTINUATION: {
+                if (!have_base) {
+                    co_return std::string("continuation without initial frame");
+                }
+                assembled.payload.insert(assembled.payload.end(), frame.payload.begin(), frame.payload.end());
+                assembled.payload_length = assembled.payload.size();
+                if (frame.fin)
+                    assembled.fin = true;
+                if (!frame.fin)
+                    continue;
+                break;  // message fully assembled
+            }
+
+            default:
+                co_return std::string("unhandled opcode");
+        }
+
+        assembled.fin = true;
+        assembled.opcode = have_base ? assembled.opcode : Opcode::TEXT;
+
+        if (assembled.opcode == Opcode::TEXT && on_message_cb_) {
+            on_message_cb_(
+                std::string(reinterpret_cast<const char *>(assembled.payload.data()), assembled.payload.size()));
+        }
+        co_return assembled;
+    }
 }
 
 async::task<std::vector<u8>> WebSocket::receive_text() {

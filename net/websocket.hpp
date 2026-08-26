@@ -69,9 +69,12 @@ public:
     async::task<std::vector<u8>> receive_text();
 
     // Control
-    async::task<bool> close(CloseCode code = CloseCode::NORMAL, const std::string& reason = "");
+    async::task<bool> close(CloseCode code = CloseCode::NORMAL, const std::string &reason = "");
     void close_sync();
     bool is_connected() const;
+
+    // RFC 6455 section 1.3 accept-key derivation (Sec-WebSocket-Accept).
+    static std::string compute_accept_key(const std::string &key);
 
     // Callbacks
     void on_message(std::function<void(const std::string&)> cb) { on_message_cb_ = std::move(cb); }
@@ -93,9 +96,16 @@ private:
     std::function<void(CloseCode, const std::string&)> on_close_cb_;
     std::function<void(const std::string&)> on_error_cb_;
 
-    async::task<bool> perform_handshake(const std::string& host, u16 port, const std::string& path);
+    async::task<bool> perform_handshake(const std::string &host, u16 port, const std::string &path);
     std::string generate_key() const;
-    static std::string compute_accept_key(const std::string& key);
+
+    // Reads and validates one complete frame from the wire (header parsed
+    // here, payload read separately — the old code passed only header bytes
+    // to decode_frame so payloads could never be delivered, N-C5). Returns
+    // false on any protocol/transport error with the message in `err`.
+    async::task<bool> receive_one_frame(WebSocketFrame &out, std::string &err);
+
+    void fill_random_mask(u8 mask[4]);
 
     // I/O helpers
     async::task<bool> send_raw(span<u8> data);
@@ -103,4 +113,3 @@ private:
 };
 
 } // namespace browser::net::ws
-
