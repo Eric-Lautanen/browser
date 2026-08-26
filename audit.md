@@ -776,18 +776,18 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | Iterative traverse_depth_first + GC marking; JSON.parse cap; JS parser nesting cap | X-C2 remainder | ✅ DONE (ccfce06) |
 
 ### Wave 3 — Performance
-| Item | Where |
-|---|---|
-| Persistent PaintExecutor caches (stop per-frame VRAM re-upload) | BR-P1, R-P1 |
-| Dirty-flag restyle + property-kind invalidation + compositor-able animation path | CS-P1, BR-P4 |
-| Selector index + shared ComputedStyle handles + true CSSValue variant | CS-P2, CS-P3 |
-| Idle dirty-gate rendering; throttled textarea-drag relayout | BR-P2, BR-P3 |
-| Canvas version-guarded upload; blur separable/clamped; FBO pooling | R-P1, R-P2, R-P3 |
-| Atlas lifecycle (page leak, emoji staleness, LRU) | R-P4…R-P6 |
-| ChaCha word-at-a-time, streaming GHASH, DNS cache, keep-alive/session resumption | N-P1…N-P7 |
-| JPEG IDCT basis precompute; GIF prefix tables; PNG buffer reduction | I-perf |
-| Parallel resource fetch (when_all) | BR-P5, H-P4 |
-| EBO growth fix; scissor save/restore; uniform caching | R-G2, R-G1, R-G5 |
+| Item | Where | Status |
+|---|---|---|
+| Persistent PaintExecutor caches (stop per-frame VRAM re-upload) | BR-P1, R-P1 | ✅ DONE (29c0b3a)
+| Dirty-flag restyle + property-kind invalidation + compositor-able animation path | CS-P1, BR-P4 | ⬜
+| Selector index + shared ComputedStyle handles + true CSSValue variant | CS-P2, CS-P3 | ⬜
+| Idle dirty-gate rendering; throttled textarea-drag relayout | BR-P2, BR-P3 | ✅ DONE (72552a9); BR-P3 pending
+| Canvas version-guarded upload; blur separable/clamped; FBO pooling | R-P1, R-P2, R-P3 | R-P1 ✅ (29c0b3a); R-P2/R-P3 pending
+| Atlas lifecycle (page leak, emoji staleness, LRU) | R-P4…R-P6 | ⬜
+| ChaCha word-at-a-time, streaming GHASH, DNS cache, keep-alive/session resumption | N-P1…N-P7 | ⬜
+| JPEG IDCT basis precompute; GIF prefix tables; PNG buffer reduction | I-perf | ⬜
+| Parallel resource fetch (when_all) | BR-P5, H-P4 | ⬜
+| EBO growth fix; scissor save/restore; uniform caching | R-G2, R-G1, R-G5 | ⬜
 
 ### Wave 4 — Refactors (behavior-preserving; bootstrap fixtures before/after)
 | Item | Where |
@@ -839,6 +839,13 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | BR-N1 + BR-N2 + BR-N3 | PageLoader generation counter: loads capture a generation and abandon at checkpoints when superseded; queued-latest navigation drains through the single-flight slot (no more dropped navigations with URL/history already updated); cancel() invalidates by generation instead of racing flags; dtor detaches in-flight task via new task::abandon() (destroying it freed a frame IOCP may still resume) | browser/page_loader.{hpp,cpp}, async/task.hpp, tests/async_test.cpp | task abandon-without-destroy test; supersede/stale-publish ordering test | ca13372 |
 | BR-C2 + BR-C3 | render_page()'s page swap is THE invalidation point: textarea resize pointers, find matches, selection, form focus/hover/select dropdown and the pointer-keyed value maps are cleared when the old document dies — kills the keystroke-after-navigation UAF and recycled-address form bleed | browser/chrome/page_view.cpp, browser/chrome/window.hpp | Covered by chrome/window smoke paths; pointer clears are asserted implicitly by subsequent navigation tests | ca13372 |
 | BR-C11 | Page scripts execute: per-page VM + DOMBindings + ScriptRunner created after DOM parse; inline scripts run pre-layout (mutations visible to cascade/layout/paint); external scripts queue at ResourcePriority::JS and execute after bytes arrive; CSP script-src/default-src gates both. Opcode::VOID renamed VOID_OP (windows.h macro collision) | browser/page_loader.{hpp,cpp}, js/script_runner.{hpp,cpp}, js/bytecode.hpp, js/vm/compiler/expr.cpp, js/vm/vm.cpp, tests/dom_bindings_test.cpp | Inline script mutating DOM via document.getElementById+setAttribute visible to engine; external attach+execute. dom_bindings_test 10/10 | 7c6ebba |
+
+### Session 3 — Wave 3 (performance)
+
+| Audit ID | Fix | Files | Verification | Commit |
+|---|---|---|---|---|
+| BR-P1 + R-P1 | PaintExecutor moved from a per-frame stack local into BrowserWindow (created once in initialize); GPU texture caches persist across frames. Canvas textures keyed by canvas identity — never the pixel-buffer address — with version-guarded upload: unchanged version skips upload, resize re-creates, content change goes through Texture2D::update_sub. invalidate_page_caches() drops image/canvas/gradient entries at the BR-C2/C3 page-swap invalidation point so recycled pointers cannot resolve to stale textures | render/paint/{executor.hpp,executor.cpp,commands.hpp,painter.cpp}, browser/chrome/{window.hpp,window.cpp,page_view.cpp}, tests/gpu_smoke_test.cpp | Micro-bench 6×512×384 canvases (4.5 MB/frame), 200 frames: BEFORE 0.65–1.32 ms/frame (create+upload each frame) → AFTER 0.011 ms/frame (~60–120×; ~270 MB/s VRAM uploads eliminated). gpu_smoke_test 10/10 incl. 3 new cache-lifecycle tests | 29c0b3a |
+| BR-P2 | Idle dirty-gate: render block runs only when frame_dirty_ \|\| animating \|\| renderer needs_redraw. Input events and page adoption set the flag; loader draining extracted to absorb_loaded_pages() called every iteration so completed loads surface regardless of gate. Wake policy idle_wait_ms(): 16 ms animating, 60 ms caret visible, 200 ms idle doze (bounded — async loads publish from pool threads) | browser/chrome/{window.hpp,window.cpp,page_view.cpp,event_handler.cpp}, tests/chrome_test.cpp | Idle CPU over 8 s on about::blank: BEFORE 187.5 ms → AFTER 0.0 ms. chrome_test 13/13 incl. new idle_wait_policy test | 72552a9 |
 
 ### J-C5 status (deferred)
 
