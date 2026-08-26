@@ -1,11 +1,55 @@
 #include "dns.hpp"
+
 #include "../async/executor.hpp"
+
+#include <algorithm>
 #include <cstring>
-#include <vector>
-#include <string>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace browser::net {
+
+    namespace {
+        // N-P7: clamp server-provided TTLs to [10 s, 1 h].
+        constexpr u32 kMinTtlSeconds = 10;
+        constexpr u32 kMaxTtlSeconds = 3600;
+    }  // namespace
+
+    std::optional<std::vector<IPv4Address>> DnsCache::lookup(const std::string &hostname) {
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto it = entries_.find(hostname);
+        if (it == entries_.end())
+            return std::nullopt;
+        if (std::chrono::steady_clock::now() >= it->second.expires) {
+            entries_.erase(it);
+            return std::nullopt;
+        }
+        return it->second.addrs;
+    }
+
+    void DnsCache::store(const std::string &hostname, const std::vector<IPv4Address> &addrs, u32 ttl_seconds) {
+        if (addrs.empty())
+            return;
+        u32 ttl = std::clamp(ttl_seconds, kMinTtlSeconds, kMaxTtlSeconds);
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (entries_.size() >= kMaxEntries && entries_.find(hostname) == entries_.end()) {
+            // Crude but bounded: drop everything once the cap is hit. Hostname
+            // sets per session are tiny; correctness (TTL expiry) is unaffected.
+            entries_.clear();
+        }
+        entries_[hostname] = Entry{addrs, std::chrono::steady_clock::now() + std::chrono::seconds(ttl)};
+    }
+
+    void DnsCache::clear() {
+        std::lock_guard<std::mutex> lock(mutex_);
+        entries_.clear();
+    }
+
+    DnsCache &global_dns_cache() {
+        static DnsCache cache;
+        return cache;
+    }
 
 DNSResolver::DNSResolver()
     : dns_server_(8, 8, 8, 8) {}
@@ -103,6 +147,10 @@ static Result<std::pair<std::string, u16>> read_dns_name(const u8* data, u32 len
 }
 
 async::task<std::vector<IPv4Address>> DNSResolver::resolve_a(const std::string& hostname) {
+    // N-P7: serve from the process-wide cache when a valid entry exists.
+    if (auto cached = global_dns_cache().lookup(hostname))
+        co_return std::move(*cached);
+
     u16 id = next_tid_++;
     auto query = build_query(hostname, 1, id);
 
@@ -119,10 +167,17 @@ async::task<std::vector<IPv4Address>> DNSResolver::resolve_a(const std::string& 
     if (recv_r.is_err()) co_return std::string("DNS recv: ") + recv_r.unwrap_err();
 
     u32 recv_len = recv_r.unwrap();
-    co_return parse_response(recv_buf, recv_len, id);
+    u32 ttl_seconds = kMinTtlSeconds;
+    auto result = parse_response(recv_buf, recv_len, id, &ttl_seconds);
+    if (result.is_ok() && !result.unwrap().empty())
+        global_dns_cache().store(hostname, result.unwrap(), ttl_seconds);
+    co_return result;
 }
 
-Result<std::vector<IPv4Address>> DNSResolver::parse_response(const u8* data, u32 len, u16 expected_id) {
+Result<std::vector<IPv4Address>> DNSResolver::parse_response(const u8 *data,
+                                                             u32 len,
+                                                             u16 expected_id,
+                                                             u32 *min_ttl_out) {
     std::vector<IPv4Address> result;
     if (len < 12) return std::string("DNS response too short");
 
@@ -146,6 +201,7 @@ Result<std::vector<IPv4Address>> DNSResolver::parse_response(const u8* data, u32
         pos += 4;
     }
 
+    u32 min_ttl = 0xFFFFFFFFu;
     for (u16 i = 0; i < ancount; i++) {
         if (pos >= len) return std::string("truncated DNS answer section");
         auto name_r = read_dns_name(data, len, pos);
@@ -158,7 +214,6 @@ Result<std::vector<IPv4Address>> DNSResolver::parse_response(const u8* data, u32
         (void)rclass;
         u32 rttl = (static_cast<u32>(data[pos + 4]) << 24) | (static_cast<u32>(data[pos + 5]) << 16) |
                    (static_cast<u32>(data[pos + 6]) << 8) | static_cast<u32>(data[pos + 7]);
-        (void)rttl;
         u16 rdlength = (static_cast<u16>(data[pos + 8]) << 8) | data[pos + 9];
         pos += 10;
         if (pos + rdlength > len) return std::string("truncated DNS RDATA");
@@ -169,9 +224,12 @@ Result<std::vector<IPv4Address>> DNSResolver::parse_response(const u8* data, u32
             addr.octets[2] = data[pos + 2];
             addr.octets[3] = data[pos + 3];
             result.push_back(addr);
+            min_ttl = std::min(min_ttl, rttl);
         }
         pos += rdlength;
     }
+    if (min_ttl_out && !result.empty() && min_ttl != 0xFFFFFFFFu)
+        *min_ttl_out = min_ttl;
     return result;
 }
 

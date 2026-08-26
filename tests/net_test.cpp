@@ -968,3 +968,119 @@ TEST(http_response_large_body_fully_delivered, {
     ASSERT(resp.is_ok());
     ASSERT_EQ(resp.unwrap().body.size(), kTotal);
 })
+
+// ── N-P7: DNS cache ──
+
+TEST(dns_cache_store_lookup_roundtrip, {
+    auto &cache = browser::net::global_dns_cache();
+    cache.clear();
+    std::vector<browser::net::IPv4Address> addrs;
+    browser::net::IPv4Address a(93, 184, 216, 34);
+    browser::net::IPv4Address b(1, 2, 3, 4);
+    addrs.push_back(a);
+    addrs.push_back(b);
+    cache.store("example.com", addrs, 300);
+
+    auto hit = cache.lookup("example.com");
+    ASSERT(hit.has_value());
+    ASSERT(hit->size() == 2);
+    ASSERT((*hit)[0].octets[0] == 93 && (*hit)[0].octets[3] == 34);
+
+    // Unknown host misses.
+    ASSERT(!cache.lookup("never-stored.example").has_value());
+
+    // Empty address lists must not be cached (negative caching is wrong here:
+    // a transient failure would poison the host for the TTL clamp minimum).
+    cache.store("empty.example", {}, 300);
+    ASSERT(!cache.lookup("empty.example").has_value());
+
+    cache.clear();
+    ASSERT(!cache.lookup("example.com").has_value());
+})
+
+TEST(dns_cache_bounded_growth, {
+    auto &cache = browser::net::global_dns_cache();
+    cache.clear();
+    char name[64];
+    for (int i = 0; i < 400; i++) {
+        snprintf(name, sizeof(name), "host%d.example", i);
+        std::vector<browser::net::IPv4Address> addrs{browser::net::IPv4Address(10, 0, 0, 1)};
+        cache.store(name, addrs, 60);
+    }
+    // The cap keeps memory bounded; recent entries remain servable.
+    ASSERT(cache.lookup("host399.example").has_value());
+    cache.clear();
+})
+
+// ── N-P7: keep-alive connection reuse over loopback HTTP ──
+
+static void ka_http_server_thread(SOCKET listener) {
+    // Serve TWO sequential requests on ONE accepted socket. If the client
+    // opens a second connection instead of reusing, the second request fails.
+    SOCKET c = ::accept(listener, nullptr, nullptr);
+    if (c == INVALID_SOCKET)
+        return;
+
+    int requests_served = 0;
+    while (requests_served < 2) {
+        std::string req;
+        char buf[2048];
+        for (;;) {
+            int n = ::recv(c, buf, sizeof(buf), 0);
+            if (n <= 0)
+                break;
+            req.append(buf, buf + n);
+            if (req.find("\r\n\r\n") != std::string::npos)
+                break;
+            if (req.size() > 8192)
+                break;
+        }
+        if (req.find("GET /") != 0)
+            break;
+
+        const char *body = requests_served == 0 ? "first" : "second";
+        std::string resp =
+            std::string("HTTP/1.1 200 OK\r\nContent-Length: ") + std::to_string(strlen(body)) + "\r\n\r\n" + body;
+        ::send(c, resp.data(), (int)resp.size(), 0);
+        requests_served++;
+    }
+    ::closesocket(c);
+}
+
+TEST(http_client_keepalive_reuses_connection, {
+    SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ASSERT(listener != INVALID_SOCKET);
+
+    sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_port = 0;  // ephemeral
+    int one = 1;
+    ::setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one));
+    int bound = ::bind(listener, (sockaddr *)&addr, sizeof(addr));
+    ASSERT(bound == 0);
+    int listened = ::listen(listener, 1);
+    ASSERT(listened == 0);
+
+    sockaddr_in bound_addr{};
+    int alen = sizeof(bound_addr);
+    ::getsockname(listener, (sockaddr *)&bound_addr, &alen);
+    u16 port = ntohs(bound_addr.sin_port);
+
+    std::thread server(ka_http_server_thread, listener);
+    server.detach();
+
+    browser::net::HTTPClient client;
+    auto r1 = client.get("http://127.0.0.1:" + std::to_string(port) + "/a");
+    ASSERT(r1.is_ok());
+    std::string body1(r1.unwrap().body.begin(), r1.unwrap().body.end());
+    ASSERT(body1 == "first");
+    ASSERT(client.is_connected());  // kept alive after response #1
+
+    auto r2 = client.get("http://127.0.0.1:" + std::to_string(port) + "/b");
+    ASSERT(r2.is_ok());
+    std::string body2(r2.unwrap().body.begin(), r2.unwrap().body.end());
+    ASSERT(body2 == "second");
+
+    ::closesocket(listener);
+})

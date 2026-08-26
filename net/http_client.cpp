@@ -289,7 +289,41 @@ namespace browser::net {
         co_return true;
     }
 
+    namespace {
+
+        bool header_is_connection_close(const http::Headers &headers) {
+            const auto &all = headers.all();
+            for (const auto &[hk, hv] : all) {
+                std::string lk;
+                for (char ch : hk) lk += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                if (lk == "connection") {
+                    std::string lv;
+                    for (char ch : hv) lv += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                    if (lv.find("close") != std::string::npos)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+    }  // namespace
+
     Result<http::Response> HTTPClient::fetch(const http::Request &req) {
+        // N-P7: keep-alive. If we are about to reuse a pooled connection and
+        // it turns out stale (peer timed out), retry once on a fresh one.
+        bool was_reused = is_connected();
+
+        auto resp = execute_request(req);
+        if (resp.is_err() && was_reused) {
+            close();
+            resp = execute_request(req);
+        }
+        if (resp.is_ok() && header_is_connection_close(resp.unwrap().headers))
+            close();
+        return resp;
+    }
+
+    Result<http::Response> HTTPClient::execute_request(const http::Request &req) {
         auto cr = connect_if_needed(req);
         if (cr.is_err())
             return std::string("fetch: " + cr.unwrap_err());
@@ -352,6 +386,20 @@ namespace browser::net {
     }
 
     async::task<http::Response> HTTPClient::fetch_async(const http::Request &req) {
+        // N-P7: keep-alive with stale-connection retry (see fetch()).
+        bool was_reused = is_connected();
+
+        auto resp = co_await execute_request_async(req);
+        if (resp.is_err() && was_reused) {
+            close();
+            resp = co_await execute_request_async(req);
+        }
+        if (resp.is_ok() && header_is_connection_close(resp.unwrap().headers))
+            close();
+        co_return resp;
+    }
+
+    async::task<http::Response> HTTPClient::execute_request_async(const http::Request &req) {
         auto cr = co_await connect_if_needed_async(req);
         if (cr.is_err())
             co_return std::string("fetch: ") + cr.unwrap_err();
@@ -427,7 +475,8 @@ namespace browser::net {
                 host_hdr += ":" + std::to_string(req.url.port);
             req.headers.set("Host", host_hdr);
         }
-        req.headers.set("Connection", "close");
+        // N-P7: no "Connection: close" — HTTP/1.1 keep-alive is the default
+        // so pooled connections are actually reusable.
 
         return fetch(req);
     }
@@ -446,7 +495,7 @@ namespace browser::net {
                 host_hdr += ":" + std::to_string(req.url.port);
             req.headers.set("Host", host_hdr);
         }
-        req.headers.set("Connection", "close");
+        // N-P7: keep-alive by default (see get()).
 
         auto resp = co_await fetch_async(req);
         co_return resp;
