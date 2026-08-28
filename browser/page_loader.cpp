@@ -165,187 +165,17 @@ namespace browser {
         }
 
         if (url_str.rfind("view-source:", 0) == 0) {
-            std::string inner_url = url_str.substr(12);
-            // Fetch the inner URL as plain text
-            std::string normal_url = inner_url;
-            if (inner_url.find("://") == std::string::npos && inner_url.rfind("about:", 0) != 0 &&
-                inner_url.rfind("file:", 0) != 0) {
-                normal_url = "http://" + inner_url;
-            }
-            auto parsed = net::URL::parse(normal_url);
-            if (parsed.is_err()) {
-                co_await load_html(error_page(url_str, "Invalid URL: " + parsed.unwrap_err()), gen);
-                finish_load();
-                co_return;
-            }
-
-            net::http::Request req;
-            req.method = net::http::Method::GET;
-            req.url = parsed.unwrap();
-            {
-                std::string host_hdr = req.url.host;
-                if (req.url.port != 0 && req.url.port != req.url.default_port())
-                    host_hdr += ":" + std::to_string(req.url.port);
-                req.headers.set("Host", host_hdr);
-            }
-            req.headers.set("User-Agent", "Browser/0.1");
-            req.headers.set("Accept", "text/html,application/xhtml+xml,text/plain");
-            req.headers.set("Accept-Encoding", "gzip, deflate");
-
-            auto resp_r = co_await http_.fetch_async(req);
-            if (!is_current(gen)) {
-                finish_load();
-                co_return;
-            }
-            if (resp_r.is_err()) {
-                co_await load_html(error_page(url_str, resp_r.unwrap_err()), gen);
-                finish_load();
-                co_return;
-            }
-            auto resp = std::move(resp_r.unwrap());
-
-            if (resp.headers.has("content-encoding")) {
-                co_await async::thread_pool_executor{};
-                if (!is_current(gen)) {
-                    finish_load();
-                    co_return;
-                }
-                std::string ce = resp.headers.get("content-encoding");
-                if (ce.find("gzip") != std::string::npos) {
-                    resp.body = net::gzip_decompress(resp.body.data(), static_cast<u32>(resp.body.size()));
-                } else if (ce.find("deflate") != std::string::npos) {
-                    resp.body = net::inflate(resp.body.data(), static_cast<u32>(resp.body.size()));
-                }
-            }
-
-            // Build syntax-highlighted HTML source
-            std::string raw_body(reinterpret_cast<const char *>(resp.body.data()), resp.body.size());
-            std::string escaped = html_escape(raw_body);
-            std::string html =
-                "<!DOCTYPE html><html><head><style>"
-                "body{background:#1e1e1e;color:#d4d4d4;font-family:monospace;padding:16px;font-size:13px;white-space:"
-                "pre}"
-                ".tag{color:#569cd6}.attr{color:#9cdcfe}.str{color:#ce9178}.cmt{color:#6a9955}"
-                "</style></head><body><pre><code>";
-            // Simple syntax highlighting: wrap tags, attributes, strings, comments
-            std::string highlighted;
-            for (size_t i = 0; i < escaped.size();) {
-                if (escaped.substr(i, 4) == "&lt;" && i + 4 < escaped.size()) {
-                    // Check for comment
-                    if (escaped.substr(i + 4, 3) == "!--") {
-                        auto end = escaped.find("--&gt;", i);
-                        if (end == std::string::npos)
-                            end = escaped.size();
-                        else
-                            end += 6;
-                        highlighted += "<span class=\"cmt\">" + escaped.substr(i, end - i) + "</span>";
-                        i = end;
-                        continue;
-                    }
-                    // Tag
-                    auto end = escaped.find("&gt;", i);
-                    if (end != std::string::npos)
-                        end += 4;
-                    else
-                        end = escaped.size();
-                    std::string tag_content = escaped.substr(i, end - i);
-                    // Highlight attributes within tag
-                    std::string colored_tag;
-                    std::string remaining = tag_content;
-                    // Remove the outer tag markers for processing
-                    colored_tag += "&lt;";
-                    remaining = remaining.substr(4);
-                    if (!remaining.empty() && remaining.back() == ';' && remaining.size() >= 4 &&
-                        remaining.substr(remaining.size() - 4) == "&gt;") {
-                        // Process tag content
-                        std::string inner = remaining.substr(0, remaining.size() - 4);
-                        // Wrap tag name in tag color
-                        auto space = inner.find(' ');
-                        if (space == std::string::npos) {
-                            colored_tag += "<span class=\"tag\">" + inner + "</span>";
-                        } else {
-                            colored_tag += "<span class=\"tag\">" + inner.substr(0, space) + "</span>";
-                            inner = inner.substr(space);
-                            // Attributes
-                            size_t pos = 0;
-                            while (pos < inner.size()) {
-                                // Skip whitespace
-                                while (pos < inner.size() && inner[pos] == ' ') {
-                                    colored_tag += ' ';
-                                    pos++;
-                                }
-                                if (pos >= inner.size())
-                                    break;
-                                auto eq = inner.find('=', pos);
-                                if (eq == std::string::npos) {
-                                    colored_tag += "<span class=\"attr\">" + inner.substr(pos) + "</span>";
-                                    break;
-                                }
-                                std::string attr_name = inner.substr(pos, eq - pos);
-                                colored_tag += "<span class=\"attr\">" + attr_name + "</span>";
-                                colored_tag += '=';
-                                pos = eq + 1;
-                                if (pos < inner.size() && (inner[pos] == '"' || inner[pos] == '\'')) {
-                                    char quote = inner[pos];
-                                    auto end_q = inner.find(quote, pos + 1);
-                                    if (end_q == std::string::npos) {
-                                        colored_tag += "<span class=\"str\">" + inner.substr(pos) + "</span>";
-                                        break;
-                                    }
-                                    colored_tag +=
-                                        "<span class=\"str\">" + inner.substr(pos, end_q - pos + 1) + "</span>";
-                                    pos = end_q + 1;
-                                }
-                            }
-                        }
-                        colored_tag += "&gt;";
-                    } else {
-                        colored_tag += tag_content.substr(4);
-                    }
-                    highlighted += colored_tag;
-                    i = end;
-                } else {
-                    highlighted += escaped[i];
-                    i++;
-                }
-            }
-            html += highlighted;
-            html += "</code></pre></body></html>";
-            co_await load_html(html, gen);
-            finish_load();
+            co_await handle_view_source(url_str, gen);
             co_return;
         }
 
         if (url_str.rfind("about:", 0) == 0) {
-            std::string html;
-            if (url_str == "about:blank") {
-                html = "<html><body></body></html>";
-            } else if (url_str == "about:performance") {
-                html = telemetry_->generate_report();
-            } else if (url_str.rfind("about:settings", 0) == 0) {
-                handle_settings_query(url_str);
-                html = settings_->render_page();
-            } else if (url_str.rfind("about:error", 0) == 0) {
-                html = error_page(url_str);
-            } else {
-                html = error_page(url_str, "Unknown about: page");
-            }
-            co_await load_html(html, gen);
-            finish_load();
+            co_await handle_about(url_str, gen);
             co_return;
         }
 
         if (url_str.rfind("file:///", 0) == 0) {
-            std::string path = url_str.substr(8);
-            std::ifstream f(path);
-            if (!f.is_open()) {
-                co_await load_html(error_page(url_str, "Cannot open file: " + path), gen);
-                finish_load();
-                co_return;
-            }
-            std::string html((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-            co_await load_html(html, gen);
-            finish_load();
+            co_await handle_file(url_str, gen);
             co_return;
         }
 
@@ -669,11 +499,36 @@ namespace browser {
         co_return;
     }
     async::task<void> PageLoader::handle_about(const std::string& url_str, u64 gen) {
-        (void)url_str; (void)gen;
+            std::string html;
+            if (url_str == "about:blank") {
+                html = "<html><body></body></html>";
+            } else if (url_str == "about:performance") {
+                html = telemetry_->generate_report();
+            } else if (url_str.rfind("about:settings", 0) == 0) {
+                handle_settings_query(url_str);
+                html = settings_->render_page();
+            } else if (url_str.rfind("about:error", 0) == 0) {
+                html = error_page(url_str);
+            } else {
+                html = error_page(url_str, "Unknown about: page");
+            }
+            co_await load_html(html, gen);
+            finish_load();
+            co_return;
         co_return;
     }
     async::task<void> PageLoader::handle_file(const std::string& url_str, u64 gen) {
-        (void)url_str; (void)gen;
+            std::string path = url_str.substr(8);
+            std::ifstream f(path);
+            if (!f.is_open()) {
+                co_await load_html(error_page(url_str, "Cannot open file: " + path), gen);
+                finish_load();
+                co_return;
+            }
+            std::string html((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+            co_await load_html(html, gen);
+            finish_load();
+            co_return;
         co_return;
     }
     async::task<void> PageLoader::handle_http(const std::string& url_str, u64 gen) {
