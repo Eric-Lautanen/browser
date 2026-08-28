@@ -207,6 +207,8 @@ add_library(css STATIC
     css/cascade/shorthand_box.cpp
     css/cascade/shorthand_box.hpp
     css/cascade/shorthand_flex.cpp
+    css/cascade/shorthand_font.cpp
+    css/cascade/shorthand_font.hpp
     css/cascade/shorthand_flex.hpp
     css/cascade/shorthand_background.cpp
     css/cascade/shorthand_background.hpp
