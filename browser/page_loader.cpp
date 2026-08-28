@@ -25,6 +25,15 @@
 
 namespace browser {
 
+    struct LoadingGuard {
+        PageLoader* loader;
+        u64 gen;
+        LoadingGuard(PageLoader* l, u64 g) : loader(l), gen(g) { loader->loading_.store(true); }
+        ~LoadingGuard() { loader->finish_load(); }
+        LoadingGuard(const LoadingGuard&) = delete;
+        LoadingGuard& operator=(const LoadingGuard&) = delete;
+    };
+
     static f32 text_measure_cb(void *ctx, const std::string &text, u32 pixel_size) {
         return static_cast<render::TextRenderer *>(ctx)->measure_text(text, pixel_size);
     }
@@ -148,10 +157,10 @@ namespace browser {
 
     async::task<void> PageLoader::load(std::string url_str, u64 gen) {
         co_await async::thread_pool_executor{};
+        LoadingGuard _guard(this, gen);
         auto start = std::chrono::steady_clock::now();
 
         if (!is_current(gen)) {
-            finish_load();
             co_return;
         }
 

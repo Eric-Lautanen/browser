@@ -49,7 +49,9 @@ namespace browser {
         std::unordered_map<std::string, std::shared_ptr<image::Image>> images;
     };
 
+    struct LoadingGuard;
     class PageLoader {
+        friend struct LoadingGuard;
     public:
         using DownloadCheckCallback = std::function<bool(const std::string &url,
                                                          const std::string &content_disposition,
