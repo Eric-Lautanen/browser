@@ -1,9 +1,12 @@
 #include "selector_index.hpp"
+#include <algorithm>
 
 namespace browser::css {
 
 void RuleIndex::build(const std::vector<Rule>& rules) {
-    for (auto& r : rules) {
+    for (u32 i = 0; i < rules.size(); ++i) {
+        auto& r = rules[i];
+        order[&r] = i;
         for (auto& sel : r.selectors) {
             if (sel.compounds.empty()) { universal.push_back(&r); continue; }
             auto& last = sel.compounds.back();
@@ -36,6 +39,14 @@ std::vector<const Rule*> RuleIndex::candidates_for(const html::Element* el) cons
     }
     auto tt = by_tag.find(el->tag_name);
     if (tt != by_tag.end()) for (auto* r : tt->second) out.push_back(r);
+    // Deduplicate and sort by source order to preserve cascade ordering (audit CS-P2)
+    std::sort(out.begin(), out.end(), [&](const Rule* a, const Rule* b){
+        auto ai = order.find(a); auto bi = order.find(b);
+        u32 av = ai != order.end() ? ai->second : 0;
+        u32 bv = bi != order.end() ? bi->second : 0;
+        return av < bv;
+    });
+    out.erase(std::unique(out.begin(), out.end()), out.end());
     return out;
 }
 

@@ -14,6 +14,7 @@ struct RuleIndex {
     std::unordered_map<std::string, std::vector<const Rule*>> by_class;
     std::unordered_map<std::string, std::vector<const Rule*>> by_tag;
     std::vector<const Rule*> universal;
+    std::unordered_map<const Rule*, u32> order;
 
     void build(const std::vector<Rule>& rules);
     std::vector<const Rule*> candidates_for(const html::Element* el) const;

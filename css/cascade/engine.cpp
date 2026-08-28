@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "selector_index.hpp"
 #include "shorthand_box.hpp"
 
 #include "../../async/executor.hpp"
@@ -140,11 +141,15 @@ code { font-family: monospace; }
                                          f32 viewport_height,
                                          f32 device_pixel_ratio,
                                          const std::string &color_scheme) {
-        for (const auto &rule : sheet.rules) {
-            for (const auto &sel : rule.selectors) {
+        // CS-P2: bucket top-level rules via RuleIndex to avoid O(elements*rules)
+        RuleIndex idx;
+        idx.build(sheet.rules);
+        auto cands = idx.candidates_for(el);
+        for (const auto *rule : cands) {
+            for (const auto &sel : rule->selectors) {
                 if (matches_selector(sel, el, doc)) {
                     std::string pe = get_pseudo_element(sel);
-                    for (const auto &decl : rule.declarations) {
+                    for (const auto &decl : rule->declarations) {
                         decls.push_back({&decl, compute_specificity(sel), source_order++, origin, pe});
                     }
                     break;
