@@ -204,6 +204,8 @@ add_library(css STATIC
     css/cascade/media.cpp
     css/cascade/shorthand_box.cpp
     css/cascade/shorthand_box.hpp
+    css/cascade/selector_index.cpp
+    css/cascade/selector_index.hpp
     css/constants.hpp
     css/layout.hpp
     css/layout/types.hpp
