@@ -791,25 +791,25 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | J-C5 closure capture (deferred from Wave 2) | J-C5 | ✅ DONE (9f1c2e) — boxes, LOAD/STORE_CLOSURE, transitive capture propagation |
 
 ### Wave 4 — Refactors (behavior-preserving; bootstrap fixtures before/after)
-| Item | Where |
-|---|---|
-| cascade/engine.cpp decomposition (table above) | CS-refactor |
-| painter.cpp split (form_painter/text_decoration/background_painter) | R-Q1 |
-| main.cpp → dump modules + test_suite; event_handler decomposition; window.cpp FrameLoop/AnimationCoordinator; page_loader scheme handlers + LoadingGuard | §9 plans |
-| states_tag.cpp split + tokenizer helper extraction; insertion-mode preamble dedup | H-R1…R4 |
-| Shared ByteReader for decoders; shared LengthResolver/split_css_tokens/box-edge/easing helpers | I-refactor, CS-D1…D7 |
-| Move Result<T,E>/typedefs out of tests/ into core/ | X-C7, A-L1, H-R5 |
-| Delete/rebuild when_all/when_any; consolidate executor primitives; RAII PTP_WORK | A-H1, A-H4 |
-| Dedupe connect/connect_async + execute/execute_async pairs | N-duplication |
-| Test-target helper + CTest registration | B-2, B-3 |
-| GL loading X-macro; audio ring buffer; shared BMP encoder; AddressBarEditor/dialogs extraction | P-M7, P-M5, BR-C6, §9 |
+| Item | Where | Status |
+|---|---|---|
+| cascade/engine.cpp decomposition (table above) | CS-refactor | Started — `shorthand_box` + `selector_index` extracted (`css/cascade/shorthand_box.{hpp,cpp}`, `selector_index.{hpp,cpp}` wired `CS-P2`) |
+| painter.cpp split (form_painter/text_decoration/background_painter) | R-Q1 | Started — `render/paint/background_painter` stub + `css/constants.hpp` |
+| main.cpp → dump modules + test_suite; event_handler decomposition; window.cpp FrameLoop/AnimationCoordinator; page_loader scheme handlers + LoadingGuard | §9 plans | **7/8 dumps done** `src/dump/{json,dom,css,cascade,layout,display,helpers,test_suite}` `main.cpp` 1193→~60 lines; `LoadingGuard` + handler stubs `page_loader:120`; `AddressBarEditor` `dialogs` per-instance |
+| states_tag.cpp split + tokenizer helper extraction; insertion-mode preamble dedup | H-R1…R4 | Pending — large 857-line switch |
+| Shared ByteReader for decoders; shared LengthResolver/split_css_tokens/box-edge/easing helpers | I-refactor, CS-D1…D7 | `image/byte_reader.hpp` introduced, `LengthResolver` deferred |
+| Move Result<T,E>/typedefs out of tests/ into core/ | X-C7, A-L1, H-R5 | ✅ `core/utility.hpp` 65-file migration |
+| Delete/rebuild when_all/when_any; consolidate executor primitives; RAII PTP_WORK | A-H1, A-H4 | `when_all` stubbed `=delete`, `executor` `CloseThreadpoolWork` + `task_yield` consolidated |
+| Dedupe connect/connect_async + execute/execute_async pairs | N-duplication | ✅ `handshake.cpp` done, `http2:execute` remaining |
+| Test-target helper + CTest registration | B-2, B-3 | ✅ `add_browser_test()` + `CTest` 38 tests |
+| GL loading X-macro; audio ring buffer; shared BMP encoder; AddressBarEditor/dialogs extraction | P-M7, P-M5, BR-C6, §9 | `BROWSER_GL_FUNCS` X-macro + `bit_cast`/`null`-check, `screenshot.hpp` helper, `AddressBarEditor`/`dialogs` per-instance |
 
 ### Wave 5 — Hygiene
-| Item | Where |
-|---|---|
-| Dead code sweep (verified list per subsystem) | H-R5, CS-D8, J-R2, R-Q5, §9 dead-code lists |
-| Magic-number promotion to named constants | all subsystems |
-| Event POD default-init; DC leak fixes; clipboard Unicode; session tmp-file writes | P-M3, P-M4, BR-C7, BR-C4/C5 |
+| Item | Where | Status |
+|---|---|---|
+| Dead code sweep (verified list per subsystem) | H-R5, CS-D8, J-R2, R-Q5, §9 dead-code lists | Partial — `is_special_tag`/`remove_active`/`position`/`scripting_` removed, `shadow` stub noted |
+| Magic-number promotion to named constants | all subsystems | `css/constants.hpp` + `inline.cpp:21 kCharWidthFactor` wired |
+| Event POD default-init; DC leak fixes; clipboard Unicode; session tmp-file writes | P-M3, P-M4, BR-C7, BR-C4/C5 | ✅ `Event{}` `ReleaseDC`, `CF_UNICODETEXT`, `*.tmp+rename` |
 | .gitignore bmp/build*/; screenshot artifact policy; structure.md SDF_ROADMAP line | D-2, D-3, D-1 |
 | window_smoke_test assert; paint_test macro conversion; new untrusted-input suites | T-1…T-3 |
 
@@ -874,6 +874,16 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 
 ### J-C5 status (now DONE)
 Closure capture shipped in Session 4 (see table above). The implementation covers single-level and multi-level nesting with mutable sharing, survives GC pressure, and keeps independent closures separate. Per-iteration `let` in `for` loops still shares one binding (spec: fresh binding per iteration) — documented as remaining micro-gap, not part of original audit's `function make(){let x=1;return ()=>x;}` repro.
+
+### Session 5 — Wave 4 main.cpp + chrome + selector_index + page_loader (this session, incremental pushes)
+
+| Audit ID | Fix | Files | Verification | Commit |
+|---|---|---|---|---|
+| main.cpp split | `src/dump/{json,dom,css,cascade,layout,display,helpers,test_suite}` 7 dumps + helpers/test_suite — `main.cpp` 1193→~60 lines dispatch | src/dump/*, src/main.cpp, CMakeLists | `ninja -C build browser` 1/1 | 307b369,21231b5,29825da,4b0114f,1e233a7,3490d59 |
+| Chrome | `AddressBarEditor` `address_bar.hpp` + `dialogs` per-instance `GWLP_USERDATA` + wiring `event_handler` | browser/chrome/address_bar.hpp, dialogs.{hpp,cpp}, window.hpp, event_handler.cpp | `ninja` 8/8, `chrome_test` 13/13 | 8bd5259,ff6f2a0,bf06cc7 |
+| PageLoader | `LoadingGuard` RAII + `handle_view_source/about/file/http` stubs | browser/page_loader.{hpp,cpp} | `browser_lib` 8/8 | 8e4b855,55ca028 |
+| CS-P2 | `RuleIndex` bucket + `wire` `candidates_for` sorted by source order | css/cascade/selector_index.{hpp,cpp}, engine.cpp | `css_test 74/74` | 5ee0944,95941ac |
+| Paint | `background_painter` stub + `css/constants.hpp` `kCharWidthFactor` wired `inline.cpp:21` | render/paint/background_painter.*, css/constants.hpp, inline.cpp | `ninja` 14/14 | 343288c,9dee17c |
 
 ### Session 2 verification
 
