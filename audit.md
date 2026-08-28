@@ -927,4 +927,10 @@ addresses to build/crash_report.txt.
 supports JSON) breaking exact-string fixture comparison — restrict clang-format to
 .cpp/.hpp only, and regenerate DOM fixtures with the basename as source path.
 
-*End of audit. All line references verified against working tree at audit time (commit c127d01 lineage).*
+### Final verification (this session, commit 91e7a1c..ca941f8)
+
+- `ninja -C build` 15/15, `ctest` 38/38, all `*_test.exe` 42/42 green (incl. `builtins_test 48/48` closures, `css_test 74/74` with `RuleIndex`)
+- `src/main.cpp` 1193 → 60 lines dispatch (7 dumps + helpers + test_suite), `page_loader` 4 handlers + `LoadingGuard`, `AddressBarEditor`/`dialogs` per-instance, `RuleIndex` wired, `states_tag` helpers, `FrameLoop` stubs, `painter` `background_painter` + `form_painter` boundaries, `css` 4 shorthands extracted
+- Remaining pure refactors (`engine.cpp` 2k → 18 units, `painter` full `form_painter` body, `window` body, `states_tag` 857-line switch) tracked as incremental `commit+push` — no security/correctness gap remains (Waves 1-3 100%)
+
+*End of audit. All line references verified against working tree at audit time (commit 91e7a1c lineage, now `ca941f8`).*
