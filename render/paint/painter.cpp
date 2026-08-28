@@ -1,4 +1,5 @@
 #include "painter.hpp"
+#include "background_painter.hpp"
 
 #include "../../html/form_state.hpp"
 #include "../canvas.hpp"
@@ -647,6 +648,8 @@ namespace browser::render {
     }
 
     void Painter::paint_background(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
+        paint_background_commands(list, node, ox, oy, images_);
+        if (true) {
         auto *bg_img = node->style().get("background-image");
         // Clip box (default border-box)
         f32 clip_bx = ox - node->padding.left;
@@ -862,6 +865,7 @@ namespace browser::render {
                 PaintCommand::Type::DRAW_ROUNDED_RECT, {clip_bx, clip_by, clip_bw, clip_bh}, bg, "", 0, 0, {}, radius));
         } else {
             list.push(make_cmd(PaintCommand::Type::FILL_RECT, {clip_bx, clip_by, clip_bw, clip_bh}, bg));
+        }
         }
     }
 
