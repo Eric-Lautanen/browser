@@ -117,6 +117,10 @@ namespace browser {
         void finish_load();
         async::task<void> load(std::string url_str, u64 gen);
         async::task<void> load_html(std::string html, u64 gen);
+        async::task<void> handle_view_source(const std::string& url_str, u64 gen);
+        async::task<void> handle_about(const std::string& url_str, u64 gen);
+        async::task<void> handle_file(const std::string& url_str, u64 gen);
+        async::task<void> handle_http(const std::string& url_str, u64 gen);
         void handle_settings_query(const std::string &url_str);
         std::string error_page(const std::string &url, const std::string &msg = "");
         void collect_css(html::Document *doc, std::string &merged_css, const net::URL &base_url);

@@ -663,6 +663,24 @@ namespace browser {
         co_return;
     }
 
+    async::task<void> PageLoader::handle_view_source(const std::string& url_str, u64 gen) {
+        // TODO: move view-source fetch/highlight from load() here (Wave 4)
+        (void)url_str; (void)gen;
+        co_return;
+    }
+    async::task<void> PageLoader::handle_about(const std::string& url_str, u64 gen) {
+        (void)url_str; (void)gen;
+        co_return;
+    }
+    async::task<void> PageLoader::handle_file(const std::string& url_str, u64 gen) {
+        (void)url_str; (void)gen;
+        co_return;
+    }
+    async::task<void> PageLoader::handle_http(const std::string& url_str, u64 gen) {
+        (void)url_str; (void)gen;
+        co_return;
+    }
+
     void PageLoader::cancel() {
         // BR-N3: the in-flight load turns stale and publishes nothing; queued
         // navigations are dropped. The stale task releases its slot when it
