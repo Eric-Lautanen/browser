@@ -341,6 +341,8 @@ add_library(browser_lib STATIC
     browser/chrome/toolbar.cpp
     browser/chrome/page_view.cpp
     browser/chrome/event_handler.cpp
+    browser/chrome/dialogs.cpp
+    browser/chrome/dialogs.hpp
     browser/page_loader.cpp
     browser/history.cpp
     browser/bookmarks.cpp
