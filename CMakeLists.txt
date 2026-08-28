@@ -318,6 +318,8 @@ add_library(render STATIC
     render/paint/background_painter.hpp
     render/paint/form_painter.cpp
     render/paint/form_painter.hpp
+    render/paint/text_decoration.cpp
+    render/paint/text_decoration.hpp
     render/shaders.hpp
     render/shader_program.hpp
     render/mesh.hpp

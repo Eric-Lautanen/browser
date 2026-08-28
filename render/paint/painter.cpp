@@ -2,6 +2,7 @@
 #include "background_painter.hpp"
 #include "form_painter.hpp"
 #include "paint_helpers.hpp"
+#include "text_decoration.hpp"
 
 #include "../../html/form_state.hpp"
 #include "../canvas.hpp"
