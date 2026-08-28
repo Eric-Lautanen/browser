@@ -310,6 +310,8 @@ add_library(render STATIC
     render/paint/executor.cpp
     render/paint/background_painter.cpp
     render/paint/background_painter.hpp
+    render/paint/form_painter.cpp
+    render/paint/form_painter.hpp
     render/shaders.hpp
     render/shader_program.hpp
     render/mesh.hpp

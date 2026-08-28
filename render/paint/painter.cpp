@@ -1,5 +1,6 @@
 #include "painter.hpp"
 #include "background_painter.hpp"
+#include "form_painter.hpp"
 #include "paint_helpers.hpp"
 
 #include "../../html/form_state.hpp"
