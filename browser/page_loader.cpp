@@ -158,7 +158,6 @@ namespace browser {
     async::task<void> PageLoader::load(std::string url_str, u64 gen) {
         co_await async::thread_pool_executor{};
         LoadingGuard _guard(this, gen);
-        auto start = std::chrono::steady_clock::now();
 
         if (!is_current(gen)) {
             co_return;
@@ -179,6 +178,50 @@ namespace browser {
             co_return;
         }
 
+        co_await handle_http(url_str, gen);
+        co_return;
+    }
+
+    async::task<void> PageLoader::handle_view_source(const std::string& url_str, u64 gen) {
+        // TODO: move view-source fetch/highlight from load() here (Wave 4)
+        (void)url_str; (void)gen;
+        co_return;
+    }
+    async::task<void> PageLoader::handle_about(const std::string& url_str, u64 gen) {
+            std::string html;
+            if (url_str == "about:blank") {
+                html = "<html><body></body></html>";
+            } else if (url_str == "about:performance") {
+                html = telemetry_->generate_report();
+            } else if (url_str.rfind("about:settings", 0) == 0) {
+                handle_settings_query(url_str);
+                html = settings_->render_page();
+            } else if (url_str.rfind("about:error", 0) == 0) {
+                html = error_page(url_str);
+            } else {
+                html = error_page(url_str, "Unknown about: page");
+            }
+            co_await load_html(html, gen);
+            finish_load();
+            co_return;
+        co_return;
+    }
+    async::task<void> PageLoader::handle_file(const std::string& url_str, u64 gen) {
+            std::string path = url_str.substr(8);
+            std::ifstream f(path);
+            if (!f.is_open()) {
+                co_await load_html(error_page(url_str, "Cannot open file: " + path), gen);
+                finish_load();
+                co_return;
+            }
+            std::string html((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+            co_await load_html(html, gen);
+            finish_load();
+            co_return;
+        co_return;
+    }
+    async::task<void> PageLoader::handle_http(const std::string& url_str, u64 gen) {
+        auto start = std::chrono::steady_clock::now();
         std::string normal_url = url_str;
         if (url_str.find("://") == std::string::npos && url_str.rfind("about:", 0) != 0 &&
             url_str.rfind("file:", 0) != 0) {
@@ -491,48 +534,6 @@ namespace browser {
         }
         finish_load();
         co_return;
-    }
-
-    async::task<void> PageLoader::handle_view_source(const std::string& url_str, u64 gen) {
-        // TODO: move view-source fetch/highlight from load() here (Wave 4)
-        (void)url_str; (void)gen;
-        co_return;
-    }
-    async::task<void> PageLoader::handle_about(const std::string& url_str, u64 gen) {
-            std::string html;
-            if (url_str == "about:blank") {
-                html = "<html><body></body></html>";
-            } else if (url_str == "about:performance") {
-                html = telemetry_->generate_report();
-            } else if (url_str.rfind("about:settings", 0) == 0) {
-                handle_settings_query(url_str);
-                html = settings_->render_page();
-            } else if (url_str.rfind("about:error", 0) == 0) {
-                html = error_page(url_str);
-            } else {
-                html = error_page(url_str, "Unknown about: page");
-            }
-            co_await load_html(html, gen);
-            finish_load();
-            co_return;
-        co_return;
-    }
-    async::task<void> PageLoader::handle_file(const std::string& url_str, u64 gen) {
-            std::string path = url_str.substr(8);
-            std::ifstream f(path);
-            if (!f.is_open()) {
-                co_await load_html(error_page(url_str, "Cannot open file: " + path), gen);
-                finish_load();
-                co_return;
-            }
-            std::string html((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-            co_await load_html(html, gen);
-            finish_load();
-            co_return;
-        co_return;
-    }
-    async::task<void> PageLoader::handle_http(const std::string& url_str, u64 gen) {
-        (void)url_str; (void)gen;
         co_return;
     }
 
