@@ -204,6 +204,7 @@ add_library(css STATIC
     css/cascade/media.cpp
     css/cascade/shorthand_box.cpp
     css/cascade/shorthand_box.hpp
+    css/constants.hpp
     css/layout.hpp
     css/layout/types.hpp
     css/layout/engine.cpp
@@ -299,6 +300,8 @@ add_library(render STATIC
     render/paint/shadow.cpp
     render/paint/painter.cpp
     render/paint/executor.cpp
+    render/paint/background_painter.cpp
+    render/paint/background_painter.hpp
     render/shaders.hpp
     render/shader_program.hpp
     render/mesh.hpp
