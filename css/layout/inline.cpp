@@ -1,4 +1,5 @@
 #include "../../html/utf8.hpp"
+#include "../constants.hpp"
 #include "../layout.hpp"
 
 #include <string>
@@ -18,7 +19,7 @@ namespace browser::css {
     }  // namespace
 
     void LayoutEngine::layout_inline(LayoutNode *node, f32 containing_width, f32) {
-        f32 char_width_factor = 0.6f;
+        f32 char_width_factor = constants::kCharWidthFactor;
 
         f32 parent_font_size = root_font_size_;
         if (node->parent) {
@@ -298,7 +299,7 @@ namespace browser::css {
                     continue;
                 // Truncate and append ellipsis "..."
                 std::string ellipsis = "\xe2\x80\xa6"; // U+2026 HORIZONTAL ELLIPSIS
-                f32 ell_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ellipsis, (u32)font_size) : font_size * 0.6f;
+                f32 ell_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ellipsis, (u32)font_size) : font_size * constants::kCharWidthFactor;
                 f32 target = line_w - ell_w;
                 if (target < 0) target = 0;
                 // Binary search truncation point by codepoints
