@@ -1,6 +1,7 @@
 #include "engine.hpp"
 #include "selector_index.hpp"
 #include "shorthand_background.hpp"
+#include "shorthand_border.hpp"
 #include "shorthand_box.hpp"
 #include "shorthand_flex.hpp"
 #include "shorthand_font.hpp"
