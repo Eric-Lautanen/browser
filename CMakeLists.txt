@@ -345,6 +345,10 @@ add_library(browser_lib STATIC
     browser/chrome/event_handler.cpp
     browser/chrome/dialogs.cpp
     browser/chrome/dialogs.hpp
+    browser/chrome/frame_loop.cpp
+    browser/chrome/frame_loop.hpp
+    browser/chrome/animation_coordinator.cpp
+    browser/chrome/animation_coordinator.hpp
     browser/page_loader.cpp
     browser/history.cpp
     browser/bookmarks.cpp
