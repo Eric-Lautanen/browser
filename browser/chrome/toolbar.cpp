@@ -54,7 +54,7 @@ namespace browser {
             text_renderer_->render_text(renderer_.get(), zoom_text, zx, zy, t.accent, 11);
         }
 
-        std::string text = chrome_.address_focused ? chrome_.edit_buffer : chrome_.url;
+        std::string text = chrome_.address_focused ? chrome_.address_bar.edit_buffer : chrome_.url;
         f32 tx = r.x + 6;
         f32 ty = r.y + 4;
 
@@ -69,7 +69,7 @@ namespace browser {
             }
         }
 
-        if (chrome_.address_focused && chrome_.all_selected && !text.empty()) {
+        if (chrome_.address_focused && chrome_.address_bar.all_selected && !text.empty()) {
             f32 text_w = text_renderer_->measure_text(text, 13);
             renderer_->fill_rect(tx, ty, text_w, 16, {0.2f, 0.4f, 0.9f, 0.25f});
         }
@@ -81,7 +81,7 @@ namespace browser {
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
             u64 elapsed = ms - chrome_.blink_start_ms;
             if ((elapsed / 500) % 2 == 0) {
-                f32 cx = tx + text_renderer_->measure_text(chrome_.edit_buffer.substr(0, chrome_.cursor_pos), 13);
+                f32 cx = tx + text_renderer_->measure_text(chrome_.address_bar.edit_buffer.substr(0, chrome_.address_bar.cursor_pos), 13);
                 renderer_->draw_line(cx, ty, cx, ty + 16, t.text, 1.5f);
             }
         }

@@ -1128,8 +1128,8 @@ namespace browser {
 
         if (is_in_rect(mx, my, r.address)) {
             chrome_.address_focused = true;
-            chrome_.edit_buffer = chrome_.url;
-            chrome_.cursor_pos = static_cast<u32>(chrome_.edit_buffer.length());
+            chrome_.address_bar.edit_buffer = chrome_.url;
+            chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.length());
             auto now = std::chrono::steady_clock::now();
             chrome_.blink_start_ms =
                 static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
@@ -1363,10 +1363,10 @@ namespace browser {
         }
         if (e.key == platform::KeyCode::L && chrome_.ctrl_down) {
             chrome_.address_focused = true;
-            chrome_.edit_buffer = chrome_.url;
-            chrome_.cursor_pos = static_cast<u32>(chrome_.edit_buffer.size());
-            chrome_.sel_start = 0;
-            chrome_.all_selected = false;
+            chrome_.address_bar.edit_buffer = chrome_.url;
+            chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
+            chrome_.address_bar.sel_start = 0;
+            chrome_.address_bar.all_selected = false;
             auto now = std::chrono::steady_clock::now();
             chrome_.blink_start_ms =
                 static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
@@ -1386,10 +1386,10 @@ namespace browser {
         }
         if (e.key == platform::KeyCode::F6 && !chrome_.ctrl_down) {
             chrome_.address_focused = true;
-            chrome_.edit_buffer = chrome_.url;
-            chrome_.cursor_pos = static_cast<u32>(chrome_.edit_buffer.size());
-            chrome_.sel_start = 0;
-            chrome_.all_selected = false;
+            chrome_.address_bar.edit_buffer = chrome_.url;
+            chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
+            chrome_.address_bar.sel_start = 0;
+            chrome_.address_bar.all_selected = false;
             return;
         }
         if ((e.key == platform::KeyCode::LEFT && chrome_.alt_down) ||
@@ -1469,86 +1469,86 @@ namespace browser {
                 return;
             }
             if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
-                clipboard_copy(chrome_.edit_buffer);
+                clipboard_copy(chrome_.address_bar.edit_buffer);
                 return;
             }
             if (e.key == platform::KeyCode::X && chrome_.ctrl_down) {
-                clipboard_copy(chrome_.edit_buffer);
-                chrome_.edit_buffer.clear();
-                chrome_.cursor_pos = 0;
+                clipboard_copy(chrome_.address_bar.edit_buffer);
+                chrome_.address_bar.edit_buffer.clear();
+                chrome_.address_bar.cursor_pos = 0;
                 return;
             }
             if (e.key == platform::KeyCode::V && chrome_.ctrl_down) {
                 std::string paste = clipboard_paste();
                 if (!paste.empty()) {
-                    if (chrome_.all_selected) {
-                        chrome_.edit_buffer = paste;
-                        chrome_.cursor_pos = static_cast<u32>(paste.size());
-                        chrome_.all_selected = false;
+                    if (chrome_.address_bar.all_selected) {
+                        chrome_.address_bar.edit_buffer = paste;
+                        chrome_.address_bar.cursor_pos = static_cast<u32>(paste.size());
+                        chrome_.address_bar.all_selected = false;
                     } else {
-                        chrome_.edit_buffer.insert(chrome_.cursor_pos, paste);
-                        chrome_.cursor_pos += static_cast<u32>(paste.size());
+                        chrome_.address_bar.edit_buffer.insert(chrome_.address_bar.cursor_pos, paste);
+                        chrome_.address_bar.cursor_pos += static_cast<u32>(paste.size());
                     }
                 }
                 return;
             }
             if (e.key == platform::KeyCode::A && chrome_.ctrl_down) {
-                chrome_.cursor_pos = static_cast<u32>(chrome_.edit_buffer.size());
-                chrome_.sel_start = 0;
-                chrome_.all_selected = true;
+                chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
+                chrome_.address_bar.sel_start = 0;
+                chrome_.address_bar.all_selected = true;
                 return;
             }
 
             if (e.key == platform::KeyCode::ENTER) {
-                navigate(chrome_.edit_buffer);
+                navigate(chrome_.address_bar.edit_buffer);
                 chrome_.address_focused = false;
-                chrome_.edit_buffer.clear();
-                chrome_.all_selected = false;
+                chrome_.address_bar.edit_buffer.clear();
+                chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::ESCAPE) {
                 chrome_.address_focused = false;
-                chrome_.edit_buffer.clear();
-                chrome_.all_selected = false;
+                chrome_.address_bar.edit_buffer.clear();
+                chrome_.address_bar.all_selected = false;
             } else if ((e.key == platform::KeyCode::BACKSPACE)) {
-                if (chrome_.all_selected) {
-                    chrome_.edit_buffer.clear();
-                    chrome_.cursor_pos = 0;
-                    chrome_.all_selected = false;
-                } else if (chrome_.cursor_pos > 0) {
-                    chrome_.edit_buffer.erase(chrome_.cursor_pos - 1, 1);
-                    chrome_.cursor_pos--;
+                if (chrome_.address_bar.all_selected) {
+                    chrome_.address_bar.edit_buffer.clear();
+                    chrome_.address_bar.cursor_pos = 0;
+                    chrome_.address_bar.all_selected = false;
+                } else if (chrome_.address_bar.cursor_pos > 0) {
+                    chrome_.address_bar.edit_buffer.erase(chrome_.address_bar.cursor_pos - 1, 1);
+                    chrome_.address_bar.cursor_pos--;
                 }
             } else if (e.key == platform::KeyCode::DELETE && !chrome_.ctrl_down) {
-                if (chrome_.all_selected) {
-                    chrome_.edit_buffer.clear();
-                    chrome_.cursor_pos = 0;
-                    chrome_.all_selected = false;
-                } else if (chrome_.cursor_pos < chrome_.edit_buffer.length()) {
-                    chrome_.edit_buffer.erase(chrome_.cursor_pos, 1);
+                if (chrome_.address_bar.all_selected) {
+                    chrome_.address_bar.edit_buffer.clear();
+                    chrome_.address_bar.cursor_pos = 0;
+                    chrome_.address_bar.all_selected = false;
+                } else if (chrome_.address_bar.cursor_pos < chrome_.address_bar.edit_buffer.length()) {
+                    chrome_.address_bar.edit_buffer.erase(chrome_.address_bar.cursor_pos, 1);
                 }
             } else if (e.key == platform::KeyCode::LEFT && !chrome_.ctrl_down) {
-                if (chrome_.cursor_pos > 0)
-                    chrome_.cursor_pos--;
-                chrome_.all_selected = false;
+                if (chrome_.address_bar.cursor_pos > 0)
+                    chrome_.address_bar.cursor_pos--;
+                chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::RIGHT && !chrome_.ctrl_down) {
-                if (chrome_.cursor_pos < chrome_.edit_buffer.length())
-                    chrome_.cursor_pos++;
-                chrome_.all_selected = false;
+                if (chrome_.address_bar.cursor_pos < chrome_.address_bar.edit_buffer.length())
+                    chrome_.address_bar.cursor_pos++;
+                chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::HOME) {
-                chrome_.cursor_pos = 0;
-                chrome_.all_selected = false;
+                chrome_.address_bar.cursor_pos = 0;
+                chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::END) {
-                chrome_.cursor_pos = static_cast<u32>(chrome_.edit_buffer.length());
-                chrome_.all_selected = false;
+                chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.length());
+                chrome_.address_bar.all_selected = false;
             } else {
                 char c = keycode_to_char(e.key, chrome_.shift_down);
                 if (c) {
-                    if (chrome_.all_selected) {
-                        chrome_.edit_buffer.clear();
-                        chrome_.cursor_pos = 0;
-                        chrome_.all_selected = false;
+                    if (chrome_.address_bar.all_selected) {
+                        chrome_.address_bar.edit_buffer.clear();
+                        chrome_.address_bar.cursor_pos = 0;
+                        chrome_.address_bar.all_selected = false;
                     }
-                    chrome_.edit_buffer.insert(chrome_.cursor_pos, 1, c);
-                    chrome_.cursor_pos++;
+                    chrome_.address_bar.edit_buffer.insert(chrome_.address_bar.cursor_pos, 1, c);
+                    chrome_.address_bar.cursor_pos++;
                 }
             }
         } else if (html::g_form_state.focused_element) {

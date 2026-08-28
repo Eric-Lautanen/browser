@@ -13,6 +13,7 @@
 #include "../page_loader.hpp"
 #include "../session.hpp"
 #include "../theme.hpp"
+#include "address_bar.hpp"
 
 #include <chrono>
 #include <memory>
@@ -88,10 +89,7 @@ namespace browser {
         bool is_bookmarked = false;
         bool is_https = false;
         bool has_mixed_content = false;
-        std::string edit_buffer;
-        u32 cursor_pos = 0;
-        u32 sel_start = 0;
-        bool all_selected = false;
+        AddressBarEditor address_bar;
         i32 scroll_y = 0;
         i32 scroll_max = 0;
         i32 scroll_target_y = -1;  // -1 = no pending smooth scroll
