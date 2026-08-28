@@ -1,4 +1,5 @@
 #include "../utf8.hpp"
+#include "states_tag_helpers.hpp"
 #include "tokenizer.hpp"
 
 namespace browser::html {

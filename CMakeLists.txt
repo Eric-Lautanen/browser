@@ -145,6 +145,8 @@ add_library(html STATIC
     html/tokenizer/tokenizer.cpp
     html/tokenizer/states_data.cpp
     html/tokenizer/states_tag.cpp
+    html/tokenizer/states_tag_helpers.cpp
+    html/tokenizer/states_tag_helpers.hpp
     html/tokenizer/states_rcdata.cpp
     html/tokenizer/states_foreign.cpp
     html/dom.hpp
