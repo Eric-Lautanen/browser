@@ -1,5 +1,6 @@
 #include "painter.hpp"
 #include "background_painter.hpp"
+#include "paint_helpers.hpp"
 
 #include "../../html/form_state.hpp"
 #include "../canvas.hpp"
@@ -12,38 +13,6 @@
 namespace browser::render {
 
     Painter::Painter(TextRenderer *tr) : text_renderer_(tr) {}
-
-    namespace {
-
-        PaintCommand make_cmd(PaintCommand::Type type,
-                              css::Rect rect,
-                              Color color,
-                              const std::string &text = "",
-                              f32 font_size = 16,
-                              ImageId image_id = 0,
-                              const css::CSSGradient &gradient = {},
-                              f32 radius = 0,
-                              const css::Mat3x3 &transform = {},
-                              f32 opacity = 1.0f,
-                              u8 font_flags = 0,
-                              u8 image_flags = 0) {
-            PaintCommand cmd;
-            cmd.type = type;
-            cmd.rect = rect;
-            cmd.color = color;
-            cmd.text = text;
-            cmd.font_size = font_size;
-            cmd.font_flags = font_flags;
-            cmd.image_id = image_id;
-            cmd.gradient = gradient;
-            cmd.radius = radius;
-            cmd.transform = transform;
-            cmd.opacity = opacity;
-            cmd.image_flags = image_flags;
-            return cmd;
-        }
-
-    }  // namespace
 
     void Painter::set_image_data(const std::unordered_map<std::string, std::shared_ptr<image::Image>> &images) {
         images_ = &images;
