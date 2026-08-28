@@ -4,7 +4,7 @@
 #include <memory>
 #include <cstring>
 #include <unordered_map>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 
 namespace browser::js {
 

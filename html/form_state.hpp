@@ -1,5 +1,5 @@
 #pragma once
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include "../css/layout/types.hpp"
 #include "dom.hpp"
 

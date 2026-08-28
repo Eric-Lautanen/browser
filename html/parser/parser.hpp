@@ -52,7 +52,6 @@ namespace browser::html {
         std::vector<Element *> stack_;
         std::vector<InsertionMode> template_modes_;
         bool foster_parenting_ = false;
-        bool scripting_ = true;
         bool frameset_ok_ = true;
         bool foreign_ = false;
         // Set after <pre>/<listing>/<textarea>: the first U+000A is dropped per spec.
@@ -106,11 +105,7 @@ namespace browser::html {
         void clear_stack_back_to_table_row_context();
         void reconstruct_active_formatting_elements();
         void push_active_formatting_element(Element *el);
-        void remove_active_formatting_element(Element *el);
-        int position_in_active_formatting_list(Element *el);
         void adoption_agency_algorithm(const std::string &subject);
-
-        static bool is_special_tag(const std::string &tag);
         static bool is_heading_tag(const std::string &tag);
 
         void parse_generic_start_tag(const TagToken &token);

@@ -1,17 +1,18 @@
 #pragma once
 #include <coroutine>
 #include <windows.h>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 
 namespace browser::async {
 
 struct thread_pool_executor {
     bool await_ready() noexcept { return false; }
     void await_suspend(std::coroutine_handle<> h) noexcept {
-        auto cb = [](PTP_CALLBACK_INSTANCE, PVOID ctx, PTP_WORK) noexcept {
+        auto cb = [](PTP_CALLBACK_INSTANCE, PVOID ctx, PTP_WORK work) noexcept {
             auto* handle = static_cast<std::coroutine_handle<>*>(ctx);
             handle->resume();
             delete handle;
+            CloseThreadpoolWork(work);
         };
         auto* ctx = new std::coroutine_handle<>(h);
         auto* work = CreateThreadpoolWork(cb, ctx, nullptr);
@@ -19,6 +20,7 @@ struct thread_pool_executor {
             SubmitThreadpoolWork(work);
         } else {
             delete ctx;
+            h.resume();
         }
     }
     void await_resume() noexcept {}
@@ -47,10 +49,11 @@ struct io_executor {
 struct task_yield {
     bool await_ready() const noexcept { return false; }
     bool await_suspend(std::coroutine_handle<> h) noexcept {
-        auto cb = [](PTP_CALLBACK_INSTANCE, PVOID ctx, PTP_WORK) noexcept {
+        auto cb = [](PTP_CALLBACK_INSTANCE, PVOID ctx, PTP_WORK work) noexcept {
             auto* handle = static_cast<std::coroutine_handle<>*>(ctx);
             handle->resume();
             delete handle;
+            CloseThreadpoolWork(work);
         };
         auto* ctx = new std::coroutine_handle<>(h);
         auto* work = CreateThreadpoolWork(cb, ctx, nullptr);
@@ -58,6 +61,7 @@ struct task_yield {
             SubmitThreadpoolWork(work);
         } else {
             delete ctx;
+            h.resume();
         }
         return true;
     }

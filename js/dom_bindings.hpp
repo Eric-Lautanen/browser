@@ -3,7 +3,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include "value.hpp"
 #include "../html/dom.hpp"
 

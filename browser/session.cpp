@@ -8,32 +8,36 @@ namespace browser {
     SessionManager::SessionManager() = default;
 
     void SessionManager::save(const std::vector<SessionEntry> &tabs) {
-        // Mark dirty before starting the write; will set to "ok" on success
         mark_dirty();
-
-        std::ofstream f(path_, std::ios::binary);
-        if (!f.is_open())
-            return;
-
-        u32 version = 1;
-        u32 count = static_cast<u32>(tabs.size());
-        f.write(reinterpret_cast<const char *>(&version), sizeof(version));
-        f.write(reinterpret_cast<const char *>(&count), sizeof(count));
-
-        for (auto &entry : tabs) {
-            u32 url_len = static_cast<u32>(entry.url.size());
-            u32 title_len = static_cast<u32>(entry.title.size());
-            f.write(reinterpret_cast<const char *>(&url_len), sizeof(url_len));
-            f.write(entry.url.data(), url_len);
-            f.write(reinterpret_cast<const char *>(&title_len), sizeof(title_len));
-            f.write(entry.title.data(), title_len);
-            f.write(reinterpret_cast<const char *>(&entry.scroll_y), sizeof(entry.scroll_y));
+        std::string tmp = path_ + ".tmp";
+        {
+            std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+            if (!f.is_open())
+                return;
+            u32 version = 1;
+            u32 count = static_cast<u32>(tabs.size());
+            f.write(reinterpret_cast<const char *>(&version), sizeof(version));
+            f.write(reinterpret_cast<const char *>(&count), sizeof(count));
+            for (auto &entry : tabs) {
+                u32 url_len = static_cast<u32>(entry.url.size());
+                u32 title_len = static_cast<u32>(entry.title.size());
+                f.write(reinterpret_cast<const char *>(&url_len), sizeof(url_len));
+                f.write(entry.url.data(), url_len);
+                f.write(reinterpret_cast<const char *>(&title_len), sizeof(title_len));
+                f.write(entry.title.data(), title_len);
+                f.write(reinterpret_cast<const char *>(&entry.scroll_y), sizeof(entry.scroll_y));
+            }
+            f.flush();
+            if (!f)
+                return;
         }
-
-        // Write lock file to indicate clean session
-        std::ofstream lock(lock_path_, std::ios::binary);
+        // Atomic replace
+        std::remove(path_.c_str());
+        std::rename(tmp.c_str(), path_.c_str());
+        std::ofstream lock(lock_path_, std::ios::binary | std::ios::trunc);
         if (lock.is_open()) {
             lock.write("ok", 2);
+            lock.flush();
         }
     }
 

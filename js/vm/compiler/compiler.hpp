@@ -15,10 +15,21 @@ namespace browser::js {
         std::unique_ptr<BytecodeFunction> compile(Program &program);
 
     private:
+        struct FuncContext {
+            std::vector<std::unordered_map<std::string, u32>> scopes;
+            u32 next_local = 0;
+            // J-C5: closure mapping for this function.
+            std::unordered_map<std::string, u32> capture_indices;
+            std::vector<BytecodeFunction::Capture> captures;
+        };
         std::unique_ptr<BytecodeFunction> current_;
         u32 next_local_slot_ = 0;
         bool at_top_level_ = true;
         std::vector<std::unordered_map<std::string, u32>> scope_stack_;
+        // J-C5: stack of outer function contexts while compiling a nested function.
+        std::vector<FuncContext> func_stack_;
+        std::unordered_map<std::string, u32> current_captures_;
+        std::vector<BytecodeFunction::Capture> current_captures_list_;
         std::vector<std::vector<u32>> break_jumps_;
         // J-C6: pending continue jumps per loop; patched to the loop's update
         // (for) or restart (while) position once the body is compiled.
@@ -59,6 +70,13 @@ namespace browser::js {
         void compile_conditional(ConditionalExpr &cond);
         u32 resolve_local(const std::string &name);
         u32 allocate_local(const std::string &name);
+        // J-C5: closure helpers.
+        bool is_captured(const std::string &name) const;
+        u32 resolve_capture(const std::string &name);
+        int find_def_depth(const std::string &name) const;
+        u32 find_local_slot_at_depth(int depth, const std::string &name) const;
+        void ensure_captured_through(int def_depth, const std::string &name);
+        u32 add_capture(const std::string &name, bool from_closure, u32 idx);
         u32 add_constant(const BytecodeFunction::Constant &c);
         u32 emit_jump(Opcode op);
         void patch_jump(u32 index);

@@ -6,7 +6,7 @@
 #include <atomic>
 #include <thread>
 #include <cstdlib>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 
 namespace browser::async {
 

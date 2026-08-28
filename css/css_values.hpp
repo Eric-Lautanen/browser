@@ -3,7 +3,7 @@
 #include <vector>
 #include <memory>
 #include <variant>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 
 namespace browser::css {
 

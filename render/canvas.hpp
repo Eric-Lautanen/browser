@@ -1,5 +1,5 @@
 #pragma once
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include "font/font.hpp"
 #include <string>
 #include <vector>

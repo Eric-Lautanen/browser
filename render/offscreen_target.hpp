@@ -1,5 +1,5 @@
 #pragma once
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include <memory>
 
 namespace browser::render {

@@ -1,5 +1,5 @@
 #pragma once
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 
 #include <memory>
 #include <string>
@@ -24,6 +24,8 @@ namespace browser::js {
         STORE_GLOBAL,
         LOAD_LOCAL,
         STORE_LOCAL,
+        LOAD_CLOSURE,
+        STORE_CLOSURE,
         NEW_ARRAY,
         NEW_OBJECT,
         GET_PROP,
@@ -100,6 +102,14 @@ namespace browser::js {
         };
         std::vector<Constant> constants;
         std::vector<std::unique_ptr<BytecodeFunction>> child_functions;
+        // J-C5: variables captured from enclosing scopes.
+        struct Capture {
+            std::string name;
+            // true = source is parent's closure slot, false = parent's local slot
+            bool from_closure = false;
+            u32 index = 0;
+        };
+        std::vector<Capture> captures;
 
         u32 add_constant(const Constant &c);
         void emit(Opcode op);

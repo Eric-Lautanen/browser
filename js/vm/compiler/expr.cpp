@@ -79,9 +79,21 @@ namespace browser::js {
         u32 slot = resolve_local(id.name);
         if (slot != UINT32_MAX) {
             current_->emit(Opcode::LOAD_LOCAL, slot);
-        } else {
-            current_->emit(Opcode::LOAD_GLOBAL, id.name);
+            return;
         }
+        if (is_captured(id.name)) {
+            u32 cidx = resolve_capture(id.name);
+            current_->emit(Opcode::LOAD_CLOSURE, cidx);
+            return;
+        }
+        // Free variable: try to capture from enclosing scope.
+        int def = find_def_depth(id.name);
+        if (def != -1) {
+            u32 cidx = resolve_capture(id.name);
+            current_->emit(Opcode::LOAD_CLOSURE, cidx);
+            return;
+        }
+        current_->emit(Opcode::LOAD_GLOBAL, id.name);
     }
 
     void Compiler::compile_binary(BinaryExpr &bin) {
@@ -264,7 +276,23 @@ namespace browser::js {
         if (!id)
             return;
         u32 slot = resolve_local(id->name);
-        bool is_global = (slot == UINT32_MAX);
+        bool is_closure = false;
+        u32 cidx = UINT32_MAX;
+        bool is_global = false;
+        if (slot == UINT32_MAX) {
+            if (is_captured(id->name)) {
+                cidx = resolve_capture(id->name);
+                is_closure = true;
+            } else {
+                int def = find_def_depth(id->name);
+                if (def != -1) {
+                    cidx = resolve_capture(id->name);
+                    is_closure = true;
+                } else {
+                    is_global = true;
+                }
+            }
+        }
         BytecodeFunction::Constant one_c;
         one_c.type = BytecodeFunction::Constant::Type::NUMBER;
         one_c.number = 1.0;
@@ -273,6 +301,8 @@ namespace browser::js {
         if (un.prefix) {
             if (is_global) {
                 current_->emit(Opcode::LOAD_GLOBAL, id->name);
+            } else if (is_closure) {
+                current_->emit(Opcode::LOAD_CLOSURE, cidx);
             } else {
                 current_->emit(Opcode::LOAD_LOCAL, slot);
             }
@@ -284,6 +314,9 @@ namespace browser::js {
             if (is_global) {
                 current_->emit(Opcode::STORE_GLOBAL, id->name);
                 current_->emit(Opcode::LOAD_GLOBAL, id->name);
+            } else if (is_closure) {
+                current_->emit(Opcode::STORE_CLOSURE, cidx);
+                current_->emit(Opcode::LOAD_CLOSURE, cidx);
             } else {
                 current_->emit(Opcode::STORE_LOCAL, slot);
                 current_->emit(Opcode::LOAD_LOCAL, slot);
@@ -298,6 +331,16 @@ namespace browser::js {
                 else
                     current_->emit(Opcode::SUB);
                 current_->emit(Opcode::STORE_GLOBAL, id->name);
+                current_->emit(Opcode::POP);
+            } else if (is_closure) {
+                current_->emit(Opcode::LOAD_CLOSURE, cidx);
+                current_->emit(Opcode::DUP);
+                current_->emit(Opcode::PUSH_NUMBER, one_idx);
+                if (un.op == TokenType::PLUS_PLUS)
+                    current_->emit(Opcode::ADD);
+                else
+                    current_->emit(Opcode::SUB);
+                current_->emit(Opcode::STORE_CLOSURE, cidx);
                 current_->emit(Opcode::POP);
             } else {
                 current_->emit(Opcode::LOAD_LOCAL, slot);
@@ -416,11 +459,29 @@ namespace browser::js {
         auto *id = std::get_if<IdentExpr>(assign.left.get());
         if (id) {
             u32 slot = resolve_local(id->name);
-            bool is_global = (slot == UINT32_MAX);
+            bool is_closure = false;
+            u32 cidx = UINT32_MAX;
+            bool is_global = false;
+            if (slot == UINT32_MAX) {
+                if (is_captured(id->name)) {
+                    cidx = resolve_capture(id->name);
+                    is_closure = true;
+                } else {
+                    int def = find_def_depth(id->name);
+                    if (def != -1) {
+                        cidx = resolve_capture(id->name);
+                        is_closure = true;
+                    } else {
+                        is_global = true;
+                    }
+                }
+            }
             bool compound = assign.op != TokenType::EQUALS;
             if (compound) {
                 if (is_global)
                     current_->emit(Opcode::LOAD_GLOBAL, id->name);
+                else if (is_closure)
+                    current_->emit(Opcode::LOAD_CLOSURE, cidx);
                 else
                     current_->emit(Opcode::LOAD_LOCAL, slot);
             }
@@ -429,6 +490,8 @@ namespace browser::js {
                 current_->emit(compound_binop(assign.op));
             if (is_global)
                 current_->emit(Opcode::STORE_GLOBAL, id->name);
+            else if (is_closure)
+                current_->emit(Opcode::STORE_CLOSURE, cidx);
             else
                 current_->emit(Opcode::STORE_LOCAL, slot);
         }
@@ -461,11 +524,18 @@ namespace browser::js {
         child->num_params = (u32)arrow.params.size();
 
         auto parent = std::move(current_);
-        u32 saved_next_local = next_local_slot_;
-        auto saved_scope_stack = std::move(scope_stack_);
+        FuncContext ctx;
+        ctx.scopes = std::move(scope_stack_);
+        ctx.next_local = next_local_slot_;
+        ctx.capture_indices = std::move(current_captures_);
+        ctx.captures = std::move(current_captures_list_);
+        func_stack_.push_back(std::move(ctx));
 
         current_ = std::move(child);
         next_local_slot_ = 0;
+        current_captures_.clear();
+        current_captures_list_.clear();
+        scope_stack_.clear();
         bool saved_tl = at_top_level_;
         at_top_level_ = false;
         enter_scope();
@@ -488,9 +558,14 @@ namespace browser::js {
         at_top_level_ = saved_tl;
 
         child = std::move(current_);
+        child->captures = current_captures_list_;
+        FuncContext parent_ctx = std::move(func_stack_.back());
+        func_stack_.pop_back();
         current_ = std::move(parent);
-        next_local_slot_ = saved_next_local;
-        scope_stack_ = std::move(saved_scope_stack);
+        scope_stack_ = std::move(parent_ctx.scopes);
+        next_local_slot_ = parent_ctx.next_local;
+        current_captures_ = std::move(parent_ctx.capture_indices);
+        current_captures_list_ = std::move(parent_ctx.captures);
         u32 func_idx = (u32)current_->child_functions.size();
         current_->child_functions.push_back(std::move(child));
         current_->emit(Opcode::PUSH_FUNCTION, func_idx);

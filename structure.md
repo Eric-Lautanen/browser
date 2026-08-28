@@ -15,7 +15,6 @@ C:\github\browser\
 ├── AGENTS.md
 ├── CMakeLists.txt              # 10 lib targets + 40 test exes + browser exe
 ├── README.md
-├── SDF_ROADMAP.md              # Signed distance field font rendering plan
 ├── current_screenshot.png
 │
 ├── src/

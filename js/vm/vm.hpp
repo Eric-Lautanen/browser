@@ -1,6 +1,6 @@
 #pragma once
 #include "../../net/csp.hpp"
-#include "../../tests/utility.hpp"
+#include "../../core/utility.hpp"
 #include "../bytecode.hpp"
 #include "../jit.hpp"
 #include "../value.hpp"
@@ -14,6 +14,7 @@ namespace browser::js {
 
     struct GCJSObject;
     class GCHeap;
+    class GCBox;
 
     struct CallFrame {
         BytecodeFunction *function = nullptr;
@@ -25,6 +26,13 @@ namespace browser::js {
         std::vector<u32> handlers;
         JSValue this_value;
         JSValue new_object;
+        // J-C5: per-local boxes for captured variables. If local_boxes[slot] is
+        // non-null, LOAD/STORE_LOCAL indirects through the box so mutations are
+        // shared with closures that captured it.
+        std::vector<GCBox *> local_boxes;
+        // The function object whose code this frame executes; needed for closure
+        // access (LOAD_CLOSURE) and for gc_roots tracing of boxes.
+        JSFunction *closure_fn = nullptr;
     };
 
     class VM {
@@ -94,14 +102,15 @@ namespace browser::js {
         JSValue run();
         void run_until_frames(size_t target_depth);
         void pop_frame();
-        JSValue &local(u32 slot) {
-            auto &f = frames_.back();
-            return stack_[f.base + 1 + slot];
-        }
+        JSValue &local(u32 slot);
         JSValue strict_eq(const JSValue &a, const JSValue &b);
         JSValue loose_eq(const JSValue &a, const JSValue &b);
 
+        GCBox *ensure_box_for_slot(CallFrame &frame, u32 slot);
+        GCBox *find_box_for_name(const std::string &name);
         // Extracted opcode helpers
+        void op_load_closure(u32 idx);
+        void op_store_closure(u32 idx);
         void op_add();
         void op_sub();
         void op_mul();

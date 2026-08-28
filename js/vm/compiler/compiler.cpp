@@ -96,11 +96,18 @@ namespace browser::js {
         child->num_params = (u32)func.params.size();
 
         auto parent = std::move(current_);
-        u32 saved_next_local = next_local_slot_;
-        auto saved_scope_stack = std::move(scope_stack_);
+        FuncContext ctx;
+        ctx.scopes = std::move(scope_stack_);
+        ctx.next_local = next_local_slot_;
+        ctx.capture_indices = std::move(current_captures_);
+        ctx.captures = std::move(current_captures_list_);
+        func_stack_.push_back(std::move(ctx));
 
         current_ = std::move(child);
         next_local_slot_ = 0;
+        current_captures_.clear();
+        current_captures_list_.clear();
+        scope_stack_.clear();
         bool saved_tl = at_top_level_;
         at_top_level_ = false;
         enter_scope();
@@ -120,9 +127,15 @@ namespace browser::js {
         at_top_level_ = saved_tl;
 
         child = std::move(current_);
+        child->captures = current_captures_list_;
+        // pop to parent context
+        FuncContext parent_ctx = std::move(func_stack_.back());
+        func_stack_.pop_back();
         current_ = std::move(parent);
-        next_local_slot_ = saved_next_local;
-        scope_stack_ = std::move(saved_scope_stack);
+        scope_stack_ = std::move(parent_ctx.scopes);
+        next_local_slot_ = parent_ctx.next_local;
+        current_captures_ = std::move(parent_ctx.capture_indices);
+        current_captures_list_ = std::move(parent_ctx.captures);
         u32 func_idx = (u32)current_->child_functions.size();
         current_->child_functions.push_back(std::move(child));
 
@@ -132,8 +145,14 @@ namespace browser::js {
         if (slot != UINT32_MAX) {
             current_->emit(Opcode::STORE_LOCAL, slot);
         } else {
-            u32 new_slot = allocate_local(func.name);
-            current_->emit(Opcode::STORE_LOCAL, new_slot);
+            // Check if it's a captured name (function defined inside closure scope)
+            if (is_captured(func.name)) {
+                u32 cidx = resolve_capture(func.name);
+                current_->emit(Opcode::STORE_CLOSURE, cidx);
+            } else {
+                u32 new_slot = allocate_local(func.name);
+                current_->emit(Opcode::STORE_LOCAL, new_slot);
+            }
         }
         current_->emit(Opcode::POP);
     }
@@ -167,6 +186,122 @@ namespace browser::js {
             current_->num_locals = slot + 1;
         }
         return slot;
+    }
+
+    // J-C5: closure helpers.
+    bool Compiler::is_captured(const std::string &name) const {
+        return current_captures_.find(name) != current_captures_.end();
+    }
+
+    int Compiler::find_def_depth(const std::string &name) const {
+        for (int i = (int)func_stack_.size() - 1; i >= 0; --i) {
+            const FuncContext &ctx = func_stack_[i];
+            for (auto it = ctx.scopes.rbegin(); it != ctx.scopes.rend(); ++it) {
+                if (it->find(name) != it->end())
+                    return i;
+            }
+            if (ctx.capture_indices.find(name) != ctx.capture_indices.end())
+                return i;
+        }
+        return -1;
+    }
+
+    u32 Compiler::find_local_slot_at_depth(int depth, const std::string &name) const {
+        if (depth < 0 || depth >= (int)func_stack_.size())
+            return UINT32_MAX;
+        const FuncContext &ctx = func_stack_[depth];
+        for (auto it = ctx.scopes.rbegin(); it != ctx.scopes.rend(); ++it) {
+            auto f = it->find(name);
+            if (f != it->end())
+                return f->second;
+        }
+        return UINT32_MAX;
+    }
+
+    u32 Compiler::add_capture(const std::string &name, bool from_closure, u32 idx) {
+        auto it = current_captures_.find(name);
+        if (it != current_captures_.end())
+            return it->second;
+        BytecodeFunction::Capture cap;
+        cap.name = name;
+        cap.from_closure = from_closure;
+        cap.index = idx;
+        u32 new_idx = (u32)current_captures_list_.size();
+        current_captures_list_.push_back(cap);
+        current_captures_[name] = new_idx;
+        return new_idx;
+    }
+
+    void Compiler::ensure_captured_through(int def_depth, const std::string &name) {
+        if (def_depth < 0)
+            return;
+        for (int d = def_depth + 1; d < (int)func_stack_.size(); ++d) {
+            FuncContext &ctx = func_stack_[d];
+            if (ctx.capture_indices.find(name) != ctx.capture_indices.end())
+                continue;
+            bool from_closure;
+            u32 src_idx;
+            if (d - 1 == def_depth) {
+                u32 slot = find_local_slot_at_depth(def_depth, name);
+                if (slot != UINT32_MAX) {
+                    from_closure = false;
+                    src_idx = slot;
+                } else {
+                    auto cit = func_stack_[def_depth].capture_indices.find(name);
+                    if (cit == func_stack_[def_depth].capture_indices.end())
+                        continue;
+                    from_closure = true;
+                    src_idx = cit->second;
+                }
+            } else {
+                auto pit = func_stack_[d - 1].capture_indices.find(name);
+                if (pit == func_stack_[d - 1].capture_indices.end())
+                    continue;
+                from_closure = true;
+                src_idx = pit->second;
+            }
+            BytecodeFunction::Capture cap;
+            cap.name = name;
+            cap.from_closure = from_closure;
+            cap.index = src_idx;
+            u32 new_idx = (u32)ctx.captures.size();
+            ctx.captures.push_back(cap);
+            ctx.capture_indices[name] = new_idx;
+        }
+    }
+
+    u32 Compiler::resolve_capture(const std::string &name) {
+        auto it = current_captures_.find(name);
+        if (it != current_captures_.end())
+            return it->second;
+        int def = find_def_depth(name);
+        if (def == -1)
+            return UINT32_MAX;
+        ensure_captured_through(def, name);
+        // Source for current function is immediate parent (func_stack_.back())
+        bool from_closure;
+        u32 src_idx;
+        int parent_depth = (int)func_stack_.size() - 1;
+        if (parent_depth == def) {
+            u32 slot = find_local_slot_at_depth(def, name);
+            if (slot != UINT32_MAX) {
+                from_closure = false;
+                src_idx = slot;
+            } else {
+                auto cit = func_stack_[def].capture_indices.find(name);
+                if (cit == func_stack_[def].capture_indices.end())
+                    return UINT32_MAX;
+                from_closure = true;
+                src_idx = cit->second;
+            }
+        } else {
+            auto pit = func_stack_[parent_depth].capture_indices.find(name);
+            if (pit == func_stack_[parent_depth].capture_indices.end())
+                return UINT32_MAX;
+            from_closure = true;
+            src_idx = pit->second;
+        }
+        return add_capture(name, from_closure, src_idx);
     }
 
     // ============================================================================

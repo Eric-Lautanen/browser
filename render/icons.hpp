@@ -1,7 +1,7 @@
 #pragma once
 #include "renderer.hpp"
 #include "texture.hpp"
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include <memory>
 
 // ---------------------------------------------------------------------------

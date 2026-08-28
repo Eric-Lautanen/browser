@@ -1,5 +1,5 @@
 #pragma once
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include <GL/gl.h>
 #include <GL/glext.h>
 #include <cstddef>
@@ -114,84 +114,67 @@ using GLBindFramebufferFunc = void (APIENTRY*)(GLenum, GLuint);
 using GLFramebufferTexture2DFunc = void (APIENTRY*)(GLenum, GLenum, GLenum, GLuint, GLint);
 using GLCheckFramebufferStatusFunc = GLenum (APIENTRY*)(GLenum);
 
-// Vertex buffer objects
-extern GLGenBuffersFunc glGenBuffers;
-extern GLBindBufferFunc glBindBuffer;
-extern GLBufferDataFunc glBufferData;
-extern GLBufferSubDataFunc glBufferSubData;
-extern GLDeleteBuffersFunc glDeleteBuffers;
+// X-macro list for all GL entry points — collapses extern/definition/loader triple (P-M7)
+#define BROWSER_GL_FUNCS(X) \
+    X(glGenBuffers, GLGenBuffersFunc) \
+    X(glBindBuffer, GLBindBufferFunc) \
+    X(glBufferData, GLBufferDataFunc) \
+    X(glBufferSubData, GLBufferSubDataFunc) \
+    X(glDeleteBuffers, GLDeleteBuffersFunc) \
+    X(glGenVertexArrays, GLGenVertexArraysFunc) \
+    X(glBindVertexArray, GLBindVertexArrayFunc) \
+    X(glDeleteVertexArrays, GLDeleteVertexArraysFunc) \
+    X(glCreateShader, GLCreateShaderFunc) \
+    X(glShaderSource, GLShaderSourceFunc) \
+    X(glCompileShader, GLCompileShaderFunc) \
+    X(glGetShaderiv, GLGetShaderivFunc) \
+    X(glGetShaderInfoLog, GLGetShaderInfoLogFunc) \
+    X(glDeleteShader, GLDeleteShaderFunc) \
+    X(glAttachShader, GLAttachShaderFunc) \
+    X(glLinkProgram, GLLinkProgramFunc) \
+    X(glUseProgram, GLUseProgramFunc) \
+    X(glCreateProgram, GLCreateProgramFunc) \
+    X(glDeleteProgram, GLDeleteProgramFunc) \
+    X(glGetProgramiv, GLGetProgramivFunc) \
+    X(glGetProgramInfoLog, GLGetProgramInfoLogFunc) \
+    X(glGetAttribLocation, GLGetAttribLocationFunc) \
+    X(glVertexAttribPointer, GLVertexAttribPointerFunc) \
+    X(glEnableVertexAttribArray, GLEnableVertexAttribArrayFunc) \
+    X(glDisableVertexAttribArray, GLDisableVertexAttribArrayFunc) \
+    X(glGetUniformLocation, GLGetUniformLocationFunc) \
+    X(glUniform1i, GLUniform1iFunc) \
+    X(glUniform1f, GLUniform1fFunc) \
+    X(glUniformMatrix4fv, GLUniformMatrix4fvFunc) \
+    X(glGenTextures, GLGenTexturesFunc) \
+    X(glBindTexture, GLBindTextureFunc) \
+    X(glTexImage2D, GLTexImage2DFunc) \
+    X(glTexSubImage2D, GLTexSubImage2DFunc) \
+    X(glTexParameteri, GLTexParameteriFunc) \
+    X(glDeleteTextures, GLDeleteTexturesFunc) \
+    X(glDrawElements, GLDrawElementsFunc) \
+    X(glDrawArrays, GLDrawArraysFunc) \
+    X(glPixelStorei, GLPixelStoreiFunc) \
+    X(glClearColor, GLClearColorFunc) \
+    X(glClear, GLClearFunc) \
+    X(glViewport, GLViewportFunc) \
+    X(glActiveTexture, GLActiveTextureFunc) \
+    X(glEnable, GLEnableFunc) \
+    X(glDisable, GLDisableFunc) \
+    X(glIsEnabled, GLIsEnabledFunc) \
+    X(glGetError, GLGetErrorFunc) \
+    X(glGetIntegerv, GLGetIntegerVFunc) \
+    X(glBlendFunc, GLBlendFuncFunc) \
+    X(glScissor, GLScissorFunc) \
+    X(glUniform2f, GLUniform2fFunc) \
+    X(glGenFramebuffers, GLGenFramebuffersFunc) \
+    X(glDeleteFramebuffers, GLDeleteFramebuffersFunc) \
+    X(glBindFramebuffer, GLBindFramebufferFunc) \
+    X(glFramebufferTexture2D, GLFramebufferTexture2DFunc) \
+    X(glCheckFramebufferStatus, GLCheckFramebufferStatusFunc)
 
-// Vertex array objects
-extern GLGenVertexArraysFunc glGenVertexArrays;
-extern GLBindVertexArrayFunc glBindVertexArray;
-extern GLDeleteVertexArraysFunc glDeleteVertexArrays;
-
-// Shader objects
-extern GLCreateShaderFunc glCreateShader;
-extern GLShaderSourceFunc glShaderSource;
-extern GLCompileShaderFunc glCompileShader;
-extern GLGetShaderivFunc glGetShaderiv;
-extern GLGetShaderInfoLogFunc glGetShaderInfoLog;
-extern GLDeleteShaderFunc glDeleteShader;
-extern GLAttachShaderFunc glAttachShader;
-extern GLLinkProgramFunc glLinkProgram;
-extern GLUseProgramFunc glUseProgram;
-extern GLCreateProgramFunc glCreateProgram;
-extern GLDeleteProgramFunc glDeleteProgram;
-extern GLGetProgramivFunc glGetProgramiv;
-extern GLGetProgramInfoLogFunc glGetProgramInfoLog;
-
-// Vertex attributes
-extern GLGetAttribLocationFunc glGetAttribLocation;
-extern GLVertexAttribPointerFunc glVertexAttribPointer;
-extern GLEnableVertexAttribArrayFunc glEnableVertexAttribArray;
-extern GLDisableVertexAttribArrayFunc glDisableVertexAttribArray;
-
-// Uniforms
-extern GLGetUniformLocationFunc glGetUniformLocation;
-extern GLUniform1iFunc glUniform1i;
-extern GLUniform1fFunc glUniform1f;
-extern GLUniformMatrix4fvFunc glUniformMatrix4fv;
-
-// Textures
-extern GLGenTexturesFunc glGenTextures;
-extern GLBindTextureFunc glBindTexture;
-extern GLTexImage2DFunc glTexImage2D;
-extern GLTexSubImage2DFunc glTexSubImage2D;
-extern GLTexParameteriFunc glTexParameteri;
-extern GLDeleteTexturesFunc glDeleteTextures;
-
-// Drawing
-extern GLDrawElementsFunc glDrawElements;
-extern GLDrawArraysFunc glDrawArrays;
-
-// Pixel store
 using GLPixelStoreiFunc = void (APIENTRY*)(GLenum, GLint);
-extern GLPixelStoreiFunc glPixelStorei;
-
-// Clear / state
-extern GLClearColorFunc glClearColor;
-extern GLClearFunc glClear;
-extern GLViewportFunc glViewport;
-
-// Texture state
-extern GLActiveTextureFunc glActiveTexture;
-
-// Blending / depth
-extern GLEnableFunc glEnable;
-extern GLDisableFunc glDisable;
-extern GLBlendFuncFunc glBlendFunc;
-extern GLScissorFunc glScissor;
-extern GLIsEnabledFunc glIsEnabled;
-extern GLGetErrorFunc glGetError;
-extern GLGetIntegerVFunc glGetIntegerv;
-extern GLUniform2fFunc glUniform2f;
-
-// Framebuffer objects
-extern GLGenFramebuffersFunc glGenFramebuffers;
-extern GLDeleteFramebuffersFunc glDeleteFramebuffers;
-extern GLBindFramebufferFunc glBindFramebuffer;
-extern GLFramebufferTexture2DFunc glFramebufferTexture2D;
-extern GLCheckFramebufferStatusFunc glCheckFramebufferStatus;
+#define X(n, t) extern t n;
+BROWSER_GL_FUNCS(X)
+#undef X
 
 } // namespace browser::platform

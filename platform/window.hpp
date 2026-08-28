@@ -2,7 +2,7 @@
 #include <string>
 #include <functional>
 #include <memory>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 
 // windows.h defines DELETE as a macro; undefine to avoid conflict with KeyCode enum
 #ifdef DELETE
@@ -31,12 +31,12 @@ enum class MouseButton { NONE, LEFT, RIGHT, MIDDLE };
 struct Event {
     enum class Type { NONE, KEY_DOWN, KEY_UP, MOUSE_MOVE, MOUSE_DOWN, MOUSE_UP,
                       MOUSE_SCROLL, WINDOW_CLOSE, WINDOW_RESIZE, WINDOW_MOVE, QUIT };
-    Type type;
-    KeyCode key;
-    MouseButton button;
-    i32 mouse_x, mouse_y;
-    i32 scroll_delta;
-    u32 width, height;
+    Type type = Type::NONE;
+    KeyCode key = KeyCode::UNKNOWN;
+    MouseButton button = MouseButton::NONE;
+    i32 mouse_x = 0, mouse_y = 0;
+    i32 scroll_delta = 0;
+    u32 width = 0, height = 0;
 };
 
 using EventCallback = std::function<void(const Event&)>;

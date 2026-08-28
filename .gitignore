@@ -101,5 +101,7 @@ __pycache__/
 tools/tests/*.actual-*.json
 tools/tests/*.actual-*
 
-build2/
+build*/
 tools/results/
+*.bmp
+viewport_screenshot.bmp

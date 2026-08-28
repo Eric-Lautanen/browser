@@ -171,33 +171,34 @@ namespace browser {
     }
 
     Result<void> SettingsManager::save_to_file(const std::string &path) {
-        std::ofstream f(path, std::ios::binary);
-        if (!f.is_open())
-            return std::string("cannot open " + path + " for writing");
-
-        u32 version = 1;
-        f.write(reinterpret_cast<const char *>(&version), sizeof(version));
-
-        // Write settings as name-value pairs
-        std::vector<std::pair<std::string, std::string>> fields;
-        fields.emplace_back("theme", theme_ == ThemeMode::LIGHT ? "light" : "dark");
-        fields.emplace_back("homepage", homepage_);
-        fields.emplace_back("search_engine", search_engine_);
-        fields.emplace_back("cookie_policy", cookie_policy_);
-        fields.emplace_back("cache_size_mb", std::to_string(cache_size_mb_));
-        fields.emplace_back("font_size", std::to_string(font_size_));
-        fields.emplace_back("zoom_level", std::to_string(zoom_level_));
-        fields.emplace_back("download_behavior", download_behavior_);
-
-        u32 field_count = static_cast<u32>(fields.size());
-        f.write(reinterpret_cast<const char *>(&field_count), sizeof(field_count));
-
-        for (auto &[name, value] : fields) {
-            write_setting_field(f, name, value);
+        std::string tmp = path + ".tmp";
+        {
+            std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+            if (!f.is_open())
+                return std::string("cannot open " + path + " for writing");
+            u32 version = 1;
+            f.write(reinterpret_cast<const char *>(&version), sizeof(version));
+            std::vector<std::pair<std::string, std::string>> fields;
+            fields.emplace_back("theme", theme_ == ThemeMode::LIGHT ? "light" : "dark");
+            fields.emplace_back("homepage", homepage_);
+            fields.emplace_back("search_engine", search_engine_);
+            fields.emplace_back("cookie_policy", cookie_policy_);
+            fields.emplace_back("cache_size_mb", std::to_string(cache_size_mb_));
+            fields.emplace_back("font_size", std::to_string(font_size_));
+            fields.emplace_back("zoom_level", std::to_string(zoom_level_));
+            fields.emplace_back("download_behavior", download_behavior_);
+            u32 field_count = static_cast<u32>(fields.size());
+            f.write(reinterpret_cast<const char *>(&field_count), sizeof(field_count));
+            for (auto &[name, value] : fields) {
+                write_setting_field(f, name, value);
+            }
+            f.flush();
+            if (!f.good())
+                return std::string("write error");
         }
-
-        if (!f.good())
-            return std::string("write error");
+        std::remove(path.c_str());
+        if (std::rename(tmp.c_str(), path.c_str()) != 0)
+            return std::string("rename failed");
         return {};
     }
 
@@ -238,13 +239,19 @@ namespace browser {
                 } else if (name == "font_size") {
                     char *end = nullptr;
                     unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
-                    if (end && end != value.c_str())
+                    if (end && end != value.c_str()) {
+                        if (parsed < 8) parsed = 8;
+                        if (parsed > 64) parsed = 64;
                         font_size_ = static_cast<u32>(parsed);
+                    }
                 } else if (name == "zoom_level") {
                     char *end = nullptr;
                     float parsed = std::strtof(value.c_str(), &end);
-                    if (end && end != value.c_str())
+                    if (end && end != value.c_str()) {
+                        if (parsed < 0.25f) parsed = 0.25f;
+                        if (parsed > 5.0f) parsed = 5.0f;
                         zoom_level_ = parsed;
+                    }
                 } else if (name == "download_behavior") {
                     download_behavior_ = value;
                 }

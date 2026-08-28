@@ -3,10 +3,22 @@ project(browser VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+enable_testing()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror -fno-exceptions")
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcoroutines")
 endif()
+
+# Helper for browser test executables - prevents declaration drift (B-2) and registers with CTest (B-3)
+function(add_browser_test NAME)
+    cmake_parse_arguments(AT "" "" "SOURCES;LIBS" ${ARGN})
+    if(NOT AT_SOURCES)
+        set(AT_SOURCES "tests/${NAME}.cpp")
+    endif()
+    add_executable(${NAME} tests/main.cpp ${AT_SOURCES})
+    target_link_libraries(${NAME} PRIVATE test_framework ${AT_LIBS})
+endfunction()
 
 # Test Framework Library
 add_library(test_framework STATIC
@@ -119,8 +131,6 @@ add_library(image STATIC
     image/decoder_jpeg.cpp
 )
 target_include_directories(image PUBLIC .)
-if(WIN32)
-endif()
 target_link_libraries(image net)
 
 # HTML Library
@@ -192,6 +202,8 @@ add_library(css STATIC
     css/cascade/important.cpp
     css/cascade/inheritance.cpp
     css/cascade/media.cpp
+    css/cascade/shorthand_box.cpp
+    css/cascade/shorthand_box.hpp
     css/layout.hpp
     css/layout/types.hpp
     css/layout/engine.cpp
@@ -358,141 +370,99 @@ add_executable(test_runner
 target_link_libraries(test_runner test_framework)
 
 # Individual test executables
-add_executable(test_framework_test tests/main.cpp tests/test_framework_test.cpp)
-target_link_libraries(test_framework_test test_framework)
+add_browser_test(test_framework_test LIBS )
 
-add_executable(test_framework_impl_test tests/main.cpp tests/test_framework_impl_test.cpp)
-target_link_libraries(test_framework_impl_test test_framework)
+add_browser_test(test_framework_impl_test LIBS )
 
-add_executable(utility_test tests/main.cpp tests/utility_test.cpp)
-target_link_libraries(utility_test test_framework)
+add_browser_test(utility_test LIBS )
 
 # --- Async tests ---
-add_executable(iocp_test tests/main.cpp tests/iocp_test.cpp)
-target_link_libraries(iocp_test test_framework net)
+add_browser_test(iocp_test LIBS net)
 
-add_executable(async_test tests/main.cpp tests/async_test.cpp)
-target_link_libraries(async_test test_framework async)
+add_browser_test(async_test LIBS async)
 
-add_executable(channel_test tests/main.cpp tests/channel_test.cpp)
-target_link_libraries(channel_test test_framework async)
+add_browser_test(channel_test LIBS async)
 
-add_executable(thread_pool_test tests/main.cpp tests/thread_pool_test.cpp)
-target_link_libraries(thread_pool_test test_framework async)
+add_browser_test(thread_pool_test LIBS async)
 
 # --- Network tests ---
-add_executable(net_test tests/main.cpp tests/net_test.cpp)
-target_link_libraries(net_test test_framework net)
+add_browser_test(net_test LIBS net)
 
-add_executable(tls_test tests/main.cpp tests/tls_test.cpp)
-target_link_libraries(tls_test test_framework net)
+add_browser_test(tls_test LIBS net)
 
-add_executable(tracker_test tests/main.cpp tests/tracker_test.cpp net/tracker_blocker.cpp)
-target_link_libraries(tracker_test test_framework net)
+add_browser_test(tracker_test LIBS net)
 
 # --- HTML tests ---
-add_executable(html_test tests/main.cpp tests/html_test.cpp)
-target_link_libraries(html_test test_framework html)
+add_browser_test(html_test LIBS html)
 
 # --- CSS tests ---
-add_executable(css_test tests/main.cpp tests/css_test.cpp)
-target_link_libraries(css_test test_framework css)
+add_browser_test(css_test LIBS css)
 
-add_executable(flex_test tests/main.cpp tests/flex_test.cpp)
-target_link_libraries(flex_test test_framework css html)
+add_browser_test(flex_test LIBS css html)
 
-add_executable(grid_test tests/main.cpp tests/grid_test.cpp)
-target_link_libraries(grid_test test_framework css html)
+add_browser_test(grid_test LIBS css html)
 
-add_executable(layout_test tests/main.cpp tests/layout_test.cpp)
-target_link_libraries(layout_test test_framework render css html)
+add_browser_test(layout_test LIBS render css html)
 
-add_executable(css_animation_test tests/main.cpp tests/css_animation_test.cpp)
-target_link_libraries(css_animation_test test_framework css html)
+add_browser_test(css_animation_test LIBS css html)
 
 # --- JavaScript tests ---
-add_executable(js_test tests/main.cpp tests/js_test.cpp)
-target_link_libraries(js_test test_framework js)
+add_browser_test(js_test LIBS js)
 
-add_executable(builtins_test tests/main.cpp tests/builtins_test.cpp)
-target_link_libraries(builtins_test test_framework js)
+add_browser_test(builtins_test LIBS js)
 
-add_executable(parser_test tests/main.cpp tests/parser_test.cpp)
-target_link_libraries(parser_test test_framework js)
+add_browser_test(parser_test LIBS js)
 
-add_executable(compiler_test tests/main.cpp tests/compiler_test.cpp)
-target_link_libraries(compiler_test test_framework js)
+add_browser_test(compiler_test LIBS js)
 
-add_executable(vm_test tests/main.cpp tests/vm_test.cpp)
-target_link_libraries(vm_test test_framework js)
+add_browser_test(vm_test LIBS js)
 
-add_executable(gc_test tests/main.cpp tests/gc_test.cpp)
-target_link_libraries(gc_test test_framework js)
+add_browser_test(gc_test LIBS js)
 
-add_executable(jit_test tests/main.cpp tests/jit_test.cpp)
-target_link_libraries(jit_test test_framework js)
+add_browser_test(jit_test LIBS js)
 
-add_executable(dom_bindings_test tests/main.cpp tests/dom_bindings_test.cpp)
-target_link_libraries(dom_bindings_test test_framework js html)
+add_browser_test(dom_bindings_test LIBS js html)
 
-add_executable(web_api_test tests/main.cpp tests/web_api_test.cpp)
-target_link_libraries(web_api_test test_framework js html)
+add_browser_test(web_api_test LIBS js html)
 
 # --- Render tests ---
-add_executable(mesh_test tests/main.cpp tests/mesh_test.cpp)
-target_link_libraries(mesh_test test_framework render)
+add_browser_test(mesh_test LIBS render)
 
-add_executable(font_test tests/main.cpp tests/font_test.cpp)
-target_link_libraries(font_test test_framework render)
+add_browser_test(font_test LIBS render)
 
-add_executable(canvas_test tests/main.cpp tests/canvas_test.cpp)
-target_link_libraries(canvas_test test_framework render)
+add_browser_test(canvas_test LIBS render)
 
-add_executable(csp_test tests/main.cpp tests/csp_test.cpp)
-target_link_libraries(csp_test test_framework net)
+add_browser_test(csp_test LIBS net)
 
-add_executable(paint_test tests/main.cpp tests/paint_test.cpp)
-target_link_libraries(paint_test test_framework render css html)
+add_browser_test(paint_test LIBS render css html)
 
 # Window smoke test (requires interactive desktop; gracefully handles failure)
-add_executable(window_smoke_test tests/main.cpp tests/window_smoke_test.cpp)
-target_link_libraries(window_smoke_test test_framework platform)
+add_browser_test(window_smoke_test LIBS platform)
 
 # GPU smoke test (full render pipeline with OpenGL context)
-add_executable(gpu_smoke_test tests/main.cpp tests/gpu_smoke_test.cpp)
-target_link_libraries(gpu_smoke_test test_framework platform render)
+add_browser_test(gpu_smoke_test LIBS platform render)
 
 # --- Image tests ---
-add_executable(image_test tests/main.cpp tests/image_test.cpp)
-target_link_libraries(image_test test_framework image)
+add_browser_test(image_test LIBS image)
 
 # --- Browser/chrome tests ---
-add_executable(websocket_test tests/main.cpp tests/websocket_test.cpp)
-target_link_libraries(websocket_test test_framework net)
+add_browser_test(websocket_test LIBS net)
 
-add_executable(http_cache_test tests/main.cpp tests/http_cache_test.cpp)
-target_link_libraries(http_cache_test test_framework net)
+add_browser_test(http_cache_test LIBS net)
 
-add_executable(telemetry_test tests/main.cpp tests/telemetry_test.cpp)
-target_link_libraries(telemetry_test test_framework browser_lib)
+add_browser_test(telemetry_test LIBS browser_lib)
 
-add_executable(settings_test tests/main.cpp tests/settings_test.cpp)
-target_link_libraries(settings_test test_framework browser_lib)
+add_browser_test(settings_test LIBS browser_lib)
 
-add_executable(chrome_test tests/main.cpp tests/chrome_test.cpp)
-target_link_libraries(chrome_test test_framework browser_lib platform render net)
+add_browser_test(chrome_test LIBS browser_lib platform render net)
 
-add_executable(history_test tests/main.cpp tests/history_test.cpp)
-target_link_libraries(history_test test_framework browser_lib)
+add_browser_test(history_test LIBS browser_lib)
 
-add_executable(bookmark_test tests/main.cpp tests/bookmark_test.cpp)
-target_link_libraries(bookmark_test test_framework browser_lib)
+add_browser_test(bookmark_test LIBS browser_lib)
 
-add_executable(cookie_test tests/main.cpp tests/cookie_test.cpp)
-target_link_libraries(cookie_test test_framework net)
+add_browser_test(cookie_test LIBS net)
 
-add_executable(storage_test tests/main.cpp tests/storage_test.cpp)
-target_link_libraries(storage_test test_framework net)
+add_browser_test(storage_test LIBS net)
 
 # --- Browser executable ---
 add_executable(browser src/main.cpp)
@@ -504,6 +474,20 @@ add_custom_target(run_tests
     DEPENDS test_runner
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
+
+# CTest registration for all executables (B-3)
+foreach(t
+    test_runner test_framework_test test_framework_impl_test utility_test
+    iocp_test async_test channel_test thread_pool_test
+    net_test tls_test tracker_test
+    html_test css_test flex_test grid_test layout_test css_animation_test
+    js_test builtins_test parser_test compiler_test vm_test gc_test jit_test dom_bindings_test web_api_test
+    mesh_test font_test canvas_test csp_test paint_test window_smoke_test gpu_smoke_test
+    image_test websocket_test http_cache_test telemetry_test settings_test chrome_test history_test bookmark_test cookie_test storage_test)
+    if(TARGET ${t})
+        add_test(NAME ${t} COMMAND ${t})
+    endif()
+endforeach()
 
 
 

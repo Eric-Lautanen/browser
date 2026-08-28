@@ -4,7 +4,8 @@
 #include <new>
 #include <type_traits>
 #include <cstddef>
-#include "../tests/utility.hpp"
+#include <thread>
+#include "../core/utility.hpp"
 
 namespace browser::async {
 
@@ -45,11 +46,16 @@ public:
         return true;
     }
 
+    // SPSC channel: single producer and single consumer only. This matches
+    // production use (page_loader: pool producer → UI consumer). Two producers
+    // would race on tail without CAS — documented as SPSC to avoid misuse.
     std::optional<T> try_receive() {
-        if (closed_.load(std::memory_order_acquire)) return std::nullopt;
         size_t h = head_.load(std::memory_order_relaxed);
         size_t t = tail_.load(std::memory_order_acquire);
-        if (h == t) return std::nullopt;
+        if (h == t) {
+            if (closed_.load(std::memory_order_acquire)) return std::nullopt;
+            return std::nullopt;
+        }
         T val(std::move(buffer_[h]));
         buffer_[h].~T();
         head_.store((h + 1) & mask_, std::memory_order_release);
@@ -61,13 +67,18 @@ public:
             if (closed_.load(std::memory_order_acquire)) return;
             size_t t = tail_.load(std::memory_order_relaxed);
             size_t h = head_.load(std::memory_order_acquire);
-            size_t next = (t + 1) & mask_;
-            if (next != h) {
-                ::new (&buffer_[t]) T(std::move(value));
-                tail_.store(next, std::memory_order_release);
-                return;
+            if (((t - h) & mask_) >= usable_capacity_) {
+#if defined(__x86_64__) || defined(__i386__)
+                __builtin_ia32_pause();
+#else
+                std::this_thread::yield();
+#endif
+                continue;
             }
-            __builtin_ia32_pause();
+            size_t next = (t + 1) & mask_;
+            ::new (&buffer_[t]) T(std::move(value));
+            tail_.store(next, std::memory_order_release);
+            return;
         }
     }
 
@@ -92,7 +103,11 @@ public:
                 head_.store((h + 1) & mask_, std::memory_order_release);
                 return val;
             }
+#if defined(__x86_64__) || defined(__i386__)
             __builtin_ia32_pause();
+#else
+            std::this_thread::yield();
+#endif
         }
     }
 

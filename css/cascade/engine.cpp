@@ -1,4 +1,5 @@
 #include "engine.hpp"
+#include "shorthand_box.hpp"
 
 #include "../../async/executor.hpp"
 #include "../../html/traversal.hpp"

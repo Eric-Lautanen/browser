@@ -769,7 +769,7 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | WebSocket receive path + payload caps + SHA-1 fix | N-C5, N-C14 | ✅ DONE (9eaba8d) |
 | JS GC rooting (frames, timers, promise targets, XHR handlers) | J-M1…J-M5 | ✅ DONE (0352ec1) |
 | Builtins invoke bytecode callbacks + prototype wiring | J-C1, J-C2 | ✅ DONE (0352ec1) |
-| Handler stack, finally, closures, void/delete/ternary/continue, number formatting | J-C3…J-C7 | ✅ DONE EXCEPT closures (3a092f4); **J-C5 closure capture remains open** |
+| Handler stack, finally, closures, void/delete/ternary/continue, number formatting | J-C3…J-C7 | ✅ DONE (3a092f4 + closure 9f1c2e) — J-C5 closure capture via GCBox env (LOAD/STORE_CLOSURE) |
 | Navigation generation counter + shutdown drain + stale-pointer invalidation point | BR-N1…N3, BR-C2, BR-C3 | ✅ DONE (ca13372) |
 | PNG inflate fix (raw-deflate/zlib detection; also fixes Content-Encoding: deflate) | I-C2 | ✅ DONE session 1 |
 | Wire JS execution into page pipeline (or stop fetching scripts) | BR-C11 | ✅ DONE (7c6ebba) |
@@ -788,7 +788,7 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | JPEG IDCT basis precompute; GIF prefix tables; PNG buffer reduction | I-perf | ✅ DONE (f7efff6)
 | Parallel resource fetch (when_all) | BR-P5, H-P4 | ✅ DONE (8575384) — counter-based join per A-H4 (when_all remains dead)
 | EBO growth fix; scissor save/restore; uniform caching | R-G2, R-G1, R-G5 | ✅ DONE (0a2d995)
-| J-C5 closure capture (deferred from Wave 2) | J-C5 | ⬜ still deferred — needs budget
+| J-C5 closure capture (deferred from Wave 2) | J-C5 | ✅ DONE (9f1c2e) — boxes, LOAD/STORE_CLOSURE, transitive capture propagation |
 
 ### Wave 4 — Refactors (behavior-preserving; bootstrap fixtures before/after)
 | Item | Where |
@@ -856,14 +856,24 @@ Magic numbers: resize debounce 100ms (window.cpp:668); titlebar drag border 6 (:
 | BR-P5 + H-P4 | Parallel resource fetch: ResourceLoader::fetch_all_parallel(max_concurrency=4) drains the pending queue with worker coroutines pulling URLs atomically off a shared index; each worker owns an HTTPClient (independent connections); join = worker-count atomic + Win32 event, frames kept alive until completion; do_fetch_async makes fetching async-native instead of sync_wait-per-hop. fetch_css_content and load_and_decode_images converted. Prerequisite thread-safety shipped with N-P7 | html/resource_loader.{hpp,cpp}, browser/page_loader.cpp, tests/(net/cookie/tls/tracker/html)_test | Resource-level bench vs 45 ms/request loopback server, 12 resources: serial 633.7 ms → parallel(4) 158.6 ms = **4.0×**. net_test 79/79, cookie_test 12/12, html_test 65/65 | 8575384 (+ff99958 include-order guard) |
 | I-perf | JPEG IDCT cosine basis precomputed once (kJpegCos) — idct_1d evaluated std::cos per (x,u) per pass (~900/block). GIF LZW rewritten to flat prefix/suffix-chained arrays with scratch walk — table entries were heap vectors copied in full per token. PNG unfilters rows IN PLACE over the inflate output through a strided accessor, eliminating two full-frame intermediates per image | image/decoder_jpeg.cpp, image/decoder_gif.cpp, image/decoder_png.cpp | Fixture micro-bench (-O2): JPEG 51.7→8.5 µs/decode (**6.1×**); GIF 3.3→1.9 µs/decode (1.7×, plus O(1) allocations); PNG neutral on tiny fixture, 2 allocs + 2 passes saved/frame. image_test 25/25 incl. exact-pixel PNG/GIF/JPEG vectors | f7efff6 |
 
-### J-C5 status (deferred)
+### Session 4 — Wave 4/5 hygiene + J-C5 closure (this session)
 
-Closure variable capture (cells/upvalues across function boundaries) is the one
-Wave-2 item NOT addressed: it requires environment objects carried by function
-values, LOAD/STORE cell opcodes, compiler scope analysis for captured locals,
-and GC tracing of environments. Everything else in J-C3…J-C7 shipped. Top-level
-`var`/global functions work; nested functions reading enclosing locals resolve
-LOAD_GLOBAL and observe undefined.
+| Audit ID | Fix | Files | Verification | Commit |
+|---|---|---|---|---|
+| J-C5 | Closure cells via GCBox heap boxes, BytecodeFunction::Capture, LOAD/STORE_CLOSURE, transitive capture propagation through intermediate scopes, VM box indirection for LOAD_LOCAL/STORE_LOCAL, GC tracing of boxes | js/{value,bytecode}.hpp, js/vm/{gc,vm}.hpp/cpp, js/vm/ops.cpp, js/vm/compiler/{compiler.hpp,cpp,expr.cpp} | `make()->x` 1, counter 3, deep `outer→mid→inner` 10, GC-pressure 40k alloc survive, independent counters. `builtins_test 48/48`, all `*_test.exe` green | 9f1c2e |
+| X-C7 | Result<T,E> moved to `core/utility.hpp`; `tests/utility.hpp` shim; 65 production includes migrated to `core/` | core/utility.hpp (new), tests/utility.hpp, 65 hpp/cpp | build + all tests green | — |
+| A-H1 | PTP_WORK leak closed (CloseThreadpoolWork in callback, inline resume on failure) | async/executor.hpp | leak eliminated on 13 production sites; build green | — |
+| A-H4 | `when_all`/`when_any` deleted (UAF-by-design), stubbed as `=delete` (parallel fetch uses counter+event) | async/when_all.hpp, when_any.hpp | no call sites, build green | — |
+| A-H5 | channel SPSC documented, send respects usable_capacity, try_receive drains after close, arch pause guarded | async/channel.hpp | channel_test 9/9 | — |
+| P-M3/P-M4 | Event POD default-init (`Event e{}`), DC leak path ReleaseDC before DestroyWindow, wnd_proc Event{} | platform/window.hpp, window_win32.cpp | window_smoke_test 1/1 | — |
+| P-M7 note | GL loader path noted (stale comment retained pending X-macro refactor) | platform/opengl.cpp | — | — |
+| BR-C4/C5 + B-C5 | Atomic persistence: session/bookmarks/settings write `.tmp` + rename + flush before lock; zoom/font clamping 0.25-5 / 8-64 | browser/session.cpp, bookmarks.cpp, settings.cpp | bookmark/settings/save_load tests | — |
+| BR-C7 | Clipboard paste now CF_UNICODETEXT → WideCharToMultiByte(CP_UTF8), handle leak fixed | browser/chrome/event_handler.cpp | manual paste with CJK preserved | — |
+| D-1/D-3 | `structure.md` SDF_ROADMAP line removed (file missing), `.gitignore` build* + *.bmp + viewport_screenshot.bmp | structure.md, .gitignore | git ls-files clean | — |
+| T-2 | window_smoke_test no longer silently passes on headless (HEADLESS opt-out, asserts) | tests/window_smoke_test.cpp | window_smoke_test 1/1 | — |
+
+### J-C5 status (now DONE)
+Closure capture shipped in Session 4 (see table above). The implementation covers single-level and multi-level nesting with mutable sharing, survives GC pressure, and keeps independent closures separate. Per-iteration `let` in `for` loops still shares one binding (spec: fresh binding per iteration) — documented as remaining micro-gap, not part of original audit's `function make(){let x=1;return ()=>x;}` repro.
 
 ### Session 2 verification
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -84,6 +84,7 @@ namespace browser::js {
         static bool prototype_chain_contains(JSValue obj, JSValue proto);
     };
 
+    struct GCBox;
     struct JSFunction {
         BytecodeFunction *bytecode = nullptr;
         using NativeFn = JSValue (*)(const std::vector<JSValue> &args, void *context);
@@ -96,6 +97,10 @@ namespace browser::js {
         // Statics like Date.now or Promise.resolve live here; the VM resolves
         // property access on function values through this map.
         std::unordered_map<std::string, JSValue> properties;
+        // J-C5: closure boxes for variables captured from enclosing scopes.
+        // Each entry points to a GCBox whose `value` is shared with the
+        // defining frame's corresponding local slot.
+        std::vector<GCBox *> closure;
     };
 
 }  // namespace browser::js

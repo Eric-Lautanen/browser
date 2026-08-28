@@ -1,6 +1,6 @@
 #pragma once
 #include <string>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include "../platform/opengl.hpp"
 
 namespace browser::render {

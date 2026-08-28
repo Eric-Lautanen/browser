@@ -1,6 +1,6 @@
 #pragma once
 #include "../async/task.hpp"
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include "connection.hpp"
 #include "cookie_jar.hpp"
 #include "hsts.hpp"

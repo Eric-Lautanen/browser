@@ -1,5 +1,5 @@
 #pragma once
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include "../async/task.hpp"
 #include "socket.hpp"
 #include "connection.hpp"

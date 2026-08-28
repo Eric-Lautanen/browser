@@ -3,7 +3,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
-#include "../tests/utility.hpp"
+#include "../core/utility.hpp"
 #include "../html/dom.hpp"
 
 namespace browser::js {

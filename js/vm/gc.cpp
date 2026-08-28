@@ -24,6 +24,7 @@ namespace browser::js {
     GCHeap::~GCHeap() {
         for (auto *o : objects_) delete o;
         for (auto *f : functions_) delete f;
+        for (auto *b : boxes_) delete b;
     }
 
     GCJSObject *GCHeap::alloc_object() {
@@ -42,12 +43,30 @@ namespace browser::js {
         return fn;
     }
 
+    GCBox *GCHeap::alloc_box() {
+        auto *box = new GCBox();
+        boxes_.push_back(box);
+        box_map_[box] = box;
+        allocated_ += sizeof(GCBox);
+        return box;
+    }
+
     void GCHeap::collect(const std::vector<JSValue *> &roots) {
+        std::vector<GCBox *> empty;
+        collect(roots, empty);
+    }
+
+    void GCHeap::collect(const std::vector<JSValue *> &roots, const std::vector<GCBox *> &box_roots) {
         LARGE_INTEGER start;
         QueryPerformanceCounter(&start);
         for (auto *obj : objects_) obj->unmark();
         for (auto *fn : functions_) fn->unmark();
+        for (auto *b : boxes_) b->unmark();
         mark_roots(roots);
+        for (auto *b : box_roots) {
+            if (b && !b->is_marked())
+                b->mark(*this);
+        }
         // X-C2: drain the marking worklist iteratively — deep script-built
         // object chains no longer recurse in mark_children.
         while (!mark_stack_.empty()) {
@@ -115,6 +134,18 @@ namespace browser::js {
                 ++fit;
             }
         }
+        auto bit = boxes_.begin();
+        while (bit != boxes_.end()) {
+            if (!(*bit)->is_marked()) {
+                box_map_.erase(*bit);
+                allocated_ -= sizeof(GCBox);
+                delete *bit;
+                bit = boxes_.erase(bit);
+            } else {
+                (*bit)->unmark();
+                ++bit;
+            }
+        }
     }
 
     void GCJSObject::mark_children(GCHeap &heap) {
@@ -173,6 +204,26 @@ namespace browser::js {
                 if (gc_fn && !gc_fn->is_marked()) {
                     gc_fn->mark(heap);
                 }
+            }
+        }
+        for (auto *box : fn.closure) {
+            if (box && !box->is_marked()) {
+                box->mark(heap);
+            }
+        }
+    }
+
+    void GCBox::mark_children(GCHeap &heap) {
+        if (value.type == JSValue::Type::OBJECT && value.object_val) {
+            auto *gc_obj = heap.lookup_object(value.object_val);
+            if (gc_obj && !gc_obj->is_marked()) {
+                gc_obj->mark(heap);
+            }
+        }
+        if (value.type == JSValue::Type::FUNCTION && value.function_val) {
+            auto *gc_fn = heap.lookup_function(value.function_val);
+            if (gc_fn && !gc_fn->is_marked()) {
+                gc_fn->mark(heap);
             }
         }
     }

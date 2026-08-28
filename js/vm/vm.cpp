@@ -46,12 +46,54 @@ namespace browser::js {
         for (auto &f : frames_) {
             roots.push_back(&f.this_value);
             roots.push_back(&f.new_object);
+            // J-C5: boxes for captured locals hold the shared value; their
+            // JSValue must be considered live while the frame exists.
+            for (auto *b : f.local_boxes) {
+                if (b) roots.push_back(&b->value);
+            }
+            if (f.closure_fn) {
+                for (auto *b : f.closure_fn->closure) {
+                    if (b) roots.push_back(&b->value);
+                }
+            }
         }
         for (auto &provider : gc_root_providers_) {
             auto extra = provider();
             roots.insert(roots.end(), extra.begin(), extra.end());
         }
         return roots;
+    }
+
+    GCBox *VM::ensure_box_for_slot(CallFrame &frame, u32 slot) {
+        if (slot >= frame.local_boxes.size())
+            return nullptr;
+        if (!frame.local_boxes[slot]) {
+            GCBox *box = heap_->alloc_box();
+            box->value = stack_[frame.base + 1 + slot];
+            frame.local_boxes[slot] = box;
+        }
+        return frame.local_boxes[slot];
+    }
+
+    JSValue &VM::local(u32 slot) {
+        auto &f = frames_.back();
+        if (slot < f.local_boxes.size() && f.local_boxes[slot])
+            return f.local_boxes[slot]->value;
+        return stack_[f.base + 1 + slot];
+    }
+
+    GCBox *VM::find_box_for_name(const std::string &name) {
+        for (auto it = frames_.rbegin(); it != frames_.rend(); ++it) {
+            if (it->closure_fn) {
+                auto *bc = it->closure_fn->bytecode;
+                for (size_t i = 0; i < bc->captures.size(); ++i) {
+                    if (bc->captures[i].name == name) {
+                        return it->closure_fn->closure[i];
+                    }
+                }
+            }
+        }
+        return nullptr;
     }
 
     void VM::add_gc_root_provider(std::function<std::vector<JSValue *>()> provider) {
@@ -114,7 +156,9 @@ namespace browser::js {
         }
         frame.ip = 0;
         frame.function = bc;
-        frames_.push_back(frame);
+        frame.closure_fn = fn;
+        frame.local_boxes.assign(total_slots, nullptr);
+        frames_.push_back(std::move(frame));
         return &frames_.back();
     }
 
@@ -128,7 +172,16 @@ namespace browser::js {
         if (native_depth_ > 0)
             return;
         if (heap_->allocated_bytes() > heap_->threshold()) {
-            heap_->collect(gc_roots());
+            std::vector<GCBox *> box_roots;
+            for (auto &f : frames_) {
+                for (auto *b : f.local_boxes)
+                    if (b) box_roots.push_back(b);
+                if (f.closure_fn) {
+                    for (auto *b : f.closure_fn->closure)
+                        if (b) box_roots.push_back(b);
+                }
+            }
+            heap_->collect(gc_roots(), box_roots);
         }
     }
 
@@ -157,6 +210,8 @@ namespace browser::js {
         entry_frame.local_count = func->num_locals;
         entry_frame.this_value = JSValue::undefined();
         entry_frame.new_object = JSValue::undefined();
+        entry_frame.local_boxes.assign(func->num_locals, nullptr);
+        entry_frame.closure_fn = nullptr;
         frames_.push_back(std::move(entry_frame));
         for (u32 i = 0; i < func->num_locals; i++) {
             push(JSValue::undefined());
@@ -242,6 +297,16 @@ namespace browser::js {
                 case Opcode::STORE_LOCAL: {
                     u32 slot = std::get<u32>(instr.operand);
                     local(slot) = stack_.back();
+                    break;
+                }
+                case Opcode::LOAD_CLOSURE: {
+                    u32 idx = std::get<u32>(instr.operand);
+                    op_load_closure(idx);
+                    break;
+                }
+                case Opcode::STORE_CLOSURE: {
+                    u32 idx = std::get<u32>(instr.operand);
+                    op_store_closure(idx);
                     break;
                 }
                 case Opcode::LOAD_GLOBAL: {

@@ -143,23 +143,6 @@ namespace browser::html {
         active_formatting_elements_.push_back(el);
     }
 
-    void Parser::remove_active_formatting_element(Element *el) {
-        for (auto it = active_formatting_elements_.begin(); it != active_formatting_elements_.end(); ++it) {
-            if (*it == el) {
-                active_formatting_elements_.erase(it);
-                return;
-            }
-        }
-    }
-
-    int Parser::position_in_active_formatting_list(Element *el) {
-        for (u32 i = 0; i < active_formatting_elements_.size(); i++) {
-            if (active_formatting_elements_[i] == el)
-                return static_cast<i32>(i);
-        }
-        return -1;
-    }
-
     void Parser::reconstruct_active_formatting_elements() {
         if (active_formatting_elements_.empty())
             return;

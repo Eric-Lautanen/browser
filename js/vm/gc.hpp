@@ -1,5 +1,5 @@
 #pragma once
-#include "../../tests/utility.hpp"
+#include "../../core/utility.hpp"
 #include "../value.hpp"
 
 #include <unordered_map>
@@ -37,13 +37,23 @@ namespace browser::js {
         void mark_children(GCHeap &heap) override;
     };
 
+    // J-C5: heap box for a captured variable. Both the defining frame's
+    // local slot and every closure that captures it share this cell.
+    class GCBox : public GCObject {
+    public:
+        JSValue value;
+        void mark_children(GCHeap &heap) override;
+    };
+
     class GCHeap {
     public:
         GCHeap();
         ~GCHeap();
         GCJSObject *alloc_object();
         GCJSFunction *alloc_function();
+        GCBox *alloc_box();
         void collect(const std::vector<JSValue *> &roots);
+        void collect(const std::vector<JSValue *> &roots, const std::vector<GCBox *> &box_roots);
         u32 allocated_bytes() const { return allocated_; }
         u32 threshold() const { return threshold_; }
         u32 object_count() const { return (u32)objects_.size(); }
@@ -64,6 +74,7 @@ namespace browser::js {
     private:
         std::vector<GCJSObject *> objects_;
         std::vector<GCJSFunction *> functions_;
+        std::vector<GCBox *> boxes_;
         u32 allocated_ = 0;
         u32 threshold_ = 1024 * 1024;
         u32 total_collected_ = 0;
@@ -81,6 +92,7 @@ namespace browser::js {
         void sweep();
         std::unordered_map<JSObject *, GCJSObject *> obj_map_;
         std::unordered_map<JSFunction *, GCJSFunction *> fn_map_;
+        std::unordered_map<GCBox *, GCBox *> box_map_;
     };
 
 }  // namespace browser::js

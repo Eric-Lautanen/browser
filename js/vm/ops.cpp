@@ -774,6 +774,25 @@ namespace browser::js {
         }
     }
 
+    void VM::op_load_closure(u32 idx) {
+        auto &frame = frames_.back();
+        JSFunction *fn = frame.closure_fn;
+        if (!fn || idx >= fn->closure.size() || !fn->closure[idx]) {
+            push(JSValue::undefined());
+            return;
+        }
+        push(fn->closure[idx]->value);
+    }
+
+    void VM::op_store_closure(u32 idx) {
+        auto &frame = frames_.back();
+        JSFunction *fn = frame.closure_fn;
+        if (!fn || idx >= fn->closure.size() || !fn->closure[idx]) {
+            return;
+        }
+        fn->closure[idx]->value = stack_.back();
+    }
+
     void VM::op_push_function(u32 idx) {
         auto &frame = frames_.back();
         auto *func = frame.function;
@@ -781,6 +800,19 @@ namespace browser::js {
         auto *gc_fn = heap_->alloc_function();
         gc_fn->fn.bytecode = child_bc;
         gc_fn->fn.name = child_bc->name;
+        // J-C5: build closure boxes from enclosing scope.
+        gc_fn->fn.closure.reserve(child_bc->captures.size());
+        for (auto &cap : child_bc->captures) {
+            GCBox *box = nullptr;
+            if (cap.from_closure) {
+                if (frame.closure_fn && cap.index < frame.closure_fn->closure.size()) {
+                    box = frame.closure_fn->closure[cap.index];
+                }
+            } else {
+                box = ensure_box_for_slot(frame, cap.index);
+            }
+            gc_fn->fn.closure.push_back(box);
+        }
         push(JSValue::function(&gc_fn->fn));
     }
 

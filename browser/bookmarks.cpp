@@ -49,16 +49,22 @@ namespace browser {
     }
 
     Result<void> BookmarkManager::save_to_file(const std::string &path) {
-        std::ofstream file(path);
-        if (!file.is_open())
-            return std::string("Failed to open file for writing: " + path);
-        for (const auto &b : bookmarks_) {
-            file << escape_pipe(b.title) << '|' << escape_pipe(b.url) << '|' << b.added_at << '|'
-                 << escape_pipe(b.folder) << '\n';
+        std::string tmp = path + ".tmp";
+        {
+            std::ofstream file(tmp, std::ios::trunc);
+            if (!file.is_open())
+                return std::string("Failed to open file for writing: " + path);
+            for (const auto &b : bookmarks_) {
+                file << escape_pipe(b.title) << '|' << escape_pipe(b.url) << '|' << b.added_at << '|'
+                     << escape_pipe(b.folder) << '\n';
+            }
+            file.flush();
+            if (!file.good())
+                return std::string("Failed to write file: " + path);
         }
-        file.close();
-        if (!file.good())
-            return std::string("Failed to write file: " + path);
+        std::remove(path.c_str());
+        if (std::rename(tmp.c_str(), path.c_str()) != 0)
+            return std::string("Failed to rename temp file: " + path);
         return {};
     }
 

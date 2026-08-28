@@ -119,22 +119,49 @@ namespace browser {
                 EmptyClipboard();
                 SetClipboardData(CF_UNICODETEXT, hglb);
                 CloseClipboard();
+            } else {
+                GlobalFree(hglb);
             }
         }
 
         std::string clipboard_paste() {
             std::string result;
-            if (OpenClipboard(nullptr)) {
-                HANDLE h = GetClipboardData(CF_TEXT);
-                if (h) {
-                    char *text = (char *)GlobalLock(h);
-                    if (text) {
-                        result = text;
+            if (!OpenClipboard(nullptr))
+                return result;
+            HANDLE h = GetClipboardData(CF_UNICODETEXT);
+            if (h) {
+                wchar_t *wtext = (wchar_t *)GlobalLock(h);
+                if (wtext) {
+                    int utf8_len = WideCharToMultiByte(CP_UTF8, 0, wtext, -1, nullptr, 0, nullptr, nullptr);
+                    if (utf8_len > 1) {
+                        result.resize(static_cast<size_t>(utf8_len - 1));
+                        WideCharToMultiByte(CP_UTF8, 0, wtext, -1, &result[0], utf8_len, nullptr, nullptr);
                     }
                     GlobalUnlock(h);
                 }
-                CloseClipboard();
+            } else {
+                // Fallback: try CF_TEXT and convert from ANSI
+                h = GetClipboardData(CF_TEXT);
+                if (h) {
+                    char *text = (char *)GlobalLock(h);
+                    if (text) {
+                        int wide_len = MultiByteToWideChar(CP_ACP, 0, text, -1, nullptr, 0);
+                        if (wide_len > 0) {
+                            std::vector<wchar_t> wbuf(static_cast<size_t>(wide_len));
+                            MultiByteToWideChar(CP_ACP, 0, text, -1, wbuf.data(), wide_len);
+                            int utf8_len = WideCharToMultiByte(CP_UTF8, 0, wbuf.data(), -1, nullptr, 0, nullptr, nullptr);
+                            if (utf8_len > 1) {
+                                result.resize(static_cast<size_t>(utf8_len - 1));
+                                WideCharToMultiByte(CP_UTF8, 0, wbuf.data(), -1, &result[0], utf8_len, nullptr, nullptr);
+                            }
+                        } else {
+                            result = text;
+                        }
+                    }
+                    GlobalUnlock(h);
+                }
             }
+            CloseClipboard();
             return result;
         }
 
@@ -1183,14 +1210,14 @@ namespace browser {
             wu32(bmp, 2835);
             wu32(bmp, 0);
             wu32(bmp, 0);
-            for (int y = sh - 1; y >= 0; y--) {
+            for (int y = 0; y < sh; y++) {
                 for (int x = 0; x < sw; x++) {
                     size_t idx = (static_cast<size_t>(y) * sw + static_cast<size_t>(x)) * 4;
                     bmp.push_back(pixels[idx + 2]);
                     bmp.push_back(pixels[idx + 1]);
                     bmp.push_back(pixels[idx + 0]);
                 }
-                for (u32 p = sw * 3; p < row; p++) bmp.push_back(0);
+                for (u32 p = static_cast<u32>(sw) * 3; p < row; p++) bmp.push_back(0);
             }
             FILE *sf = fopen("viewport_screenshot.bmp", "wb");
             if (sf) {

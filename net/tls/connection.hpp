@@ -1,6 +1,6 @@
 #pragma once
 #include "../../async/task.hpp"
-#include "../../tests/utility.hpp"
+#include "../../core/utility.hpp"
 #include "../connection.hpp"
 #include "../crypto/aes.hpp"
 #include "../crypto/sha.hpp"

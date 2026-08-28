@@ -2,7 +2,7 @@
 #include <vector>
 #include <cstdint>
 #include <algorithm>
-#include "../../tests/utility.hpp"
+#include "../../core/utility.hpp"
 
 namespace browser::render::internal {
 

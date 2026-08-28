@@ -326,12 +326,16 @@ namespace browser::platform {
         }
 
         if (!init_wgl_extensions()) {
+            ReleaseDC(hwnd_, hdc_);
+            hdc_ = nullptr;
             DestroyWindow(hwnd_);
             hwnd_ = nullptr;
             return Result<void>(std::string("Failed to load WGL extensions"));
         }
 
         if (!setup_pixel_format_arb(hdc_)) {
+            ReleaseDC(hwnd_, hdc_);
+            hdc_ = nullptr;
             DestroyWindow(hwnd_);
             hwnd_ = nullptr;
             return Result<void>(std::string("Failed to set pixel format"));
@@ -347,6 +351,8 @@ namespace browser::platform {
 
         hglrc_ = wglCreateContextAttribsARB(hdc_, 0, context_attribs);
         if (!hglrc_) {
+            ReleaseDC(hwnd_, hdc_);
+            hdc_ = nullptr;
             DestroyWindow(hwnd_);
             hwnd_ = nullptr;
             return Result<void>(std::string("wglCreateContextAttribsARB failed"));
@@ -492,7 +498,7 @@ namespace browser::platform {
                     if (wparam == SIZE_MINIMIZED) break;
                     win->extent_.width = (u32)(LOWORD(lparam));
                     win->extent_.height = (u32)(HIWORD(lparam));
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::WINDOW_RESIZE;
                     e.width = win->extent_.width;
                     e.height = win->extent_.height;
@@ -503,7 +509,7 @@ namespace browser::platform {
             case WM_KEYDOWN:
             case WM_SYSKEYDOWN:
                 if (win) {
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::KEY_DOWN;
                     e.key = vk_to_keycode(wparam);
                     win->dispatch_event(e);
@@ -513,7 +519,7 @@ namespace browser::platform {
             case WM_KEYUP:
             case WM_SYSKEYUP:
                 if (win) {
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::KEY_UP;
                     e.key = vk_to_keycode(wparam);
                     win->dispatch_event(e);
@@ -522,7 +528,7 @@ namespace browser::platform {
 
             case WM_MOUSEMOVE:
                 if (win) {
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::MOUSE_MOVE;
                     e.mouse_x = GET_X_LPARAM(lparam);
                     e.mouse_y = GET_Y_LPARAM(lparam);
@@ -534,7 +540,7 @@ namespace browser::platform {
             case WM_RBUTTONDOWN:
             case WM_MBUTTONDOWN:
                 if (win) {
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::MOUSE_DOWN;
                     e.button = (msg == WM_LBUTTONDOWN)   ? MouseButton::LEFT
                                : (msg == WM_RBUTTONDOWN) ? MouseButton::RIGHT
@@ -549,7 +555,7 @@ namespace browser::platform {
             case WM_RBUTTONUP:
             case WM_MBUTTONUP:
                 if (win) {
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::MOUSE_UP;
                     e.button = (msg == WM_LBUTTONUP)   ? MouseButton::LEFT
                                : (msg == WM_RBUTTONUP) ? MouseButton::RIGHT
@@ -562,7 +568,7 @@ namespace browser::platform {
 
             case WM_MOUSEWHEEL:
                 if (win) {
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::MOUSE_SCROLL;
                     e.scroll_delta = (i32)GET_WHEEL_DELTA_WPARAM(wparam) / WHEEL_DELTA;
                     win->dispatch_event(e);
@@ -571,7 +577,7 @@ namespace browser::platform {
 
             case WM_DESTROY:
                 if (win) {
-                    Event e;
+                    Event e{};
                     e.type = Event::Type::WINDOW_CLOSE;
                     win->dispatch_event(e);
                 }
