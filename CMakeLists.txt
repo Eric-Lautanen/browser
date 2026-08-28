@@ -214,6 +214,8 @@ add_library(css STATIC
     css/cascade/shorthand_border.hpp
     css/cascade/shorthand_font.cpp
     css/cascade/shorthand_font.hpp
+    css/cascade/shorthand_animation.cpp
+    css/cascade/shorthand_animation.hpp
     css/cascade/selector_index.cpp
     css/cascade/selector_index.hpp
     css/constants.hpp
