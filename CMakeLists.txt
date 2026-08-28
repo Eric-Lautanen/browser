@@ -468,7 +468,7 @@ add_browser_test(cookie_test LIBS net)
 add_browser_test(storage_test LIBS net)
 
 # --- Browser executable ---
-add_executable(browser src/main.cpp src/dump/json_writer.cpp src/dump/dom_dump.cpp src/dump/css_dump.cpp src/dump/cascade_dump.cpp src/dump/layout_dump.cpp src/dump/display_list_dump.cpp)
+add_executable(browser src/main.cpp src/dump/json_writer.cpp src/dump/dom_dump.cpp src/dump/css_dump.cpp src/dump/cascade_dump.cpp src/dump/layout_dump.cpp src/dump/display_list_dump.cpp src/dump/helpers.cpp)
 target_link_libraries(browser net platform render js browser_lib)
 
 # Custom target to run all tests

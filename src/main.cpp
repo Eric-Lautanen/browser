@@ -6,6 +6,7 @@
 #include "dump/cascade_dump.hpp"
 #include "dump/layout_dump.hpp"
 #include "dump/display_list_dump.hpp"
+#include "dump/helpers.hpp"
 #include "../css/cascade.hpp"
 #include "../css/layout.hpp"
 #include "../css/parser.hpp"
@@ -33,93 +34,7 @@
 using browser::f32;
 using browser::u32;
 
-// ---------------------------------------------------------------------------
-// Text measurer
-// ---------------------------------------------------------------------------
-static f32 headless_text_measure(void *, const std::string &text, u32 pixel_size) {
-    return static_cast<f32>(text.size()) * static_cast<f32>(pixel_size) * 0.6f;
-}
-static browser::css::FontMetrics headless_text_metrics(void *, u32 pixel_size) {
-    browser::css::FontMetrics fm = {};
-    fm.ascender = (f32)pixel_size * 0.8f;
-    fm.descender = (f32)pixel_size * -0.2f;
-    return fm;
-}
-
-static f32 text_measure_cb(void *ctx, const std::string &text, u32 pixel_size) {
-    return static_cast<browser::render::TextRenderer *>(ctx)->measure_text(text, pixel_size);
-}
-static browser::css::FontMetrics text_metrics_cb(void *ctx, u32 pixel_size) {
-    return static_cast<browser::render::TextRenderer *>(ctx)->get_font_metrics(pixel_size);
-}
-
-struct FontSetup {
-    std::unique_ptr<browser::render::FontManager> fm;
-    std::unique_ptr<browser::render::TextRenderer> tr;
-    bool ok = false;
-};
-
-static FontSetup setup_font() {
-    FontSetup fs;
-    fs.fm = std::make_unique<browser::render::FontManager>();
-    fs.tr = std::make_unique<browser::render::TextRenderer>();
-    auto r = fs.fm->load_default_font();
-    if (r.is_ok()) {
-        fs.tr->set_font_face(r.unwrap(), fs.fm.get());
-        fs.ok = true;
-    }
-    return fs;
-}
-
-// ---------------------------------------------------------------------------
-// Collect inline CSS from <style> tags
-// ---------------------------------------------------------------------------
-static std::string collect_css_from_dom(browser::html::Node *node) {
-    std::string css;
-    browser::html::traverse_depth_first(node, [&](browser::html::Node *n) {
-        if (n->type == browser::html::NodeType::ELEMENT) {
-            auto *el = static_cast<browser::html::Element *>(n);
-            if (el->tag_name == "style") {
-                for (auto &ch : n->children) {
-                    if (ch->type == browser::html::NodeType::TEXT) {
-                        css += static_cast<browser::html::Text *>(ch.get())->data + "\n";
-                    }
-                }
-            }
-        }
-    });
-    return css;
-}
-
-// ---------------------------------------------------------------------------
-// Normal browser mode
-// ---------------------------------------------------------------------------
-static int run_test_suite(const std::string &test_dir, const std::string &filter_str);
-
-static int run_browser(const std::string &url) {
-    ::browser::install_crash_reporter("browser");
-    browser::BrowserWindow browser;
-    auto r = browser.initialize();
-    if (r.is_err()) {
-        std::cerr << "Failed to initialize: " << r.unwrap_err() << std::endl;
-        return 1;
-    }
-    browser.navigate(url);
-    browser.run();
-    return 0;
-}
-
-static int run_browser_screenshot(const std::string &filepath, const std::string &outpath) {
-    browser::BrowserWindow browser;
-    auto r = browser.initialize();
-    if (r.is_err()) {
-        std::cerr << "Failed to initialize: " << r.unwrap_err() << std::endl;
-        return 1;
-    }
-    browser.navigate(filepath);
-    browser.run_with_screenshot(outpath);
-    return 0;
-}
+int run_test_suite(const std::string &test_dir, const std::string &filter_str);
 
 // ---------------------------------------------------------------------------
 // Main dispatch
@@ -294,7 +209,7 @@ int main(int argc, char **argv) {
 // ---------------------------------------------------------------------------
 // --test-suite: runs all tests in a directory in a single process
 // ---------------------------------------------------------------------------
-static int run_test_suite(const std::string &test_dir, const std::string &filter_str) {
+int run_test_suite(const std::string &test_dir, const std::string &filter_str) {
     SetProcessDPIAware();
     int total = 0, passed_total = 0, failed_total = 0, critical_total = 0;
 
