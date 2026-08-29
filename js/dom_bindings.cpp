@@ -1,7 +1,11 @@
 #include "dom_bindings.hpp"
 #include "vm.hpp"
 #include "gc.hpp"
+#include "../css/parser.hpp"
+#include "../css/selector_match.hpp"
 #include "../html/traversal.hpp"
+
+#include <algorithm>
 
 namespace browser::js {
 
@@ -30,7 +34,11 @@ void DOMBindings::set_up_element_methods(JSObject* obj, html::Element* el, VM* v
     obj->set("getAttribute", JSValue::function(vm->create_native_fn(native_get_attribute, false, ctx)));
     obj->set("setAttribute", JSValue::function(vm->create_native_fn(native_set_attribute, false, ctx)));
     obj->set("appendChild", JSValue::function(vm->create_native_fn(native_append_child, false, ctx)));
+    obj->set("removeChild", JSValue::function(vm->create_native_fn(native_remove_child, false, ctx)));
     obj->set("querySelector", JSValue::function(vm->create_native_fn(native_query_selector, false, ctx)));
+    obj->set("querySelectorAll", JSValue::function(vm->create_native_fn(native_query_selector_all, false, ctx)));
+    obj->set("textContent", JSValue::function(vm->create_native_fn(native_get_text_content, false, ctx)));
+    obj->set("setTextContent", JSValue::function(vm->create_native_fn(native_set_text_content, false, ctx)));
     obj->set("addEventListener", JSValue::function(vm->create_native_fn(native_add_event_listener, false, ctx)));
 
     if (element_extender_)
@@ -40,21 +48,31 @@ void DOMBindings::set_up_element_methods(JSObject* obj, html::Element* el, VM* v
 void DOMBindings::set_up_document_methods(JSObject* obj, html::Element* el, VM* vm) {
     auto* ctx = make_context(el, vm);
     obj->set("getElementById", JSValue::function(vm->create_native_fn(native_get_element_by_id, false, ctx)));
+    obj->set("createElement", JSValue::function(vm->create_native_fn(native_create_element, false, ctx)));
+    obj->set("createTextNode", JSValue::function(vm->create_native_fn(native_create_text_node, false, ctx)));
+    obj->set("querySelector", JSValue::function(vm->create_native_fn(native_query_selector, false, ctx)));
+    obj->set("querySelectorAll", JSValue::function(vm->create_native_fn(native_query_selector_all, false, ctx)));
 }
 
-JSValue DOMBindings::wrap_element(html::Element* element, VM* vm) {
-    auto* existing = get_dom_wrapper(element);
+JSValue DOMBindings::wrap_node(html::Node* node, VM* vm) {
+    if (!node) return JSValue::null();
+    auto* existing = get_dom_wrapper(node);
     if (existing) return JSValue::object(existing);
 
     auto* gc_obj = vm->heap()->alloc_object();
     auto* obj = &gc_obj->obj;
 
-    wrappers_.node_to_wrapper[element] = gc_obj;
-    wrappers_.wrapper_to_node[&gc_obj->obj] = element;
+    wrappers_.node_to_wrapper[node] = gc_obj;
+    wrappers_.wrapper_to_node[&gc_obj->obj] = node;
 
-    set_up_element_methods(obj, element, vm);
+    if (node->type == html::NodeType::ELEMENT)
+        set_up_element_methods(obj, static_cast<html::Element*>(node), vm);
 
     return JSValue::object(obj);
+}
+
+JSValue DOMBindings::wrap_element(html::Element* element, VM* vm) {
+    return wrap_node(element, vm);
 }
 
 JSObject* DOMBindings::get_dom_wrapper(html::Node* node) const {
@@ -175,11 +193,18 @@ JSValue DOMBindings::native_append_child(const std::vector<JSValue> &args, void 
     if (!child_node)
         return JSValue::null();
 
-    // Take ownership from the old parent; only re-home the node when we
-    // actually obtained its unique_ptr, otherwise ownership is ambiguous.
-    auto owned = html::detach_from_parent(child_node);
-    if (!owned)
-        return JSValue::null();
+    // Take ownership from the old parent; nodes created by createElement or
+    // removed by removeChild live in the orphan store instead.
+    std::unique_ptr<html::Node> owned = html::detach_from_parent(child_node);
+    if (!owned) {
+        auto &orphans = ctx->bindings->orphan_owned_nodes_;
+        auto it = std::find_if(
+            orphans.begin(), orphans.end(), [child_node](const auto &p) { return p.get() == child_node; });
+        if (it == orphans.end())
+            return JSValue::null();
+        owned = std::move(*it);
+        orphans.erase(it);
+    }
 
     child_node->parent = ctx->element;
     if (!ctx->element->children.empty()) {
@@ -192,16 +217,114 @@ JSValue DOMBindings::native_append_child(const std::vector<JSValue> &args, void 
     return args[1];
 }
 
+JSValue DOMBindings::native_remove_child(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<NativeCallContext *>(context);
+    if (args.size() < 2 || args[1].type != JSValue::Type::OBJECT)
+        return JSValue::null();
+    auto *child_node = ctx->bindings->get_node_from_wrapper(args[1].object_val);
+    if (!child_node || child_node->parent != ctx->element)
+        return JSValue::null();
+
+    auto owned = html::detach_from_parent(child_node);
+    if (!owned)
+        return JSValue::null();
+    // Keep the subtree alive: the JS wrapper still references it.
+    ctx->bindings->orphan_owned_nodes_.push_back(std::move(owned));
+    return args[1];
+}
+
+// Matches any of a comma-separated selector list against `el`.
+static bool element_matches_selector_list(const std::string &selector_text,
+                                          html::Element *el,
+                                          html::Node *root) {
+    css::CssParser parser(selector_text);
+    auto selectors = parser.parse_selectors(selector_text);
+    if (selectors.empty())
+        return false;
+    for (const auto &sel : selectors) {
+        if (css::matches_selector(sel, el, root))
+            return true;
+    }
+    return false;
+}
+
 JSValue DOMBindings::native_query_selector(const std::vector<JSValue>& args, void* context) {
     auto* ctx = static_cast<NativeCallContext*>(context);
     // args[0] = this, args[1] = selector
     if (args.size() < 2) return JSValue::null();
     std::string selector = args[1].to_string();
-    auto* found = html::find_element_by_tag(ctx->element, selector);
-    if (found) {
+    if (selector.empty()) return JSValue::null();
+
+    html::Element* found = nullptr;
+    html::traverse_depth_first(ctx->element, [&](html::Node* node) {
+        if (found || node == ctx->element || node->type != html::NodeType::ELEMENT)
+            return;
+        auto* el = static_cast<html::Element*>(node);
+        if (element_matches_selector_list(selector, el, ctx->element))
+            found = el;
+    });
+    if (found)
         return ctx->bindings->wrap_element(found, ctx->vm);
-    }
     return JSValue::null();
+}
+
+JSValue DOMBindings::native_query_selector_all(const std::vector<JSValue>& args, void* context) {
+    auto* ctx = static_cast<NativeCallContext*>(context);
+    auto* vm = ctx->vm;
+    auto* arr = vm->heap()->alloc_object();
+    arr->obj.is_array = true;
+    if (args.size() >= 2) {
+        std::string selector = args[1].to_string();
+        if (!selector.empty()) {
+            html::traverse_depth_first(ctx->element, [&](html::Node* node) {
+                if (node == ctx->element || node->type != html::NodeType::ELEMENT)
+                    return;
+                auto* el = static_cast<html::Element*>(node);
+                if (element_matches_selector_list(selector, el, ctx->element)) {
+                    arr->obj.array_elements.push_back(ctx->bindings->wrap_element(el, vm));
+                }
+            });
+        }
+    }
+    return JSValue::object(&arr->obj);
+}
+
+JSValue DOMBindings::native_create_element(const std::vector<JSValue>& args, void* context) {
+    auto* ctx = static_cast<NativeCallContext*>(context);
+    if (args.size() < 2)
+        return JSValue::null();
+    std::string tag = args[1].to_string();
+    for (auto &c : tag)
+        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (tag.empty())
+        return JSValue::null();
+    auto el = html::create_element(tag);
+    html::Element* raw = el.get();
+    ctx->bindings->orphan_owned_nodes_.push_back(std::move(el));
+    return ctx->bindings->wrap_element(raw, ctx->vm);
+}
+
+JSValue DOMBindings::native_create_text_node(const std::vector<JSValue>& args, void* context) {
+    auto* ctx = static_cast<NativeCallContext*>(context);
+    std::string data = args.size() >= 2 ? args[1].to_string() : "";
+    auto text = html::create_text(data);
+    html::Node* raw = text.get();
+    ctx->bindings->orphan_owned_nodes_.push_back(std::move(text));
+    return ctx->bindings->wrap_node(raw, ctx->vm);
+}
+
+JSValue DOMBindings::native_get_text_content(const std::vector<JSValue>& args, void* context) {
+    (void)args;
+    auto* ctx = static_cast<NativeCallContext*>(context);
+    return JSValue::string(html::inner_text(ctx->element));
+}
+
+JSValue DOMBindings::native_set_text_content(const std::vector<JSValue>& args, void* context) {
+    auto* ctx = static_cast<NativeCallContext*>(context);
+    std::string data = args.size() >= 2 ? args[1].to_string() : "";
+    ctx->element->children.clear();
+    html::append_child(ctx->element, html::create_text(data));
+    return JSValue::undefined();
 }
 
 JSValue DOMBindings::native_add_event_listener(const std::vector<JSValue>& args, void* context) {

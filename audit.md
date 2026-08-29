@@ -36,11 +36,11 @@
 
 ## Remaining Gaps Observed on google.com (priority order)
 
-1. **Header (`#gb`) does not render** — `.gb_be` computes `display:flex` *and* `float:right`; the flex branch in `layout_block` returns early so the float is dropped and the flex container stretches full width; inner elements collapse. Needs: flex containers to participate in float layout (or shrink-to-fit when floated), plus nested-float shrink re-layout ordering.
-2. **CSS custom properties** — `var()` resolution mangles nested fallbacks (`var(--a, var(--b, #fff))` produces `var--b...` strings) and unresolved values are stored as STRING, failing later parses (`padding-left` got a COLOR value). Needs: resolve custom properties at computed-value time with proper recursion.
-3. **SVG not wired into paint** — `svg_renderer.cpp` exists but the painter never draws inline `<svg>` (the Google apps icon is missing). Layout defaults it to 300×150.
-4. **RegExp is literal substring matching** — still the #1 JS incompatibility for modern sites (google.com serves a no-JS fallback to this UA, so it renders without JS).
-5. **JS API completeness** — `createElement`/`querySelectorAll`/`location`/real `Promise`/`Map`/`Set`/modules remain unimplemented (see JS gaps below).
+1. **Header (`#gb`) content renders but is mispositioned** — after the flex-item measurement and var() fixes, the Sign-in button and the apps SVG icon render, but the nested flex/float/inline measurement is unstable (`flex-basis:auto` items are measured by a throwaway layout whose stretched states leak into later passes). Needs a real max-content/intrinsic-width measurement that doesn't mutate the tree (CSS sizing §9 intrinsic contributions).
+2. **CSS custom properties** — resolution and inheritance work now (including nested fallbacks); still missing: var() inside shorthands that expand positionally (`background`/`animation` slots), `@property` registration, and cycle detection beyond the 64-iteration guard.
+3. **RegExp is literal substring matching** — still the #1 JS incompatibility for modern sites (google.com serves a no-JS fallback to this UA, so it renders without JS).
+4. **JS API completeness** — `createElement`/`querySelectorAll`/`location`/real `Promise`/`Map`/`Set`/modules remain unimplemented (see JS gaps below).
+5. **Brotli** — `Accept-Encoding` advertises gzip/deflate only; many CDNs serve `br` to modern UAs (we ask for what we support, so this is an efficiency gap, not a correctness one).
 
 ---
 

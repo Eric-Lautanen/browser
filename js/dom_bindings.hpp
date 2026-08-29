@@ -37,6 +37,7 @@ namespace browser::js {
         static void set_element_extender(ElementExtender ext) { element_extender_ = ext; }
 
         JSValue wrap_element(html::Element *element, VM *vm);
+        JSValue wrap_node(html::Node *node, VM *vm);
         JSObject *get_dom_wrapper(html::Node *node) const;
         html::Node *get_node_from_wrapper(JSObject *wrapper) const;
         void register_dom_bindings(VM *vm, html::Element *document_element);
@@ -55,6 +56,10 @@ namespace browser::js {
         DOMWrapperMap wrappers_;
         std::vector<JSValue> gc_stable_;
         std::unordered_map<html::Node *, std::vector<ListenerEntry>> event_listeners_;
+        // Nodes created by createElement/createTextNode and nodes removed via
+        // removeChild: JS wrappers reference them, so ownership lives here
+        // until appendChild re-homes them into the document tree.
+        std::vector<std::unique_ptr<html::Node>> orphan_owned_nodes_;
 
         NativeCallContext *make_context(html::Element *el, VM *vm);
         std::vector<std::unique_ptr<NativeCallContext>> contexts_;
@@ -68,9 +73,15 @@ namespace browser::js {
         static JSValue native_get_attribute(const std::vector<JSValue> &args, void *context);
         static JSValue native_set_attribute(const std::vector<JSValue> &args, void *context);
         static JSValue native_append_child(const std::vector<JSValue> &args, void *context);
+        static JSValue native_remove_child(const std::vector<JSValue> &args, void *context);
         static JSValue native_query_selector(const std::vector<JSValue> &args, void *context);
+        static JSValue native_query_selector_all(const std::vector<JSValue> &args, void *context);
         static JSValue native_add_event_listener(const std::vector<JSValue> &args, void *context);
         static JSValue native_get_element_by_id(const std::vector<JSValue> &args, void *context);
+        static JSValue native_create_element(const std::vector<JSValue> &args, void *context);
+        static JSValue native_create_text_node(const std::vector<JSValue> &args, void *context);
+        static JSValue native_get_text_content(const std::vector<JSValue> &args, void *context);
+        static JSValue native_set_text_content(const std::vector<JSValue> &args, void *context);
 
         static ElementExtender element_extender_;
     };

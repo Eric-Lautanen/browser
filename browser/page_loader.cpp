@@ -432,6 +432,14 @@ namespace browser {
         if (title_el)
             page.page_title = html::inner_text(title_el);
 
+        // BR-C11: run the page's inline scripts between DOM construction and
+        // layout so script-driven DOM mutation is reflected in rendering.
+        // External scripts queue on the resource loader (JS priority) and are
+        // attached + executed deferred once fetched below.
+        setup_page_scripts(page.dom.get(), req.url);
+        if (script_runner_)
+            script_runner_->execute_immediate();
+
         std::string merged_css;
         collect_css(page.dom.get(), merged_css, req.url);
         co_await fetch_css_content(merged_css);
@@ -463,10 +471,16 @@ namespace browser {
             co_await load_font_faces(font_faces, req.url);
         }
 
-        // Load and decode images
+        // Load and decode images (external scripts were queued with JS
+        // priority and attached to the runner inside load_and_decode_images).
         collect_resources(page.dom.get(), req.url);
         co_await load_and_decode_images(base_url_str);
         page.images = loaded_images_;
+
+        // BR-C11: deferred/external scripts execute after the DOM and their
+        // fetched data are final, before layout.
+        if (script_runner_)
+            script_runner_->execute_deferred();
 
         if (page.dom) {
             css::LayoutEngine layout_engine;
