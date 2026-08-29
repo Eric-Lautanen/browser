@@ -77,6 +77,7 @@ namespace browser::js {
         TEMPLATE_LITERAL,
         NOP,
         PUSH_FUNCTION,
+        PUSH_REGEX,
         OPCODE_COUNT
     };
 

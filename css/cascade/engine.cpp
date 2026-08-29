@@ -29,7 +29,8 @@ tbody { display: table-row-group; }
 tfoot { display: table-footer-group; }
 th, td { display: table-cell; }
 caption { display: table-caption; }
-pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, optgroup, option, select, button, textarea, input { display: block; }
+pre, blockquote, article, aside, section, header, footer, nav, main, dl, dt, dd, details, summary, figure, figcaption, hr, form, fieldset, address, optgroup, select, button, textarea, input { display: block; }
+option { display: none; }
 head, link, meta, title, style, script, noscript { display: none; }
 input[type="hidden"] { display: none; }
 b, i, u, s, span, a, strong, em, code, mark, sub, sup, small, label, abbr, cite, dfn, kbd, q, samp, tt, var { display: inline; }
@@ -44,6 +45,8 @@ h5 { font-size: 0.83em; font-weight: bold; margin-top: 1.67em; margin-bottom: 1.
 h6 { font-size: 0.67em; font-weight: bold; margin-top: 2.33em; margin-bottom: 2.33em; }
 p { margin-top: 1em; margin-bottom: 1em; }
 ul, ol { padding-left: 40px; }
+ul { list-style-type: disc; }
+ol { list-style-type: decimal; }
 a { color: blue; cursor: pointer; }
 strong { font-weight: bold; }
 em { font-style: italic; }

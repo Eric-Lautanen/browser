@@ -831,16 +831,19 @@ namespace browser {
     void BrowserWindow::compute_layout() {
         f32 right = static_cast<f32>(viewport_width_);
 
-        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
+        // Tabs sit in the titlebar; align them vertically with the BTN_SIZE row.
+        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::TAB_H) / 2.0f;
         f32 cx = ChromeUI::PADDING;
 
         chrome_.rects.tab_close.resize(chrome_.tabs.size());
         for (u32 i = 0; i < chrome_.tabs.size(); i++) {
             f32 tx = cx + i * (ChromeUI::TAB_W + 2);
-            chrome_.rects.tab_close[i] = {tx + ChromeUI::TAB_W - 14, tab_y + 2, 12, 12};
+            // Close button hugs the right edge of the tab with a small inset.
+            chrome_.rects.tab_close[i] = {tx + ChromeUI::TAB_W - ChromeUI::TAB_CLOSE_W - 2, tab_y + (ChromeUI::TAB_H - ChromeUI::TAB_CLOSE_H) / 2.0f,
+                                          ChromeUI::TAB_CLOSE_W, ChromeUI::TAB_CLOSE_H};
         }
         f32 tabs_end = cx + chrome_.tabs.size() * (ChromeUI::TAB_W + 2);
-        chrome_.rects.new_tab = {tabs_end, tab_y, ChromeUI::NEW_TAB_W, ChromeUI::BTN_SIZE};
+        chrome_.rects.new_tab = {tabs_end + 4, (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f, ChromeUI::NEW_TAB_W, ChromeUI::BTN_SIZE};
 
         const f32 CAP_W = 46.0f, CAP_H = ChromeUI::TITLEBAR_H;
         chrome_.rects.close_btn = {right - CAP_W, 0, CAP_W, CAP_H};
@@ -1030,8 +1033,8 @@ namespace browser {
 
     i32 BrowserWindow::tab_index_at(i32 mx, i32 my) const {
         f32 fmy = static_cast<f32>(my);
-        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
-        if (fmy < tab_y || fmy >= tab_y + ChromeUI::BTN_SIZE)
+        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::TAB_H) / 2.0f;
+        if (fmy < tab_y || fmy >= tab_y + ChromeUI::TAB_H)
             return -1;
         f32 fmx = static_cast<f32>(mx);
         for (u32 i = 0; i < chrome_.tabs.size(); i++) {
@@ -1044,11 +1047,11 @@ namespace browser {
 
     bool BrowserWindow::new_tab_button_hit(i32 mx, i32 my) const {
         f32 fmy = static_cast<f32>(my);
-        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
-        if (fmy < tab_y || fmy >= tab_y + ChromeUI::BTN_SIZE)
+        f32 ntab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
+        if (fmy < ntab_y || fmy >= ntab_y + ChromeUI::BTN_SIZE)
             return false;
         f32 fmx = static_cast<f32>(mx);
-        f32 nx = ChromeUI::PADDING + static_cast<f32>(chrome_.tabs.size()) * (ChromeUI::TAB_W + 2);
+        f32 nx = ChromeUI::PADDING + static_cast<f32>(chrome_.tabs.size()) * (ChromeUI::TAB_W + 2) + 4.0f;
         return fmx >= nx && fmx <= nx + ChromeUI::NEW_TAB_W;
     }
 

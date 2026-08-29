@@ -878,9 +878,22 @@ namespace browser {
 
         i32 tab = tab_index_at(mx, my);
         if (tab >= 0) {
-            select_tab(static_cast<u32>(tab));
+            // Double-click on a tab toggles window maximize (mainstream
+            // browser behavior). Reuse the platform double-click time.
+            auto now = std::chrono::steady_clock::now();
+            u64 ms = static_cast<u64>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+            if (ms - chrome_.last_tab_click_ms <= GetDoubleClickTime() && chrome_.last_tab_click_idx == tab) {
+                auto *w32 = static_cast<platform::Win32Window *>(window_.get());
+                w32->toggle_maximize();
+            } else {
+                select_tab(static_cast<u32>(tab));
+            }
+            chrome_.last_tab_click_ms = ms;
+            chrome_.last_tab_click_idx = tab;
             return;
         }
+        chrome_.last_tab_click_idx = -1;
 
         if (new_tab_button_hit(mx, my)) {
             new_tab();

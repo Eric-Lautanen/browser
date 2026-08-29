@@ -255,6 +255,28 @@ namespace browser::js {
                     push(JSValue::string(func->constants[idx].str));
                     break;
                 }
+                case Opcode::PUSH_REGEX: {
+                    // Regex literal: constant is "/pattern/flags". Build the
+                    // object through the global RegExp constructor.
+                    u32 idx = std::get<u32>(instr.operand);
+                    std::string text = func->constants[idx].str;
+                    if (text.size() >= 2 && text[0] == '/') {
+                        size_t close = text.rfind('/');
+                        std::string pattern = close > 0 ? text.substr(1, close - 1) : text.substr(1);
+                        std::string flags = close + 1 < text.size() ? text.substr(close + 1) : "";
+                        JSValue ctor = global_object()->get("RegExp");
+                        if (ctor.type == JSValue::Type::FUNCTION && ctor.function_val) {
+                            std::vector<JSValue> ctor_args = {JSValue::undefined(), JSValue::string(pattern),
+                                                              JSValue::string(flags)};
+                            push(invoke(ctor, ctor_args, JSValue::undefined()));
+                        } else {
+                            push(JSValue::string(text));
+                        }
+                    } else {
+                        push(JSValue::string(text));
+                    }
+                    break;
+                }
                 case Opcode::PUSH_BOOL: {
                     u32 idx = std::get<u32>(instr.operand);
                     push(JSValue::boolean(func->constants[idx].boolean));

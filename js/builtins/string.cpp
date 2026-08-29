@@ -154,6 +154,30 @@ namespace browser::js::builtins {
             elements.push_back(JSValue::string(s));
             return JSValue::object(&arr_gc->obj);
         }
+        if (value_is_regexp(args[1])) {
+            // Split at each match; empty matches advance one codepoint.
+            u32 start = 0;
+            u32 search_from = 0;
+            while (search_from <= s.size()) {
+                JSValue m = regexp_exec_at(ctx->vm, args[1], s, search_from);
+                if (m.type != JSValue::Type::OBJECT || !m.object_val)
+                    break;
+                JSValue idx_v = m.object_val->get("index");
+                u32 idx = idx_v.type == JSValue::Type::NUMBER ? static_cast<u32>(idx_v.number_val) : 0;
+                std::string full = m.object_val->array_elements.empty()
+                                       ? std::string()
+                                       : m.object_val->array_elements[0].to_string();
+                u32 mlen = static_cast<u32>(full.size());
+                elements.push_back(JSValue::string(s.substr(start, idx - start)));
+                u32 next = idx + mlen;
+                if (next == idx)
+                    next += 1;  // empty match
+                start = next;
+                search_from = next;
+            }
+            elements.push_back(JSValue::string(s.substr(start)));
+            return JSValue::object(&arr_gc->obj);
+        }
         std::string sep = args[1].to_string();
         if (sep.empty()) {
             for (char c : s) elements.push_back(JSValue::string(std::string(1, c)));
@@ -211,18 +235,85 @@ namespace browser::js::builtins {
         return JSValue::string(s);
     }
 
-    static JSValue string_replace(const std::vector<JSValue> &args, void *) {
+    static JSValue string_replace(const std::vector<JSValue> &args, void *context) {
+        auto *ctx = static_cast<StringCtx *>(context);
         std::string s = args[0].to_string();
-        std::string search = args.size() > 1 ? args[1].to_string() : "";
         std::string repl = args.size() > 2 ? args[2].to_string() : "";
+        bool repl_is_fn = args.size() > 2 && args[2].type == JSValue::Type::FUNCTION;
+        if (value_is_regexp(args[1])) {
+            const JSValue &re = args[1];
+            JSValue g = re.object_val->get("global");
+            bool global = g.type == JSValue::Type::BOOLEAN && g.bool_val;
+            std::string result;
+            u32 start = 0;
+            u32 from = 0;
+            bool any = false;
+            while (from <= s.size()) {
+                JSValue m = regexp_exec_at(ctx->vm, re, s, from);
+                if (m.type != JSValue::Type::OBJECT || !m.object_val)
+                    break;
+                any = true;
+                JSValue idx_v = m.object_val->get("index");
+                u32 idx = idx_v.type == JSValue::Type::NUMBER ? static_cast<u32>(idx_v.number_val) : 0;
+                std::string full = m.object_val->array_elements.empty()
+                                       ? std::string()
+                                       : m.object_val->array_elements[0].to_string();
+                std::vector<std::string> groups;
+                for (size_t gi = 1; gi < m.object_val->array_elements.size(); gi++)
+                    groups.push_back(m.object_val->array_elements[gi].to_string());
+                result += s.substr(start, idx - start);
+                if (repl_is_fn) {
+                    std::vector<JSValue> cb = {JSValue::undefined(), JSValue::string(full)};
+                    for (auto &gstr : groups) cb.push_back(JSValue::string(gstr));
+                    cb.push_back(JSValue::number(static_cast<f64>(idx)));
+                    cb.push_back(JSValue::string(s));
+                    JSValue r = ctx->vm->invoke(JSValue::function(args[2].function_val), cb, JSValue::undefined());
+                    result += r.to_string();
+                } else {
+                    result += regexp_expand_replacement(repl, s, full, groups, idx);
+                }
+                u32 next = idx + static_cast<u32>(full.size());
+                if (next == idx)
+                    next += 1;  // empty match
+                start = next;
+                if (!global)
+                    break;
+                from = next;
+            }
+            if (!any)
+                return JSValue::string(s);
+            result += s.substr(start);
+            return JSValue::string(result);
+        }
+        std::string search = args.size() > 1 ? args[1].to_string() : "";
         auto pos = s.find(search);
         if (pos == std::string::npos)
             return JSValue::string(s);
+        if (repl_is_fn) {
+            std::vector<JSValue> cb = {JSValue::undefined(), JSValue::string(search),
+                                       JSValue::number(static_cast<f64>(pos)), JSValue::string(s)};
+            JSValue r = ctx->vm->invoke(JSValue::function(args[2].function_val), cb, JSValue::undefined());
+            repl = r.to_string();
+        }
         return JSValue::string(s.substr(0, pos) + repl + s.substr(pos + search.size()));
     }
 
-    static JSValue string_replace_all(const std::vector<JSValue> &args, void *) {
+    static JSValue string_replace_all(const std::vector<JSValue> &args, void *context) {
+        auto *ctx = static_cast<StringCtx *>(context);
         std::string s = args[0].to_string();
+        if (value_is_regexp(args[1])) {
+            // replaceAll is always global: clone the regex with the g flag.
+            std::vector<JSValue> replace_args = {args[0], args[1], args[2]};
+            JSValue flags_v = args[1].object_val->get("flags");
+            std::string fl = flags_v.type == JSValue::Type::STRING ? flags_v.string_val : "";
+            if (fl.find('g') == std::string::npos) {
+                JSValue src_v = args[1].object_val->get("source");
+                JSValue re2 = regexp_make(ctx->vm, src_v.type == JSValue::Type::STRING ? src_v.string_val : "(?:)",
+                                          fl + "g");
+                replace_args[1] = re2;
+            }
+            return string_replace(replace_args, context);
+        }
         std::string search = args.size() > 1 ? args[1].to_string() : "";
         std::string repl = args.size() > 2 ? args[2].to_string() : "";
         if (search.empty())
@@ -237,8 +328,16 @@ namespace browser::js::builtins {
         return JSValue::string(result);
     }
 
-    static JSValue string_search(const std::vector<JSValue> &args, void *) {
+    static JSValue string_search(const std::vector<JSValue> &args, void *context) {
+        auto *ctx = static_cast<StringCtx *>(context);
         std::string s = args[0].to_string();
+        if (value_is_regexp(args[1])) {
+            JSValue m = regexp_exec_at(ctx->vm, args[1], s, 0);
+            if (m.type != JSValue::Type::OBJECT || !m.object_val)
+                return JSValue::number(-1);
+            JSValue idx_v = m.object_val->get("index");
+            return JSValue::number(idx_v.type == JSValue::Type::NUMBER ? idx_v.number_val : -1);
+        }
         std::string pattern = args.size() > 1 ? args[1].to_string() : "";
         auto pos = s.find(pattern);
         if (pos == std::string::npos)
@@ -246,8 +345,37 @@ namespace browser::js::builtins {
         return JSValue::number(static_cast<f64>(pos));
     }
 
-    static JSValue string_match(const std::vector<JSValue> &args, void *) {
+    static JSValue string_match(const std::vector<JSValue> &args, void *context) {
+        auto *ctx = static_cast<StringCtx *>(context);
         std::string s = args[0].to_string();
+        if (value_is_regexp(args[1])) {
+            const JSValue &re = args[1];
+            JSValue g = re.object_val->get("global");
+            if (g.type == JSValue::Type::BOOLEAN && g.bool_val) {
+                auto *arr = ctx->vm->heap()->alloc_object();
+                arr->obj.is_array = true;
+                u32 from = 0;
+                while (from <= s.size()) {
+                    JSValue m = regexp_exec_at(ctx->vm, re, s, from);
+                    if (m.type != JSValue::Type::OBJECT || !m.object_val)
+                        break;
+                    JSValue full = m.object_val->array_elements.empty()
+                                       ? JSValue::string("")
+                                       : m.object_val->array_elements[0];
+                    arr->obj.array_elements.push_back(full);
+                    JSValue idx_v = m.object_val->get("index");
+                    u32 idx = idx_v.type == JSValue::Type::NUMBER ? static_cast<u32>(idx_v.number_val) : 0;
+                    u32 next = idx + static_cast<u32>(full.to_string().size());
+                    if (next == idx)
+                        next += 1;
+                    from = next;
+                }
+                if (arr->obj.array_elements.empty())
+                    return JSValue::null();
+                return JSValue::object(&arr->obj);
+            }
+            return regexp_exec_at(ctx->vm, re, s, 0);
+        }
         std::string pattern = args.size() > 1 ? args[1].to_string() : "";
         auto pos = s.find(pattern);
         if (pos == std::string::npos)

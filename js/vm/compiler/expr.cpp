@@ -65,7 +65,7 @@ namespace browser::js {
             }
             case LiteralExpr::Type::REGEXP: {
                 u32 idx = add_constant({BytecodeFunction::Constant::Type::STRING, 0, lit.string_val});
-                current_->emit(Opcode::PUSH_STRING, idx);
+                current_->emit(Opcode::PUSH_REGEX, idx);
                 break;
             }
         }

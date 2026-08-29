@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdlib>
+#include <functional>
 
 namespace browser::css {
 
@@ -373,23 +374,61 @@ namespace browser::css {
                 } else if (tag == "input" && type == "radio") {
                     node->content.width = 13.0f;
                     node->content.height = 13.0f;
-                } else if (tag == "button" || (tag == "input" && type == "submit")) {
-                    if (width_auto) {
-                        std::string label = el->get_attribute("value");
-                        if (label.empty())
-                            label = tag;
-                        node->content.width = static_cast<f32>(label.size()) * 7.0f + 20.0f;
-                    }
-                    if (node->content.height == 0)
-                        node->content.height = font_size + 8.0f;
                 } else if (tag == "select") {
                     if (width_auto) {
-                        std::string val = el->get_attribute("value");
-                        f32 tw = static_cast<f32>(val.size()) * 7.0f + 30.0f;
-                        node->content.width = std::max(tw, 50.0f);
+                        // The width should fit the longest option text (plus
+                        // a 20-px dropdown arrow + 6 px padding). Using
+                        // el->get_attribute("value") gives 0 since <select>
+                        // rarely has a value attribute, which made selects
+                        // collapse to 30 px wide.
+                        f32 max_tw = 0.0f;
+                        std::function<void(html::Node *)> scan = [&](html::Node *parent) {
+                            for (auto &c : parent->children) {
+                                if (c->type != html::NodeType::ELEMENT)
+                                    continue;
+                                auto *ch = static_cast<html::Element *>(c.get());
+                                if (ch->tag_name == "option") {
+                                    std::string opt_text;
+                                    for (auto &tc : ch->children) {
+                                        if (tc->type == html::NodeType::TEXT)
+                                            opt_text += static_cast<html::Text *>(tc.get())->data;
+                                    }
+                                    if (opt_text.empty())
+                                        opt_text = ch->get_attribute("value");
+                                    if (opt_text.empty())
+                                        opt_text = ch->get_attribute("label");
+                                    f32 tw = static_cast<f32>(opt_text.size()) * 7.0f;
+                                    if (tw > max_tw)
+                                        max_tw = tw;
+                                } else if (ch->tag_name == "optgroup") {
+                                    scan(ch);
+                                }
+                            }
+                        };
+                        scan(el);
+                        node->content.width = std::max(max_tw + 30.0f, 50.0f);
                     }
                     if (node->content.height == 0)
                         node->content.height = 20.0f;
+                } else if (tag == "button" || (tag == "input" && type == "submit")) {
+                    if (width_auto) {
+                        // Pick the longest of: value attribute, inner text
+                        std::string label = el->get_attribute("value");
+                        std::string inner;
+                        for (auto &tc : el->children) {
+                            if (tc->type == html::NodeType::TEXT)
+                                inner += static_cast<html::Text *>(tc.get())->data;
+                        }
+                        if (inner.size() > label.size())
+                            label = inner;
+                        if (label.empty())
+                            label = (type == "reset") ? "Reset" : (tag == "button" ? "" : "Submit");
+                        node->content.width = static_cast<f32>(label.size()) * 7.0f + 20.0f;
+                        if (node->content.width < 60.0f)
+                            node->content.width = 60.0f;  // mainstream minimum
+                    }
+                    if (node->content.height == 0)
+                        node->content.height = font_size + 8.0f;
                 } else if (tag == "textarea") {
                     if (width_auto) {
                         std::string cols_attr = el->get_attribute("cols");
@@ -477,6 +516,18 @@ namespace browser::css {
             }
             // The marker will be rendered in the padding area
             node->padding.left += marker_width;
+        }
+
+        // <summary> needs padding on the left so the disclosure triangle
+        // drawn by the painter sits clear of the summary text. (Markers
+        // don't apply because the default display for summary is `block`.)
+        if (node->node() && node->node()->type == html::NodeType::ELEMENT) {
+            auto *own_el = static_cast<html::Element *>(node->node());
+            if (own_el->tag_name == "summary") {
+                f32 disclosure_w = font_size * 1.2f;
+                if (node->padding.left < disclosure_w)
+                    node->padding.left = disclosure_w;
+            }
         }
 
         auto *overflow = node->style().get("overflow");

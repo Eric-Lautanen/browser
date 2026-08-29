@@ -310,6 +310,7 @@ add_library(js STATIC
     js/builtins/symbol.cpp
     js/builtins/json.cpp
     js/builtins/date.cpp
+    js/regex_engine.cpp
     js/builtins/regexp.cpp
     js/builtins/error.cpp
     js/builtins/console.cpp

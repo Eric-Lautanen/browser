@@ -202,15 +202,65 @@ namespace browser::render {
                 bool checked = html::g_form_state.is_checked(el);
                 form_controls::paint_radio(list, fx, fy, 13, checked, accent);
             } else if (el->tag_name == "button" || (el->tag_name == "input" && (type == "submit" || type == "reset"))) {
-                std::string label = value.empty()
-                                        ? (type == "reset" ? "Reset" : (el->tag_name == "button" ? "Button" : "Submit"))
-                                        : value;
+                std::string label;
+                if (!value.empty()) {
+                    label = value;
+                } else {
+                    // Fall back to the element's inner text for <button>…
+                    // …</button>; otherwise use the type-derived default.
+                    for (auto &tc : el->children) {
+                        if (tc->type == html::NodeType::TEXT) {
+                            label += static_cast<html::Text *>(tc.get())->data;
+                        }
+                    }
+                    if (label.empty())
+                        label = (type == "reset") ? "Reset"
+                                                   : (el->tag_name == "button" ? "" : "Submit");
+                }
+                // Trim leading/trailing whitespace, like mainstream browsers
+                while (!label.empty() && std::isspace(static_cast<unsigned char>(label.front()))) label.erase(label.begin());
+                while (!label.empty() && std::isspace(static_cast<unsigned char>(label.back()))) label.pop_back();
+                if (label.empty())
+                    label = "Submit";
                 form_controls::paint_button(list, fx, fy, fw, fh, label, hovered, focused);
             } else if (el->tag_name == "select") {
                 bool is_open = (html::g_form_state.open_select == el);
                 bool is_multiple = el->has_attribute("multiple");
                 int sel_idx = html::g_form_state.get_selected_index(el);
-                form_controls::paint_select(list, fx, fy, fw, fh, value, is_open);
+                // For <select>, the displayed "value" is the selected
+                // option's text — the value attribute on the <select> itself
+                // is the form-submission value, not what's shown.
+                std::string select_display = value;
+                if (select_display.empty()) {
+                    int idx = 0;
+                    std::function<bool(html::Node *)> find_option = [&](html::Node *parent) -> bool {
+                        for (auto &c : parent->children) {
+                            if (c->type != html::NodeType::ELEMENT)
+                                continue;
+                            auto *ch = static_cast<html::Element *>(c.get());
+                            if (ch->tag_name == "option") {
+                                if (idx == sel_idx) {
+                                    for (auto &tc : ch->children) {
+                                        if (tc->type == html::NodeType::TEXT)
+                                            select_display += static_cast<html::Text *>(tc.get())->data;
+                                    }
+                                    if (select_display.empty())
+                                        select_display = ch->get_attribute("value");
+                                    if (select_display.empty())
+                                        select_display = ch->get_attribute("label");
+                                    return true;
+                                }
+                                idx++;
+                            } else if (ch->tag_name == "optgroup") {
+                                if (find_option(ch))
+                                    return true;
+                            }
+                        }
+                        return false;
+                    };
+                    find_option(el);
+                }
+                form_controls::paint_select(list, fx, fy, fw, fh, select_display, is_open);
 
                 if (is_multiple) {
                     // Multiple select: render as a list box, always showing all options
@@ -486,6 +536,29 @@ namespace browser::render {
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx, fby, 1, fbh}, {0.5f, 0.5f, 0.5f, 1}));
                 // Right border
                 list.push(make_cmd(PaintCommand::Type::FILL_RECT, {fbx + fbw - 1, fby, 1, fbh}, {0.5f, 0.5f, 0.5f, 1}));
+            } else if (el->tag_name == "summary") {
+                // <summary> disclosure triangle — drawn in the left
+                // padding area reserved by the layout, so the triangle
+                // sits clear of the summary text.
+                bool open = false;
+                html::Node *p = el->parent;
+                while (p) {
+                    if (p->type == html::NodeType::ELEMENT) {
+                        auto *pe = static_cast<html::Element *>(p);
+                        if (pe->tag_name == "details") {
+                            open = pe->has_attribute("open");
+                            break;
+                        }
+                    }
+                    p = p->parent;
+                }
+                const char *glyph = open ? "\xE2\x96\xBE" : "\xE2\x96\xB8";  // ▾ / ▸
+                Color c = resolve_color(node->style(), "color", Color::BLACK);
+                f32 triangle_size = resolve_font_size(node->style());
+                f32 dx = fx;  // border-box left
+                f32 dy = fy;
+                list.push(make_cmd(PaintCommand::Type::DRAW_TEXT,
+                                   {dx, dy, triangle_size * 1.2f, fh}, c, glyph, (u32)triangle_size));
             }
         } else {
             paint_background(list, node, ox, oy);

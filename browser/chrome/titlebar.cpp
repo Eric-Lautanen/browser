@@ -8,7 +8,7 @@ namespace browser {
 
     void BrowserWindow::render_tabs() {
         auto &t = theme_;
-        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
+        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::TAB_H) / 2.0f;
 
         for (u32 i = 0; i < chrome_.tabs.size(); i++) {
             f32 tx = ChromeUI::PADDING + i * (ChromeUI::TAB_W + 2);
@@ -16,10 +16,11 @@ namespace browser {
             auto bg = (i == chrome_.active_tab) ? t.tab_active : t.tab_inactive;
             if (chrome_.hovered_tab == static_cast<i32>(i) && i != chrome_.active_tab)
                 bg = t.surface_hover;
-            renderer_->fill_rect(tx, tab_y, ChromeUI::TAB_W, ChromeUI::BTN_SIZE, bg);
+            renderer_->fill_rect(tx, tab_y, ChromeUI::TAB_W, ChromeUI::TAB_H, bg);
 
-            f32 fx = tx + (ChromeUI::TAB_W - ChromeUI::TAB_FAVICON_SIZE) / 2;
-            f32 fy = tab_y + (ChromeUI::BTN_SIZE - ChromeUI::TAB_FAVICON_SIZE) / 2;
+            // Favicon on the left
+            f32 fx = tx + 6.0f;
+            f32 fy = tab_y + (ChromeUI::TAB_H - ChromeUI::TAB_FAVICON_SIZE) / 2.0f;
             if (chrome_.tabs[i].favicon) {
                 renderer_->fill_rect_tex(
                     fx, fy, ChromeUI::TAB_FAVICON_SIZE, ChromeUI::TAB_FAVICON_SIZE, t.text, chrome_.tabs[i].favicon);
@@ -28,19 +29,38 @@ namespace browser {
                     fx, fy, ChromeUI::TAB_FAVICON_SIZE, ChromeUI::TAB_FAVICON_SIZE, chrome_.tabs[i].placeholder_color);
             }
 
+            // Title — fit into the space between favicon and close button,
+            // ellipsize on overflow.
+            f32 title_x = fx + ChromeUI::TAB_FAVICON_SIZE + ChromeUI::TAB_TITLE_GAP;
+            f32 close_x = tx + ChromeUI::TAB_W - ChromeUI::TAB_CLOSE_W - 4.0f;
+            f32 title_max_w = close_x - title_x - 4.0f;
+            std::string title = chrome_.tabs[i].url;
+            render::Color title_color = (i == chrome_.active_tab) ? t.text : t.text_secondary;
+            if (title_max_w > 0) {
+                if (text_renderer_->measure_text(title, 12) > title_max_w) {
+                    while (!title.empty() && text_renderer_->measure_text(title + "...", 12) > title_max_w) title.pop_back();
+                    title += "...";
+                }
+                text_renderer_->render_text(renderer_.get(), title, title_x, tab_y + 5, title_color, 12);
+            }
+
+            // Close "×" on the right edge — only shown on hover (active or
+            // hovered), to match the way mainstream browsers de-clutter the
+            // strip.
             if (chrome_.hovered_tab == static_cast<i32>(i) || chrome_.hovered_close == static_cast<i32>(i)) {
                 auto &close_r = chrome_.rects.tab_close[i];
                 if (chrome_.hovered_close == static_cast<i32>(i))
                     renderer_->fill_rect(close_r.x, close_r.y, close_r.w, close_r.h, t.surface_hover);
                 text_renderer_->render_text(
-                    renderer_.get(), "\u00D7", close_r.x + 2, close_r.y + 1, t.text_secondary, 12);
+                    renderer_.get(), "\u00D7", close_r.x + 2, close_r.y - 1, t.text_secondary, 13);
             }
         }
 
-        f32 nx = ChromeUI::PADDING + chrome_.tabs.size() * (ChromeUI::TAB_W + 2);
+        f32 nx = ChromeUI::PADDING + chrome_.tabs.size() * (ChromeUI::TAB_W + 2) + 4.0f;
+        f32 ntab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
         if (chrome_.hovered_button == ChromeUI::REFRESH + 1)
-            renderer_->fill_rect(nx, tab_y, ChromeUI::NEW_TAB_W, ChromeUI::BTN_SIZE, t.surface_hover);
-        text_renderer_->render_text(renderer_.get(), "+", nx + 5, tab_y + 3, t.text, 16);
+            renderer_->fill_rect(nx, ntab_y, ChromeUI::NEW_TAB_W, ChromeUI::BTN_SIZE, t.surface_hover);
+        text_renderer_->render_text(renderer_.get(), "+", nx + 6, ntab_y + 4, t.text, 16);
     }
 
     void BrowserWindow::render_caption_buttons() {
@@ -55,9 +75,12 @@ namespace browser {
                 renderer_->draw_icon_centered(icon, r.x, r.y, r.w, r.h, ICN, icon_color);
             };
 
-        draw_cap(chrome_.rects.minimize_btn, ChromeUI::MINIMIZE, Icon::MINIMIZE, t.surface_hover, t.text_secondary);
-        draw_cap(chrome_.rects.maximize_btn, ChromeUI::MAXIMIZE, Icon::MAXIMIZE, t.surface_hover, t.text_secondary);
-        draw_cap(chrome_.rects.close_btn, ChromeUI::CLOSE, Icon::CLOSE, {0.9f, 0.2f, 0.2f, 1.0f}, t.text_secondary);
+        // Caption icons (min/max/close) use the primary text color so they
+        // remain visible against the titlebar; only the hover background
+        // distinguishes them.
+        draw_cap(chrome_.rects.minimize_btn, ChromeUI::MINIMIZE, Icon::MINIMIZE, t.surface_hover, t.text);
+        draw_cap(chrome_.rects.maximize_btn, ChromeUI::MAXIMIZE, Icon::MAXIMIZE, t.surface_hover, t.text);
+        draw_cap(chrome_.rects.close_btn, ChromeUI::CLOSE, Icon::CLOSE, {0.9f, 0.2f, 0.2f, 1.0f}, t.text);
     }
 
     void BrowserWindow::update_tab_tooltip(i32 mx, i32 my) {

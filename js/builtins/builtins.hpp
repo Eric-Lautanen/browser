@@ -22,6 +22,18 @@ namespace browser::js::builtins {
     void register_json_builtins(VM *vm);
     void register_date_builtins(VM *vm);
     void register_regexp_builtins(VM *vm);
+
+    // Regex helpers shared with String.prototype (implemented in regexp.cpp).
+    bool value_is_regexp(const JSValue &v);
+    // One match of `re` in `input` at/after `start` (no lastIndex effects).
+    JSValue regexp_exec_at(VM *vm, const JSValue &re, const std::string &input, u32 start);
+    JSValue regexp_make(VM *vm, const std::string &source, const std::string &flags_str);
+    // Expands a replacement template ($&, $1..$99, $`, $', $$).
+    std::string regexp_expand_replacement(const std::string &tmpl,
+                                          const std::string &input,
+                                          const std::string &full,
+                                          const std::vector<std::string> &groups,
+                                          u32 index);
     void register_error_builtins(VM *vm);
     void register_console_builtins(VM *vm);
     void register_timer_builtins(VM *vm);

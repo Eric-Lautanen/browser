@@ -137,6 +137,10 @@ namespace browser {
         u32 addr_click_count = 0;
         i32 last_addr_click_x = 0, last_addr_click_y = 0;
 
+        // Tab-strip click cadence: double-click on a tab toggles maximize.
+        u64 last_tab_click_ms = 0;
+        i32 last_tab_click_idx = -1;
+
         // Textarea resize drag state
         struct TextareaResizeState {
             bool active = false;
@@ -153,10 +157,16 @@ namespace browser {
         static constexpr f32 CHROME_H = TITLEBAR_H + TOOLBAR_H;
         static f32 effective_chrome_h(bool fullscreen) { return fullscreen ? 0.0f : CHROME_H; }
         static constexpr f32 BTN_SIZE = 28.0f;
-        static constexpr f32 TAB_W = 32.0f;
+        // Mainstream-browser tabs: wide enough for favicon + page title +
+        // close button. ~180px fits ~5 tabs on a 1024-px window.
+        static constexpr f32 TAB_W = 180.0f;
+        static constexpr f32 TAB_H = 24.0f;
         static constexpr f32 NEW_TAB_W = 24.0f;
         static constexpr f32 PADDING = 6.0f;
-        static constexpr f32 TAB_FAVICON_SIZE = 16.0f;
+        static constexpr f32 TAB_FAVICON_SIZE = 14.0f;
+        static constexpr f32 TAB_TITLE_GAP = 6.0f;
+        static constexpr f32 TAB_CLOSE_W = 16.0f;
+        static constexpr f32 TAB_CLOSE_H = 16.0f;
         static constexpr f32 MENU_W = 220.0f;
         static constexpr f32 MENU_ITEM_H = 30.0f;
         static constexpr u32 MENU_ITEM_COUNT = 5;

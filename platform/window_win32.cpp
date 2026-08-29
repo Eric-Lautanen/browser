@@ -445,7 +445,10 @@ namespace browser::platform {
 
         WNDCLASSEX wc = {};
         wc.cbSize = sizeof(WNDCLASSEX);
-        wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+        // CS_DBLCLKS so the OS forwards WM_LBUTTONDBLCLK; without it double-
+        // clicks are reported as two single clicks (mainstream browser
+        // behavior expects double-clicks on tabs to maximize/restore).
+        wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
         wc.lpfnWndProc = wnd_proc;
         wc.hInstance = GetModuleHandle(nullptr);
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
@@ -545,6 +548,19 @@ namespace browser::platform {
                     e.button = (msg == WM_LBUTTONDOWN)   ? MouseButton::LEFT
                                : (msg == WM_RBUTTONDOWN) ? MouseButton::RIGHT
                                                          : MouseButton::MIDDLE;
+                    e.mouse_x = GET_X_LPARAM(lparam);
+                    e.mouse_y = GET_Y_LPARAM(lparam);
+                    win->dispatch_event(e);
+                }
+                return 0;
+
+            case WM_LBUTTONDBLCLK:
+                // Surface as a regular mouse-down so click handlers get a
+                // chance to react (double-clicking a tab toggles maximize).
+                if (win) {
+                    Event e{};
+                    e.type = Event::Type::MOUSE_DOWN;
+                    e.button = MouseButton::LEFT;
                     e.mouse_x = GET_X_LPARAM(lparam);
                     e.mouse_y = GET_Y_LPARAM(lparam);
                     win->dispatch_event(e);
