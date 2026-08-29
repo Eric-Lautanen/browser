@@ -6,47 +6,8 @@ namespace browser::html {
 
     void Tokenizer::process_tag_state(char32_t c) {
         switch (state_) {
-            case State::TAG_OPEN:
-                if (c == '!') {
-                    state_ = State::MARKUP_DECLARATION_OPEN;
-                } else if (c == '/') {
-                    state_ = State::END_TAG_OPEN;
-                } else if (is_ascii_alpha(c)) {
-                    create_tag(TokenType::START_TAG);
-                    temporary_buffer_ = to_lower(c);
-                    state_ = State::TAG_NAME;
-                } else if (c == '?' || (c == '\0' && !is_eof())) {
-                    emit_char('<');
-                    state_ = State::DATA;
-                } else if (c == '\0' && is_eof()) {
-                    emit_eof();
-                } else {
-                    emit_char('<');
-                    state_ = State::DATA;
-                }
-                break;
-
-            case State::END_TAG_OPEN:
-                if (is_ascii_alpha(c)) {
-                    create_tag(TokenType::END_TAG);
-                    temporary_buffer_ = to_lower(c);
-                    state_ = State::TAG_NAME;
-                } else if (c == '>') {
-                    state_ = State::DATA;
-                } else if (c == '\0' && is_eof()) {
-                    emit_char('<');
-                    emit_char('/');
-                    emit_eof();
-                } else if (c == '\0') {
-                    emit_char('<');
-                    emit_char('/');
-                    state_ = State::DATA;
-                } else {
-                    create_tag(TokenType::COMMENT);
-                    temporary_buffer_ = c;
-                    state_ = State::COMMENT;
-                }
-                break;
+            case State::TAG_OPEN: handle_tag_open(*this, c); break;
+            case State::END_TAG_OPEN: handle_end_tag_open(*this, c); break;
 
             case State::TAG_NAME:
                 if (c == ' ' || c == '\t' || c == '\n' || c == '\f') {

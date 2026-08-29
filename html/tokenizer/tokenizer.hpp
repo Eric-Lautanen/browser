@@ -138,6 +138,10 @@ namespace browser::html {
         static bool is_ascii_alnum(char c);
         static char to_lower(char c);
 
+        friend void handle_tag_open(Tokenizer&, char32_t);
+        friend void handle_end_tag_open(Tokenizer&, char32_t);
+        friend void handle_tag_name(Tokenizer&, char32_t);
+
         static const char32_t kReplacementChar = 0xFFFD;
     };
 
