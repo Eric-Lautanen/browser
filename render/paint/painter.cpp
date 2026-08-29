@@ -3,6 +3,7 @@
 #include "../../html/form_state.hpp"
 #include "../canvas.hpp"
 #include "../form_controls.hpp"
+#include "../svg_renderer.hpp"
 #include "background_painter.hpp"
 #include "form_painter.hpp"
 #include "paint_helpers.hpp"
@@ -492,6 +493,7 @@ namespace browser::render {
             paint_border(list, node, ox, oy);
             paint_outline(list, node, ox, oy);
             paint_image(list, node, ox, oy);
+            paint_svg(list, node, ox, oy);
             paint_canvas(list, node, ox, oy);
         }
 
@@ -1081,6 +1083,27 @@ namespace browser::render {
         if (needs_clip) {
             list.push(make_cmd(PaintCommand::Type::POP_CLIP, {}, Color::TRANSPARENT));
         }
+    }
+
+    // Inline <svg> elements: render their shapes into the display list via the
+    // SVG renderer (fill/viewport handling live there).
+    void Painter::paint_svg(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {
+        if (node->is_text())
+            return;
+        html::Node *n = node->node();
+        if (!n || n->type != html::NodeType::ELEMENT)
+            return;
+        auto *el = static_cast<html::Element *>(n);
+        if (el->tag_name != "svg")
+            return;
+        f32 w = node->content.width;
+        f32 h = node->content.height;
+        if (w <= 0 || h <= 0)
+            return;
+
+        css::Rect bounds{ox, oy, w, h};
+        SVGRenderer renderer;
+        renderer.render_svg(el, list, bounds);
     }
 
     void Painter::paint_canvas(DisplayList &list, css::LayoutNode *node, f32 ox, f32 oy) const {

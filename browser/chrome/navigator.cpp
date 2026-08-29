@@ -128,6 +128,11 @@ namespace browser {
         chrome_.active_tab = index;
         chrome_.scroll_y = chrome_.tabs[index].scroll_y;
         chrome_.url = chrome_.tabs[index].url;
+        // A stale omnibox edit (e.g. the empty focused buffer a new tab
+        // starts with) must never follow a tab switch — it left the address
+        // bar showing nothing but a caret after loading a page.
+        chrome_.address_focused = false;
+        chrome_.address_bar.clear();
         start_load(chrome_.tabs[index].url);
     }
 
@@ -143,6 +148,8 @@ namespace browser {
         compute_layout();
         chrome_.url = chrome_.tabs[chrome_.active_tab].url;
         chrome_.scroll_y = chrome_.tabs[chrome_.active_tab].scroll_y;
+        chrome_.address_focused = false;
+        chrome_.address_bar.clear();
         start_load(chrome_.tabs[chrome_.active_tab].url);
     }
 

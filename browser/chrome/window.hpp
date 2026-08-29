@@ -113,6 +113,7 @@ namespace browser {
         bool show_menu = false;
         bool show_bookmarks_dropdown = false;
         i32 hovered_bookmark_item = -1;
+        i32 hovered_bookmark_delete = -1;
         i32 hovered_menu_item = -1;
         f32 bookmark_scroll_offset = 0.0f;
         bool show_settings = false;
@@ -270,6 +271,11 @@ namespace browser {
         ChromeUI::ButtonRect context_menu_rect() const;
         ChromeUI::ButtonRect bookmarks_dropdown_rect() const;
         ChromeUI::ButtonRect overlay_panel_rect() const;
+        // Tab-strip hit tests. Both are y-bounded to the titlebar tab row —
+        // the back/forward/refresh buttons share x ranges with the tabs and
+        // must never match toolbar clicks.
+        i32 tab_index_at(i32 mx, i32 my) const;
+        bool new_tab_button_hit(i32 mx, i32 my) const;
         void update_tab_placeholder(u32 index);
         void update_chrome_state();
         void handle_bookmark_click();

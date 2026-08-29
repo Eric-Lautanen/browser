@@ -684,12 +684,14 @@ namespace browser::css {
                    c->border.right;
         };
 
-        // Post-order: block descendants settle at natural width first.
+        // Post-order: descendants settle at natural width first (including
+        // inline elements, whose nested blocks would otherwise stay stretched
+        // and poison the run measurement).
         for (auto &c : box->children) {
             auto *pos = c->style().get("position");
             if (pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute")
                 continue;
-            if (!c->is_text() && !is_inline_element(c->style()))
+            if (!c->is_text())
                 shrink_to_fit(c.get(), box->content.width, containing_height);
         }
 

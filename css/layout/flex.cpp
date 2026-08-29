@@ -99,7 +99,7 @@ namespace browser::css {
     }
 
     FlexItem LayoutEngine::resolve_flex_item(
-        LayoutNode *child, const FlexConfig &config, f32 containing_main, f32 containing_cross, f32 font_size) const {
+        LayoutNode *child, const FlexConfig &config, f32 containing_main, f32 containing_cross, f32 font_size) {
         FlexItem item;
         item.node = child;
 
@@ -193,6 +193,17 @@ namespace browser::css {
             if (size_prop && size_prop->type == CSSValue::Type::LENGTH) {
                 item.base_size =
                     resolve_length(size_prop->length, is_row ? containing_main : containing_cross, font_size);
+            } else {
+                // flex-basis:auto + auto size: the item sizes to its content.
+                // Lay the subtree out and shrink-to-fit to obtain a
+                // max-content measure (content-box main size).
+                layout_block(child, containing_main, containing_cross);
+                if (is_row) {
+                    shrink_to_fit(child, containing_main, containing_cross);
+                    item.base_size = child->content.width;
+                } else {
+                    item.base_size = child->content.height;
+                }
             }
         }
 
@@ -631,6 +642,22 @@ namespace browser::css {
                     }
                 }
                 node->content.height = max_y;
+            } else {
+                // Explicit cross size (height) — layout_block never runs for
+                // flex containers, so apply it here.
+                f32 h = resolve_dim("height", containing_height);
+                if (h >= 0) {
+                    bool fborder_box = false;
+                    auto *fbs = node->style().get("box-sizing");
+                    if (fbs && fbs->type == CSSValue::Type::KEYWORD && fbs->keyword == "border-box")
+                        fborder_box = true;
+                    if (fborder_box) {
+                        h -= node->padding.top + node->padding.bottom + node->border.top + node->border.bottom;
+                        if (h < 0)
+                            h = 0;
+                    }
+                    node->content.height = h;
+                }
             }
         } else {
             auto *wv = node->style().get("width");

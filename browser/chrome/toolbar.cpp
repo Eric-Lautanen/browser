@@ -69,14 +69,22 @@ namespace browser {
             }
         }
 
-        if (chrome_.address_focused && chrome_.address_bar.all_selected && !text.empty()) {
-            f32 text_w = text_renderer_->measure_text(text, 13);
-            renderer_->fill_rect(tx, ty, text_w, 16, {0.2f, 0.4f, 0.9f, 0.25f});
+        // Selection highlight (whole buffer or just a double-clicked word)
+        if (chrome_.address_focused && chrome_.address_bar.has_selection() && !text.empty()) {
+            u32 a = std::min(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos);
+            u32 b = std::max(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos);
+            if (a > text.size())
+                a = static_cast<u32>(text.size());
+            if (b > text.size())
+                b = static_cast<u32>(text.size());
+            f32 sel_x = tx + text_renderer_->measure_text(text.substr(0, a), 13);
+            f32 sel_w = text_renderer_->measure_text(text.substr(a, b - a), 13);
+            renderer_->fill_rect(sel_x, ty, sel_w, 16, {0.2f, 0.4f, 0.9f, 0.25f});
         }
 
         text_renderer_->render_text(renderer_.get(), text, tx, ty, t.text, 13);
 
-        if (chrome_.address_focused) {
+        if (chrome_.address_focused && !chrome_.address_bar.has_selection()) {
             auto now = std::chrono::steady_clock::now();
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
             u64 elapsed = ms - chrome_.blink_start_ms;
@@ -221,33 +229,18 @@ namespace browser {
         if (!chrome_.show_bookmarks_dropdown)
             return;
         auto &t = theme_;
-        auto &br = chrome_.rects.bookmark;
 
         auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
         f32 item_h = 28.0f;
         f32 header_h = 28.0f;
-        f32 dw = 300.0f;
         f32 max_visible_items = 12.0f;
         f32 max_list_h = max_visible_items * item_h;
         f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
         f32 visible_list_h = std::min(list_h, max_list_h);
-        f32 dh = header_h + visible_list_h + 8.0f;  // header + items + bottom padding
         f32 pad = 4.0f;
 
-        // Position: align dropdown so it stays on screen
-        // Default: right-edge of dropdown aligns with right-edge of bookmark button
-        f32 dx = br.x + br.w - dw;
-        // Clamp to stay within viewport
-        if (dx < 4.0f)
-            dx = 4.0f;
-        if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
-            dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
-
-        f32 dy = chrome_height() + 2.0f;
-        // If dropdown would go below viewport, flip above
-        if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
-            dy = chrome_height() - dh - 2.0f;
-        }
+        auto dd = bookmarks_dropdown_rect();
+        f32 dx = dd.x, dy = dd.y, dw = dd.w, dh = dd.h;
 
         // Shadow (subtle offset dark rect behind the dropdown)
         renderer_->fill_rect(dx + 3.0f, dy + 3.0f, dw, dh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 1.5f});
@@ -258,7 +251,7 @@ namespace browser {
         renderer_->stroke_rect(dx, dy, dw, dh, t.border, 1.0f);
 
         // Small arrow/pointer at the top pointing toward the bookmark button
-        f32 arrow_cx = br.x + br.w * 0.5f;
+        f32 arrow_cx = chrome_.rects.bookmark.x + chrome_.rects.bookmark.w * 0.5f;
         f32 arrow_cy = dy;
         f32 arrow_sz = 5.0f;
         // Only draw arrow if dropdown is below chrome (not flipped above)
@@ -350,6 +343,14 @@ namespace browser {
                 renderer_->draw_line(
                     dx + 26.0f, item_y + item_h - 0.5f, dx + dw - 8.0f, item_y + item_h - 0.5f, t.border, 0.5f);
             }
+
+            // Delete "×" on the hovered row's right edge
+            if (chrome_.hovered_bookmark_item == static_cast<i32>(i)) {
+                render::Color xc = (chrome_.hovered_bookmark_delete == static_cast<i32>(i))
+                                       ? render::Color{0.9f, 0.3f, 0.3f, 1.0f}
+                                       : t.text_secondary;
+                text_renderer_->render_text(renderer_.get(), "\u00D7", dx + dw - 20.0f, item_y + 6.0f, xc, 13);
+            }
         }
 
         // Scrollbar indicator (if needed)
@@ -361,6 +362,45 @@ namespace browser {
             f32 thumb_y = sb_y + (sb_h - thumb_h) * (scroll_off / max_scroll);
             renderer_->fill_rect(sb_x, sb_y, 3.0f, sb_h, {0.0f, 0.0f, 0.0f, 0.06f});
             renderer_->fill_rect(sb_x, thumb_y, 3.0f, thumb_h, {0.0f, 0.0f, 0.0f, 0.2f});
+        }
+    }
+
+    void BrowserWindow::render_context_menu() {
+        if (!chrome_.show_context_menu)
+            return;
+        auto &t = theme_;
+        auto r = context_menu_rect();
+        const f32 dx = r.x, dy = r.y, dw = r.w, dh = r.h;
+        constexpr f32 item_h = ChromeUI::CTX_ITEM_H;
+        constexpr f32 pad = 4.0f;
+
+        renderer_->fill_rect(dx + 3.0f, dy + 3.0f, dw, dh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 1.5f});
+        renderer_->fill_rect(dx + 1.5f, dy + 1.5f, dw, dh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 0.8f});
+        renderer_->fill_rect(dx, dy, dw, dh, t.surface);
+        renderer_->stroke_rect(dx, dy, dw, dh, t.border, 1.0f);
+
+        // On a link: link actions. Elsewhere: navigation actions.
+        const char *labels[3];
+        u32 count;
+        if (chrome_.context_on_link) {
+            labels[0] = "Open Link in New Tab";
+            labels[1] = "Copy Link Address";
+            count = 2;
+        } else {
+            labels[0] = "Back";
+            labels[1] = "Forward";
+            labels[2] = "Reload";
+            count = 3;
+        }
+
+        f32 iy = dy + pad;
+        for (u32 i = 0; i < count; i++) {
+            bool hovered = (chrome_.hovered_context_item == static_cast<i32>(i));
+            if (hovered)
+                renderer_->fill_rect(dx + 2.0f, iy, dw - 4.0f, item_h, t.accent);
+            render::Color tc = hovered ? render::Color::WHITE : t.text;
+            text_renderer_->render_text(renderer_.get(), labels[i], dx + 12.0f, iy + 6.0f, tc, 13);
+            iy += item_h;
         }
     }
 

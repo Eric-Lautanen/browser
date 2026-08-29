@@ -136,11 +136,12 @@ namespace browser::css {
         static LayoutNode *find_positioned_ancestor(LayoutNode *node);
 
         FlexConfig resolve_flex_config(const ComputedStyle &style, f32 font_size) const;
+        // Non-const: auto-basis items are measured with a content layout.
         FlexItem resolve_flex_item(LayoutNode *child,
                                    const FlexConfig &config,
                                    f32 containing_main,
                                    f32 containing_cross,
-                                   f32 font_size) const;
+                                   f32 font_size);
         std::vector<FlexLine> distribute_lines(std::vector<FlexItem> &items,
                                                const FlexConfig &config,
                                                f32 container_main) const;

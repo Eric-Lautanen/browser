@@ -185,6 +185,13 @@ namespace browser {
             return resolved;
         }
 
+        // Word character for address-bar double-click selection. Deliberately
+        // ASCII-only: multi-byte UTF-8 sequences act as boundaries, which keeps
+        // the byte-indexed selection from splitting a code point.
+        bool addr_word_char(unsigned char c) {
+            return std::isalnum(c) != 0 || c == '_';
+        }
+
     }  // namespace
 
     void BrowserWindow::handle_event(const platform::Event &e) {
@@ -253,18 +260,39 @@ namespace browser {
     }
 
     void BrowserWindow::handle_mouse_click(i32 mx, i32 my, platform::MouseButton button) {
-        if (button == platform::MouseButton::RIGHT)
-            return;  // no context menu yet — a right-click must not act as a left-click
+        if (button == platform::MouseButton::RIGHT) {
+            // Right-click opens the page context menu: link actions on a
+            // link, navigation actions elsewhere. Any open popup closes first.
+            close_popups();
+            if (my > chrome_height()) {
+                chrome_.show_context_menu = true;
+                chrome_.context_menu_x = static_cast<f32>(mx);
+                chrome_.context_menu_y = static_cast<f32>(my);
+                chrome_.hovered_context_item = -1;
+                chrome_.context_link_url.clear();
+                chrome_.context_on_link = false;
+                if (current_page_.has_value() && current_page_->layout) {
+                    f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                    auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
+                    if (ht.element && ht.element->tag_name == "a") {
+                        std::string url = resolve_link_url(ht.element->get_attribute("href"), chrome_.url);
+                        if (!url.empty()) {
+                            chrome_.context_on_link = true;
+                            chrome_.context_link_url = url;
+                        }
+                    }
+                }
+            }
+            return;
+        }
         if (button == platform::MouseButton::MIDDLE) {
             // Middle-click on a tab closes it; middle-click on a link opens
-            // it in a new background tab.
-            f32 tab_start = ChromeUI::PADDING;
-            for (u32 i = 0; i < chrome_.tabs.size(); i++) {
-                if (mx >= tab_start + i * (ChromeUI::TAB_W + 2) &&
-                    mx <= tab_start + i * (ChromeUI::TAB_W + 2) + ChromeUI::TAB_W) {
-                    close_tab(i);
-                    return;
-                }
+            // it in a new background tab. Open popups get out of the way.
+            close_popups();
+            i32 tab = tab_index_at(mx, my);
+            if (tab >= 0) {
+                close_tab(static_cast<u32>(tab));
+                return;
             }
             if (my > chrome_height() && current_page_.has_value() && current_page_->layout) {
                 f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
@@ -280,11 +308,132 @@ namespace browser {
             return;
         }
 
+        // A left-click anywhere above the page area while a popup is open is
+        // consumed by popup dismissal — never by the toolbar underneath.
+        if (popup_open() && my <= chrome_height()) {
+            close_popups();
+            return;
+        }
+
         if (my > chrome_height()) {
-            // Check overlay panels first — prevent clicks from reaching page below
-            if (chrome_.show_downloads) {
+            // Popup dispatch — an open popup owns the click: it either
+            // activates an item or is dismissed; the click never reaches
+            // the page or panels underneath.
+            if (chrome_.show_context_menu) {
+                auto r = context_menu_rect();
+                if (is_in_rect(mx, my, r)) {
+                    constexpr f32 PAD = 4.0f;
+                    i32 idx = static_cast<i32>((static_cast<f32>(my) - r.y - PAD) / ChromeUI::CTX_ITEM_H);
+                    if (chrome_.context_on_link) {
+                        if (idx == 0 && !chrome_.context_link_url.empty())
+                            open_background_tab(chrome_.context_link_url);
+                        else if (idx == 1 && !chrome_.context_link_url.empty())
+                            clipboard_copy(chrome_.context_link_url);
+                    } else if (idx == 0) {
+                        navigate_back();
+                    } else if (idx == 1) {
+                        navigate_forward();
+                    } else if (idx == 2) {
+                        refresh();
+                    }
+                }
+                chrome_.show_context_menu = false;
+                chrome_.hovered_context_item = -1;
                 return;
             }
+            if (chrome_.show_menu) {
+                auto geom = ChromeUI::menu_geometry(static_cast<f32>(viewport_width_),
+                                                    static_cast<f32>(viewport_height_),
+                                                    chrome_height(),
+                                                    chrome_.rects.menu);
+                if (mx >= geom.x && mx <= geom.x + geom.w && my >= geom.y && my <= geom.y + geom.h) {
+                    constexpr f32 PAD = 4.0f;
+                    f32 rel_y = static_cast<f32>(my) - geom.y - PAD;
+                    i32 idx = static_cast<i32>(rel_y / ChromeUI::MENU_ITEM_H);
+                    if (idx >= 0 && idx < static_cast<i32>(ChromeUI::MENU_ITEM_COUNT)) {
+                        switch (idx) {
+                            case 0:
+                                new_tab();
+                                break;
+                            case 1:
+                                handle_bookmark_click();
+                                break;
+                            case 2:
+                                chrome_.find_state.show();
+                                break;
+                            case 3:
+                                chrome_.show_downloads = true;
+                                break;
+                            case 4:
+                                chrome_.show_settings = true;
+                                break;
+                        }
+                    }
+                }
+                chrome_.show_menu = false;
+                chrome_.hovered_menu_item = -1;
+                return;
+            }
+            if (chrome_.show_bookmarks_dropdown) {
+                auto dd = bookmarks_dropdown_rect();
+                if (is_in_rect(mx, my, dd)) {
+                    auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
+                    constexpr f32 ITEM_H = 28.0f, HEADER_H = 28.0f, PAD = 4.0f;
+                    constexpr f32 DEL_W = 22.0f;
+                    f32 rel_y = static_cast<f32>(my) - dd.y - PAD - HEADER_H;
+                    if (rel_y >= 0.0f) {
+                        // Account for scroll offset
+                        f32 scrolled_y = rel_y + chrome_.bookmark_scroll_offset;
+                        i32 idx = static_cast<i32>(scrolled_y / ITEM_H);
+                        if (idx >= 0 && idx < static_cast<i32>(all.size())) {
+                            if (static_cast<f32>(mx) >= dd.x + dd.w - DEL_W) {
+                                // "×" on the right deletes the bookmark; the
+                                // dropdown stays open for more cleanup
+                                if (bookmarks_) {
+                                    bookmarks_->remove(all[static_cast<size_t>(idx)].url);
+                                    bookmarks_->save_to_file(BookmarkManager::default_path());
+                                    chrome_.is_bookmarked = bookmarks_->is_bookmarked(chrome_.url);
+                                }
+                            } else {
+                                navigate(all[static_cast<size_t>(idx)].url);
+                                chrome_.show_bookmarks_dropdown = false;
+                            }
+                        }
+                    }
+                    chrome_.hovered_bookmark_item = -1;
+                    chrome_.hovered_bookmark_delete = -1;
+                    chrome_.bookmark_scroll_offset = 0.0f;
+                    return;
+                }
+                chrome_.show_bookmarks_dropdown = false;
+                chrome_.hovered_bookmark_item = -1;
+                chrome_.hovered_bookmark_delete = -1;
+                chrome_.bookmark_scroll_offset = 0.0f;
+                return;
+            }
+            if (chrome_.show_settings) {
+                auto panel = overlay_panel_rect();
+                if (is_in_rect(mx, my, {panel.x + 155, panel.y + 46, 80, 22})) {
+                    Theme::toggle();
+                    set_theme(Theme::current);
+                    if (settings_) {
+                        settings_->set_theme(Theme::current);
+                        settings_->save_to_file(data_dir() + "/settings.txt");
+                    }
+                    chrome_.address_focused = false;
+                    return;
+                }
+                // Clicking outside the panel dismisses it; inside, it stays
+                if (!is_in_rect(mx, my, panel))
+                    chrome_.show_settings = false;
+                return;
+            }
+            if (chrome_.show_downloads) {
+                if (!is_in_rect(mx, my, overlay_panel_rect()))
+                    chrome_.show_downloads = false;
+                return;
+            }
+
             if (chrome_.devtools.visible) {
                 // DevTools tab bar click handling
                 f32 dt_y = static_cast<f32>(viewport_height_) - 300.0f;
@@ -316,109 +465,12 @@ namespace browser {
                 return;
             }
 
-            // Check bookmarks dropdown first (it extends below chrome)
-            if (chrome_.show_bookmarks_dropdown) {
-                auto &br = chrome_.rects.bookmark;
-                f32 dw = 300.0f;
-                f32 item_h = 28.0f;
-                f32 header_h = 28.0f;
-                f32 pad = 4.0f;
-                auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
-                f32 max_visible_items = 12.0f;
-                f32 max_list_h = max_visible_items * item_h;
-                f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
-                f32 visible_list_h = std::min(list_h, max_list_h);
-                f32 dh = header_h + visible_list_h + 8.0f;
-
-                // Position: right-edge of dropdown aligns with right-edge of bookmark button
-                f32 dx = br.x + br.w - dw;
-                if (dx < 4.0f)
-                    dx = 4.0f;
-                if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
-                    dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
-
-                f32 dy = chrome_height() + 2.0f;
-                if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
-                    dy = chrome_height() - dh - 2.0f;
-                }
-
-                if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
-                    f32 rel_y = static_cast<f32>(my) - dy - pad - header_h;
-                    if (rel_y >= 0.0f) {
-                        // Account for scroll offset
-                        f32 scrolled_y = rel_y + chrome_.bookmark_scroll_offset;
-                        i32 idx = static_cast<i32>(scrolled_y / item_h);
-                        if (idx >= 0 && idx < static_cast<i32>(all.size())) {
-                            navigate(all[static_cast<size_t>(idx)].url);
-                            chrome_.show_bookmarks_dropdown = false;
-                            chrome_.hovered_bookmark_item = -1;
-                            chrome_.bookmark_scroll_offset = 0.0f;
-                            return;
-                        }
-                    }
-                    // Clicked inside dropdown but not on an item — keep open
-                    return;
-                }
-                chrome_.show_bookmarks_dropdown = false;
-                chrome_.hovered_bookmark_item = -1;
-                chrome_.bookmark_scroll_offset = 0.0f;
-            }
-            if (chrome_.show_settings) {
-                f32 ox = 40, oy = chrome_height() + 20;
-                if (is_in_rect(mx, my, {ox + 155, oy + 46, 80, 22})) {
-                    Theme::toggle();
-                    set_theme(Theme::current);
-                    if (settings_) {
-                        settings_->set_theme(Theme::current);
-                        settings_->save_to_file(data_dir() + "/settings.txt");
-                    }
-                    chrome_.address_focused = false;
-                    return;
-                }
-            }
             if (chrome_.scroll_max > 0 && is_in_rect(mx, my, chrome_.rects.scrollbar)) {
                 chrome_.scroll_dragging = true;
                 chrome_.scroll_drag_start_y = my;
                 chrome_.scroll_drag_start_pos = chrome_.scroll_y;
                 chrome_.address_focused = false;
                 return;
-            }
-
-            // Menu dropdown click handling
-            if (chrome_.show_menu) {
-                auto geom = ChromeUI::menu_geometry(static_cast<f32>(viewport_width_),
-                                                    static_cast<f32>(viewport_height_),
-                                                    chrome_height(),
-                                                    chrome_.rects.menu);
-                if (mx >= geom.x && mx <= geom.x + geom.w && my >= geom.y && my <= geom.y + geom.h) {
-                    constexpr f32 PAD = 4.0f;
-                    f32 rel_y = static_cast<f32>(my) - geom.y - PAD;
-                    i32 idx = static_cast<i32>(rel_y / ChromeUI::MENU_ITEM_H);
-                    if (idx >= 0 && idx < static_cast<i32>(ChromeUI::MENU_ITEM_COUNT)) {
-                        switch (idx) {
-                            case 0:
-                                new_tab();
-                                break;
-                            case 1:
-                                handle_bookmark_click();
-                                break;
-                            case 2:
-                                chrome_.find_state.show();
-                                break;
-                            case 3:
-                                chrome_.show_downloads = true;
-                                break;
-                            case 4:
-                                chrome_.show_settings = true;
-                                break;
-                        }
-                    }
-                    chrome_.show_menu = false;
-                    chrome_.hovered_menu_item = -1;
-                    return;
-                }
-                chrome_.show_menu = false;
-                chrome_.hovered_menu_item = -1;
             }
 
             chrome_.address_focused = false;
@@ -824,17 +876,13 @@ namespace browser {
             }
         }
 
-        f32 tab_start = ChromeUI::PADDING;
-        for (u32 i = 0; i < chrome_.tabs.size(); i++) {
-            if (mx >= tab_start + i * (ChromeUI::TAB_W + 2) &&
-                mx <= tab_start + i * (ChromeUI::TAB_W + 2) + ChromeUI::TAB_W) {
-                select_tab(i);
-                return;
-            }
+        i32 tab = tab_index_at(mx, my);
+        if (tab >= 0) {
+            select_tab(static_cast<u32>(tab));
+            return;
         }
 
-        f32 new_tab_x = tab_start + chrome_.tabs.size() * (ChromeUI::TAB_W + 2);
-        if (mx >= new_tab_x && mx <= new_tab_x + ChromeUI::NEW_TAB_W) {
+        if (new_tab_button_hit(mx, my)) {
             new_tab();
             return;
         }
@@ -857,6 +905,52 @@ namespace browser {
         }
 
         if (is_in_rect(mx, my, r.address)) {
+            // Track the click cadence: single = select-all (or caret if
+            // already focused), double = select word, triple+ = select all.
+            auto now = std::chrono::steady_clock::now();
+            u64 ms =
+                static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+            if (ms - chrome_.last_addr_click_ms <= GetDoubleClickTime() &&
+                std::abs(mx - chrome_.last_addr_click_x) <= 4 && std::abs(my - chrome_.last_addr_click_y) <= 4)
+                chrome_.addr_click_count++;
+            else
+                chrome_.addr_click_count = 1;
+            chrome_.last_addr_click_ms = ms;
+            chrome_.last_addr_click_x = mx;
+            chrome_.last_addr_click_y = my;
+
+            if (chrome_.addr_click_count >= 3) {
+                focus_address_bar(true);
+                return;
+            }
+            if (chrome_.addr_click_count == 2) {
+                // Double-click: select the word under the pointer. Find the
+                // byte offset whose rendered x is nearest the click, then
+                // expand over ASCII word characters (punctuation like '.' '/'
+                // ':' acts as a boundary, like mainstream browsers).
+                const std::string &buf = chrome_.address_bar.edit_buffer;
+                if (!buf.empty()) {
+                    f32 tx = r.address.x + 6;
+                    u32 pos = 0;
+                    f32 best_d = 1e9f;
+                    for (u32 i = 0; i <= buf.size(); i++) {
+                        f32 cx = tx + text_renderer_->measure_text(buf.substr(0, i), 13);
+                        f32 d = std::fabs(cx - static_cast<f32>(mx));
+                        if (d < best_d) {
+                            best_d = d;
+                            pos = i;
+                        }
+                    }
+                    u32 start = pos;
+                    while (start > 0 && addr_word_char(static_cast<unsigned char>(buf[start - 1]))) start--;
+                    u32 end = pos;
+                    while (end < buf.size() && addr_word_char(static_cast<unsigned char>(buf[end]))) end++;
+                    chrome_.address_bar.sel_start = start;
+                    chrome_.address_bar.cursor_pos = end;
+                    chrome_.address_bar.all_selected = false;
+                }
+                return;
+            }
             // First click selects the whole URL so typing replaces it; a
             // second click drops the highlight to place the caret.
             if (chrome_.address_focused) {
@@ -1038,6 +1132,8 @@ namespace browser {
             return;
         }
         if (e.key == platform::KeyCode::F && chrome_.ctrl_down && !chrome_.shift_down) {
+            chrome_.address_focused = false;
+            chrome_.address_bar.clear();
             chrome_.find_state.show();
             return;
         }
@@ -1047,8 +1143,15 @@ namespace browser {
             }
             return;
         }
-        // Ctrl+A: select all text in the page
+        // Ctrl+A: select all — in the omnibox it selects the URL, in the
+        // page it selects all page text
         if (e.key == platform::KeyCode::A && chrome_.ctrl_down) {
+            if (chrome_.address_focused) {
+                chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
+                chrome_.address_bar.sel_start = 0;
+                chrome_.address_bar.all_selected = true;
+                return;
+            }
             selection_.clear();
             if (current_page_.has_value() && current_page_->layout) {
                 const css::LayoutNode *first = nullptr;
@@ -1094,8 +1197,13 @@ namespace browser {
             renderer_->set_needs_redraw();
             return;
         }
-        // Ctrl+C: copy selected text to clipboard (Unicode via CF_UNICODETEXT)
+        // Ctrl+C: copy — omnibox selection first, then page selection
         if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
+            if (chrome_.address_focused) {
+                std::string sel = chrome_.address_bar.selected_text();
+                clipboard_copy(sel.empty() ? chrome_.address_bar.edit_buffer : sel);
+                return;
+            }
             if (selection_.active && !selection_.selected_text.empty()) {
                 int wide_len = MultiByteToWideChar(
                     CP_UTF8, 0, selection_.selected_text.data(), (int)selection_.selected_text.size(), nullptr, 0);
@@ -1216,27 +1324,41 @@ namespace browser {
         }
 
         if (chrome_.address_focused) {
+            // Erase the active selection (whole-buffer or word), collapsing
+            // the caret to its start. Returns true when something was erased.
+            auto erase_selection = [&]() -> bool {
+                if (!chrome_.address_bar.has_selection())
+                    return false;
+                u32 a = std::min(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos);
+                u32 b = std::max(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos);
+                if (a > chrome_.address_bar.edit_buffer.size())
+                    a = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
+                if (b > chrome_.address_bar.edit_buffer.size())
+                    b = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
+                chrome_.address_bar.edit_buffer.erase(a, b - a);
+                chrome_.address_bar.cursor_pos = a;
+                chrome_.address_bar.sel_start = a;
+                chrome_.address_bar.all_selected = false;
+                return true;
+            };
             if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
-                clipboard_copy(chrome_.address_bar.edit_buffer);
+                std::string sel = chrome_.address_bar.selected_text();
+                clipboard_copy(sel.empty() ? chrome_.address_bar.edit_buffer : sel);
                 return;
             }
             if (e.key == platform::KeyCode::X && chrome_.ctrl_down) {
-                clipboard_copy(chrome_.address_bar.edit_buffer);
-                chrome_.address_bar.edit_buffer.clear();
-                chrome_.address_bar.cursor_pos = 0;
+                std::string sel = chrome_.address_bar.selected_text();
+                clipboard_copy(sel.empty() ? chrome_.address_bar.edit_buffer : sel);
+                erase_selection();
                 return;
             }
             if (e.key == platform::KeyCode::V && chrome_.ctrl_down) {
                 std::string paste = clipboard_paste();
                 if (!paste.empty()) {
-                    if (chrome_.address_bar.all_selected) {
-                        chrome_.address_bar.edit_buffer = paste;
-                        chrome_.address_bar.cursor_pos = static_cast<u32>(paste.size());
-                        chrome_.address_bar.all_selected = false;
-                    } else {
-                        chrome_.address_bar.edit_buffer.insert(chrome_.address_bar.cursor_pos, paste);
-                        chrome_.address_bar.cursor_pos += static_cast<u32>(paste.size());
-                    }
+                    erase_selection();
+                    chrome_.address_bar.edit_buffer.insert(chrome_.address_bar.cursor_pos, paste);
+                    chrome_.address_bar.cursor_pos += static_cast<u32>(paste.size());
+                    chrome_.address_bar.sel_start = chrome_.address_bar.cursor_pos;
                 }
                 return;
             }
@@ -1256,47 +1378,77 @@ namespace browser {
                 chrome_.address_focused = false;
                 chrome_.address_bar.edit_buffer = chrome_.url;  // restore the live URL
                 chrome_.address_bar.all_selected = false;
+            } else if (e.key == platform::KeyCode::BACKSPACE && chrome_.ctrl_down) {
+                // Ctrl+Backspace deletes the word before the caret
+                if (!erase_selection()) {
+                    std::string &buf = chrome_.address_bar.edit_buffer;
+                    u32 pos = chrome_.address_bar.cursor_pos;
+                    while (pos > 0 && !addr_word_char(static_cast<unsigned char>(buf[pos - 1]))) pos--;
+                    while (pos > 0 && addr_word_char(static_cast<unsigned char>(buf[pos - 1]))) pos--;
+                    buf.erase(pos, chrome_.address_bar.cursor_pos - pos);
+                    chrome_.address_bar.cursor_pos = pos;
+                    chrome_.address_bar.sel_start = pos;
+                }
             } else if ((e.key == platform::KeyCode::BACKSPACE)) {
-                if (chrome_.address_bar.all_selected) {
-                    chrome_.address_bar.edit_buffer.clear();
-                    chrome_.address_bar.cursor_pos = 0;
-                    chrome_.address_bar.all_selected = false;
-                } else if (chrome_.address_bar.cursor_pos > 0) {
+                if (!erase_selection() && chrome_.address_bar.cursor_pos > 0) {
                     chrome_.address_bar.edit_buffer.erase(chrome_.address_bar.cursor_pos - 1, 1);
                     chrome_.address_bar.cursor_pos--;
+                    chrome_.address_bar.sel_start = chrome_.address_bar.cursor_pos;
                 }
             } else if (e.key == platform::KeyCode::DELETE && !chrome_.ctrl_down) {
-                if (chrome_.address_bar.all_selected) {
-                    chrome_.address_bar.edit_buffer.clear();
-                    chrome_.address_bar.cursor_pos = 0;
-                    chrome_.address_bar.all_selected = false;
-                } else if (chrome_.address_bar.cursor_pos < chrome_.address_bar.edit_buffer.length()) {
+                if (!erase_selection() && chrome_.address_bar.cursor_pos < chrome_.address_bar.edit_buffer.length())
                     chrome_.address_bar.edit_buffer.erase(chrome_.address_bar.cursor_pos, 1);
-                }
+            } else if (e.key == platform::KeyCode::LEFT && chrome_.ctrl_down) {
+                // Ctrl+Left jumps to the start of the previous word
+                const std::string &buf = chrome_.address_bar.edit_buffer;
+                u32 pos = chrome_.address_bar.has_selection()
+                              ? std::min(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos)
+                              : chrome_.address_bar.cursor_pos;
+                while (pos > 0 && !addr_word_char(static_cast<unsigned char>(buf[pos - 1]))) pos--;
+                while (pos > 0 && addr_word_char(static_cast<unsigned char>(buf[pos - 1]))) pos--;
+                chrome_.address_bar.cursor_pos = pos;
+                chrome_.address_bar.sel_start = pos;
+                chrome_.address_bar.all_selected = false;
+            } else if (e.key == platform::KeyCode::RIGHT && chrome_.ctrl_down) {
+                // Ctrl+Right jumps to the start of the next word
+                const std::string &buf = chrome_.address_bar.edit_buffer;
+                u32 pos = chrome_.address_bar.cursor_pos;
+                while (pos < buf.size() && !addr_word_char(static_cast<unsigned char>(buf[pos]))) pos++;
+                while (pos < buf.size() && addr_word_char(static_cast<unsigned char>(buf[pos]))) pos++;
+                chrome_.address_bar.cursor_pos = pos;
+                chrome_.address_bar.sel_start = pos;
+                chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::LEFT && !chrome_.ctrl_down) {
+                // Collapse to the selection edge, then move
+                u32 a = std::min(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos);
+                u32 b = std::max(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos);
+                chrome_.address_bar.cursor_pos = chrome_.address_bar.has_selection() ? a : b;
                 if (chrome_.address_bar.cursor_pos > 0)
                     chrome_.address_bar.cursor_pos--;
+                chrome_.address_bar.sel_start = chrome_.address_bar.cursor_pos;
                 chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::RIGHT && !chrome_.ctrl_down) {
+                u32 b = std::max(chrome_.address_bar.sel_start, chrome_.address_bar.cursor_pos);
+                chrome_.address_bar.cursor_pos = b;
                 if (chrome_.address_bar.cursor_pos < chrome_.address_bar.edit_buffer.length())
                     chrome_.address_bar.cursor_pos++;
+                chrome_.address_bar.sel_start = chrome_.address_bar.cursor_pos;
                 chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::HOME) {
                 chrome_.address_bar.cursor_pos = 0;
+                chrome_.address_bar.sel_start = 0;
                 chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::END) {
                 chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.length());
+                chrome_.address_bar.sel_start = chrome_.address_bar.cursor_pos;
                 chrome_.address_bar.all_selected = false;
             } else {
                 char c = keycode_to_char(e.key, chrome_.shift_down);
                 if (c) {
-                    if (chrome_.address_bar.all_selected) {
-                        chrome_.address_bar.edit_buffer.clear();
-                        chrome_.address_bar.cursor_pos = 0;
-                        chrome_.address_bar.all_selected = false;
-                    }
+                    erase_selection();
                     chrome_.address_bar.edit_buffer.insert(chrome_.address_bar.cursor_pos, 1, c);
                     chrome_.address_bar.cursor_pos++;
+                    chrome_.address_bar.sel_start = chrome_.address_bar.cursor_pos;
                 }
             }
         } else if (html::g_form_state.focused_element) {
@@ -1516,6 +1668,11 @@ namespace browser {
             }
 
             if (e.key == platform::KeyCode::ESCAPE) {
+                if (chrome_.show_context_menu) {
+                    chrome_.show_context_menu = false;
+                    chrome_.hovered_context_item = -1;
+                    return;
+                }
                 if (chrome_.is_loading && page_loader_) {
                     // Esc stops the in-flight load first, like mainstream browsers
                     page_loader_->cancel();
@@ -1623,39 +1780,27 @@ namespace browser {
             update_tab_tooltip(-1, -1);
             chrome_.hovered_menu_item = -1;
             // Track hover in bookmarks dropdown
+            chrome_.hovered_bookmark_delete = -1;
             if (chrome_.show_bookmarks_dropdown) {
-                auto &br = chrome_.rects.bookmark;
-                f32 dw = 300.0f;
-                f32 item_h = 28.0f;
-                f32 header_h = 28.0f;
-                f32 pad = 4.0f;
+                constexpr f32 ITEM_H = 28.0f, HEADER_H = 28.0f, PAD = 4.0f;
+                constexpr f32 DEL_W = 22.0f;
+                auto dd = bookmarks_dropdown_rect();
                 auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
-                f32 max_visible_items = 12.0f;
-                f32 max_list_h = max_visible_items * item_h;
-                f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
-                f32 visible_list_h = std::min(list_h, max_list_h);
-                f32 dh = header_h + visible_list_h + 8.0f;
 
-                f32 dx = br.x + br.w - dw;
-                if (dx < 4.0f)
-                    dx = 4.0f;
-                if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
-                    dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
-
-                f32 dy = chrome_height() + 2.0f;
-                if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
-                    dy = chrome_height() - dh - 2.0f;
-                }
-
-                if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
-                    f32 rel_y = static_cast<f32>(my) - dy - pad - header_h;
+                if (is_in_rect(mx, my, dd)) {
+                    SetCursor(LoadCursor(nullptr, IDC_ARROW));
+                    f32 rel_y = static_cast<f32>(my) - dd.y - PAD - HEADER_H;
                     if (rel_y >= 0.0f) {
                         f32 scrolled_y = rel_y + chrome_.bookmark_scroll_offset;
-                        i32 idx = static_cast<i32>(scrolled_y / item_h);
-                        if (idx >= 0 && idx < static_cast<i32>(all.size()))
+                        i32 idx = static_cast<i32>(scrolled_y / ITEM_H);
+                        if (idx >= 0 && idx < static_cast<i32>(all.size())) {
                             chrome_.hovered_bookmark_item = idx;
-                        else
+                            // Delete "×" zone on the right edge of the row
+                            if (static_cast<f32>(mx) >= dd.x + dd.w - DEL_W)
+                                chrome_.hovered_bookmark_delete = idx;
+                        } else {
                             chrome_.hovered_bookmark_item = -1;
+                        }
                     } else {
                         chrome_.hovered_bookmark_item = -1;
                     }
@@ -1663,6 +1808,21 @@ namespace browser {
                 }
             }
             chrome_.hovered_bookmark_item = -1;
+
+            // Track context menu hover
+            if (chrome_.show_context_menu) {
+                auto r = context_menu_rect();
+                if (is_in_rect(mx, my, r)) {
+                    constexpr f32 PAD = 4.0f;
+                    i32 idx = static_cast<i32>((static_cast<f32>(my) - r.y - PAD) / ChromeUI::CTX_ITEM_H);
+                    u32 items = chrome_.context_on_link ? 2 : 3;
+                    chrome_.hovered_context_item = (idx >= 0 && idx < static_cast<i32>(items)) ? idx : -1;
+                } else {
+                    chrome_.hovered_context_item = -1;
+                }
+                SetCursor(LoadCursor(nullptr, IDC_ARROW));
+                return;
+            }
 
             // Track menu item hover
             if (chrome_.show_menu) {
@@ -1762,13 +1922,10 @@ namespace browser {
             }
         }
 
-        f32 tab_start = ChromeUI::PADDING;
-        for (u32 i = 0; i < chrome_.tabs.size(); i++) {
-            if (mx >= tab_start + i * (ChromeUI::TAB_W + 2) &&
-                mx <= tab_start + i * (ChromeUI::TAB_W + 2) + ChromeUI::TAB_W) {
-                chrome_.hovered_tab = static_cast<i32>(i);
-                return;
-            }
+        i32 tab = tab_index_at(mx, my);
+        if (tab >= 0) {
+            chrome_.hovered_tab = tab;
+            return;
         }
 
         auto &r = chrome_.rects;
@@ -1793,8 +1950,7 @@ namespace browser {
         else if (is_in_rect(mx, my, r.menu))
             chrome_.hovered_button = ChromeUI::MENU;
 
-        f32 ntx = tab_start + chrome_.tabs.size() * (ChromeUI::TAB_W + 2);
-        if (mx >= ntx && mx <= ntx + ChromeUI::NEW_TAB_W)
+        if (new_tab_button_hit(mx, my))
             chrome_.hovered_button = ChromeUI::REFRESH + 1;
 
         // Text cursor over the omnibox, arrow everywhere else in the chrome
@@ -1811,35 +1967,25 @@ namespace browser {
             i32 mx = pt.x;
             i32 my = pt.y;
 
-            auto &br = chrome_.rects.bookmark;
-            f32 dw = 300.0f;
-            f32 item_h = 28.0f;
-            f32 header_h = 28.0f;
+            constexpr f32 ITEM_H = 28.0f;
+            auto dd = bookmarks_dropdown_rect();
             auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
-            f32 max_visible_items = 12.0f;
-            f32 max_list_h = max_visible_items * item_h;
-            f32 list_h = std::max(item_h, static_cast<f32>(all.size()) * item_h);
-            f32 visible_list_h = std::min(list_h, max_list_h);
-            f32 dh = header_h + visible_list_h + 8.0f;
+            f32 header_h = 28.0f;
 
-            f32 dx = br.x + br.w - dw;
-            if (dx < 4.0f)
-                dx = 4.0f;
-            if (dx + dw > static_cast<f32>(viewport_width_) - 4.0f)
-                dx = static_cast<f32>(viewport_width_) - dw - 4.0f;
-
-            f32 dy = chrome_height() + 2.0f;
-            if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f) {
-                dy = chrome_height() - dh - 2.0f;
-            }
-
-            if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
-                f32 total_list_h = static_cast<f32>(all.size()) * item_h;
+            if (is_in_rect(mx, my, dd)) {
+                f32 total_list_h = static_cast<f32>(all.size()) * ITEM_H;
+                f32 visible_list_h = dd.h - header_h - 8.0f;
                 f32 max_scroll = std::max(0.0f, total_list_h - visible_list_h);
                 chrome_.bookmark_scroll_offset =
                     std::max(0.0f, std::min(max_scroll, chrome_.bookmark_scroll_offset - delta * 20.0f));
                 return;
             }
+        }
+
+        // Wheeling anywhere else while a popup is open dismisses it
+        if (popup_open()) {
+            close_popups();
+            return;
         }
 
         chrome_.scroll_y = std::max(0, std::min(chrome_.scroll_max, static_cast<i32>(chrome_.scroll_y - delta * 30)));

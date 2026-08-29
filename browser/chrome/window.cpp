@@ -471,8 +471,17 @@ namespace browser {
             if (chrome_.show_bookmarks_dropdown) {
                 render_bookmarks_dropdown();
             }
+            if (chrome_.show_downloads) {
+                render_download_panel();
+            }
             if (chrome_.show_settings) {
                 render_settings();
+            }
+            if (chrome_.devtools.visible) {
+                render_devtools();
+            }
+            if (chrome_.show_context_menu) {
+                render_context_menu();
             }
 
             // Draw FPS overlay text inside the current frame (before end_frame flushes)
@@ -970,6 +979,7 @@ namespace browser {
         chrome_.show_context_menu = false;
         chrome_.hovered_menu_item = -1;
         chrome_.hovered_bookmark_item = -1;
+        chrome_.hovered_bookmark_delete = -1;
         chrome_.hovered_context_item = -1;
         chrome_.bookmark_scroll_offset = 0.0f;
     }
@@ -1016,6 +1026,30 @@ namespace browser {
         f32 ow = static_cast<f32>(viewport_width_) - 80.0f;
         f32 oh = static_cast<f32>(viewport_height_) - chrome_height() - 60.0f;
         return {ox, oy, ow, oh};
+    }
+
+    i32 BrowserWindow::tab_index_at(i32 mx, i32 my) const {
+        f32 fmy = static_cast<f32>(my);
+        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
+        if (fmy < tab_y || fmy >= tab_y + ChromeUI::BTN_SIZE)
+            return -1;
+        f32 fmx = static_cast<f32>(mx);
+        for (u32 i = 0; i < chrome_.tabs.size(); i++) {
+            f32 tx = ChromeUI::PADDING + i * (ChromeUI::TAB_W + 2);
+            if (fmx >= tx && fmx <= tx + ChromeUI::TAB_W)
+                return static_cast<i32>(i);
+        }
+        return -1;
+    }
+
+    bool BrowserWindow::new_tab_button_hit(i32 mx, i32 my) const {
+        f32 fmy = static_cast<f32>(my);
+        f32 tab_y = (ChromeUI::TITLEBAR_H - ChromeUI::BTN_SIZE) / 2.0f;
+        if (fmy < tab_y || fmy >= tab_y + ChromeUI::BTN_SIZE)
+            return false;
+        f32 fmx = static_cast<f32>(mx);
+        f32 nx = ChromeUI::PADDING + static_cast<f32>(chrome_.tabs.size()) * (ChromeUI::TAB_W + 2);
+        return fmx >= nx && fmx <= nx + ChromeUI::NEW_TAB_W;
     }
 
     LRESULT BrowserWindow::hit_test_titlebar(i32 mx, i32 my) {

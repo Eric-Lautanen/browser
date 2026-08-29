@@ -45,6 +45,61 @@ namespace browser::css {
                 advance();
                 continue;
             }
+            // '/' separator: significant for font (size/line-height); attach
+            // it to the next value there. Other shorthands (background,
+            // animation) keep their historical token stream.
+            if (current_.type == CssTokenType::DELIM && current_.text == "/" && decl.property == "font") {
+                advance();
+                if (current_.type == CssTokenType::WHITESPACE)
+                    advance();
+                CSSValue slash_val = parse_value();
+                CSSValue marked;
+                marked.type = CSSValue::Type::STRING;
+                {
+                    char buf[64];
+                    snprintf(buf, sizeof(buf), "/%.2f", slash_val.type == CSSValue::Type::NUMBER ||
+                                                                   slash_val.type == CSSValue::Type::PERCENTAGE
+                                                               ? slash_val.number
+                                                               : slash_val.length.value);
+                    std::string num = buf;
+                    auto dot = num.find('.');
+                    if (dot != std::string::npos) {
+                        auto last = num.find_last_not_of('0');
+                        if (last > dot)
+                            num = num.substr(0, last + 1);
+                        else if (last == dot)
+                            num = num.substr(0, dot);
+                    }
+                    marked.string_value = num;
+                    if (slash_val.type == CSSValue::Type::PERCENTAGE) {
+                        marked.string_value += "%";
+                    } else if (slash_val.type == CSSValue::Type::LENGTH) {
+                        switch (slash_val.length.unit) {
+                            case Length::Unit::PX:
+                                marked.string_value += "px";
+                                break;
+                            case Length::Unit::EM:
+                                marked.string_value += "em";
+                                break;
+                            case Length::Unit::REM:
+                                marked.string_value += "rem";
+                                break;
+                            case Length::Unit::PT:
+                                marked.string_value += "pt";
+                                break;
+                            case Length::Unit::PERCENT:
+                                marked.string_value += "%";
+                                break;
+                            default:
+                                break;
+                        }
+                    } else if (slash_val.type == CSSValue::Type::KEYWORD) {
+                        marked.string_value = "/" + slash_val.keyword;
+                    }
+                }
+                decl.values.push_back(marked);
+                continue;
+            }
             decl.values.push_back(parse_value());
         }
         return decl;

@@ -24,7 +24,10 @@ void expand_font(ComputedStyle& style, const CSSValue& val) {
     int idx=0; int n=(int)parts.size();
     auto is_font_style=[](const std::string& s){return s=="normal"||s=="italic"||s=="oblique";};
     auto is_font_variant=[](const std::string& s){return s=="normal"||s=="small-caps";};
-    auto is_font_weight=[](const std::string& s){return s=="normal"||s=="bold"||s=="bolder"||s=="lighter"||(s.size()>=1&&std::isdigit((unsigned char)s[0])&&std::atoi(s.c_str())>=1&&std::atoi(s.c_str())<=1000);};
+    // Weights are purely numeric or keywords; a unit suffix means size ("13px"
+    // is not a weight).
+    auto all_digits=[](const std::string& s){ if(s.empty()) return false; for(char c:s){ if(!std::isdigit((unsigned char)c)) return false;} return true; };
+    auto is_font_weight=[&](const std::string& s){return s=="normal"||s=="bold"||s=="bolder"||s=="lighter"||(all_digits(s)&&std::atoi(s.c_str())>=1&&std::atoi(s.c_str())<=1000);};
     auto is_length_or_percent=[](const std::string& s)->bool{ if(s.empty()) return false; char* end=nullptr; std::strtof(s.c_str(),&end); if(end==s.c_str()) return false; std::string u=end; return u=="px"||u=="em"||u=="rem"||u=="pt"||u=="%"||u.empty(); };
     if(idx<n && is_font_style(parts[idx]) && parts[idx]!="normal"){ if(!style.has("font-style")){CSSValue cv; cv.type=CSSValue::Type::KEYWORD; cv.keyword=parts[idx]; style.properties["font-style"]=cv;} idx++; }
     if(idx<n && is_font_variant(parts[idx]) && parts[idx]!="normal"){ if(!style.has("font-variant")){CSSValue cv; cv.type=CSSValue::Type::KEYWORD; cv.keyword=parts[idx]; style.properties["font-variant"]=cv;} idx++; }
@@ -37,7 +40,18 @@ void expand_font(ComputedStyle& style, const CSSValue& val) {
             cv.keyword=parts[idx]; style.properties["font-size"]=cv;
         }
         idx++;
-        if(idx<n && parts[idx]=="/"){ idx++; if(idx<n && (is_length_or_percent(parts[idx])||parts[idx]=="normal")){ if(!style.has("line-height")){CSSValue lh; lh.type=CSSValue::Type::STRING; lh.string_value=parts[idx]; char* end=nullptr; f32 num=std::strtof(parts[idx].c_str(),&end); if(end!=parts[idx].c_str()){lh.type=CSSValue::Type::NUMBER; lh.number=num;} else if(parts[idx]=="normal"){lh.type=CSSValue::Type::KEYWORD; lh.keyword="normal";} style.properties["line-height"]=lh; } idx++; }}
+        // line-height after the size: "/27px" (parser keeps the slash
+        // attached to the next value) or a separate "/"/value pair.
+        std::string lh_part;
+        if(idx<n && parts[idx].size()>=2 && parts[idx][0]=='/'){ lh_part=parts[idx].substr(1); idx++; }
+        else if(idx<n && parts[idx]=="/"){ idx++; if(idx<n){ lh_part=parts[idx]; idx++; } }
+        if(!lh_part.empty() && !style.has("line-height") && (is_length_or_percent(lh_part)||lh_part=="normal")){
+            CSSValue lh; lh.type=CSSValue::Type::STRING; lh.string_value=lh_part;
+            char* end=nullptr; f32 num=std::strtof(lh_part.c_str(),&end);
+            if(end!=lh_part.c_str()){lh.type=CSSValue::Type::NUMBER; lh.number=num;}
+            else if(lh_part=="normal"){lh.type=CSSValue::Type::KEYWORD; lh.keyword="normal";}
+            style.properties["line-height"]=lh;
+        }
     }
     std::string family; for(int i=idx;i<n;i++){ if(i>idx) family+=", "; std::string fp=parts[i]; if(fp.size()>=2&&(fp[0]=='"'||fp[0]=='\'')&&fp.back()==fp[0]) fp=fp.substr(1,fp.size()-2); family+=fp; }
     if(!family.empty() && !style.has("font-family")){ CSSValue fv; fv.type=CSSValue::Type::KEYWORD; fv.keyword=family; style.properties["font-family"]=fv; }
