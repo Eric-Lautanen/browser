@@ -372,6 +372,21 @@ code { font-family: monospace; }
             ComputedStyle style;
             style._element = el;
 
+            // Custom properties inherit: seed this element with the parent's
+            // --* values (parents are computed first in this pre-order pass).
+            // Copied by value — the map may rehash, so no pointers are kept
+            // here (style.parent is linked in a second pass below).
+            if (el->parent && el->parent->type == html::NodeType::ELEMENT) {
+                auto *pel = static_cast<const html::Element *>(el->parent);
+                auto pit = styles.find(pel);
+                if (pit != styles.end()) {
+                    for (const auto &[pname, pval] : pit->second.properties) {
+                        if (pname.size() >= 2 && pname[0] == '-' && pname[1] == '-')
+                            style.properties[pname] = pval;
+                    }
+                }
+            }
+
             auto &decls = matched[el];
             for (const auto &md : decls) {
                 if (!md.decl->values.empty()) {
@@ -629,6 +644,10 @@ code { font-family: monospace; }
                                     break;
                             }
                         }
+                        // Multi-value declarations may carry var() segments
+                        // (e.g. "margin: var(--x) 4px"); substitute them now.
+                        if (combined.string_value.find("var(") != std::string::npos)
+                            combined.string_value = resolve_var(combined.string_value, style);
                         style.properties[prop] = std::move(combined);
                     }
 

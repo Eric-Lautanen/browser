@@ -155,6 +155,17 @@ namespace browser::css {
         }
         node->margin = margins;
 
+        // Float state is resolved before the formatting-context dispatches so
+        // floated flex/grid/table containers also take the float path in
+        // their parent's layout_children.
+        {
+            auto *float_val = node->style().get("float");
+            bool floating = float_val && float_val->type == CSSValue::Type::KEYWORD &&
+                            (float_val->keyword == "left" || float_val->keyword == "right");
+            node->is_floating = floating;
+            node->float_direction = floating && float_val->keyword == "left" ? 0 : 1;
+        }
+
         if (is_grid_element(node->style())) {
             layout_grid(node, containing_width, containing_height);
             auto *maxh = node->style().get("max-height");
@@ -186,6 +197,39 @@ namespace browser::css {
 
         if (is_flex_element(node->style())) {
             layout_flex(node, containing_width, containing_height);
+            // A floated or inline-level flex container shrink-to-fits its
+            // content instead of stretching to the containing block.
+            auto *fdisp = node->style().get("display");
+            bool inline_flex =
+                fdisp && fdisp->type == CSSValue::Type::KEYWORD && fdisp->keyword == "inline-flex";
+            if (width_auto && (node->is_floating || inline_flex) && !node->children.empty()) {
+                auto extras_of = [](LayoutNode *c) {
+                    return c->margin.left + c->margin.right + c->padding.left + c->padding.right + c->border.left +
+                           c->border.right;
+                };
+                auto *fdir = node->style().get("flex-direction");
+                bool is_column = fdir && fdir->type == CSSValue::Type::KEYWORD &&
+                                 (fdir->keyword == "column" || fdir->keyword == "column-reverse");
+                f32 natural = 0;
+                if (is_column) {
+                    for (auto &c : node->children) {
+                        f32 w = c->content.width + extras_of(c.get());
+                        if (w > natural)
+                            natural = w;
+                    }
+                } else {
+                    for (auto &c : node->children) {
+                        f32 end = c->content.x + c->content.width + c->margin.right + c->padding.right +
+                                  c->border.right;
+                        if (end > natural)
+                            natural = end;
+                    }
+                }
+                if (natural > 0 && natural < node->content.width) {
+                    node->content.width = natural;
+                    layout_flex(node, natural, containing_height);
+                }
+            }
             auto *maxh = node->style().get("max-height");
             if (maxh && maxh->type == CSSValue::Type::LENGTH) {
                 f32 mh = resolve_length(maxh->length, containing_height, font_size);
@@ -433,14 +477,6 @@ namespace browser::css {
             }
             // The marker will be rendered in the padding area
             node->padding.left += marker_width;
-        }
-
-        auto *float_val = node->style().get("float");
-        bool is_floating = float_val && float_val->type == CSSValue::Type::KEYWORD &&
-                           (float_val->keyword == "left" || float_val->keyword == "right");
-        if (is_floating) {
-            node->is_floating = true;
-            node->float_direction = float_val->keyword == "left" ? 0 : 1;
         }
 
         auto *overflow = node->style().get("overflow");

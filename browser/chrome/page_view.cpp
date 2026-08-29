@@ -108,15 +108,16 @@ namespace browser {
                 [&](const css::LayoutNode *node, f32 ox, f32 oy) {
                     f32 nx = ox + node->content.x + node->padding.left + node->border.left;
                     f32 ny = oy + node->content.y + node->padding.top + node->border.top;
-                    if (node == selection_.start_node) drawing = true;
+                    if (node == selection_.start_node)
+                        drawing = true;
                     if (drawing && node->is_text() && !node->text().empty()) {
                         f32 abs_x = nx;
                         f32 abs_y = ny - static_cast<f32>(chrome_.scroll_y) + content_y;
                         renderer_->fill_rect(abs_x, abs_y, node->content.width, node->content.height, sel_color);
                     }
-                    for (auto &ch : node->children)
-                        draw_sel(ch.get(), nx, ny);
-                    if (node == selection_.end_node) drawing = false;
+                    for (auto &ch : node->children) draw_sel(ch.get(), nx, ny);
+                    if (node == selection_.end_node)
+                        drawing = false;
                 };
             draw_sel(page.layout.get(), 0, 0);
         }
@@ -227,23 +228,23 @@ namespace browser {
         f32 bar_h = 30.0f;
         f32 bar_w = static_cast<f32>(viewport_width_);
 
-        // Dark bar below toolbar
-        renderer_->fill_rect(0, bar_y, bar_w, bar_h, {0.15f, 0.15f, 0.16f, 1.0f});
+        // Bar below toolbar, themed to match the rest of the chrome
+        renderer_->fill_rect(0, bar_y, bar_w, bar_h, t.surface);
         renderer_->draw_line(0, bar_y, bar_w, bar_y, t.border, 1.0f);
 
         f32 tx = 10.0f;
-        text_renderer_->render_text(renderer_.get(), "Find:", tx, bar_y + 7, {1.0f, 1.0f, 1.0f, 1.0f}, 13);
+        text_renderer_->render_text(renderer_.get(), "Find:", tx, bar_y + 7, t.text_secondary, 13);
         tx += 40.0f;
 
         // Input area
         f32 input_w = 200.0f;
-        renderer_->stroke_rect(tx, bar_y + 4, input_w, 22, {0.4f, 0.4f, 0.4f, 1.0f}, 1.0f);
-        renderer_->fill_rect(tx + 1, bar_y + 5, input_w - 2, 20, {0.2f, 0.2f, 0.22f, 1.0f});
+        renderer_->stroke_rect(tx, bar_y + 4, input_w, 22, t.border, 1.0f);
+        renderer_->fill_rect(tx + 1, bar_y + 5, input_w - 2, 20, t.surface_hover);
 
         std::string display_text = chrome_.find_state.query;
         if (display_text.empty())
             display_text = " ";
-        text_renderer_->render_text(renderer_.get(), display_text, tx + 4, bar_y + 5, {1.0f, 1.0f, 1.0f, 1.0f}, 13);
+        text_renderer_->render_text(renderer_.get(), display_text, tx + 4, bar_y + 5, t.text, 13);
         tx += input_w + 8;
 
         // Match count
@@ -251,13 +252,13 @@ namespace browser {
         u32 total = static_cast<u32>(chrome_.find_state.matches.size());
         u32 cur = total > 0 ? chrome_.find_state.current_match + 1 : 0;
         snprintf(count_text, sizeof(count_text), "%u/%u", cur, total);
-        text_renderer_->render_text(renderer_.get(), count_text, tx, bar_y + 7, {0.8f, 0.8f, 0.8f, 1.0f}, 12);
+        text_renderer_->render_text(renderer_.get(), count_text, tx, bar_y + 7, t.text_secondary, 12);
         tx += 60.0f;
 
         // Prev/Next buttons
-        text_renderer_->render_text(renderer_.get(), "[<]", tx, bar_y + 7, {0.9f, 0.9f, 0.9f, 1.0f}, 13);
+        text_renderer_->render_text(renderer_.get(), "[<]", tx, bar_y + 7, t.text, 13);
         tx += 28.0f;
-        text_renderer_->render_text(renderer_.get(), "[>]", tx, bar_y + 7, {0.9f, 0.9f, 0.9f, 1.0f}, 13);
+        text_renderer_->render_text(renderer_.get(), "[>]", tx, bar_y + 7, t.text, 13);
     }
 
     void BrowserWindow::render_devtools() {

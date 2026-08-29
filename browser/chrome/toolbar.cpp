@@ -81,9 +81,24 @@ namespace browser {
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
             u64 elapsed = ms - chrome_.blink_start_ms;
             if ((elapsed / 500) % 2 == 0) {
-                f32 cx = tx + text_renderer_->measure_text(chrome_.address_bar.edit_buffer.substr(0, chrome_.address_bar.cursor_pos), 13);
+                f32 cx = tx + text_renderer_->measure_text(
+                                  chrome_.address_bar.edit_buffer.substr(0, chrome_.address_bar.cursor_pos), 13);
                 renderer_->draw_line(cx, ty, cx, ty + 16, t.text, 1.5f);
             }
+        }
+
+        // Indeterminate loading progress: an accent segment slides across the
+        // bottom edge of the omnibox while a page loads. Frames tick every
+        // ~16 ms while is_loading (run loop keeps the beat).
+        if (chrome_.is_loading) {
+            auto now = std::chrono::steady_clock::now();
+            u64 ms =
+                static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+            f32 cycle = static_cast<f32>(ms % 1400) / 1400.0f;
+            f32 seg_frac = 0.3f;
+            f32 seg_w = r.w * seg_frac;
+            f32 seg_x = r.x + (r.w - seg_w) * cycle;
+            renderer_->fill_rect(seg_x, r.y + r.h - 2.0f, seg_w, 2.0f, t.accent);
         }
     }
 
@@ -97,7 +112,14 @@ namespace browser {
 
         if (chrome_.hovered_button == ChromeUI::DOWNLOAD)
             renderer_->fill_rect(r.x, r.y, r.w, r.h, t.surface_hover);
-        renderer_->draw_icon_centered(render::Icon::MENU, r.x, r.y, r.w, r.h, 14.0f, t.text);
+        // Download arrow: shaft + head + baseline
+        f32 cx = r.x + r.w * 0.5f;
+        f32 cy = r.y + r.h * 0.5f;
+        render::Color c = t.text;
+        renderer_->draw_line(cx, cy - 5.0f, cx, cy + 2.5f, c, 1.5f);
+        renderer_->draw_line(cx - 3.5f, cy - 0.5f, cx, cy + 3.0f, c, 1.5f);
+        renderer_->draw_line(cx, cy + 3.0f, cx + 3.5f, cy - 0.5f, c, 1.5f);
+        renderer_->draw_line(cx - 4.0f, cy + 5.5f, cx + 4.0f, cy + 5.5f, c, 1.5f);
         // Show active download count badge
         u32 active = download_manager_->active_count();
         if (active > 0) {
@@ -140,21 +162,11 @@ namespace browser {
         if (!chrome_.show_menu)
             return;
         auto &t = theme_;
-        auto &mr = chrome_.rects.menu;
-        f32 mw = 200, mh = 96;
-        f32 item_h = 30.0f;
-        f32 pad = 4.0f;
-
-        f32 dx = mr.x + mr.w - mw;
-        if (dx < 4.0f)
-            dx = 4.0f;
-        if (dx + mw > static_cast<f32>(viewport_width_) - 4.0f)
-            dx = static_cast<f32>(viewport_width_) - mw - 4.0f;
-
-        f32 dy = chrome_height() + 2.0f;
-        if (dy + mh > static_cast<f32>(viewport_height_) - 8.0f) {
-            dy = chrome_height() - mh - 2.0f;
-        }
+        auto geom = ChromeUI::menu_geometry(
+            static_cast<f32>(viewport_width_), static_cast<f32>(viewport_height_), chrome_height(), chrome_.rects.menu);
+        const f32 dx = geom.x, dy = geom.y, mw = geom.w, mh = geom.h;
+        constexpr f32 item_h = ChromeUI::MENU_ITEM_H;
+        constexpr f32 pad = 4.0f;
 
         renderer_->fill_rect(dx + 3.0f, dy + 3.0f, mw, mh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 1.5f});
         renderer_->fill_rect(dx + 1.5f, dy + 1.5f, mw, mh, {0.0f, 0.0f, 0.0f, t.shadow_alpha * 0.8f});
@@ -162,7 +174,7 @@ namespace browser {
         renderer_->fill_rect(dx, dy, mw, mh, t.surface);
         renderer_->stroke_rect(dx, dy, mw, mh, t.border, 1.0f);
 
-        f32 arrow_cx = mr.x + mr.w * 0.5f;
+        f32 arrow_cx = chrome_.rects.menu.x + chrome_.rects.menu.w * 0.5f;
         f32 arrow_cy = dy;
         f32 arrow_sz = 5.0f;
         if (dy > chrome_height()) {
@@ -177,15 +189,17 @@ namespace browser {
             bool secondary;
         };
         MenuItem items[] = {
-            {"New Tab",  "Ctrl+T", false},
-            {"Settings", "",       false},
-            {"About",    "",       true},
+            {"New Tab", "Ctrl+T", false},
+            {"Bookmark This Page", "Ctrl+D", false},
+            {"Find in Page", "Ctrl+F", false},
+            {"Downloads", "", false},
+            {"Settings", "", false},
         };
 
         f32 iy = dy + pad;
-        for (i32 i = 0; i < 3; i++) {
+        for (u32 i = 0; i < ChromeUI::MENU_ITEM_COUNT; i++) {
             auto &item = items[i];
-            bool hovered = (chrome_.hovered_menu_item == i);
+            bool hovered = (chrome_.hovered_menu_item == static_cast<i32>(i));
             if (hovered)
                 renderer_->fill_rect(dx + 2.0f, iy, mw - 4.0f, item_h, t.accent);
             render::Color tc = hovered ? render::Color::WHITE : (item.secondary ? t.text_secondary : t.text);

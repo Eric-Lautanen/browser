@@ -492,11 +492,13 @@ namespace browser::css {
                 return val;
             }
 
-            // var()
+            // var() — captured verbatim (including nested var()/functions) so
+            // the cascade can substitute custom properties later.
             if (func_name == "var") {
                 val.type = CSSValue::Type::KEYWORD;
                 val.keyword = "var(";
-                while (current_.type != CssTokenType::CLOSE_PAREN && current_.type != CssTokenType::EOF_TOKEN) {
+                u32 depth = 1;
+                while (depth > 0 && current_.type != CssTokenType::EOF_TOKEN) {
                     if (current_.type == CssTokenType::WHITESPACE) {
                         advance();
                         continue;
@@ -506,12 +508,68 @@ namespace browser::css {
                         advance();
                         continue;
                     }
+                    if (current_.type == CssTokenType::FUNCTION) {
+                        // Function token text excludes its '('.
+                        val.keyword += current_.text;
+                        val.keyword += '(';
+                        depth++;
+                        advance();
+                        continue;
+                    }
+                    if (current_.type == CssTokenType::OPEN_PAREN) {
+                        val.keyword += '(';
+                        depth++;
+                        advance();
+                        continue;
+                    }
+                    if (current_.type == CssTokenType::CLOSE_PAREN) {
+                        val.keyword += ')';
+                        depth--;
+                        advance();
+                        continue;
+                    }
+                    if (current_.type == CssTokenType::NUMBER || current_.type == CssTokenType::DIMENSION ||
+                        current_.type == CssTokenType::PERCENTAGE) {
+                        char buf[64];
+                        snprintf(buf, sizeof(buf), "%.2f", current_.numeric_value);
+                        std::string num = buf;
+                        auto dot = num.find('.');
+                        if (dot != std::string::npos) {
+                            auto last = num.find_last_not_of('0');
+                            if (last > dot)
+                                num = num.substr(0, last + 1);
+                            else if (last == dot)
+                                num = num.substr(0, dot);
+                        }
+                        val.keyword += num;
+                        if (current_.type == CssTokenType::DIMENSION)
+                            val.keyword += current_.text;
+                        else if (current_.type == CssTokenType::PERCENTAGE)
+                            val.keyword += '%';
+                        advance();
+                        continue;
+                    }
+                    if (current_.type == CssTokenType::HASH) {
+                        val.keyword += '#';
+                        val.keyword += current_.text;
+                        advance();
+                        continue;
+                    }
+                    if (current_.type == CssTokenType::STRING) {
+                        val.keyword += '"';
+                        val.keyword += current_.text;
+                        val.keyword += '"';
+                        advance();
+                        continue;
+                    }
+                    if (current_.type == CssTokenType::DELIM) {
+                        val.keyword += current_.text;
+                        advance();
+                        continue;
+                    }
                     val.keyword += current_.text;
                     advance();
                 }
-                val.keyword += ')';
-                if (current_.type == CssTokenType::CLOSE_PAREN)
-                    advance();
                 return val;
             }
 

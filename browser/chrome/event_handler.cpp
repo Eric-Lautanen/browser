@@ -150,10 +150,12 @@ namespace browser {
                         if (wide_len > 0) {
                             std::vector<wchar_t> wbuf(static_cast<size_t>(wide_len));
                             MultiByteToWideChar(CP_ACP, 0, text, -1, wbuf.data(), wide_len);
-                            int utf8_len = WideCharToMultiByte(CP_UTF8, 0, wbuf.data(), -1, nullptr, 0, nullptr, nullptr);
+                            int utf8_len =
+                                WideCharToMultiByte(CP_UTF8, 0, wbuf.data(), -1, nullptr, 0, nullptr, nullptr);
                             if (utf8_len > 1) {
                                 result.resize(static_cast<size_t>(utf8_len - 1));
-                                WideCharToMultiByte(CP_UTF8, 0, wbuf.data(), -1, &result[0], utf8_len, nullptr, nullptr);
+                                WideCharToMultiByte(
+                                    CP_UTF8, 0, wbuf.data(), -1, &result[0], utf8_len, nullptr, nullptr);
                             }
                         } else {
                             result = text;
@@ -164,6 +166,23 @@ namespace browser {
             }
             CloseClipboard();
             return result;
+        }
+
+        // Resolve a link href against the current page URL. Returns "" for
+        // empty/fragment-only hrefs (those are same-page anchors).
+        std::string resolve_link_url(const std::string &href, const std::string &base) {
+            if (href.empty() || href[0] == '#')
+                return "";
+            std::string resolved = href;
+            if (href.find("://") == std::string::npos) {
+                auto base_parsed = net::URL::parse(base);
+                if (base_parsed.is_ok()) {
+                    auto resolved_r = base_parsed.unwrap().resolve(href);
+                    if (resolved_r.is_ok())
+                        resolved = resolved_r.unwrap().to_string();
+                }
+            }
+            return resolved;
         }
 
     }  // namespace
@@ -194,7 +213,7 @@ namespace browser {
                      e.key == platform::KeyCode::RALT)
                 chrome_.alt_down = false;
         } else if (e.type == platform::Event::Type::MOUSE_DOWN) {
-            handle_mouse_click(e.mouse_x, e.mouse_y);
+            handle_mouse_click(e.mouse_x, e.mouse_y, e.button);
         } else if (e.type == platform::Event::Type::MOUSE_UP) {
             chrome_.scroll_dragging = false;
             if (chrome_.textarea_resize.active) {
@@ -233,7 +252,34 @@ namespace browser {
         }
     }
 
-    void BrowserWindow::handle_mouse_click(i32 mx, i32 my) {
+    void BrowserWindow::handle_mouse_click(i32 mx, i32 my, platform::MouseButton button) {
+        if (button == platform::MouseButton::RIGHT)
+            return;  // no context menu yet — a right-click must not act as a left-click
+        if (button == platform::MouseButton::MIDDLE) {
+            // Middle-click on a tab closes it; middle-click on a link opens
+            // it in a new background tab.
+            f32 tab_start = ChromeUI::PADDING;
+            for (u32 i = 0; i < chrome_.tabs.size(); i++) {
+                if (mx >= tab_start + i * (ChromeUI::TAB_W + 2) &&
+                    mx <= tab_start + i * (ChromeUI::TAB_W + 2) + ChromeUI::TAB_W) {
+                    close_tab(i);
+                    return;
+                }
+            }
+            if (my > chrome_height() && current_page_.has_value() && current_page_->layout) {
+                f32 py = static_cast<f32>(my) - chrome_height() + static_cast<f32>(chrome_.scroll_y);
+                auto ht = html::hit_test(current_page_->layout.get(), static_cast<f32>(mx), py);
+                if (ht.element && ht.element->tag_name == "a") {
+                    std::string url = resolve_link_url(ht.element->get_attribute("href"), chrome_.url);
+                    if (!url.empty()) {
+                        open_background_tab(url);
+                        return;
+                    }
+                }
+            }
+            return;
+        }
+
         if (my > chrome_height()) {
             // Check overlay panels first — prevent clicks from reaching page below
             if (chrome_.show_downloads) {
@@ -340,23 +386,33 @@ namespace browser {
 
             // Menu dropdown click handling
             if (chrome_.show_menu) {
-                auto &mr = chrome_.rects.menu;
-                f32 mw = 200.0f, mh = 96.0f, item_h = 30.0f, pad = 4.0f;
-                f32 dx = mr.x + mr.w - mw;
-                if (dx < 4.0f)
-                    dx = 4.0f;
-                if (dx + mw > static_cast<f32>(viewport_width_) - 4.0f)
-                    dx = static_cast<f32>(viewport_width_) - mw - 4.0f;
-                f32 dy = chrome_height() + 2.0f;
-                if (dy + mh > static_cast<f32>(viewport_height_) - 8.0f)
-                    dy = chrome_height() - mh - 2.0f;
-                if (mx >= dx && mx <= dx + mw && my >= dy && my <= dy + mh) {
-                    f32 rel_y = static_cast<f32>(my) - dy - pad;
-                    i32 idx = static_cast<i32>(rel_y / item_h);
-                    if (idx == 0)
-                        new_tab();
-                    else if (idx == 1)
-                        chrome_.show_settings = true;
+                auto geom = ChromeUI::menu_geometry(static_cast<f32>(viewport_width_),
+                                                    static_cast<f32>(viewport_height_),
+                                                    chrome_height(),
+                                                    chrome_.rects.menu);
+                if (mx >= geom.x && mx <= geom.x + geom.w && my >= geom.y && my <= geom.y + geom.h) {
+                    constexpr f32 PAD = 4.0f;
+                    f32 rel_y = static_cast<f32>(my) - geom.y - PAD;
+                    i32 idx = static_cast<i32>(rel_y / ChromeUI::MENU_ITEM_H);
+                    if (idx >= 0 && idx < static_cast<i32>(ChromeUI::MENU_ITEM_COUNT)) {
+                        switch (idx) {
+                            case 0:
+                                new_tab();
+                                break;
+                            case 1:
+                                handle_bookmark_click();
+                                break;
+                            case 2:
+                                chrome_.find_state.show();
+                                break;
+                            case 3:
+                                chrome_.show_downloads = true;
+                                break;
+                            case 4:
+                                chrome_.show_settings = true;
+                                break;
+                        }
+                    }
                     chrome_.show_menu = false;
                     chrome_.hovered_menu_item = -1;
                     return;
@@ -589,15 +645,17 @@ namespace browser {
                                 snprintf(buf, sizeof(buf), "%g", val);
                                 html::g_form_state.set_value(ht.element, buf);
                             }
-                                                } else if (tag == "input" && type == "file") {
+                        } else if (tag == "input" && type == "file") {
                             html::g_form_state.focus(ht.element);
                             std::string out;
-                            if (show_file_picker(GetActiveWindow(), out)) html::g_form_state.set_value(ht.element, out);
+                            if (show_file_picker(GetActiveWindow(), out))
+                                html::g_form_state.set_value(ht.element, out);
                         } else if (tag == "input" && type == "color") {
                             html::g_form_state.focus(ht.element);
                             std::string out;
-                            if (show_color_picker(GetActiveWindow(), html::g_form_state.get_value(ht.element), out)) html::g_form_state.set_value(ht.element, out);
-} else if (tag == "input" && type == "checkbox") {
+                            if (show_color_picker(GetActiveWindow(), html::g_form_state.get_value(ht.element), out))
+                                html::g_form_state.set_value(ht.element, out);
+                        } else if (tag == "input" && type == "checkbox") {
                             html::g_form_state.toggle_checkbox(ht.element);
                             html::g_form_state.focus(ht.element);
                         } else if (tag == "input" && type == "radio") {
@@ -676,6 +734,7 @@ namespace browser {
                             }
                         } else if (tag == "a") {
                             std::string href = ht.element->get_attribute("href");
+                            std::string url = resolve_link_url(href, chrome_.url);
                             if (!href.empty()) {
                                 if (href[0] == '#') {
                                     // Scroll-to-anchor: update scroll position
@@ -722,19 +781,11 @@ namespace browser {
                                             }
                                         }
                                     }
+                                } else if (chrome_.ctrl_down) {
+                                    // Ctrl+click opens the link in a new background tab
+                                    open_background_tab(url);
                                 } else {
-                                    // Full URL or relative URL — navigate
-                                    std::string resolved = href;
-                                    if (href.find("://") == std::string::npos) {
-                                        // Relative URL: resolve against current page URL
-                                        auto base_parsed = net::URL::parse(chrome_.url);
-                                        if (base_parsed.is_ok()) {
-                                            auto resolved_r = base_parsed.unwrap().resolve(href);
-                                            if (resolved_r.is_ok())
-                                                resolved = resolved_r.unwrap().to_string();
-                                        }
-                                    }
-                                    navigate(resolved);
+                                    navigate(url);
                                 }
                             }
                         } else {
@@ -777,12 +828,7 @@ namespace browser {
         for (u32 i = 0; i < chrome_.tabs.size(); i++) {
             if (mx >= tab_start + i * (ChromeUI::TAB_W + 2) &&
                 mx <= tab_start + i * (ChromeUI::TAB_W + 2) + ChromeUI::TAB_W) {
-                if (chrome_.active_tab != i) {
-                    chrome_.tabs[chrome_.active_tab].scroll_y = chrome_.scroll_y;
-                    chrome_.active_tab = i;
-                    chrome_.scroll_y = chrome_.tabs[i].scroll_y;
-                    start_load(chrome_.tabs[i].url);
-                }
+                select_tab(i);
                 return;
             }
         }
@@ -802,17 +848,23 @@ namespace browser {
             return;
         }
         if (is_in_rect(mx, my, r.refresh)) {
-            refresh();
+            // The button is a stop control while a load is in flight.
+            if (chrome_.is_loading && page_loader_)
+                page_loader_->cancel();
+            else
+                refresh();
             return;
         }
 
         if (is_in_rect(mx, my, r.address)) {
-            chrome_.address_focused = true;
-            chrome_.address_bar.edit_buffer = chrome_.url;
-            chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.length());
-            auto now = std::chrono::steady_clock::now();
-            chrome_.blink_start_ms =
-                static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+            // First click selects the whole URL so typing replaces it; a
+            // second click drops the highlight to place the caret.
+            if (chrome_.address_focused) {
+                chrome_.address_bar.all_selected = false;
+                chrome_.address_bar.sel_start = chrome_.address_bar.cursor_pos;
+            } else {
+                focus_address_bar(true);
+            }
             return;
         }
 
@@ -947,6 +999,36 @@ namespace browser {
             new_tab();
             return;
         }
+        // Ctrl+W: close the current tab (global — closes the window when the
+        // last tab is closed, like mainstream browsers)
+        if (e.key == platform::KeyCode::W && chrome_.ctrl_down) {
+            close_tab(chrome_.active_tab);
+            return;
+        }
+        // Ctrl+D: bookmark / unbookmark the current page
+        if (e.key == platform::KeyCode::D && chrome_.ctrl_down) {
+            handle_bookmark_click();
+            return;
+        }
+        // Ctrl+Tab / Ctrl+Shift+Tab: cycle through tabs
+        if (e.key == platform::KeyCode::TAB && chrome_.ctrl_down) {
+            u32 n = static_cast<u32>(chrome_.tabs.size());
+            if (n > 1) {
+                u32 idx = chrome_.shift_down ? (chrome_.active_tab + n - 1) % n : (chrome_.active_tab + 1) % n;
+                select_tab(idx);
+            }
+            return;
+        }
+        // Ctrl+1..8: switch to the Nth tab; Ctrl+9: switch to the last tab
+        if (chrome_.ctrl_down && e.key >= platform::KeyCode::_1 && e.key <= platform::KeyCode::_9) {
+            if (!chrome_.tabs.empty()) {
+                u32 target = (e.key == platform::KeyCode::_9)
+                                 ? static_cast<u32>(chrome_.tabs.size()) - 1
+                                 : static_cast<u32>(static_cast<int>(e.key) - static_cast<int>(platform::KeyCode::_1));
+                select_tab(target);
+            }
+            return;
+        }
         if (e.key == platform::KeyCode::R && chrome_.ctrl_down) {
             refresh();
             return;
@@ -1042,14 +1124,8 @@ namespace browser {
             return;
         }
         if (e.key == platform::KeyCode::L && chrome_.ctrl_down) {
-            chrome_.address_focused = true;
-            chrome_.address_bar.edit_buffer = chrome_.url;
-            chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
-            chrome_.address_bar.sel_start = 0;
-            chrome_.address_bar.all_selected = false;
-            auto now = std::chrono::steady_clock::now();
-            chrome_.blink_start_ms =
-                static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+            // Ctrl+L focuses the omnibox with the whole URL selected
+            focus_address_bar(true);
             return;
         }
         if (e.key == platform::KeyCode::F12 && !chrome_.ctrl_down) {
@@ -1065,11 +1141,7 @@ namespace browser {
             return;
         }
         if (e.key == platform::KeyCode::F6 && !chrome_.ctrl_down) {
-            chrome_.address_focused = true;
-            chrome_.address_bar.edit_buffer = chrome_.url;
-            chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
-            chrome_.address_bar.sel_start = 0;
-            chrome_.address_bar.all_selected = false;
+            focus_address_bar(true);
             return;
         }
         if ((e.key == platform::KeyCode::LEFT && chrome_.alt_down) ||
@@ -1144,10 +1216,6 @@ namespace browser {
         }
 
         if (chrome_.address_focused) {
-            if (e.key == platform::KeyCode::W && chrome_.ctrl_down) {
-                close_tab(chrome_.active_tab);
-                return;
-            }
             if (e.key == platform::KeyCode::C && chrome_.ctrl_down) {
                 clipboard_copy(chrome_.address_bar.edit_buffer);
                 return;
@@ -1186,7 +1254,7 @@ namespace browser {
                 chrome_.address_bar.all_selected = false;
             } else if (e.key == platform::KeyCode::ESCAPE) {
                 chrome_.address_focused = false;
-                chrome_.address_bar.edit_buffer.clear();
+                chrome_.address_bar.edit_buffer = chrome_.url;  // restore the live URL
                 chrome_.address_bar.all_selected = false;
             } else if ((e.key == platform::KeyCode::BACKSPACE)) {
                 if (chrome_.address_bar.all_selected) {
@@ -1448,6 +1516,11 @@ namespace browser {
             }
 
             if (e.key == platform::KeyCode::ESCAPE) {
+                if (chrome_.is_loading && page_loader_) {
+                    // Esc stops the in-flight load first, like mainstream browsers
+                    page_loader_->cancel();
+                    return;
+                }
                 if (chrome_.show_downloads) {
                     chrome_.show_downloads = false;
                     return;
@@ -1593,20 +1666,16 @@ namespace browser {
 
             // Track menu item hover
             if (chrome_.show_menu) {
-                auto &mr = chrome_.rects.menu;
-                f32 mw = 200.0f, mh = 96.0f, item_h = 30.0f, pad = 4.0f;
-                f32 dx = mr.x + mr.w - mw;
-                if (dx < 4.0f)
-                    dx = 4.0f;
-                if (dx + mw > static_cast<f32>(viewport_width_) - 4.0f)
-                    dx = static_cast<f32>(viewport_width_) - mw - 4.0f;
-                f32 dy = chrome_height() + 2.0f;
-                if (dy + mh > static_cast<f32>(viewport_height_) - 8.0f)
-                    dy = chrome_height() - mh - 2.0f;
-                if (mx >= dx && mx <= dx + mw && my >= dy && my <= dy + mh) {
-                    f32 rel_y = static_cast<f32>(my) - dy - pad;
-                    i32 idx = static_cast<i32>(rel_y / item_h);
-                    chrome_.hovered_menu_item = (idx >= 0 && idx < 3) ? idx : -1;
+                auto geom = ChromeUI::menu_geometry(static_cast<f32>(viewport_width_),
+                                                    static_cast<f32>(viewport_height_),
+                                                    chrome_height(),
+                                                    chrome_.rects.menu);
+                if (mx >= geom.x && mx <= geom.x + geom.w && my >= geom.y && my <= geom.y + geom.h) {
+                    constexpr f32 PAD = 4.0f;
+                    f32 rel_y = static_cast<f32>(my) - geom.y - PAD;
+                    i32 idx = static_cast<i32>(rel_y / ChromeUI::MENU_ITEM_H);
+                    chrome_.hovered_menu_item =
+                        (idx >= 0 && idx < static_cast<i32>(ChromeUI::MENU_ITEM_COUNT)) ? idx : -1;
                 } else {
                     chrome_.hovered_menu_item = -1;
                 }
@@ -1727,6 +1796,9 @@ namespace browser {
         f32 ntx = tab_start + chrome_.tabs.size() * (ChromeUI::TAB_W + 2);
         if (mx >= ntx && mx <= ntx + ChromeUI::NEW_TAB_W)
             chrome_.hovered_button = ChromeUI::REFRESH + 1;
+
+        // Text cursor over the omnibox, arrow everywhere else in the chrome
+        SetCursor(LoadCursor(nullptr, is_in_rect(mx, my, r.address) ? IDC_IBEAM : IDC_ARROW));
     }
 
     void BrowserWindow::handle_scroll(i32 delta) {

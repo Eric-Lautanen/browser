@@ -123,6 +123,19 @@ namespace browser {
         FindState find_state;
         DevToolsState devtools;
 
+        // Page context menu (right-click). Built on the same open/close
+        // discipline as the other popups so outside clicks dismiss it.
+        bool show_context_menu = false;
+        bool context_on_link = false;
+        std::string context_link_url;
+        f32 context_menu_x = 0.0f, context_menu_y = 0.0f;
+        i32 hovered_context_item = -1;
+
+        // Address-bar click cadence for double/triple-click selection.
+        u64 last_addr_click_ms = 0;
+        u32 addr_click_count = 0;
+        i32 last_addr_click_x = 0, last_addr_click_y = 0;
+
         // Textarea resize drag state
         struct TextareaResizeState {
             bool active = false;
@@ -143,6 +156,30 @@ namespace browser {
         static constexpr f32 NEW_TAB_W = 24.0f;
         static constexpr f32 PADDING = 6.0f;
         static constexpr f32 TAB_FAVICON_SIZE = 16.0f;
+        static constexpr f32 MENU_W = 220.0f;
+        static constexpr f32 MENU_ITEM_H = 30.0f;
+        static constexpr u32 MENU_ITEM_COUNT = 5;
+        static constexpr f32 CTX_MENU_W = 200.0f;
+        static constexpr f32 CTX_ITEM_H = 28.0f;
+
+        // Single source of truth for the app-menu popup rect. Render,
+        // hit-testing and hover tracking all must agree on this geometry.
+        struct MenuGeometry {
+            f32 x, y, w, h;
+        };
+        static MenuGeometry menu_geometry(f32 viewport_w, f32 viewport_h, f32 chrome_h, const ButtonRect &menu_btn) {
+            const f32 mw = MENU_W;
+            const f32 mh = 8.0f + MENU_ITEM_H * static_cast<f32>(MENU_ITEM_COUNT);
+            f32 dx = menu_btn.x + menu_btn.w - mw;
+            if (dx < 4.0f)
+                dx = 4.0f;
+            if (dx + mw > viewport_w - 4.0f)
+                dx = viewport_w - mw - 4.0f;
+            f32 dy = chrome_h + 2.0f;
+            if (dy + mh > viewport_h - 8.0f)
+                dy = chrome_h - mh - 2.0f;
+            return {dx, dy, mw, mh};
+        }
     };
 
     class BrowserWindow {
@@ -204,13 +241,14 @@ namespace browser {
         void render_bookmarks_dropdown();
         void render_menu_button();
         void render_menu();
+        void render_context_menu();
         void render_settings();
         void render_download_button();
         void render_download_panel();
         void render_find_bar();
         void render_devtools();
         void handle_event(const platform::Event &e);
-        void handle_mouse_click(i32 x, i32 y);
+        void handle_mouse_click(i32 x, i32 y, platform::MouseButton button);
         void handle_key_down(const platform::Event &e);
         void handle_mouse_move(i32 x, i32 y);
         void handle_scroll(i32 delta);
@@ -218,6 +256,20 @@ namespace browser {
         void set_theme(ThemeMode mode);
         void new_tab(const std::string &url = "about:blank");
         void close_tab(u32 index);
+        void select_tab(u32 index);
+        // Opens a tab without switching to it or loading it yet — used by
+        // middle-click / Ctrl+click on links. The page loads when the tab
+        // is first activated (the loader is single-flight, shared by tabs).
+        void open_background_tab(const std::string &url);
+        void focus_address_bar(bool select_all);
+        // Popup lifecycle: any open popup (hamburger menu, bookmarks
+        // dropdown, downloads/settings panels, page context menu) is
+        // dismissed by the first click that lands outside of it.
+        bool popup_open() const;
+        void close_popups();
+        ChromeUI::ButtonRect context_menu_rect() const;
+        ChromeUI::ButtonRect bookmarks_dropdown_rect() const;
+        ChromeUI::ButtonRect overlay_panel_rect() const;
         void update_tab_placeholder(u32 index);
         void update_chrome_state();
         void handle_bookmark_click();
@@ -249,6 +301,10 @@ namespace browser {
         HWND tooltip_hwnd_ = nullptr;
         std::string tooltip_text_;
         SelectionState selection_;
+        // A previous session was restored into the tab strip; the next
+        // startup navigation (the default "about:blank" from main) reloads
+        // the restored active tab instead of blanking it.
+        bool session_restored_ = false;
     };
 
 }  // namespace browser

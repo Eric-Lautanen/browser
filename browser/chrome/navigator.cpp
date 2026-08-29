@@ -14,6 +14,13 @@ namespace browser {
 
         if (final_url.empty())
             return;
+        // Startup: main() always navigates to "about:blank". When a session
+        // was restored, reload the restored active tab instead of blanking it.
+        if (session_restored_ && final_url == "about:blank") {
+            session_restored_ = false;
+            start_load(chrome_.url);
+            return;
+        }
         bool looks_like_url = (final_url.find("://") != std::string::npos ||
                                (final_url.find('.') != std::string::npos && final_url.find(' ') == std::string::npos &&
                                 final_url.find('\t') == std::string::npos) ||
@@ -94,15 +101,48 @@ namespace browser {
         start_load(url);
         if (!chrome_.tabs.empty() && chrome_.tabs[chrome_.active_tab].history)
             chrome_.tabs[chrome_.active_tab].history->push(url, "");
+        // Normal-browser behavior: a fresh tab goes straight to the omnibox
+        // so the user can type a URL or search.
+        chrome_.address_focused = true;
+        chrome_.address_bar.clear();
+        auto now = std::chrono::steady_clock::now();
+        chrome_.blink_start_ms =
+            static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+    }
+
+    void BrowserWindow::open_background_tab(const std::string &url) {
+        TabInfo tab;
+        tab.url = url;
+        tab.placeholder_color = {0.7f, 0.7f, 0.7f, 1.0f};
+        tab.history = std::make_unique<HistoryManager>();
+        tab.history->push(url, "");
+        chrome_.tabs.push_back(std::move(tab));
+        update_tab_placeholder(static_cast<u32>(chrome_.tabs.size()) - 1);
+        compute_layout();
+    }
+
+    void BrowserWindow::select_tab(u32 index) {
+        if (index >= chrome_.tabs.size() || index == chrome_.active_tab)
+            return;
+        chrome_.tabs[chrome_.active_tab].scroll_y = chrome_.scroll_y;
+        chrome_.active_tab = index;
+        chrome_.scroll_y = chrome_.tabs[index].scroll_y;
+        chrome_.url = chrome_.tabs[index].url;
+        start_load(chrome_.tabs[index].url);
     }
 
     void BrowserWindow::close_tab(u32 index) {
-        if (chrome_.tabs.size() <= 1)
+        if (chrome_.tabs.size() <= 1) {
+            // Closing the last tab closes the window, like mainstream browsers.
+            SendMessage((HWND)window_->get_native_handle(), WM_CLOSE, 0, 0);
             return;
+        }
         chrome_.tabs.erase(chrome_.tabs.begin() + static_cast<i64>(index));
         if (chrome_.active_tab >= index && chrome_.active_tab > 0)
             chrome_.active_tab--;
         compute_layout();
+        chrome_.url = chrome_.tabs[chrome_.active_tab].url;
+        chrome_.scroll_y = chrome_.tabs[chrome_.active_tab].scroll_y;
         start_load(chrome_.tabs[chrome_.active_tab].url);
     }
 

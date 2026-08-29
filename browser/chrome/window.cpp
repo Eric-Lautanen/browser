@@ -124,10 +124,12 @@ namespace browser {
                     tab.url = entry.url;
                     tab.scroll_y = entry.scroll_y;
                     tab.history = std::make_unique<HistoryManager>();
+                    tab.history->push(entry.url, "");
                     chrome_.tabs.push_back(std::move(tab));
                 }
                 chrome_.active_tab = 0;
                 chrome_.url = chrome_.tabs[0].url;
+                session_restored_ = true;
             }
         }
 
@@ -365,7 +367,8 @@ namespace browser {
             // caret blink polls at 60 ms; a fully idle browser sleeps long —
             // bounded, because async page loads publish from pool threads.
             absorb_loaded_pages();
-            const bool animating = animation_engine_.has_active() || chrome_.scroll_target_y >= 0;
+            const bool animating =
+                animation_engine_.has_active() || chrome_.scroll_target_y >= 0 || page_loader_->is_loading();
             const bool caret_visible_somewhere =
                 html::g_form_state.focused_element != nullptr || chrome_.address_focused;
 
@@ -934,6 +937,85 @@ namespace browser {
         if (telemetry_ && tracker_) {
             telemetry_->set_trackers_blocked(tracker_->blocked_count());
         }
+    }
+
+    // Focus the address editor. select_all mirrors normal-browser omnibox
+    // behavior: focusing with the keyboard (or a first click) highlights the
+    // whole URL so typing replaces it.
+    void BrowserWindow::focus_address_bar(bool select_all) {
+        chrome_.address_focused = true;
+        chrome_.address_bar.edit_buffer = chrome_.url;
+        chrome_.address_bar.sel_start = 0;
+        chrome_.address_bar.all_selected = select_all;
+        chrome_.address_bar.cursor_pos = static_cast<u32>(chrome_.address_bar.edit_buffer.size());
+        auto now = std::chrono::steady_clock::now();
+        chrome_.blink_start_ms =
+            static_cast<u64>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+    }
+
+    // ---------------------------------------------------------------------------
+    // Popup lifecycle. All popups share one rule: a click outside an open
+    // popup dismisses it and is swallowed (mainstream browser menus).
+    // ---------------------------------------------------------------------------
+    bool BrowserWindow::popup_open() const {
+        return chrome_.show_menu || chrome_.show_bookmarks_dropdown || chrome_.show_downloads ||
+               chrome_.show_settings || chrome_.show_context_menu;
+    }
+
+    void BrowserWindow::close_popups() {
+        chrome_.show_menu = false;
+        chrome_.show_bookmarks_dropdown = false;
+        chrome_.show_downloads = false;
+        chrome_.show_settings = false;
+        chrome_.show_context_menu = false;
+        chrome_.hovered_menu_item = -1;
+        chrome_.hovered_bookmark_item = -1;
+        chrome_.hovered_context_item = -1;
+        chrome_.bookmark_scroll_offset = 0.0f;
+    }
+
+    ChromeUI::ButtonRect BrowserWindow::context_menu_rect() const {
+        const f32 w = ChromeUI::CTX_MENU_W;
+        const u32 items = chrome_.context_on_link ? 2 : 3;
+        const f32 h = 8.0f + ChromeUI::CTX_ITEM_H * static_cast<f32>(items);
+        f32 x = chrome_.context_menu_x;
+        f32 y = chrome_.context_menu_y;
+        if (x + w > static_cast<f32>(viewport_width_) - 4.0f)
+            x = static_cast<f32>(viewport_width_) - w - 4.0f;
+        if (y + h > static_cast<f32>(viewport_height_) - 4.0f)
+            y = static_cast<f32>(viewport_height_) - h - 4.0f;
+        if (x < 4.0f)
+            x = 4.0f;
+        if (y < 4.0f)
+            y = 4.0f;
+        return {x, y, w, h};
+    }
+
+    ChromeUI::ButtonRect BrowserWindow::bookmarks_dropdown_rect() const {
+        auto all = bookmarks_ ? bookmarks_->all() : std::vector<Bookmark>();
+        constexpr f32 ITEM_H = 28.0f, HEADER_H = 28.0f, DW = 300.0f;
+        constexpr f32 MAX_LIST_H = 12.0f * ITEM_H;
+        f32 list_h = std::max(ITEM_H, static_cast<f32>(all.size()) * ITEM_H);
+        f32 visible_h = std::min(list_h, MAX_LIST_H);
+        f32 dh = HEADER_H + visible_h + 8.0f;
+        auto &br = chrome_.rects.bookmark;
+        f32 dx = br.x + br.w - DW;
+        if (dx < 4.0f)
+            dx = 4.0f;
+        if (dx + DW > static_cast<f32>(viewport_width_) - 4.0f)
+            dx = static_cast<f32>(viewport_width_) - DW - 4.0f;
+        f32 dy = chrome_height() + 2.0f;
+        if (dy + dh > static_cast<f32>(viewport_height_) - 8.0f)
+            dy = chrome_height() - dh - 2.0f;
+        return {dx, dy, DW, dh};
+    }
+
+    ChromeUI::ButtonRect BrowserWindow::overlay_panel_rect() const {
+        // Shared geometry of the settings and downloads overlay panels
+        f32 ox = 40.0f, oy = chrome_height() + 20.0f;
+        f32 ow = static_cast<f32>(viewport_width_) - 80.0f;
+        f32 oh = static_cast<f32>(viewport_height_) - chrome_height() - 60.0f;
+        return {ox, oy, ow, oh};
     }
 
     LRESULT BrowserWindow::hit_test_titlebar(i32 mx, i32 my) {
