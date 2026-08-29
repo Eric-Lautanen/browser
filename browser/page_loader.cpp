@@ -236,7 +236,7 @@ namespace browser {
                 co_return;
             }
             std::string html((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-            co_await load_html(html, gen);
+            co_await load_html(html, gen, url_str);
             finish_load();
             co_return;
         co_return;
@@ -521,7 +521,7 @@ namespace browser {
         co_return;
     }
 
-    async::task<void> PageLoader::load_html(std::string html, u64 gen) {
+    async::task<void> PageLoader::load_html(std::string html, u64 gen, const std::string &page_url) {
         co_await async::thread_pool_executor{};
         if (!is_current(gen)) {
             finish_load();
@@ -543,7 +543,8 @@ namespace browser {
 
         // BR-C11: run the page's scripts between DOM construction and
         // layout so script-driven DOM mutation is reflected in rendering.
-        setup_page_scripts(page.dom.get(), net::URL());
+        setup_page_scripts(page.dom.get(),
+                           net::URL::parse(page_url).is_ok() ? net::URL::parse(page_url).unwrap() : net::URL());
         if (script_runner_)
             script_runner_->execute_immediate();
 
@@ -749,6 +750,10 @@ namespace browser {
         script_vm_ = std::make_unique<js::VM>();
         script_vm_->register_builtins();
         script_bindings_ = std::make_unique<js::DOMBindings>();
+        // window.location.* navigations re-enter the loader. start_load
+        // supersedes the running load generation safely from any thread.
+        script_bindings_->set_navigation_callback([this](const std::string &url) { start_load(url); });
+        script_bindings_->set_page_url(base_url.to_string());
         // The document element (<html>) backs the `document` binding.
         html::Element *doc_el = nullptr;
         for (auto &child : doc->children) {

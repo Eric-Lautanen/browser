@@ -64,6 +64,9 @@ u16 URL::default_port() const {
 }
 
 std::string URL::to_string() const {
+    // Degenerate URL (no scheme): not a navigable absolute URL.
+    if (scheme.empty())
+        return path;
     std::string result = scheme + "://";
     if (!username.empty()) {
         result += username;

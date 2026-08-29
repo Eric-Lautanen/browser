@@ -52,6 +52,15 @@ void DOMBindings::set_up_document_methods(JSObject* obj, html::Element* el, VM* 
     obj->set("createTextNode", JSValue::function(vm->create_native_fn(native_create_text_node, false, ctx)));
     obj->set("querySelector", JSValue::function(vm->create_native_fn(native_query_selector, false, ctx)));
     obj->set("querySelectorAll", JSValue::function(vm->create_native_fn(native_query_selector_all, false, ctx)));
+
+    // document.body / documentElement / title snapshots (set at registration;
+    // scripts run after the document is parsed).
+    auto *body = html::find_element_by_tag(el, "body");
+    if (body)
+        obj->set("body", wrap_element(body, vm));
+    obj->set("documentElement", wrap_element(el, vm));
+    auto *title_el = html::find_element_by_tag(el, "title");
+    obj->set("title", JSValue::string(title_el ? html::inner_text(title_el) : ""));
 }
 
 JSValue DOMBindings::wrap_node(html::Node* node, VM* vm) {
@@ -151,10 +160,73 @@ void DOMBindings::register_dom_bindings(VM* vm, html::Element* document_element)
     window_gc->obj.set("document", doc_wrapper);
     vm->global_object()->set("window", JSValue::object(&window_gc->obj));
 
+    // window.location: function-based bindings (plain property assignment
+    // cannot be intercepted on JSObject yet).
+    auto *loc_gc = vm->heap()->alloc_object();
+    {
+        auto *lctx = make_context(document_element, vm);
+        // href is a data property so `location.href` reads work; assignment
+        // is not interceptable on plain objects — use setHref/assign.
+        loc_gc->obj.set("href", JSValue::string(page_url_));
+        loc_gc->obj.set("setHref", JSValue::function(vm->create_native_fn(native_location_set_href, false, lctx)));
+        loc_gc->obj.set("assign", JSValue::function(vm->create_native_fn(native_location_assign, false, lctx)));
+        loc_gc->obj.set("replace", JSValue::function(vm->create_native_fn(native_location_assign, false, lctx)));
+        loc_gc->obj.set("reload", JSValue::function(vm->create_native_fn(native_location_reload, false, lctx)));
+    }
+    window_gc->obj.set("location", JSValue::object(&loc_gc->obj));
+    vm->global_object()->set("location", JSValue::object(&loc_gc->obj));
+
+    // window.navigator: static environment data.
+    auto *nav_gc = vm->heap()->alloc_object();
+    {
+        nav_gc->obj.set("userAgent", JSValue::string("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Browser/0.1"));
+        nav_gc->obj.set("appName", JSValue::string("Browser"));
+        nav_gc->obj.set("appVersion", JSValue::string("0.1"));
+        nav_gc->obj.set("platform", JSValue::string("Win32"));
+        nav_gc->obj.set("language", JSValue::string("en-US"));
+        nav_gc->obj.set("languages", JSValue::string("en-US,en"));
+        nav_gc->obj.set("onLine", JSValue::boolean(true));
+    }
+    window_gc->obj.set("navigator", JSValue::object(&nav_gc->obj));
+    vm->global_object()->set("navigator", JSValue::object(&nav_gc->obj));
+
     vm->add_gc_root_provider([this, alive = gc_alive_]() -> std::vector<JSValue*> {
         if (!*alive) return {};
         return gc_roots();
     });
+}
+JSValue DOMBindings::native_location_href(const std::vector<JSValue> &args, void *context) {
+    (void)args;
+    auto *ctx = static_cast<NativeCallContext *>(context);
+    return JSValue::string(ctx->bindings->page_url());
+}
+
+static void navigate_with(JSValue arg, DOMBindings *bindings) {
+    if (arg.type != JSValue::Type::STRING)
+        return;
+    bindings->navigate_to(arg.string_val);
+}
+
+JSValue DOMBindings::native_location_set_href(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<NativeCallContext *>(context);
+    if (args.size() >= 2)
+        navigate_with(args[1], ctx->bindings);
+    return JSValue::undefined();
+}
+
+JSValue DOMBindings::native_location_assign(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<NativeCallContext *>(context);
+    if (args.size() >= 2)
+        navigate_with(args[1], ctx->bindings);
+    return JSValue::undefined();
+}
+
+JSValue DOMBindings::native_location_reload(const std::vector<JSValue> &args, void *context) {
+    (void)args;
+    auto *ctx = static_cast<NativeCallContext *>(context);
+    if (!ctx->bindings->page_url().empty())
+        ctx->bindings->navigate_to(ctx->bindings->page_url());
+    return JSValue::undefined();
 }
 
 JSValue DOMBindings::native_get_inner_html(const std::vector<JSValue>&, void* context) {

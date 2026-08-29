@@ -50,6 +50,15 @@ namespace browser::js {
         std::vector<ListenerEntry> get_event_listeners(html::Node *node) const;
         void fire_event(html::Node *node, const std::string &event_type, VM *vm);
 
+        // Navigation hook for window.location.*; wired by the page loader.
+        void set_navigation_callback(std::function<void(const std::string &)> fn) { navigate_fn_ = std::move(fn); }
+        void set_page_url(const std::string &url) { page_url_ = url; }
+        const std::string &page_url() const { return page_url_; }
+        void navigate_to(const std::string &url) {
+            if (navigate_fn_)
+                navigate_fn_(url);
+        }
+
         std::vector<JSValue *> gc_roots();
 
     private:
@@ -68,6 +77,8 @@ namespace browser::js {
         void set_up_document_methods(JSObject *obj, html::Element *el, VM *vm);
 
         std::shared_ptr<bool> gc_alive_ = std::make_shared<bool>(true);
+        std::function<void(const std::string &)> navigate_fn_;
+        std::string page_url_;
 
         static JSValue native_get_inner_html(const std::vector<JSValue> &args, void *context);
         static JSValue native_get_attribute(const std::vector<JSValue> &args, void *context);
@@ -81,6 +92,10 @@ namespace browser::js {
         static JSValue native_create_element(const std::vector<JSValue> &args, void *context);
         static JSValue native_create_text_node(const std::vector<JSValue> &args, void *context);
         static JSValue native_get_text_content(const std::vector<JSValue> &args, void *context);
+        static JSValue native_location_href(const std::vector<JSValue> &args, void *context);
+        static JSValue native_location_set_href(const std::vector<JSValue> &args, void *context);
+        static JSValue native_location_assign(const std::vector<JSValue> &args, void *context);
+        static JSValue native_location_reload(const std::vector<JSValue> &args, void *context);
         static JSValue native_set_text_content(const std::vector<JSValue> &args, void *context);
 
         static ElementExtender element_extender_;
