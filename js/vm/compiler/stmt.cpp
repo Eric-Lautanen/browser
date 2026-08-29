@@ -193,6 +193,10 @@ namespace browser::js {
             current_->emit(Opcode::END_TRY);
 
         if (!has_fin) {
+            // The normal-completion jump must be patched past the catch body
+            // before returning, or it would restart execution at instruction
+            // 0 (crash) for any try whose body completes normally.
+            patch_jump(jmp_normal);
             if (!has_handler) {
                 // Bare try{} swallows the pending exception value.
                 current_->emit(Opcode::POP);

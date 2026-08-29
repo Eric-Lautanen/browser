@@ -26,6 +26,7 @@ namespace browser::js::builtins {
     void register_console_builtins(VM *vm);
     void register_timer_builtins(VM *vm);
     void register_promise_builtins(VM *vm);
+    void register_map_set_builtins(VM *vm);
     void register_performance_builtins(VM *vm);
 
     // Helper: create a native function

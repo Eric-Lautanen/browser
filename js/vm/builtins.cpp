@@ -141,6 +141,7 @@ namespace browser::js {
         builtins::register_console_builtins(this);
         builtins::register_timer_builtins(this);
         builtins::register_promise_builtins(this);
+        builtins::register_map_set_builtins(this);
         builtins::register_performance_builtins(this);
     }
 

@@ -90,37 +90,38 @@ namespace browser::js {
         }
 
         left = parse_binary_rhs(std::move(left), min_precedence);
-
-        // J-C6: conditional (ternary) operator. Sits just above assignment in
-        // precedence; branches are parsed permissively so nested conditionals
-        // associate right (a ? b : c ? d : e === a ? b : (c ? d : e)).
-        if (min_precedence <= 2 && current_.type == TokenType::QUESTION) {
-            u32 cond_line = current_.line;
-            advance();
-            auto cond = std::make_unique<ConditionalExpr>();
-            cond->line = cond_line;
-            cond->test = std::move(left);
-            cond->consequent = parse_expression(0);
-            if (!cond->consequent) {
-                depth_guard();
-                return nullptr;
-            }
-            if (current_.type == TokenType::COLON) {
-                advance();
-            } else {
-                error("expected ':' in conditional expression");
-                depth_guard();
-                return nullptr;
-            }
-            cond->alternate = parse_expression(0);
-            if (!cond->alternate) {
-                depth_guard();
-                return nullptr;
-            }
-            left = std::make_unique<Expr>(std::move(*cond));
-        }
-
+        left = parse_conditional_tail(std::move(left), min_precedence);
         depth_guard();
+        return left;
+    }
+
+    // J-C6: conditional (ternary) operator. Sits just above assignment in
+    // precedence; branches are parsed permissively so nested conditionals
+    // associate right (a ? b : c ? d : e === a ? b : (c ? d : e)).
+    std::unique_ptr<Expr> Parser::parse_conditional_tail(std::unique_ptr<Expr> left, int min_precedence) {
+        if (min_precedence > 2 || current_.type != TokenType::QUESTION) {
+            return left;
+        }
+        u32 cond_line = current_.line;
+        advance();
+        auto cond = std::make_unique<ConditionalExpr>();
+        cond->line = cond_line;
+        cond->test = std::move(left);
+        cond->consequent = parse_expression(0);
+        if (!cond->consequent) {
+            return nullptr;
+        }
+        if (current_.type == TokenType::COLON) {
+            advance();
+        } else {
+            error("expected ':' in conditional expression");
+            return nullptr;
+        }
+        cond->alternate = parse_expression(0);
+        if (!cond->alternate) {
+            return nullptr;
+        }
+        left = std::make_unique<Expr>(std::move(*cond));
         return left;
     }
 
@@ -556,6 +557,11 @@ namespace browser::js {
                         if (!left)
                             return nullptr;
                         left = parse_binary_rhs(std::move(left), 0);
+                        if (!left)
+                            return nullptr;
+                        // "(n === 2 ? a : b)": the ternary tail lives outside
+                        // parse_binary_rhs.
+                        left = parse_conditional_tail(std::move(left), 0);
                         if (!left)
                             return nullptr;
                         if (current_.type == TokenType::RPAREN) {

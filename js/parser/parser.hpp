@@ -47,6 +47,9 @@ namespace browser::js {
         std::unique_ptr<Expr> parse_primary();
         std::unique_ptr<Expr> parse_postfix_expr(std::unique_ptr<Expr> left, bool allow_call = true);
         std::unique_ptr<Expr> parse_binary_rhs(std::unique_ptr<Expr> left, int min_precedence);
+        // J-C6 conditional (ternary) tail; shared with the parenthesized-
+        // expression path, which cannot re-enter parse_expression.
+        std::unique_ptr<Expr> parse_conditional_tail(std::unique_ptr<Expr> left, int min_precedence);
         std::unique_ptr<Expr> parse_template();
         std::unique_ptr<Expr> parse_new_expr();
 

@@ -315,6 +315,7 @@ add_library(js STATIC
     js/builtins/console.cpp
     js/builtins/timers.cpp
     js/builtins/promise.cpp
+    js/builtins/map_set.cpp
     js/builtins/performance.cpp
     js/script_runner.hpp
     js/script_runner.cpp
