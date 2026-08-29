@@ -5,6 +5,28 @@
 
 namespace browser::css {
 
+    namespace {
+        // Parses an element size attribute ("272", "272px", "25%"). Returns
+        // false when absent or unparseable.
+        bool parse_attr_size(const html::Element *el, const char *name, f32 &out, bool &is_percent) {
+            std::string v = el->get_attribute(name);
+            if (v.empty())
+                return false;
+            char *end = nullptr;
+            f32 n = std::strtof(v.c_str(), &end);
+            if (end == v.c_str() || n <= 0)
+                return false;
+            while (*end == ' ') end++;
+            if (*end == '%') {
+                is_percent = true;
+            } else {
+                is_percent = false;
+            }
+            out = n;
+            return true;
+        }
+    }  // namespace
+
     void LayoutEngine::layout_block(LayoutNode *node, f32 containing_width, f32 containing_height) {
         if (!node)
             return;
@@ -28,6 +50,8 @@ namespace browser::css {
             width_auto = true;
         } else if (wv->type == CSSValue::Type::LENGTH) {
             width = resolve_length(wv->length, containing_width, font_size);
+        } else if (wv->type == CSSValue::Type::PERCENTAGE) {
+            width = wv->number / 100.0f * containing_width;
         } else if (wv->type == CSSValue::Type::FUNCTION || wv->type == CSSValue::Type::STRING) {
             width = resolve_func_length(node->style(), wv, containing_width, font_size);
         }
@@ -114,9 +138,8 @@ namespace browser::css {
         auto *mr = node->style().get("margin-right");
         bool ml_auto = !ml || (ml->type == CSSValue::Type::KEYWORD && ml->keyword == "auto");
         bool mr_auto = !mr || (mr->type == CSSValue::Type::KEYWORD && mr->keyword == "auto");
-        bool has_fixed_width = wv && (wv->type == CSSValue::Type::LENGTH ||
-                                       wv->type == CSSValue::Type::STRING ||
-                                       wv->type == CSSValue::Type::FUNCTION);
+        bool has_fixed_width = wv && (wv->type == CSSValue::Type::LENGTH || wv->type == CSSValue::Type::PERCENTAGE ||
+                                      wv->type == CSSValue::Type::STRING || wv->type == CSSValue::Type::FUNCTION);
         if ((ml_auto || mr_auto) && (has_fixed_width || had_maxw)) {
             f32 used_w = node->content.width + h_padding + h_border;
             f32 remaining = containing_width - used_w;
@@ -150,8 +173,15 @@ namespace browser::css {
         }
 
         if (is_table_element(node->style())) {
-            layout_table(node, containing_width, containing_height);
-            return;
+            // Only actual tables use the table formatter; cells and rows are
+            // laid out by layout_table itself (or fall back to block flow when
+            // reached outside a table context).
+            auto *tdisp = node->style().get("display");
+            std::string tkind = tdisp && tdisp->type == CSSValue::Type::KEYWORD ? tdisp->keyword : "";
+            if (tkind == "table" || tkind == "inline-table") {
+                layout_table(node, containing_width, containing_height);
+                return;
+            }
         }
 
         if (is_flex_element(node->style())) {
@@ -193,7 +223,8 @@ namespace browser::css {
                 } else if (cg && cg->type == CSSValue::Type::NUMBER) {
                     column_gap_val = cg->number;
                 }
-                if (column_gap_val <= 0) column_gap_val = font_size;
+                if (column_gap_val <= 0)
+                    column_gap_val = font_size;
             }
         }
 
@@ -203,7 +234,8 @@ namespace browser::css {
             int num_cols = column_count;
             if (column_width > 0 && num_cols <= 0) {
                 num_cols = static_cast<int>(content_width / (column_width + column_gap_val));
-                if (num_cols < 1) num_cols = 1;
+                if (num_cols < 1)
+                    num_cols = 1;
             } else if (num_cols <= 0) {
                 num_cols = 1;
             }
@@ -212,7 +244,8 @@ namespace browser::css {
             if (col_width < 20.0f) {
                 col_width = 20.0f;
                 num_cols = static_cast<int>((content_width + column_gap_val) / (col_width + column_gap_val));
-                if (num_cols < 1) num_cols = 1;
+                if (num_cols < 1)
+                    num_cols = 1;
             }
 
             // Lay out children into columns
@@ -239,7 +272,8 @@ namespace browser::css {
                 child->content.x = current_x;
                 child->content.y = col_y;
                 col_y += child->content.height + child->margin.bottom + child->border.bottom + child->padding.bottom;
-                if (col_y > max_col_h) max_col_h = col_y;
+                if (col_y > max_col_h)
+                    max_col_h = col_y;
             }
 
             node->content.height = max_col_h;
@@ -436,8 +470,15 @@ namespace browser::css {
                 bool abs_pos = pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute";
                 if (abs_pos)
                     continue;
-                f32 child_bottom = child->content.y + child->content.height + child->padding.bottom +
-                                   child->border.bottom + child->margin.bottom;
+                // Non-atomic inline children: their vertical padding/border
+                // paints outside the line box and does not grow the parent.
+                bool atomic = true;
+                if (!child->is_text()) {
+                    auto *d = child->style().get("display");
+                    atomic = !(d && d->type == CSSValue::Type::KEYWORD && d->keyword == "inline");
+                }
+                f32 child_bottom = child->content.y + child->content.height +
+                                   (atomic ? child->padding.bottom + child->border.bottom + child->margin.bottom : 0);
                 if (child_bottom > max_y)
                     max_y = child_bottom;
             }
@@ -457,7 +498,8 @@ namespace browser::css {
                 if (slash != std::string::npos) {
                     f32 w = std::strtof(s.c_str(), nullptr);
                     f32 h = std::strtof(s.c_str() + slash + 1, nullptr);
-                    if (w > 0 && h > 0) ratio = w / h;
+                    if (w > 0 && h > 0)
+                        ratio = w / h;
                 } else {
                     ratio = std::strtof(s.c_str(), nullptr);
                 }
@@ -498,7 +540,174 @@ namespace browser::css {
                 node->content.height = mh;
         }
 
+        // Replaced elements (img/svg/video/canvas): intrinsic + attribute sizing.
+        size_replaced_element(node, containing_width, containing_height, font_size, width_auto);
+
         apply_transform_to_node(node);
+    }
+
+    // CSS 2.1 §10.3.2 replaced-element sizing: CSS width/height win; missing
+    // sides come from width/height attributes (percentages resolve against the
+    // containing block) and finally from the intrinsic image size, preserving
+    // the aspect ratio when exactly one dimension is specified.
+    void LayoutEngine::size_replaced_element(
+        LayoutNode *node, f32 containing_width, f32 containing_height, f32 font_size, bool width_auto) {
+        (void)font_size;
+        html::Node *n = node->node();
+        if (!n || n->type != html::NodeType::ELEMENT)
+            return;
+        auto *el = static_cast<html::Element *>(n);
+        std::string tag = el->tag_name;
+        for (auto &c : tag) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (tag != "img" && tag != "svg" && tag != "video" && tag != "canvas")
+            return;
+
+        f32 nat_w = 0, nat_h = 0;
+        if (tag == "img") {
+            std::string key = el->resolved_src.empty() ? el->get_attribute("src") : el->resolved_src;
+            auto it = image_sizes_.find(key);
+            if (it != image_sizes_.end()) {
+                nat_w = it->second.first;
+                nat_h = it->second.second;
+            }
+        }
+
+        f32 attr_w = 0, attr_h = 0;
+        bool wp = false, hp = false;
+        bool has_aw = parse_attr_size(el, "width", attr_w, wp);
+        bool has_ah = parse_attr_size(el, "height", attr_h, hp);
+        if (tag == "svg") {
+            // SVG defaults to 300x150 when neither attrs nor CSS size it.
+            if (!has_aw) {
+                attr_w = 300;
+                has_aw = true;
+                wp = false;
+            }
+            if (!has_ah) {
+                attr_h = 150;
+                has_ah = true;
+                hp = false;
+            }
+        }
+        if (nat_w <= 0 && has_aw && !wp)
+            nat_w = attr_w;
+        if (nat_h <= 0 && has_ah && !hp)
+            nat_h = attr_h;
+        f32 ratio = (nat_w > 0 && nat_h > 0) ? nat_w / nat_h : 0.0f;
+
+        if (width_auto) {
+            f32 w = 0;
+            if (has_aw)
+                w = wp ? attr_w / 100.0f * containing_width : attr_w;
+            if (w <= 0)
+                w = nat_w;
+            if (w > 0)
+                node->content.width = w;
+        }
+
+        auto *css_h_v = node->style().get("height");
+        bool has_css_h = css_h_v != nullptr;
+
+        if (!has_css_h) {
+            f32 used_w = node->content.width;
+            f32 h = 0;
+            if (!width_auto) {
+                // CSS width fixed: derive height from the aspect ratio.
+                if (ratio > 0)
+                    h = used_w / ratio;
+            } else if (has_ah) {
+                h = hp ? attr_h / 100.0f * containing_height : attr_h;
+                if (h <= 0 && ratio > 0 && used_w > 0)
+                    h = used_w / ratio;
+            } else if (has_aw && ratio > 0 && used_w > 0) {
+                h = used_w / ratio;
+            } else {
+                h = nat_h;
+            }
+            if (h > 0)
+                node->content.height = h;
+        } else if (width_auto && ratio > 0 && node->content.height > 0) {
+            node->content.width = node->content.height * ratio;
+        }
+    }
+
+    // Floats and inline-blocks size to their content (CSS basic box model
+    // shrink-to-fit): shrink descendants first, measure the widest content
+    // line, then re-flow children at the final width. Best effort — mixed
+    // inline/block nesting approximates a single line per run.
+    void LayoutEngine::shrink_to_fit(LayoutNode *box, f32 containing_width, f32 containing_height) {
+        if (!box)
+            return;
+        // Leaves (replaced elements, form controls) keep their computed width;
+        // ancestors shrink to them.
+        if (box->children.empty())
+            return;
+
+        auto extras_of = [](LayoutNode *c) {
+            return c->margin.left + c->margin.right + c->padding.left + c->padding.right + c->border.left +
+                   c->border.right;
+        };
+
+        // Post-order: block descendants settle at natural width first.
+        for (auto &c : box->children) {
+            auto *pos = c->style().get("position");
+            if (pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute")
+                continue;
+            if (!c->is_text() && !is_inline_element(c->style()))
+                shrink_to_fit(c.get(), box->content.width, containing_height);
+        }
+
+        f32 run = 0, best = 0;
+        for (auto &c : box->children) {
+            auto *pos = c->style().get("position");
+            if (pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute")
+                continue;
+            if (c->is_text()) {
+                f32 fs = resolve_font_size(c->style(), root_font_size_);
+                f32 natural = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, c->text(), static_cast<u32>(fs))
+                                               : c->content.width;
+                if (natural <= 0)
+                    natural = c->content.width;
+                run += std::min(natural, containing_width);
+            } else if (is_inline_element(c->style())) {
+                run += c->content.width + extras_of(c.get());
+            } else {
+                best = std::max(best, run);
+                run = 0;
+                best = std::max(best, c->content.width + extras_of(c.get()));
+            }
+        }
+        best = std::max(best, run);
+
+        // An explicit CSS width/height wins over the shrink-to-fit result.
+        auto *css_w = box->style().get("width");
+        bool has_css_w = css_w && !(css_w->type == CSSValue::Type::KEYWORD && css_w->keyword == "auto");
+        auto *css_h = box->style().get("height");
+        bool has_css_h = css_h != nullptr;
+
+        bool shrunk = best > 0 && best < box->content.width && !has_css_w;
+        if (shrunk)
+            box->content.width = best;
+        if (shrunk) {
+            layout_children(box, box->content.width, containing_height);
+            f32 max_y = 0;
+            for (auto &c : box->children) {
+                auto *pos = c->style().get("position");
+                if (pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute")
+                    continue;
+                bool atomic = true;
+                if (!c->is_text()) {
+                    auto *d = c->style().get("display");
+                    atomic = !(d && d->type == CSSValue::Type::KEYWORD && d->keyword == "inline");
+                }
+                f32 bottom = c->content.y + c->content.height +
+                             (atomic ? c->padding.bottom + c->border.bottom + c->margin.bottom : 0);
+                if (bottom > max_y)
+                    max_y = bottom;
+            }
+            if (max_y > 0 && !has_css_h)
+                box->content.height = max_y;
+        }
     }
 
 }  // namespace browser::css

@@ -73,6 +73,11 @@ namespace browser::css {
             metrics_ctx_ = ctx;
             metrics_fn_ = fn;
         }
+        // Intrinsic sizes of decoded images keyed by resolved absolute URL
+        // (html::Element::resolved_src); drives replaced-element sizing.
+        void set_image_sizes(std::unordered_map<std::string, std::pair<f32, f32>> sizes) {
+            image_sizes_ = std::move(sizes);
+        }
         async::task<std::unique_ptr<LayoutNode>> layout_async(
             html::Document *doc,
             const std::unordered_map<const html::Element *, ComputedStyle> &styles,
@@ -95,6 +100,10 @@ namespace browser::css {
         TextMeasureFn text_measure_fn_ = nullptr;
         void *metrics_ctx_ = nullptr;
         TextMetricsFn metrics_fn_ = nullptr;
+        std::unordered_map<std::string, std::pair<f32, f32>> image_sizes_;
+        void size_replaced_element(
+            LayoutNode *node, f32 containing_width, f32 containing_height, f32 font_size, bool width_auto);
+        void shrink_to_fit(LayoutNode *box, f32 containing_width, f32 containing_height);
 
         f32 resolve_length(const Length &len, f32 parent_value, f32 font_size) const;
         f32 resolve_font_size(const ComputedStyle &style, f32 parent_font_size) const;
@@ -107,7 +116,9 @@ namespace browser::css {
         f32 resolve_property(const ComputedStyle &style, const std::string &prop, f32 containing, f32 font_size) const;
 
         void layout_block(LayoutNode *node, f32 containing_width, f32 containing_height);
-        void layout_inline(LayoutNode *node, f32 containing_width, f32 containing_height);
+        // shrink_to_fit: size the box to the natural text width (inline
+        // content) instead of stretching to the containing block.
+        void layout_inline(LayoutNode *node, f32 containing_width, f32 containing_height, bool shrink_to_fit = false);
         void layout_children(LayoutNode *node, f32 containing_width, f32 containing_height);
         void layout_absolute_pass(
             LayoutNode *node, LayoutNode *containing_block, f32 cb_width, f32 cb_height, f32 font_size);

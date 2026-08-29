@@ -18,7 +18,7 @@ namespace browser::css {
         }
     }  // namespace
 
-    void LayoutEngine::layout_inline(LayoutNode *node, f32 containing_width, f32) {
+    void LayoutEngine::layout_inline(LayoutNode *node, f32 containing_width, f32, bool shrink_to_fit) {
         f32 char_width_factor = constants::kCharWidthFactor;
 
         f32 parent_font_size = root_font_size_;
@@ -99,8 +99,10 @@ namespace browser::css {
         }
         f32 tab_width = tab_size * char_width;
 
-        if (node->text().empty())
+        if (node->text().empty()) {
+            node->text_lines.clear();
             return;
+        }
 
         struct Word {
             std::string text;
@@ -108,6 +110,8 @@ namespace browser::css {
         };
         std::vector<Word> words;
         std::string text = node->text();
+        // Re-layout (shrink passes, table cells) must not append to stale lines.
+        node->text_lines.clear();
         std::size_t start = 0;
 
         if (preserve_ws) {
@@ -202,7 +206,8 @@ namespace browser::css {
         if (ti && ti->type == CSSValue::Type::LENGTH) {
             text_indent = resolve_length(ti->length, containing_width, font_size);
         }
-        if (text_indent != 0) line_x = text_indent;
+        if (text_indent != 0)
+            line_x = text_indent;
 
         auto flush_line = [&](size_t word_start, size_t word_end) {
             f32 line_width = line_x + pending_space;
@@ -281,14 +286,16 @@ namespace browser::css {
         std::string ov_keyword = (overflow && overflow->type == CSSValue::Type::KEYWORD) ? overflow->keyword : "";
         if (ov_keyword.empty()) {
             auto *ox = node->style().get("overflow-x");
-            if (ox && ox->type == CSSValue::Type::KEYWORD) ov_keyword = ox->keyword;
+            if (ox && ox->type == CSSValue::Type::KEYWORD)
+                ov_keyword = ox->keyword;
         }
         bool has_ellipsis = false;
         auto *to = node->style().get("text-overflow");
         if (to && to->type == CSSValue::Type::KEYWORD && to->keyword == "ellipsis")
             has_ellipsis = true;
 
-        if (has_ellipsis && (ov_keyword == "hidden" || ov_keyword == "scroll" || ov_keyword == "auto" || ov_keyword == "clip")) {
+        if (has_ellipsis &&
+            (ov_keyword == "hidden" || ov_keyword == "scroll" || ov_keyword == "auto" || ov_keyword == "clip")) {
             f32 line_w = containing_width > 0 ? containing_width : max_line_width;
             for (auto &li : node->text_lines) {
                 f32 tw = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, li.text, (u32)font_size) : 0;
@@ -298,10 +305,12 @@ namespace browser::css {
                 if (tw <= line_w || li.text.empty())
                     continue;
                 // Truncate and append ellipsis "..."
-                std::string ellipsis = "\xe2\x80\xa6"; // U+2026 HORIZONTAL ELLIPSIS
-                f32 ell_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ellipsis, (u32)font_size) : font_size * constants::kCharWidthFactor;
+                std::string ellipsis = "\xe2\x80\xa6";  // U+2026 HORIZONTAL ELLIPSIS
+                f32 ell_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ellipsis, (u32)font_size)
+                                             : font_size * constants::kCharWidthFactor;
                 f32 target = line_w - ell_w;
-                if (target < 0) target = 0;
+                if (target < 0)
+                    target = 0;
                 // Binary search truncation point by codepoints
                 std::string truncated;
                 f32 truncated_w = 0;
@@ -310,10 +319,12 @@ namespace browser::css {
                 u32 off = 0;
                 while (off < tlen) {
                     auto dr = browser::html::decode_utf8(tbuf + off, tlen - off);
-                    if (dr.bytes_consumed == 0) break;
+                    if (dr.bytes_consumed == 0)
+                        break;
                     std::string ch(li.text.data() + off, dr.bytes_consumed);
                     f32 cw = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, ch, (u32)font_size) : char_width;
-                    if (truncated_w + cw > target) break;
+                    if (truncated_w + cw > target)
+                        break;
                     truncated += ch;
                     truncated_w += cw;
                     off += dr.bytes_consumed;
@@ -329,22 +340,29 @@ namespace browser::css {
                 auto &line = node->text_lines[li];
                 // Count spaces
                 size_t space_count = 0;
-                for (char c : line.text) if (c == ' ') space_count++;
-                if (space_count == 0) continue;
+                for (char c : line.text)
+                    if (c == ' ')
+                        space_count++;
+                if (space_count == 0)
+                    continue;
 
                 f32 current_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, line.text, (u32)font_size) : 0;
                 if (!text_measure_fn_)
                     current_w = static_cast<f32>(count_codepoints(line.text)) * char_width_factor * font_size;
 
                 f32 extra = line_w - current_w;
-                if (extra <= 0) continue;
+                if (extra <= 0)
+                    continue;
 
                 // Expand each space by extra/space_count pixels, approximating by inserting spaces
-                // Each space is ~char_width wide. Insert floor(extra / (space_count * char_width)) extra spaces per original space.
+                // Each space is ~char_width wide. Insert floor(extra / (space_count * char_width)) extra spaces per
+                // original space.
                 f32 space_w = text_measure_fn_ ? text_measure_fn_(text_measurer_ctx_, " ", (u32)font_size) : char_width;
-                if (space_w <= 0) space_w = char_width;
+                if (space_w <= 0)
+                    space_w = char_width;
                 i32 extra_spaces = static_cast<i32>(extra / space_w);
-                if (extra_spaces <= 0) continue;
+                if (extra_spaces <= 0)
+                    continue;
 
                 // Distribute extra spaces evenly
                 std::string justified;
@@ -353,7 +371,8 @@ namespace browser::css {
                     justified += line.text[ci];
                     if (line.text[ci] == ' ' && added < extra_spaces) {
                         i32 per_space = extra_spaces / static_cast<i32>(space_count);
-                        if (per_space < 1) per_space = 1;
+                        if (per_space < 1)
+                            per_space = 1;
                         for (i32 s = 0; s < per_space && added < extra_spaces; s++) {
                             justified += ' ';
                             added++;
@@ -370,10 +389,16 @@ namespace browser::css {
             max_line_width = line_w > max_line_width ? line_w : max_line_width;
         }
 
-        node->content.width = text_align == "center"  ? containing_width
-                              : text_align == "right" ? containing_width
-                              : text_align == "justify" ? containing_width
-                              : max_line_width;
+        if (shrink_to_fit) {
+            // Natural width for inline runs; line-box centering is handled by
+            // the containing block in layout_children.
+            node->content.width = max_line_width;
+        } else {
+            node->content.width = text_align == "center"    ? containing_width
+                                  : text_align == "right"   ? containing_width
+                                  : text_align == "justify" ? containing_width
+                                                            : max_line_width;
+        }
         node->content.height = total_height;
     }
 

@@ -3,6 +3,7 @@
 #include "../layout.hpp"
 
 #include <algorithm>
+#include <functional>
 #include <sstream>
 #include <unordered_map>
 
@@ -336,6 +337,16 @@ namespace browser::css {
                 layout_block(child.get(), containing_width, containing_height);
 
                 if (child->is_floating) {
+                    shrink_to_fit(child.get(), containing_width, containing_height);
+                    // clear must be honored before placing this float, or the
+                    // reset below is skipped by the continue.
+                    auto *clear_val = child->style().get("clear");
+                    if (clear_val && clear_val->type == CSSValue::Type::KEYWORD) {
+                        if (clear_val->keyword == "left" || clear_val->keyword == "both")
+                            float_left_x = 0;
+                        if (clear_val->keyword == "right" || clear_val->keyword == "both")
+                            float_right_x = containing_width;
+                    }
                     f32 float_margin_box_w = child->content.width + child->padding.left + child->padding.right +
                                              child->border.left + child->border.right + child->margin.left +
                                              child->margin.right;
@@ -343,8 +354,9 @@ namespace browser::css {
                         child->content.x = float_left_x;
                         float_left_x += float_margin_box_w;
                     } else {
-                        child->content.x = containing_width - float_margin_box_w;
+                        // Successive right floats stack leftward from the edge.
                         float_right_x -= float_margin_box_w;
+                        child->content.x = float_right_x;
                     }
                     child->content.y = current_y;
                     current_y += child->content.height;
@@ -385,94 +397,201 @@ namespace browser::css {
                 first = false;
             }
         } else if (has_inline_child) {
-            f32 line_x = 0;
-            f32 line_y = 0;
-            f32 cur_line_height = 0;
+            // Line-box model: every inline-level child is laid out at its
+            // natural (shrink-to-fit) width first, then broken into lines and
+            // positioned per the block's text-align.
+            struct InlineItem {
+                LayoutNode *node_ptr;
+                f32 width = 0;   // margin-box width
+                f32 height = 0;  // border-box height
+                bool is_break = false;
+            };
+            std::vector<InlineItem> items;
+            items.reserve(node->children.size());
+
+            std::string text_align = "left";
+            auto *ta = node->style().get("text-align");
+            if (ta && ta->type == CSSValue::Type::KEYWORD)
+                text_align = ta->keyword;
+
+            auto is_display = [](LayoutNode *c, const char *kw) {
+                auto *dv = c->style().get("display");
+                return dv && dv->type == CSSValue::Type::KEYWORD && dv->keyword == kw;
+            };
+            f32 node_font_size = resolve_font_size(node->style(), root_font_size_);
+
+            // Resolves an inline run's own box extras so padding/border on
+            // inline elements participate in the line layout.
+            auto resolve_run_box = [&](LayoutNode *run) {
+                f32 pfs = root_font_size_;
+                if (run->parent)
+                    pfs = resolve_font_size(run->parent->style(), root_font_size_);
+                f32 fs = resolve_font_size(run->style(), pfs);
+                run->margin.top = resolve_side_value(run->style(), "margin-top", "margin", containing_width, fs);
+                run->margin.bottom = resolve_side_value(run->style(), "margin-bottom", "margin", containing_width, fs);
+                run->margin.left = resolve_side_value(run->style(), "margin-left", "margin", containing_width, fs);
+                run->margin.right = resolve_side_value(run->style(), "margin-right", "margin", containing_width, fs);
+                run->padding.top = resolve_side_value(run->style(), "padding-top", "padding", containing_width, fs);
+                run->padding.bottom =
+                    resolve_side_value(run->style(), "padding-bottom", "padding", containing_width, fs);
+                run->padding.left = resolve_side_value(run->style(), "padding-left", "padding", containing_width, fs);
+                run->padding.right = resolve_side_value(run->style(), "padding-right", "padding", containing_width, fs);
+                run->border.top =
+                    resolve_side_value(run->style(), "border-top-width", "border-width", containing_width, fs);
+                run->border.bottom =
+                    resolve_side_value(run->style(), "border-bottom-width", "border-width", containing_width, fs);
+                run->border.left =
+                    resolve_side_value(run->style(), "border-left-width", "border-width", containing_width, fs);
+                run->border.right =
+                    resolve_side_value(run->style(), "border-right-width", "border-width", containing_width, fs);
+            };
+
+            // Extra box width/height of a node (margin-box width, border-box height).
+            auto extras_w = [](LayoutNode *c) {
+                return c->margin.left + c->margin.right + c->padding.left + c->padding.right + c->border.left +
+                       c->border.right;
+            };
+            auto extras_h = [](LayoutNode *c) {
+                return c->padding.top + c->padding.bottom + c->border.top + c->border.bottom;
+            };
+
+            std::function<void(LayoutNode *)> layout_run_children = [&](LayoutNode *run) {
+                for (auto &gc : run->children) {
+                    auto *gpos = gc->style().get("position");
+                    if (gpos && gpos->type == CSSValue::Type::KEYWORD && gpos->keyword == "absolute")
+                        continue;
+                    if (gc->is_text()) {
+                        layout_inline(gc.get(), containing_width, containing_height, true);
+                    } else if (is_display(gc.get(), "inline")) {
+                        layout_run_children(gc.get());
+                    } else {
+                        layout_block(gc.get(), containing_width, containing_height);
+                    }
+                }
+                run->content.width = 0;
+                run->content.height = 0;
+                for (auto &gc : run->children) {
+                    auto *gpos = gc->style().get("position");
+                    if (gpos && gpos->type == CSSValue::Type::KEYWORD && gpos->keyword == "absolute")
+                        continue;
+                    run->content.width += gc->content.width + extras_w(gc.get());
+                    f32 gc_h = gc->content.height + extras_h(gc.get());
+                    if (gc_h > run->content.height)
+                        run->content.height = gc_h;
+                }
+            };
 
             for (auto &child : node->children) {
-                bool is_inline = false;
-                bool is_inline_block = false;
-                if (!child->is_text()) {
-                    auto *dv = child->style().get("display");
-                    is_inline = dv && dv->type == CSSValue::Type::KEYWORD && dv->keyword == "inline";
-                    is_inline_block = dv && dv->type == CSSValue::Type::KEYWORD && dv->keyword == "inline-block";
-                }
+                auto *pos = child->style().get("position");
+                bool is_absolute = pos && pos->type == CSSValue::Type::KEYWORD && pos->keyword == "absolute";
+                if (is_absolute)
+                    continue;
+
+                InlineItem item;
+                item.node_ptr = child.get();
 
                 if (child->is_text()) {
-                    layout_inline(child.get(), containing_width, containing_height);
-                } else if (is_inline) {
-                    // Inline element: lay out children as inline, then wrap
-                    for (auto &gc : child->children) {
-                        if (gc->is_text())
-                            layout_inline(gc.get(), containing_width, containing_height);
-                        else
-                            layout_block(gc.get(), containing_width, containing_height);
-                    }
-                    child->content.width = 0;
-                    child->content.height = 0;
-                    child->padding = {0, 0, 0, 0};
-                    child->border = {0, 0, 0, 0};
-                    child->margin = {0, 0, 0, 0};
-                    for (auto &gc : child->children) {
-                        child->content.width += gc->content.width;
-                        if (gc->content.height > child->content.height)
-                            child->content.height = gc->content.height;
-                    }
-                } else if (is_inline_block) {
-                    // inline-block: layout as block, but inline-level
-                    layout_block(child.get(), containing_width, containing_height);
-                } else {
-                    layout_block(child.get(), containing_width, containing_height);
-                }
-
-                if (line_x + child->content.width > containing_width && line_x > 0) {
-                    line_y += cur_line_height;
-                    line_x = 0;
-                    cur_line_height = 0;
-                }
-
-                // Vertical alignment for inline-block
-                f32 child_height = child->content.height + child->padding.top + child->padding.bottom +
-                                   child->border.top + child->border.bottom + child->margin.top + child->margin.bottom;
-                if (is_inline_block) {
-                    auto *va = child->style().get("vertical-align");
-                    bool va_middle = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "middle";
-                    bool va_top = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "top";
-                    bool va_bottom = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "bottom";
-                    bool va_sub = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "sub";
-                    bool va_super = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "super";
-                    bool va_text_top = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "text-top";
-                    bool va_text_bottom = va && va->type == CSSValue::Type::KEYWORD && va->keyword == "text-bottom";
-                    if (va_middle) {
-                        child->content.y = line_y + (cur_line_height - child_height) / 2.0f;
-                    } else if (va_top) {
-                        child->content.y = line_y;
-                    } else if (va_bottom) {
-                        child->content.y = line_y + cur_line_height - child_height;
-                    } else if (va_sub) {
-                        child->content.y = line_y + cur_line_height * 0.2f;
-                    } else if (va_super) {
-                        child->content.y = line_y - cur_line_height * 0.3f;
-                    } else if (va_text_top) {
-                        child->content.y = line_y;
-                    } else if (va_text_bottom) {
-                        child->content.y = line_y + cur_line_height - child_height;
+                    layout_inline(child.get(), containing_width, containing_height, true);
+                    item.width = child->content.width + child->margin.left + child->margin.right;
+                    item.height = child->content.height;
+                } else if (is_display(child.get(), "inline")) {
+                    html::Node *cn = child->node();
+                    auto *cel = cn && cn->type == html::NodeType::ELEMENT ? static_cast<html::Element *>(cn) : nullptr;
+                    std::string ctag = cel ? cel->tag_name : "";
+                    if (ctag == "br") {
+                        // Forced line break: zero width, line-height tall.
+                        f32 fs = resolve_font_size(child->style(), node_font_size);
+                        f32 br_h = fs * 1.2f;
+                        if (metrics_fn_) {
+                            auto fm = metrics_fn_(metrics_ctx_, static_cast<u32>(fs));
+                            br_h = fm.ascender - fm.descender + fm.line_gap;
+                        }
+                        child->content.width = 0;
+                        child->content.height = br_h;
+                        item.is_break = true;
                     } else {
-                        // baseline: align bottom of inline-block with text baseline
-                        child->content.y = line_y;
+                        resolve_run_box(child.get());
+                        layout_run_children(child.get());
                     }
+                    item.width = child->content.width + extras_w(child.get());
+                    // CSS line boxes: vertical padding/border on non-atomic
+                    // inline elements paint but do not grow the line height.
+                    item.height = child->content.height;
                 } else {
-                    child->content.y = line_y;
+                    // inline-block or other inline-level box: full block layout
+                    layout_block(child.get(), containing_width, containing_height);
+                    if (is_display(child.get(), "inline-block"))
+                        shrink_to_fit(child.get(), containing_width, containing_height);
+                    item.width = child->content.width + extras_w(child.get());
+                    item.height = child->content.height + extras_h(child.get());
                 }
-
-                child->content.x = line_x;
-                line_x += child->content.width;
-                if (child_height > cur_line_height)
-                    cur_line_height = child_height;
+                items.push_back(item);
             }
 
+            // Phase B/C: greedy line breaking, then position each line.
+            f32 line_y = 0;
+            size_t line_start = 0;
+            f32 line_w = 0;
+
+            auto flush_line = [&](size_t end_idx) {
+                f32 total = 0;
+                f32 lh = 0;
+                for (size_t i = line_start; i < end_idx; i++) {
+                    total += items[i].width;
+                    if (items[i].height > lh)
+                        lh = items[i].height;
+                }
+                f32 x0 = 0;
+                if (text_align == "center")
+                    x0 = (containing_width - total) / 2.0f;
+                else if (text_align == "right")
+                    x0 = containing_width - total;
+                if (x0 < 0)
+                    x0 = 0;
+                f32 x = x0;
+                for (size_t i = line_start; i < end_idx; i++) {
+                    auto &it = items[i];
+                    LayoutNode *c = it.node_ptr;
+                    f32 c_x = x + c->margin.left + c->border.left + c->padding.left;
+                    // vertical-align for atomic inline boxes
+                    f32 c_y = line_y;
+                    if (!c->is_text()) {
+                        auto *va = c->style().get("vertical-align");
+                        std::string vak = va && va->type == CSSValue::Type::KEYWORD ? va->keyword : "";
+                        f32 box_h = it.height;
+                        if (vak == "middle")
+                            c_y = line_y + (lh - box_h) / 2.0f;
+                        else if (vak == "bottom")
+                            c_y = line_y + lh - box_h;
+                        else if (vak == "sub")
+                            c_y = line_y + lh * 0.2f;
+                        else if (vak == "super")
+                            c_y = line_y - lh * 0.3f;
+                    }
+                    c->content.x = c_x;
+                    c->content.y = c_y;
+                    x += it.width;
+                }
+                line_y += lh;
+                line_start = end_idx;
+            };
+
+            for (size_t i = 0; i < items.size(); i++) {
+                if (items[i].is_break) {
+                    flush_line(i + 1);
+                    line_w = 0;
+                    continue;
+                }
+                if (line_w + items[i].width > containing_width && line_w > 0) {
+                    flush_line(i);
+                    line_w = 0;
+                }
+                line_w += items[i].width;
+            }
+            flush_line(items.size());
+
             node->content.width = containing_width;
-            node->content.height = line_y + cur_line_height;
+            node->content.height = line_y;
         }
     }
 

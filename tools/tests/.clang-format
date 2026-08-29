@@ -1,0 +1,5 @@
+# Engine-bootstrapped fixture files are compared byte-for-byte by the test
+# harness; never reformat them (git clang-format picks up .json since
+# clang-format 17).
+DisableFormat: true
+SortIncludes: false

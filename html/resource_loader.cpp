@@ -118,6 +118,47 @@ namespace browser::html {
         co_return results;
     }
 
+    async::task<std::vector<ResourceResponse>> ResourceLoader::fetch_all_parallel(ResourcePriority only,
+                                                                                  size_t max_concurrency) {
+        // Partition out the requests matching `only`; fetch those now and
+        // leave everything else queued for its own pass.
+        std::vector<ResourceRequest> selected;
+        std::vector<ResourceRequest> rest;
+        for (auto &req : pending_) {
+            if (req.priority == only)
+                selected.push_back(std::move(req));
+            else
+                rest.push_back(std::move(req));
+        }
+        pending_ = std::move(rest);
+
+        std::sort(selected.begin(), selected.end(), [](const ResourceRequest &a, const ResourceRequest &b) {
+            return static_cast<int>(a.priority) < static_cast<int>(b.priority);
+        });
+
+        std::vector<ResourceResponse> results(selected.size());
+        if (!selected.empty()) {
+            ParallelFetchState st;
+            st.pending = &selected;
+            st.results = &results;
+            size_t workers = max_concurrency < selected.size() ? max_concurrency : selected.size();
+            st.remaining.store(workers, std::memory_order_relaxed);
+            st.done = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+
+            std::vector<std::unique_ptr<async::task<void>>> tasks;
+            tasks.reserve(workers);
+            for (size_t i = 0; i < workers; i++) {
+                auto t = std::make_unique<async::task<void>>(parallel_fetch_worker(&st));
+                t->start();
+                tasks.push_back(std::move(t));
+            }
+            WaitForSingleObject(st.done, 60000);
+            CloseHandle(st.done);
+        }
+
+        co_return results;
+    }
+
     ResourceResponse ResourceLoader::fetch_single(const std::string &url, ResourcePriority priority) {
         if (url.empty())
             return {url, {}, false, "Empty URL"};

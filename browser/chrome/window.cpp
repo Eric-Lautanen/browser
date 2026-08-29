@@ -184,16 +184,57 @@ namespace browser {
     void BrowserWindow::run_with_screenshot(const std::string &path) {
         window_->show();
 
-        // Wait for page to load before capturing screenshot
+        // Wait for page to load before capturing screenshot. Absorb the
+        // LoadedPage as soon as it arrives — without this the single captured
+        // frame renders an empty current_page_ (absorb normally happens in the
+        // run() event loop, which never executes in screenshot mode).
         if (page_loader_) {
             int max_wait = 10000;
-            while (page_loader_->is_loading() && max_wait > 0) {
+            while (max_wait > 0) {
+                absorb_loaded_pages();
+                if (!page_loader_->is_loading() && current_page_.has_value())
+                    break;
                 Sleep(5);
                 max_wait -= 5;
                 MSG msg;
                 while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
                     TranslateMessage(&msg);
                     DispatchMessage(&msg);
+                }
+            }
+            absorb_loaded_pages();
+        }
+
+        // Debug aid: dump the page display list for screenshot runs
+        // (BROWSER_DUMP_DL=<path>).
+        if (current_page_ && current_page_->display_list) {
+            const char *dl_path = getenv("BROWSER_DUMP_DL");
+            if (dl_path && dl_path[0]) {
+                FILE *f = fopen(dl_path, "w");
+                if (f) {
+                    fprintf(f, "[\n");
+                    bool first = true;
+                    for (const auto &cmd : current_page_->display_list->commands()) {
+                        if (!first)
+                            fprintf(f, ",\n");
+                        first = false;
+                        const auto &c = cmd.color;
+                        fprintf(f,
+                                "{\"cmd\":\"%d\",\"x\":%.2f,\"y\":%.2f,\"w\":%.2f,\"h\":%.2f,"
+                                "\"color\":\"rgba(%d,%d,%d,%d)\",\"text\":\"%s\"}",
+                                (int)cmd.type,
+                                cmd.rect.x,
+                                cmd.rect.y,
+                                cmd.rect.width,
+                                cmd.rect.height,
+                                (int)(c.r * 255),
+                                (int)(c.g * 255),
+                                (int)(c.b * 255),
+                                (int)(c.a * 255),
+                                cmd.text.empty() ? "" : cmd.text.c_str());
+                    }
+                    fprintf(f, "\n]\n");
+                    fclose(f);
                 }
             }
         }

@@ -40,7 +40,15 @@ inline Color resolve_color(const css::ComputedStyle &style, const std::string &p
         return fallback;
     }
     if (v->type == css::CSSValue::Type::COLOR) return Color{v->color.r / 255.0f, v->color.g / 255.0f, v->color.b / 255.0f, v->color.a / 255.0f};
-    if (v->type == css::CSSValue::Type::KEYWORD && v->keyword == "transparent") return Color::TRANSPARENT;
+    if (v->type == css::CSSValue::Type::KEYWORD) {
+        if (v->keyword == "transparent")
+            return Color::TRANSPARENT;
+        if (v->keyword == "inherit" && style.parent)
+            return resolve_color(*style.parent, prop, fallback);
+        auto named = css::Color::from_name(v->keyword);
+        if (named.a != 0)
+            return Color{named.r / 255.0f, named.g / 255.0f, named.b / 255.0f, named.a / 255.0f};
+    }
     return fallback;
 }
 

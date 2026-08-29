@@ -37,6 +37,9 @@ namespace browser::html {
         std::string tag_name;
         std::unordered_map<std::string, std::string> attributes;
         std::string namespace_uri = "http://www.w3.org/1999/xhtml";
+        // Resource loader annotation: the absolute URL a relative src/href
+        // resolved to (decode/paint key). Not serialized; empty when unset.
+        std::string resolved_src;
         // <template>: child nodes live in a separate content fragment
         // (mirrors the DOM .content DocumentFragment) so they are neither
         // rendered nor serialized as regular children.
@@ -64,5 +67,9 @@ namespace browser::html {
     std::unique_ptr<Document> create_document();
     void append_child(Node *parent, std::unique_ptr<Node> child);
     void insert_before(Node *parent, std::unique_ptr<Node> child, Node *ref);
+    // Detaches `node` from its parent and returns ownership of the subtree.
+    // Returns nullptr when the node has no parent or is not present in the
+    // parent's child list (ownership stays where it is).
+    std::unique_ptr<Node> detach_from_parent(Node *node);
 
 }  // namespace browser::html

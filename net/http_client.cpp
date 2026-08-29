@@ -4,10 +4,24 @@
 
 #include <cctype>
 #include <chrono>
+#include <cstdarg>
+#include <cstdio>
 #include <cstdlib>
 #include <sstream>
 
 namespace browser::net {
+
+    // Verbose load-pipeline tracing for network debugging. Enabled by setting
+    // BROWSER_NET_DEBUG in the environment; silent in normal use.
+    static void net_debug(const char *fmt, ...) {
+        static const bool enabled = std::getenv("BROWSER_NET_DEBUG") != nullptr;
+        if (!enabled)
+            return;
+        va_list args;
+        va_start(args, fmt);
+        vfprintf(stderr, fmt, args);
+        va_end(args);
+    }
 
     TrackerBlocker *HTTPClient::tracker_ = nullptr;
 
@@ -157,6 +171,7 @@ namespace browser::net {
 
     Result<void> HTTPClient::connect_if_needed(const http::Request &req) {
         if (tracker_ && tracker_->should_block(req.url.to_string())) {
+            net_debug("[http_client] connect_if_needed: %s blocked by tracker\n", req.url.to_string().c_str());
             return std::string("blocked by tracker blocker");
         }
 
@@ -165,12 +180,21 @@ namespace browser::net {
         if (!host.empty() && host.front() == '[' && host.back() == ']')
             host = host.substr(1, host.size() - 2);
         u16 port = req.url.port != 0 ? req.url.port : req.url.default_port();
+        net_debug("[http_client] connect_if_needed: %s://%s:%u tls=%d\n",
+                  req.url.scheme.c_str(),
+                  host.c_str(),
+                  port,
+                  use_tls_);
 
         if (tcp_.is_open() && tcp_.host() == host && tcp_.port() == port) {
-            if (http1_ && http1_->is_connected())
+            if (http1_ && http1_->is_connected()) {
+                net_debug("[http_client] connect_if_needed: reused connection\n");
                 return {};
-            if (http2_ && http2_->is_connected())
+            }
+            if (http2_ && http2_->is_connected()) {
+                net_debug("[http_client] connect_if_needed: reused h2 connection\n");
                 return {};
+            }
         }
 
         close();
@@ -179,44 +203,54 @@ namespace browser::net {
         cfg.connect_timeout_ms = 3000;
         cfg.read_timeout_ms = 5000;
         auto r = tcp_.open(host, port, cfg);
-        if (r.is_err())
+        if (r.is_err()) {
+            net_debug("[http_client] connect_if_needed: tcp open failed: %s\n", r.unwrap_err().c_str());
             return std::string("connect: " + r.unwrap_err());
+        }
+        net_debug("[http_client] connect_if_needed: tcp open ok\n");
 
         if (use_tls_) {
             tls_ = std::make_unique<tls::TLSConnection>();
             auto tr = tls_->connect(&tcp_, host);
             if (tr.is_err()) {
+                net_debug("[http_client] connect_if_needed: tls failed: %s\n", tr.unwrap_err().c_str());
                 close();
                 return std::string("tls: " + tr.unwrap_err());
             }
+            net_debug("[http_client] connect_if_needed: tls ok\n");
 
             std::string alpn = tls_->negotiated_alpn();
-            // Transfer ownership of the TLS layer to the sub-client; it is
-            // responsible for cleanup on both success and failure paths.
+            net_debug("[http_client] connect_if_needed: alpn=%s\n", alpn.c_str());
             std::unique_ptr<tls::TLSConnection> owned_tls(tls_.release());
             tls_.reset();
             if (alpn == "h2") {
                 http2_ = std::make_unique<http2::HTTP2Client>();
                 auto h2r = http2_->connect(host, port, true, &tcp_, std::move(owned_tls));
                 if (h2r.is_err()) {
+                    net_debug("[http_client] connect_if_needed: h2 failed: %s\n", h2r.unwrap_err().c_str());
                     close();
                     return std::string("h2: ") + h2r.unwrap_err();
                 }
+                net_debug("[http_client] connect_if_needed: h2 ok\n");
             } else {
                 http1_ = std::make_unique<http::HTTP1Client>();
                 auto h1r = http1_->connect(host, port, true, &tcp_, std::move(owned_tls));
                 if (h1r.is_err()) {
+                    net_debug("[http_client] connect_if_needed: h1 failed: %s\n", h1r.unwrap_err().c_str());
                     close();
                     return std::string("h1: ") + h1r.unwrap_err();
                 }
+                net_debug("[http_client] connect_if_needed: h1 ok\n");
             }
         } else {
             http1_ = std::make_unique<http::HTTP1Client>();
             auto h1r = http1_->connect(host, port, false, &tcp_);
             if (h1r.is_err()) {
+                net_debug("[http_client] connect_if_needed: h1 failed: %s\n", h1r.unwrap_err().c_str());
                 close();
                 return std::string("h1: ") + h1r.unwrap_err();
             }
+            net_debug("[http_client] connect_if_needed: h1 ok\n");
         }
 
         return {};
@@ -224,6 +258,7 @@ namespace browser::net {
 
     async::task<bool> HTTPClient::connect_if_needed_async(const http::Request &req) {
         if (tracker_ && tracker_->should_block(req.url.to_string())) {
+            net_debug("[http_client] connect_if_needed_async: %s blocked by tracker\n", req.url.to_string().c_str());
             co_return std::string("blocked by tracker blocker");
         }
 
@@ -232,12 +267,21 @@ namespace browser::net {
         if (!host.empty() && host.front() == '[' && host.back() == ']')
             host = host.substr(1, host.size() - 2);
         u16 port = req.url.port != 0 ? req.url.port : req.url.default_port();
+        net_debug("[http_client] connect_if_needed_async: %s://%s:%u tls=%d\n",
+                  req.url.scheme.c_str(),
+                  host.c_str(),
+                  port,
+                  use_tls_);
 
         if (tcp_.is_open() && tcp_.host() == host && tcp_.port() == port) {
-            if (http1_ && http1_->is_connected())
+            if (http1_ && http1_->is_connected()) {
+                net_debug("[http_client] connect_if_needed_async: reused connection\n");
                 co_return true;
-            if (http2_ && http2_->is_connected())
+            }
+            if (http2_ && http2_->is_connected()) {
+                net_debug("[http_client] connect_if_needed_async: reused h2 connection\n");
                 co_return true;
+            }
         }
 
         close();
@@ -246,44 +290,54 @@ namespace browser::net {
         cfg.connect_timeout_ms = 3000;
         cfg.read_timeout_ms = 5000;
         auto open_r = co_await tcp_.open_async(host, port, cfg);
-        if (open_r.is_err())
+        if (open_r.is_err()) {
+            net_debug("[http_client] connect_if_needed_async: tcp open failed: %s\n", open_r.unwrap_err().c_str());
             co_return std::string("connect: ") + open_r.unwrap_err();
+        }
+        net_debug("[http_client] connect_if_needed_async: tcp open ok\n");
 
         if (use_tls_) {
             tls_ = std::make_unique<tls::TLSConnection>();
             auto tr = co_await tls_->connect_async(&tcp_, host);
             if (tr.is_err()) {
+                net_debug("[http_client] connect_if_needed_async: tls failed: %s\n", tr.unwrap_err().c_str());
                 close();
                 co_return std::string("tls: ") + tr.unwrap_err();
             }
+            net_debug("[http_client] connect_if_needed_async: tls ok\n");
 
             std::string alpn = tls_->negotiated_alpn();
-            // Transfer ownership of the TLS layer to the sub-client; it is
-            // responsible for cleanup on both success and failure paths.
+            net_debug("[http_client] connect_if_needed_async: alpn=%s\n", alpn.c_str());
             std::unique_ptr<tls::TLSConnection> owned_tls(tls_.release());
             tls_.reset();
             if (alpn == "h2") {
                 http2_ = std::make_unique<http2::HTTP2Client>();
                 auto h2r = http2_->connect(host, port, true, &tcp_, std::move(owned_tls));
                 if (h2r.is_err()) {
+                    net_debug("[http_client] connect_if_needed_async: h2 failed: %s\n", h2r.unwrap_err().c_str());
                     close();
                     co_return std::string("h2: ") + h2r.unwrap_err();
                 }
+                net_debug("[http_client] connect_if_needed_async: h2 ok\n");
             } else {
                 http1_ = std::make_unique<http::HTTP1Client>();
                 auto h1r = http1_->connect(host, port, true, &tcp_, std::move(owned_tls));
                 if (h1r.is_err()) {
+                    net_debug("[http_client] connect_if_needed_async: h1 failed: %s\n", h1r.unwrap_err().c_str());
                     close();
                     co_return std::string("h1: ") + h1r.unwrap_err();
                 }
+                net_debug("[http_client] connect_if_needed_async: h1 ok\n");
             }
         } else {
             http1_ = std::make_unique<http::HTTP1Client>();
             auto h1r = http1_->connect(host, port, false, &tcp_);
             if (h1r.is_err()) {
+                net_debug("[http_client] connect_if_needed_async: h1 failed: %s\n", h1r.unwrap_err().c_str());
                 close();
                 co_return std::string("h1: ") + h1r.unwrap_err();
             }
+            net_debug("[http_client] connect_if_needed_async: h1 ok\n");
         }
 
         co_return true;

@@ -12,6 +12,41 @@ namespace browser::net::http2 {
 
         inline constexpr u32 kFlagEndStream = 0x01;
         inline constexpr u32 kFlagEndHeaders = 0x04;
+        inline constexpr u32 kFlagPadded = 0x08;
+        inline constexpr u32 kFlagPriority = 0x20;
+
+        // Strips PADDED/PRIORITY framing from a DATA or HEADERS payload
+        // (RFC 7540 §6.1/§6.2) and returns the inner fragment. An empty
+        // fragment (all-padding frame) is legal. Returns false on malformed
+        // padding (pad byte claims more than the frame holds).
+        struct FrameFragment {
+            const u8 *data = nullptr;
+            u32 len = 0;
+        };
+
+        inline bool strip_frame_padding(
+            u8 flags, const u8 *payload, u32 length, bool headers_frame, FrameFragment &out) {
+            const u8 *p = payload;
+            u32 len = length;
+            if (flags & kFlagPadded) {
+                if (len < 1)
+                    return false;
+                u32 pad = p[0];
+                // Pad length counts everything after the pad byte itself.
+                if (1 + pad > len)
+                    return false;
+                p += 1;
+                len -= 1 + pad;
+            }
+            if (headers_frame && (flags & kFlagPriority)) {
+                if (len < 5)
+                    return false;
+                p += 5;
+                len -= 5;
+            }
+            out = {p, len};
+            return true;
+        }
 
         enum class Action { Continue, Done, Fail };
 
@@ -47,7 +82,14 @@ namespace browser::net::http2 {
                             if (headers_done)
                                 in_trailers = true;  // N-C7: trailer HEADERS after DATA
                         }
-                        frag.insert(frag.end(), payload.begin(), payload.begin() + fh.length);
+                        // Only HEADERS carries PADDED/PRIORITY; CONTINUATION has
+                        // neither flag (RFC 7540 §6.10).
+                        FrameFragment frag_r;
+                        if (!strip_frame_padding(fh.flags, payload.data(), fh.length, fh.type == HEADERS, frag_r)) {
+                            err = "malformed padding in HEADERS frame";
+                            return Action::Fail;
+                        }
+                        frag.insert(frag.end(), frag_r.data, frag_r.data + frag_r.len);
 
                         const bool end_headers = (fh.flags & kFlagEndHeaders) != 0;
                         const bool end_stream = (fh.flags & kFlagEndStream) != 0;
@@ -73,8 +115,14 @@ namespace browser::net::http2 {
                             err = "DATA before HEADERS complete";
                             return Action::Fail;
                         }
+                        FrameFragment frag_r;
+                        if (!strip_frame_padding(fh.flags, payload.data(), fh.length, false, frag_r)) {
+                            err = "malformed padding in DATA frame";
+                            return Action::Fail;
+                        }
                         has_body = true;
-                        body.insert(body.end(), payload.begin(), payload.begin() + fh.length);
+                        body.insert(body.end(), frag_r.data, frag_r.data + frag_r.len);
+                        // Flow control accounts for the full frame including padding.
                         consumed = fh.length;
                         if (fh.flags & kFlagEndStream)
                             done = true;
@@ -186,7 +234,18 @@ namespace browser::net::http2 {
         entries.push_back({":path", path});
 
         for (auto &[k, v] : req.headers.all()) {
-            entries.push_back({k, v});
+            std::string lk;
+            lk.resize(k.size());
+            for (size_t i = 0; i < k.size(); ++i)
+                lk[i] = static_cast<char>(std::tolower(static_cast<unsigned char>(k[i])));
+            // RFC 7540 §8.1.2.1: connection-specific headers must not appear
+            // on an h2 request (Host is superseded by :authority).
+            if (lk == "host" || lk == "connection" || lk == "keep-alive" || lk == "proxy-connection" ||
+                lk == "transfer-encoding" || lk == "upgrade")
+                continue;
+            // RFC 7540 §8.1.2: header field names MUST be lowercase in HTTP/2;
+            // mixed-case names are a malformed request (PROTOCOL_ERROR).
+            entries.push_back({lk, v});
         }
         return entries;
     }

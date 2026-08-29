@@ -1,12 +1,12 @@
 #include "painter.hpp"
-#include "background_painter.hpp"
-#include "form_painter.hpp"
-#include "paint_helpers.hpp"
-#include "text_decoration.hpp"
 
 #include "../../html/form_state.hpp"
 #include "../canvas.hpp"
 #include "../form_controls.hpp"
+#include "background_painter.hpp"
+#include "form_painter.hpp"
+#include "paint_helpers.hpp"
+#include "text_decoration.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -973,7 +973,9 @@ namespace browser::render {
         if (el->tag_name != "img")
             return;
 
-        std::string src = el->get_attribute("src");
+        // Images are keyed by their resolved absolute URL; raw src is the
+        // fallback for data:/file: URLs the loader never resolved.
+        std::string src = el->resolved_src.empty() ? el->get_attribute("src") : el->resolved_src;
         if (src.empty() || !images_)
             return;
 

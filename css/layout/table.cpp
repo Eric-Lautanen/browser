@@ -1,5 +1,5 @@
-#include "../layout.hpp"
 #include "../../parsers.hpp"
+#include "../layout.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -112,12 +112,14 @@ namespace browser::css {
                     std::string cs = cel->get_attribute("colspan");
                     if (!cs.empty()) {
                         auto v = parse::parse_i64(cs);
-                        tc.colspan = v ? std::clamp<i32>(static_cast<i32>(std::min<i64>(*v, kMaxSpan)), 1, kMaxSpan) : 1;
+                        tc.colspan =
+                            v ? std::clamp<i32>(static_cast<i32>(std::min<i64>(*v, kMaxSpan)), 1, kMaxSpan) : 1;
                     }
                     std::string rs = cel->get_attribute("rowspan");
                     if (!rs.empty()) {
                         auto v = parse::parse_i64(rs);
-                        tc.rowspan = v ? std::clamp<i32>(static_cast<i32>(std::min<i64>(*v, kMaxSpan)), 1, kMaxSpan) : 1;
+                        tc.rowspan =
+                            v ? std::clamp<i32>(static_cast<i32>(std::min<i64>(*v, kMaxSpan)), 1, kMaxSpan) : 1;
                     }
                     row.cells.push_back(tc);
                 }
@@ -182,6 +184,9 @@ namespace browser::css {
 
         std::vector<f32> col_widths(num_cols, 0);
         std::vector<f32> col_min_widths(num_cols, 0);
+        // Columns with an explicit width (CSS or width attribute via
+        // presentational hints) keep it; leftover space goes to auto columns.
+        std::vector<bool> col_explicit(num_cols, false);
 
         for (auto &row : rows) {
             i32 col = 0;
@@ -190,13 +195,32 @@ namespace browser::css {
                 if (tc.cell) {
                     layout_block(tc.cell, cell_available, containing_height);
                 }
-                f32 cell_content_w = tc.cell ? tc.cell->content.width + tc.cell->padding.left + tc.cell->padding.right +
+                f32 per_col = 0;
+                bool explicit_w = false;
+                if (tc.cell) {
+                    auto *cw = tc.cell->style().get("width");
+                    if (cw && cw->type == CSSValue::Type::PERCENTAGE) {
+                        per_col = cw->number / 100.0f * available_width;
+                        explicit_w = true;
+                    } else if (cw && cw->type == CSSValue::Type::LENGTH) {
+                        per_col = resolve_length(cw->length, available_width, font_size);
+                        explicit_w = true;
+                    }
+                }
+                if (!explicit_w) {
+                    f32 cell_content_w = tc.cell
+                                             ? tc.cell->content.width + tc.cell->padding.left + tc.cell->padding.right +
                                                    tc.cell->border.left + tc.cell->border.right
                                              : 0;
-                f32 per_col = cell_content_w / static_cast<f32>(tc.colspan);
+                    per_col = cell_content_w / static_cast<f32>(tc.colspan);
+                }
+                per_col /= static_cast<f32>(tc.colspan);
                 for (i32 c = 0; c < tc.colspan; c++) {
                     if (col + c < num_cols) {
-                        if (per_col > col_widths[static_cast<size_t>(col + c)]) {
+                        if (explicit_w) {
+                            col_widths[static_cast<size_t>(col + c)] = per_col;
+                            col_explicit[static_cast<size_t>(col + c)] = true;
+                        } else if (per_col > col_widths[static_cast<size_t>(col + c)]) {
                             col_widths[static_cast<size_t>(col + c)] = per_col;
                         }
                     }
@@ -206,11 +230,25 @@ namespace browser::css {
         }
 
         f32 total_width = 0;
-        for (auto &cw : col_widths) total_width += cw;
-        if (total_width < available_width && total_width > 0) {
+        i32 auto_cols = 0;
+        for (size_t ci = 0; ci < col_widths.size(); ci++) {
+            total_width += col_widths[ci];
+            if (!col_explicit[ci])
+                auto_cols++;
+        }
+        if (auto_cols > 0) {
             f32 remaining = available_width - total_width;
-            f32 extra_per_col = remaining / static_cast<f32>(num_cols);
-            for (auto &cw : col_widths) cw += extra_per_col;
+            if (remaining > 0) {
+                f32 extra_per_col = remaining / static_cast<f32>(auto_cols);
+                for (size_t ci = 0; ci < col_widths.size(); ci++) {
+                    if (!col_explicit[ci])
+                        col_widths[ci] += extra_per_col;
+                }
+            }
+        } else if (total_width > 0 && total_width != available_width) {
+            // All columns explicit: scale proportionally to fill the table.
+            f32 scale = available_width / total_width;
+            for (auto &cw : col_widths) cw *= scale;
         } else if (total_width == 0) {
             f32 per_col = available_width / static_cast<f32>(num_cols);
             for (auto &cw : col_widths) cw = per_col;

@@ -21,9 +21,24 @@
 #include "telemetry.hpp"
 #include "theme.hpp"
 
+#include <cstdarg>
+#include <cstdio>
+#include <cstdlib>
 #include <fstream>
 
 namespace browser {
+
+    // Verbose load-pipeline tracing for network debugging. Enabled by setting
+    // BROWSER_NET_DEBUG in the environment; silent in normal use.
+    static void net_debug(const char *fmt, ...) {
+        static const bool enabled = std::getenv("BROWSER_NET_DEBUG") != nullptr;
+        if (!enabled)
+            return;
+        va_list args;
+        va_start(args, fmt);
+        vfprintf(stderr, fmt, args);
+        va_end(args);
+    }
 
     struct LoadingGuard {
         PageLoader* loader;
@@ -158,26 +173,32 @@ namespace browser {
     async::task<void> PageLoader::load(std::string url_str, u64 gen) {
         co_await async::thread_pool_executor{};
         LoadingGuard _guard(this, gen);
+        net_debug("[page_loader] load: %s (gen=%llu)\n", url_str.c_str(), (unsigned long long)gen);
 
         if (!is_current(gen)) {
+            net_debug("[page_loader] load: stale gen, abort\n");
             co_return;
         }
 
         if (url_str.rfind("view-source:", 0) == 0) {
+            net_debug("[page_loader] load: view-source\n");
             co_await handle_view_source(url_str, gen);
             co_return;
         }
 
         if (url_str.rfind("about:", 0) == 0) {
+            net_debug("[page_loader] load: about: page\n");
             co_await handle_about(url_str, gen);
             co_return;
         }
 
         if (url_str.rfind("file:///", 0) == 0) {
+            net_debug("[page_loader] load: file:///\n");
             co_await handle_file(url_str, gen);
             co_return;
         }
 
+        net_debug("[page_loader] load: http\n");
         co_await handle_http(url_str, gen);
         co_return;
     }
@@ -267,17 +288,26 @@ namespace browser {
         req.headers.set("Accept", "text/html,application/xhtml+xml");
         req.headers.set("Accept-Encoding", "gzip, deflate");
 
+        net_debug("[page_loader] handle_http: %s://%s%s\n",
+                  parsed.unwrap().scheme.c_str(),
+                  parsed.unwrap().host.c_str(),
+                  parsed.unwrap().path.c_str());
+
         auto resp_r = co_await http_.fetch_async(req);
+        net_debug("[page_loader] fetch_async returned\n");
         if (!is_current(gen)) {
             finish_load();
             co_return;
         }
         if (resp_r.is_err()) {
+            net_debug("[page_loader] fetch_async error: %s\n", resp_r.unwrap_err().c_str());
             co_await load_html(error_page(url_str, resp_r.unwrap_err()), gen);
             finish_load();
             co_return;
         }
         auto resp = std::move(resp_r.unwrap());
+        net_debug(
+            "[page_loader] HTTP %d %s (body=%zu)\n", resp.status.code, resp.status.reason.c_str(), resp.body.size());
 
         u32 redirect_count = 0;
         while ((resp.status.code == 301 || resp.status.code == 302 || resp.status.code == 303 ||
@@ -358,14 +388,17 @@ namespace browser {
                 co_return;
             }
             std::string ce = resp.headers.get("content-encoding");
+            net_debug("[page_loader] content-encoding='%s' body=%zu\n", ce.c_str(), resp.body.size());
             if (ce.find("gzip") != std::string::npos) {
                 resp.body = net::gzip_decompress(resp.body.data(), static_cast<u32>(resp.body.size()));
             } else if (ce.find("deflate") != std::string::npos) {
                 resp.body = net::inflate(resp.body.data(), static_cast<u32>(resp.body.size()));
             }
+            net_debug("[page_loader] after decompress body=%zu\n", resp.body.size());
         }
 
         std::string body_str(reinterpret_cast<const char *>(resp.body.data()), resp.body.size());
+        net_debug("[page_loader] decompressed body=%zu\n", body_str.size());
 
         std::string base_url_str = req.url.to_string();
         loaded_images_.clear();
@@ -382,11 +415,13 @@ namespace browser {
         });
 
         auto doc_r = co_await html::parse_async(body_str, &preload_scanner_, base_url_str);
+        net_debug("[page_loader] parse_async done\n");
         if (!is_current(gen)) {
             finish_load();
             co_return;
         }
         if (doc_r.is_err()) {
+            net_debug("[page_loader] parse_async error: %s\n", doc_r.unwrap_err().c_str());
             finish_load();
             co_return;
         }
@@ -400,22 +435,28 @@ namespace browser {
         std::string merged_css;
         collect_css(page.dom.get(), merged_css, req.url);
         co_await fetch_css_content(merged_css);
+        net_debug("[page_loader] css merged=%zu\n", merged_css.size());
 
         css::Cascade cascader;
         css::StyleSheet sheet;
 
         std::vector<css::FontFaceRule> font_faces;
+        // Always run the cascade — the UA stylesheet supplies defaults even
+        // when the page has no CSS of its own (an empty style map would make
+        // the layout tree drop every element).
         if (!merged_css.empty()) {
             auto sheet_r = co_await css::parse_async(merged_css);
-            if (sheet_r.is_ok()) {
+            if (sheet_r.is_ok())
                 sheet = std::move(sheet_r.unwrap());
-                auto styles_r = co_await cascader.compute_async(*page.dom, sheet);
-                if (styles_r.is_ok()) {
-                    page.styles = std::move(styles_r.unwrap().element_styles);
-                    font_faces = std::move(styles_r.unwrap().font_faces);
-                }
+        }
+        {
+            auto styles_r = co_await cascader.compute_async(*page.dom, sheet);
+            if (styles_r.is_ok()) {
+                page.styles = std::move(styles_r.unwrap().element_styles);
+                font_faces = std::move(styles_r.unwrap().font_faces);
             }
         }
+        net_debug("[page_loader] cascade done (styles=%zu)\n", page.styles.size());
 
         // Load @font-face fonts
         if (!font_faces.empty() && font_manager_) {
@@ -431,12 +472,20 @@ namespace browser {
             css::LayoutEngine layout_engine;
             layout_engine.set_text_measure(text_renderer_, text_measure_cb);
             layout_engine.set_text_metrics(text_renderer_, text_metrics_cb);
+            std::unordered_map<std::string, std::pair<f32, f32>> image_sizes;
+            for (const auto &[img_url, img] : loaded_images_) {
+                if (img && img->width > 0 && img->height > 0)
+                    image_sizes.emplace(img_url,
+                                        std::make_pair(static_cast<f32>(img->width), static_cast<f32>(img->height)));
+            }
+            layout_engine.set_image_sizes(std::move(image_sizes));
             auto layout_r = co_await layout_engine.layout_async(
                 page.dom.get(), page.styles, static_cast<f32>(viewport_width_), static_cast<f32>(viewport_height_));
             if (layout_r.is_ok()) {
                 page.layout = std::move(layout_r.unwrap());
             }
         }
+        net_debug("[page_loader] layout done (has=%d)\n", page.layout ? 1 : 0);
 
         if (page.layout) {
             render::Painter painter(text_renderer_);
@@ -446,6 +495,7 @@ namespace browser {
                 page.display_list = std::move(paint_r.unwrap());
             }
         }
+        net_debug("[page_loader] paint done (has=%d)\n", page.display_list ? 1 : 0);
 
         page.load_time_ms = static_cast<u32>(elapsed_ms(start));
         telemetry_->record({TelemetryEvent::PAGE_LOAD, url_str, static_cast<f64>(page.load_time_ms)});
@@ -488,15 +538,20 @@ namespace browser {
         collect_css(page.dom.get(), merged_css, empty_base);
 
         css::Cascade cascader;
+        css::StyleSheet author_sheet;
         std::vector<css::FontFaceRule> font_faces;
+        // See handle_http: the cascade must run even with no author CSS so the
+        // UA stylesheet gives every element a computed style.
         if (!merged_css.empty()) {
             auto sheet_r = co_await css::parse_async(merged_css);
-            if (sheet_r.is_ok()) {
-                auto styles_r = co_await cascader.compute_async(*page.dom, sheet_r.unwrap());
-                if (styles_r.is_ok()) {
-                    page.styles = std::move(styles_r.unwrap().element_styles);
-                    font_faces = std::move(styles_r.unwrap().font_faces);
-                }
+            if (sheet_r.is_ok())
+                author_sheet = std::move(sheet_r.unwrap());
+        }
+        {
+            auto styles_r = co_await cascader.compute_async(*page.dom, author_sheet);
+            if (styles_r.is_ok()) {
+                page.styles = std::move(styles_r.unwrap().element_styles);
+                font_faces = std::move(styles_r.unwrap().font_faces);
             }
         }
 
@@ -656,10 +711,11 @@ namespace browser {
 
     async::task<bool> PageLoader::fetch_css_content(std::string &merged_css) {
         co_await async::thread_pool_executor{};
-        // resource_loader_ already has CSS URLs queued from collect_css.
-        // BR-P5: fetch them concurrently instead of one blocking round trip
-        // per stylesheet (render-blocking path).
-        auto responses_r = co_await resource_loader_.fetch_all_parallel();
+        // resource_loader_ already has CSS URLs queued from collect_css. Fetch
+        // ONLY the CSS entries — images/scripts queued by the preload scanner
+        // stay pending for their own pass (draining everything here used to
+        // swallow image bytes into the stylesheet text).
+        auto responses_r = co_await resource_loader_.fetch_all_parallel(html::ResourcePriority::CSS);
         if (responses_r.is_err())
             co_return false;
         for (const auto &resp : responses_r.unwrap()) {
@@ -744,11 +800,15 @@ namespace browser {
             auto *el = static_cast<html::Element *>(node);
             if (el->tag_name == "img") {
                 auto src = el->get_attribute("src");
+                net_debug("[collect_resources] img src='%s'\n", src.c_str());
                 if (!src.empty()) {
                     auto url_r = base_url.resolve(src);
                     if (url_r.is_ok()) {
                         auto img_url = url_r.unwrap();
                         std::string img_url_str = img_url.to_string();
+                        // Remember the absolute URL so layout/paint can find
+                        // the decoded image by key (raw src may be relative).
+                        el->resolved_src = img_url_str;
                         if (img_url.scheme != "data" && img_url.scheme != "blob" && img_url.scheme != "about") {
                             if (page_is_https_ && img_url.scheme == "http") {
                                 has_mixed_content_ = true;
@@ -773,6 +833,7 @@ namespace browser {
 
     async::task<bool> PageLoader::load_and_decode_images(const std::string &) {
         co_await async::thread_pool_executor{};
+        for (const auto &u : resource_loader_.pending_urls()) net_debug("[load_images] pending: %s\n", u.c_str());
         // BR-P5: images/scripts/fonts download concurrently instead of one
         // blocking round trip at a time.
         auto resources_r = co_await resource_loader_.fetch_all_parallel();
@@ -780,6 +841,11 @@ namespace browser {
             co_return false;
         auto resources = std::move(resources_r.unwrap());
         for (auto &res : resources) {
+            net_debug("[load_images] result: %s success=%d bytes=%zu err='%s'\n",
+                      res.url.c_str(),
+                      res.success ? 1 : 0,
+                      res.data.size(),
+                      res.error_msg.c_str());
             if (!res.success || res.data.empty())
                 continue;
             // BR-C11: feed fetched external scripts to the runner.

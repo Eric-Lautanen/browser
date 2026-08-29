@@ -49,7 +49,8 @@ JSValue DOMBindings::wrap_element(html::Element* element, VM* vm) {
     auto* gc_obj = vm->heap()->alloc_object();
     auto* obj = &gc_obj->obj;
 
-    wrappers_.map[element] = gc_obj;
+    wrappers_.node_to_wrapper[element] = gc_obj;
+    wrappers_.wrapper_to_node[&gc_obj->obj] = element;
 
     set_up_element_methods(obj, element, vm);
 
@@ -57,8 +58,16 @@ JSValue DOMBindings::wrap_element(html::Element* element, VM* vm) {
 }
 
 JSObject* DOMBindings::get_dom_wrapper(html::Node* node) const {
-    auto it = wrappers_.map.find(node);
-    if (it != wrappers_.map.end()) return &it->second->obj;
+    auto it = wrappers_.node_to_wrapper.find(node);
+    if (it != wrappers_.node_to_wrapper.end())
+        return &it->second->obj;
+    return nullptr;
+}
+
+html::Node *DOMBindings::get_node_from_wrapper(JSObject *wrapper) const {
+    auto it = wrappers_.wrapper_to_node.find(wrapper);
+    if (it != wrappers_.wrapper_to_node.end())
+        return it->second;
     return nullptr;
 }
 
@@ -90,7 +99,7 @@ void DOMBindings::fire_event(html::Node* node, const std::string& event_type, VM
 std::vector<JSValue*> DOMBindings::gc_roots() {
     gc_stable_.clear();
 
-    size_t total = wrappers_.map.size();
+    size_t total = wrappers_.node_to_wrapper.size();
     for (auto& [n, listeners] : event_listeners_) {
         total += listeners.size();
     }
@@ -99,7 +108,7 @@ std::vector<JSValue*> DOMBindings::gc_roots() {
     std::vector<JSValue*> roots;
     roots.reserve(total);
 
-    for (auto& [node, gc_obj] : wrappers_.map) {
+    for (auto &[node, gc_obj] : wrappers_.node_to_wrapper) {
         gc_stable_.push_back(JSValue::object(&gc_obj->obj));
         roots.push_back(&gc_stable_.back());
     }
@@ -154,8 +163,33 @@ JSValue DOMBindings::native_set_attribute(const std::vector<JSValue>& args, void
     return JSValue::undefined();
 }
 
-JSValue DOMBindings::native_append_child(const std::vector<JSValue>&, void*) {
-    return JSValue::undefined();
+JSValue DOMBindings::native_append_child(const std::vector<JSValue> &args, void *context) {
+    auto *ctx = static_cast<NativeCallContext *>(context);
+    if (args.size() < 2)
+        return JSValue::undefined();
+    if (args[1].type != JSValue::Type::OBJECT)
+        return JSValue::null();
+
+    auto *child_wrapper = args[1].object_val;
+    auto *child_node = ctx->bindings->get_node_from_wrapper(child_wrapper);
+    if (!child_node)
+        return JSValue::null();
+
+    // Take ownership from the old parent; only re-home the node when we
+    // actually obtained its unique_ptr, otherwise ownership is ambiguous.
+    auto owned = html::detach_from_parent(child_node);
+    if (!owned)
+        return JSValue::null();
+
+    child_node->parent = ctx->element;
+    if (!ctx->element->children.empty()) {
+        html::Node *last = ctx->element->children.back().get();
+        last->next_sibling = child_node;
+        child_node->prev_sibling = last;
+    }
+    ctx->element->children.push_back(std::move(owned));
+
+    return args[1];
 }
 
 JSValue DOMBindings::native_query_selector(const std::vector<JSValue>& args, void* context) {

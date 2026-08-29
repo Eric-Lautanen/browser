@@ -201,6 +201,10 @@ namespace browser::render {
                 pgl::glUniform1i(u.texture_is_rgba, texture->is_rgba() ? 1 : 0);
             if (u.use_sdf >= 0)
                 pgl::glUniform1i(u.use_sdf, 0);
+            // Track the sampler state, or the next end_textured() would treat
+            // the program as already in color mode and never unbind - fills
+            // would keep sampling this texture (R-G5 invariant).
+            shader_mode_ = ShaderMode::Tex;
             texture->bind(0);
             current_texture_id_ = tid;
             textured_mode_ = true;

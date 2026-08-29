@@ -111,6 +111,27 @@ namespace browser::html {
         parent->children.push_back(std::move(child));
     }
 
+    std::unique_ptr<Node> detach_from_parent(Node *node) {
+        if (!node || !node->parent)
+            return nullptr;
+        auto &siblings = node->parent->children;
+        for (auto it = siblings.begin(); it != siblings.end(); ++it) {
+            if (it->get() == node) {
+                if (it->get()->prev_sibling)
+                    it->get()->prev_sibling->next_sibling = it->get()->next_sibling;
+                if (it->get()->next_sibling)
+                    it->get()->next_sibling->prev_sibling = it->get()->prev_sibling;
+                auto ptr = std::move(*it);
+                siblings.erase(it);
+                node->parent = nullptr;
+                node->prev_sibling = nullptr;
+                node->next_sibling = nullptr;
+                return ptr;
+            }
+        }
+        return nullptr;
+    }
+
     void insert_before(Node *parent, std::unique_ptr<Node> child, Node *ref) {
         child->parent = parent;
 

@@ -80,8 +80,10 @@ namespace browser {
         if (page.layout) {
             auto *sbw = page.layout->style().get("scrollbar-width");
             if (sbw && sbw->type == css::CSSValue::Type::KEYWORD) {
-                if (sbw->keyword == "thin") sb_w = 6.0f;
-                else if (sbw->keyword == "none") sb_w = 0.0f;
+                if (sbw->keyword == "thin")
+                    sb_w = 6.0f;
+                else if (sbw->keyword == "none")
+                    sb_w = 0.0f;
             }
         }
         chrome_.rects.scrollbar = {static_cast<f32>(viewport_width_) - sb_w, content_y, sb_w, content_h};
@@ -129,7 +131,8 @@ namespace browser {
         if (chrome_.scroll_max <= 0)
             return;
         auto &sb = chrome_.rects.scrollbar;
-        if (sb.w <= 0) return;
+        if (sb.w <= 0)
+            return;
         f32 content_h = sb.h;
 
         render::Color track_color = {0.85f, 0.85f, 0.85f, 1.0f};
@@ -148,26 +151,31 @@ namespace browser {
                     while (!track_str.empty() && track_str[0] == ' ') track_str = track_str.substr(1);
 
                     auto parse_scroll_color = [](const std::string &cs) -> std::optional<render::Color> {
-                        if (cs == "auto") return {};
+                        if (cs == "auto")
+                            return {};
                         auto named = css::Color::from_name(cs);
                         if (named.a != 0 || cs == "transparent") {
                             return render::Color{static_cast<f32>(named.r) / 255.0f,
                                                  static_cast<f32>(named.g) / 255.0f,
-                                                 static_cast<f32>(named.b) / 255.0f, 1.0f};
+                                                 static_cast<f32>(named.b) / 255.0f,
+                                                 1.0f};
                         }
                         if (!cs.empty() && cs[0] == '#') {
                             auto c = css::Color::from_hex(cs);
                             return render::Color{static_cast<f32>(c.r) / 255.0f,
                                                  static_cast<f32>(c.g) / 255.0f,
-                                                 static_cast<f32>(c.b) / 255.0f, 1.0f};
+                                                 static_cast<f32>(c.b) / 255.0f,
+                                                 1.0f};
                         }
                         return {};
                     };
 
                     auto thumb = parse_scroll_color(thumb_str);
                     auto track = parse_scroll_color(track_str);
-                    if (thumb) thumb_color = *thumb;
-                    if (track) track_color = *track;
+                    if (thumb)
+                        thumb_color = *thumb;
+                    if (track)
+                        track_color = *track;
                 }
             }
         }

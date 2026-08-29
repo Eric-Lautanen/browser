@@ -50,6 +50,12 @@ namespace browser::html {
         // request order. Blocking - use on a pool thread.
         async::task<std::vector<ResourceResponse>> fetch_all_parallel(size_t max_concurrency = 4);
 
+        // Same bounded fetch, but only drains requests whose priority equals
+        // `only`; other queued requests (images, scripts) stay pending for
+        // their own fetch pass.
+        async::task<std::vector<ResourceResponse>> fetch_all_parallel(ResourcePriority only,
+                                                                      size_t max_concurrency = 4);
+
         // Fetch a single resource immediately
         ResourceResponse fetch_single(const std::string &url, ResourcePriority priority = ResourcePriority::IMAGE);
 
