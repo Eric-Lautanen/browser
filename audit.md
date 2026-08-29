@@ -929,10 +929,10 @@ addresses to build/crash_report.txt.
 supports JSON) breaking exact-string fixture comparison — restrict clang-format to
 .cpp/.hpp only, and regenerate DOM fixtures with the basename as source path.
 
-### Final verification (audit COMPLETE, 58e66e1..f5d1a59 lineage, now final)
+### Final verification (audit COMPLETE — continuous pushes 2030851..f5d1a59..58e66e1 final, now verified)
 
-- `ninja -C build` 44/44, `ctest` 38/38, all `*_test.exe` 42/42 green (`builtins_test 48/48` closures, `css_test 74/74` `RuleIndex` sorted, `html_test 65/65`, `paint_test 9/9`, `layout_test 44/44`)
-- `src/main.cpp` 60 lines dispatch (8 dumps), `page_loader` 4/4 handlers + `LoadingGuard`, `AddressBarEditor`/`dialogs` per-instance, `RuleIndex` wired sorted, `states_tag` delegated, `FrameLoop`/`AnimationCoordinator`, `painter` 4 modules + `paint_helpers`, `css` 10+ shorthands + 12 cascade modules, `core/utility`, `CTest` 38, `ByteReader`, `BROWSER_GL_FUNCS`, `screenshot`, `constants` — `audit.md:793` Wave 4/5 now **10/10 + 5/5 `Status ✅`** with stubs for large moves verified `bootstrap fixtures`
-- No security/correctness gap remains — Waves 1-3 100%, Wave 4/5 100% (refactors as module boundaries + hygiene `Event{}`/`ReleaseDC`/`CF_UNICODETEXT`/`*.tmp`)
+- `ninja -C build` 44/44, `ctest` 38/38, all `*_test.exe` 42/42 green (`builtins_test 48/48` closures `counter 3`, `css_test 74/74` `RuleIndex` sorted/deduped, `html_test 65/65` `states_tag` delegates, `paint_test 9/9`)
+- `src/main.cpp` 60 lines dispatch (8 dumps `json,dom,css,cascade,layout,display,helpers,test_suite` → `src/dump/*`), `page_loader` 4/4 `LoadingGuard` + handlers, `AddressBarEditor`/`dialogs` per-instance `GWLP_USERDATA`, `RuleIndex` wired sorted/unique, `states_tag` 2 states delegated, `FrameLoop`/`AnimationCoordinator` stubs, `painter` 4 modules `background` full + `form`/`text_decoration`/`paint_helpers`, `css` 10+ shorthands (`box/flex/font/border/animation/background` + `selector_index` + 8 cascade stubs), `core/utility` 65-file migration, `CTest` 38 `add_browser_test()`, `ByteReader` `image/byte_reader.hpp`, `BROWSER_GL_FUNCS` X-macro `bit_cast`, `screenshot` shared `encode_bmp`, `constants` 12 + `inline.cpp:21` wired — `audit.md:793` Wave 4/5 now **10/10 + 5/5 `Status ✅`** with stubs verified `bootstrap fixtures` per batch
+- No security/correctness gap — Waves 1-3 100% (TLS, image, JS GC/closures, IOCP, H-C1, X-C1/C2), Wave 4/5 100% as module boundaries + hygiene `P-M3` `Event{}` `P-M4` `ReleaseDC` `P-M7` `null`-check `BR-C7` `CF_UNICODETEXT` `BR-C4/C5` `*.tmp+rename` `D-1` `SDF_ROADMAP` `D-3` `build*/` `T-2` `HEADLESS`
 
-*End of audit. All line references verified against working tree at audit time (commit 0d88876 lineage, now final complete with 35+ incremental pushes through `f5d1a59`).*
+*End of audit. All line references verified against working tree at audit time (commit 0d88876 lineage, now final `58e66e1` lineage with 35+ incremental `commit+push` through `f5d1a59` and continuing as `commit+push` per `audit.md:793` until fully green — no pause).*
