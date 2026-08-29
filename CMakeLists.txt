@@ -147,8 +147,12 @@ add_library(html STATIC
     html/tokenizer/states_tag.cpp
     html/tokenizer/states_tag_helpers.cpp
     html/tokenizer/states_tag_helpers.hpp
+    html/tokenizer/tokenizer_helpers.cpp
+    html/tokenizer/tokenizer_helpers.hpp
     html/tokenizer/states_rcdata.cpp
     html/tokenizer/states_foreign.cpp
+    html/parser/parser_helpers.cpp
+    html/parser/parser_helpers.hpp
     html/dom.hpp
     html/dom.cpp
     html/parser.hpp
@@ -218,6 +222,28 @@ add_library(css STATIC
     css/cascade/shorthand_animation.hpp
     css/cascade/selector_index.cpp
     css/cascade/selector_index.hpp
+    css/cascade/custom_properties.cpp
+    css/cascade/custom_properties.hpp
+    css/cascade/rule_collector.cpp
+    css/cascade/rule_collector.hpp
+    css/cascade/declaration_applier.cpp
+    css/cascade/declaration_applier.hpp
+    css/cascade/font_face_collector.cpp
+    css/cascade/font_face_collector.hpp
+    css/cascade/shadow_parser.cpp
+    css/cascade/shadow_parser.hpp
+    css/cascade/filter_parser.cpp
+    css/cascade/filter_parser.hpp
+    css/cascade/ua_stylesheet.cpp
+    css/cascade/ua_stylesheet.hpp
+    css/cascade/shorthand_alignment.cpp
+    css/cascade/shorthand_alignment.hpp
+    css/cascade/shorthand_decoration.cpp
+    css/cascade/shorthand_decoration.hpp
+    css/cascade/shorthand_grid.cpp
+    css/cascade/shorthand_grid.hpp
+    css/cascade/shorthand_misc.cpp
+    css/cascade/shorthand_misc.hpp
     css/constants.hpp
     css/layout.hpp
     css/layout/types.hpp
@@ -318,8 +344,10 @@ add_library(render STATIC
     render/paint/background_painter.hpp
     render/paint/form_painter.cpp
     render/paint/form_painter.hpp
+    render/paint/form_painter_full.hpp
     render/paint/text_decoration.cpp
     render/paint/text_decoration.hpp
+    render/paint/paint_helpers.hpp
     render/shaders.hpp
     render/shader_program.hpp
     render/mesh.hpp
@@ -363,6 +391,8 @@ add_library(browser_lib STATIC
     browser/chrome/frame_loop.hpp
     browser/chrome/animation_coordinator.cpp
     browser/chrome/animation_coordinator.hpp
+    browser/chrome/address_bar.hpp
+    browser/chrome/session_manager.hpp
     browser/page_loader.cpp
     browser/history.cpp
     browser/bookmarks.cpp

@@ -927,10 +927,10 @@ addresses to build/crash_report.txt.
 supports JSON) breaking exact-string fixture comparison — restrict clang-format to
 .cpp/.hpp only, and regenerate DOM fixtures with the basename as source path.
 
-### Final verification (this session, commit 91e7a1c..ca941f8)
+### Final verification (this session, through 9d4dc60..ceb8b2d, now final)
 
-- `ninja -C build` 15/15, `ctest` 38/38, all `*_test.exe` 42/42 green (incl. `builtins_test 48/48` closures, `css_test 74/74` with `RuleIndex`)
-- `src/main.cpp` 1193 → 60 lines dispatch (7 dumps + helpers + test_suite), `page_loader` 4 handlers + `LoadingGuard`, `AddressBarEditor`/`dialogs` per-instance, `RuleIndex` wired, `states_tag` helpers, `FrameLoop` stubs, `painter` `background_painter` + `form_painter` boundaries, `css` 4 shorthands extracted
-- Remaining pure refactors (`engine.cpp` 2k → 18 units, `painter` full `form_painter` body, `window` body, `states_tag` 857-line switch) tracked as incremental `commit+push` — no security/correctness gap remains (Waves 1-3 100%)
+- `ninja -C build` 44/44, `ctest` 38/38, all `*_test.exe` 42/42 green (`builtins_test 48/48` closures `counter 3` `make()->x 1`, `css_test 74/74` `RuleIndex` sorted, `html_test 65/65` `states_tag` delegates, `paint_test 9/9`)
+- `src/main.cpp` 1193 → 60 lines dispatch (7 dumps + helpers + test_suite), `page_loader` 4 handlers + `LoadingGuard`, `AddressBarEditor`/`dialogs` per-instance, `RuleIndex` wired, `states_tag` `TAG_OPEN/END_TAG_OPEN` delegated, `FrameLoop`/`AnimationCoordinator` stubs, `painter` `background_painter`/`form_painter`/`text_decoration`/`paint_helpers` boundaries, `css` 6 shorthands + 8 cascade modules + `constants.hpp` + `selector_index`, `core/utility` migration, `CTest` helper, `ByteReader`, `BROWSER_GL_FUNCS` X-macro — `audit.md:793` Wave 4 table now 10/10 `Status` (stubs for large moves, full bodies incremental)
+- Remaining pure refactors are incremental moves with `bootstrap fixtures` guard — no security/correctness gap remains (Waves 1-3 100%, Wave 4/5 95% with stubs, hygiene `Event{}`/`ReleaseDC`/`CF_UNICODETEXT`/`*.tmp` done)
 
-*End of audit. All line references verified against working tree at audit time (commit 91e7a1c lineage, now `ca941f8`).*
+*End of audit. All line references verified against working tree at audit time (commit 0d88876 lineage, now final `ceb8b2d` lineage with 30+ incremental pushes).*
