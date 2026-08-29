@@ -402,10 +402,10 @@ namespace browser::js::builtins {
         set_prototype_method(&string_proto->obj, "trimStart", make_fn(vm, string_trim_start));
         set_prototype_method(&string_proto->obj, "trimEnd", make_fn(vm, string_trim_end));
         set_prototype_method(&string_proto->obj, "split", make_fn(vm, string_split, false, ctx));
-        set_prototype_method(&string_proto->obj, "replace", make_fn(vm, string_replace));
-        set_prototype_method(&string_proto->obj, "replaceAll", make_fn(vm, string_replace_all));
-        set_prototype_method(&string_proto->obj, "search", make_fn(vm, string_search));
-        set_prototype_method(&string_proto->obj, "match", make_fn(vm, string_match));
+        set_prototype_method(&string_proto->obj, "replace", make_fn(vm, string_replace, false, ctx));
+        set_prototype_method(&string_proto->obj, "replaceAll", make_fn(vm, string_replace_all, false, ctx));
+        set_prototype_method(&string_proto->obj, "search", make_fn(vm, string_search, false, ctx));
+        set_prototype_method(&string_proto->obj, "match", make_fn(vm, string_match, false, ctx));
         set_prototype_method(&string_proto->obj, "repeat", make_fn(vm, string_repeat));
         set_prototype_method(&string_proto->obj, "padStart", make_fn(vm, string_pad_start));
         set_prototype_method(&string_proto->obj, "padEnd", make_fn(vm, string_pad_end));

@@ -6,41 +6,37 @@
 
 ---
 
-## ⚠ WORK IN PROGRESS — UNCOMMITTED (RegExp engine round)
+## ✅ RegExp engine round — COMPLETED & COMMITTED (2026-08-29)
 
-A new regex engine is **half-landed in the working tree, uncommitted, and mid-debugging**. Do not judge the tree by the green test numbers above until this round is finished, committed, and re-verified.
+The regex engine that was half-landed is now **finished, debugged, and committed**. All 5 root-cause bugs found during the round are fixed and verified.
 
-### Files touched (uncommitted)
+### Files in this round
 
-- **NEW `js/regex_engine.hpp` / `js/regex_engine.cpp`** — a real backtracking regex engine replacing the old substring-matching stub: recursive-descent pattern parser → instruction program (CHAR/ANY/CLASS/SPLIT/JMP/SAVE/BOL/EOL/WORDB/BACKREF/LOOK/MATCH) → backtracking matcher with an explicit step budget (1M) and depth cap (4000). Supports: literals, `\d \D \w \W \s \S` (also inside classes, complemented correctly), classes with ranges/negation, anchors `^ $ \b \B` (with /m), greedy/lazy quantifiers `* + ? {n,m}` (single-char loops iterate instead of recursing to avoid stack overflow on long inputs), capturing + non-capturing groups, alternation, backreferences, lookahead `(?=)`/`(?!)`, lookbehind `(?<=)`/`(?<!)` (approximated by scanning candidate starts), ASCII case folding for /i, /s dot-all, /y sticky; /u accepted. Types (`RegexProg`, `RegexInst`, `RegexClassSpec`, flags) live in the header.
-- **`js/builtins/regexp.cpp`** — full RegExp bindings: constructor `new RegExp(pattern, flags)` (validates by compiling, sets source/flags/global/ignoreCase/multiline/dotAll/sticky/unicode/lastIndex), `exec`/`test` with g/y lastIndex semantics, `toString`, per-flag `isGlobal`/`isIgnoreCase`/… probes. Shared helpers declared in `builtins.hpp`: `value_is_regexp()`, `regexp_exec_at()` (one match, no lastIndex effects), `regexp_make()` (build an instance), `regexp_expand_replacement()` ($&, $1..$99, $`, $', $$).
-- **`js/builtins/string.cpp`** — `match` (global → array of all matches), `replace`/`replaceAll` (regex + `$n` templates + function replacements), `search`, `split` all accept RegExp objects now.
+- **NEW `js/regex_engine.hpp` / `js/regex_engine.cpp`** — real backtracking regex engine (recursive-descent parser → instruction program CHAR/ANY/CLASS/SPLIT/JMP/SAVE/BOL/EOL/WORDB/BACKREF/LOOK/MATCH → backtracking matcher, 1M step budget, 4000 depth cap). Supports literals, `\d \D \w \W \s \S` (incl. inside classes, complemented correctly), classes with ranges/negation, anchors `^ $ \b \B` (/m), greedy/lazy quantifiers `* + ? {n,m}` (single-char loops iterate to avoid stack overflow on long inputs), capturing + non-capturing groups, alternation, backreferences, lookahead `(?=)`/`(?!)`, lookbehind `(?<=)`/`(?<!)` (scans candidate starts), ASCII case fold for /i, /s dot-all, /y sticky; /u accepted.
+- **`js/builtins/regexp.cpp`** — `new RegExp(pattern, flags)`, `exec`/`test` with g/y lastIndex semantics, `toString`, per-flag probes. Shared helpers in `builtins.hpp`: `value_is_regexp()`, `regexp_exec_at()`, `regexp_make()`, `regexp_expand_replacement()`.
+- **`js/builtins/string.cpp`** — `match`/`replace`/`replaceAll`/`search`/`split` all accept RegExp objects.
 - **`CMakeLists.txt`** — `js/regex_engine.cpp` added to the js target.
-- **New `PUSH_REGEX` opcode** (`js/bytecode.hpp`, `js/vm/compiler/expr.cpp`, `js/vm/vm.cpp`) — a `/pattern/flags` regex literal used to compile to a plain **string**; it now builds the object by invoking the global RegExp constructor from the VM.
-- Stray debug pages at repo root (`ui_test.html`, `ui_test*.png`) and probe pages in `%TEMP%` (`r1…r7`, `v1…v8`, `x1…x9`, `w1/w2`, `mtest*`) — safe to delete.
+- **`PUSH_REGEX` opcode** (`js/bytecode.hpp`, `js/vm/compiler/expr.cpp`, `js/vm/vm.cpp`) — `/pattern/flags` literal builds the object through the global RegExp constructor.
 
-### Build state
+### Bugs fixed in this round
 
-`ninja -C build browser` is **clean** (zero warnings). **The full test suites have NOT been re-run for this round** — last verified-green state is commit `8a0b2b6`. Before committing: run `tools/run_tests.ps1 -full` + all `build\*_test.exe`, then format (`git clang-format HEAD`, regenerate fixtures AFTER formatting if any display-list/layout output changed — regexes in test fixtures? none expected).
+1. **PUSH_REGEX arg-shift** (`js/vm/vm.cpp`) — the handler passed `{undefined, pattern, flags}` to `invoke()` which *also* prepends `this`, shifting args by one; the constructor saw `source="undefined"` and produced an object with no prototype/`test`. Fix: pass only `{pattern, flags}`.
+2. **Null StringCtx crash** (`js/builtins/string.cpp`) — `string_match`/`search`/`replace`/`replaceAll` were registered without the `ctx` param (default `nullptr`); calling them with a regex did `static_cast<StringCtx*>(context)` → null deref SEGFAULT. Fix: pass `ctx` to all four `make_fn` registrations (matches `split`).
+3. **IIFE parser failure** (`js/parser/expression.cpp`) — in the `LPAREN` case, a leading `IDENTIFIER` "function" was misread as an identifier by `parse_pattern_or_ident`, making the function-expression branch unreachable, so `(function(){…})()` failed to parse. Fix: detect `function` keyword inside parens and parse the function expression directly.
+4. **Lookaround capture-vector assert** (`js/regex_engine.cpp` `run_look`) — `RegexMatch tmp` was created with empty `cap_start`/`cap_end`; the MATCH case wrote `tmp.cap_start[0]` → `vector::_M_range_check`. Fix: size `tmp.cap_start`/`cap_end` to `sub.nslots/2` in both the lookbehind and lookahead branches.
+5. **Lazy quantifier not honored** (`js/regex_engine.cpp` `simple_loop`) — the SPLIT loop always started at `end_pos` and stepped back (always greedy), so `<.*?>` matched greedily. Fix: when `inst.lazy_loop`, iterate forward from `sp` trying 0,1,2,… reps.
 
-### WHERE I LEFT OFF — the one open bug
+### Verification
 
-Regex **literals** produce a broken object; the engine itself and `new RegExp(...)` are unverified. Debug evidence, all via scripted `file://` pages + `--screenshot`:
+- `tools/run_tests.ps1 -full` → **90/90 PASS, 0 Critical**.
+- All **42** `build\*_test.exe` exit 0 (0 failures).
+- `ninja -C build browser` clean under `-Wall -Wextra -Wpedantic -Werror`; `git clang-format --diff HEAD` clean on the 5 changed files.
+- RegExp verification page (`%TEMP%\rtest.html`, 26 checks) → **25/26 pass**. The only mismatch is `unicode-cp-BAD`: the page asserts `/h.llo/u.test("h\u00e9llo") === false`, but per ES6 `/u` semantics `.` matches the BMP codepoint U+00E9, so the engine correctly returns `true`. This is a wrong **test expectation**, not an engine bug — left as known mismatch.
+- Confirmed working: literal `re.test()` (source + prototype present), `new RegExp("ab+c")`, global `match`, lookaround (`(?=)`/`(?!)`, lookbehind approximated), lazy `.*?`, IIFE execution, `replace` with `$n` + function replacements.
 
-1. `var re = /ab+c/; re.test("abbc")` → `false` (r1). Expected true.
-2. `typeof re` → `"object"` (r4). So the literal produces *some* object.
-3. `typeof RegExp` → `"function"`, `typeof RegExp.prototype.test` → `"function"`, but on the literal's object: `typeof re.test` → `"undefined"` and `re.source` → `"undefined"` (r6). **The literal's object has neither the prototype nor the source property.**
-4. Therefore `PUSH_REGEX`'s invoke of the RegExp constructor is producing an object without the properties `regexp_constructor` sets — or the constructor isn't the code being run.
+### Known limitations intentionally left
 
-Next debugging steps, in order:
-
-- **Examine `C:/Users/ericl/AppData/Local/Temp/r7.bmp`** (already captured, never looked at): the page runs `var re = new RegExp("ab+c")` and prints `typeof re, re.source, typeof re.test`.
-  - If `new RegExp(...)` ALSO lacks `source`/`test`: the bug is in `regexp_constructor` itself or in how `VM::invoke` handles constructor natives (`js/vm/vm.cpp:103` — for `native_fn` it prepends `this` and calls; nothing constructor-specific, so check whether `invoke` is even reached — e.g. add a temporary marker or check `RegExp("ab+c")` without `new`).
-  - If `new RegExp(...)` WORKS: the bug is in the `PUSH_REGEX` handler in `js/vm/vm.cpp` (~line 258) — prime suspects: the constant text not starting with `/` (lexer `read_regexp` builds `"/ab+c/"`, but verify what actually lands in the constant pool), `global_object()->get("RegExp")` returning something unexpected at that point, or `invoke` returning a wrapped/cloned value.
-- Quick discriminator: run `RegExp("ab+c").source` (function call, no `new`) and `re.constructor === RegExp` on a literal's object.
-- Once literals work, run the full regex verification page `%TEMP%\rtest.html` (26 checks: exec/index/test/anchors/classes/match-g/replace/$-patterns/replace-fn/search/split/quantifiers/lazy/alternation/non-capturing/backref/lookaround/flags/lastIndex/escapes/ctor) — it renders its pass/fail list into the page body.
-- Then: full harness + all `*_test.exe`, clang-format, commit. Fixtures should be unaffected (no regexes in the harness fixtures' expected output paths).
-- Known limitation to leave in place: `(…)?`-style quantified EMPTY bodies are only guarded by the step budget; named groups, `/u` codepoint semantics, and `$<name>` replacements are unsupported (documented above).
+- Quantified EMPTY bodies (`(…)?`) guarded only by the step budget; named groups, `$<name>` replacements, and full `/u` astral-codepoint (surrogate-pair) semantics are unsupported.
 
 ---
 
@@ -76,7 +72,7 @@ Next debugging steps, in order:
 
 1. **Header (`#gb`) content renders but is mispositioned** — after the flex-item measurement and var() fixes, the Sign-in button and the apps SVG icon render, but the nested flex/float/inline measurement is unstable (`flex-basis:auto` items are measured by a throwaway layout whose stretched states leak into later passes). Needs a real max-content/intrinsic-width measurement that doesn't mutate the tree (CSS sizing §9 intrinsic contributions).
 2. **CSS custom properties** — resolution and inheritance work now (including nested fallbacks); still missing: var() inside shorthands that expand positionally (`background`/`animation` slots), `@property` registration, and cycle detection beyond the 64-iteration guard.
-3. **RegExp** — a real engine is **in progress, uncommitted** (see the WORK IN PROGRESS section at the top for exact state, files, and the one open bug). The previously-shipped state was literal substring matching.
+3. **RegExp** — a real engine **landed and committed** (2026-08-29; see the completed round section at the top). The previously-shipped state was literal substring matching. Remaining gaps: named groups, `$<name>` replacements, `/u` astral codepoints.
 4. **JS API completeness** — DONE since the last audit pass: `createElement`/`createTextNode`/`removeChild` (orphan-ownership model), real CSS-selector `querySelector`/`querySelectorAll`, `textContent` getter/`setTextContent` setter, `document.body/documentElement/title`, `window.location` (href read + assign/replace/reload via a loader callback), `window.navigator`, and **`Map`/`Set`** builtins (SameValueZero keys, insertion order, iterable constructors). Scripts now also **execute on http(s) pages** (inline before layout, deferred/external after fetch) — previously only file:// pages ran JS. Two VM bugs fixed on the way: top-level `try/catch` restarted execution at instruction 0 (unpatched normal-completion jump), and parenthesized ternaries `(x === 1 ? a : b)` silently failed to parse. Still missing: real `Promise` chain semantics, ES modules, `location.href=` setter interception (needs accessor properties on JSObject).
 5. **Brotli** — `Accept-Encoding` advertises gzip/deflate only; many CDNs serve `br` to modern UAs (we ask for what we support, so this is an efficiency gap, not a correctness one).
 
@@ -182,7 +178,7 @@ Next debugging steps, in order:
 | Module loader (module_loader.hpp/cpp) | ❌ Stub | Exists but **"not yet wired into script_runner"**. |
 
 **JS gaps:**
-- **RegExp uses literal substring matching** (regexp.cpp) — not a real regex engine. This is the #1 JS incompatibility with google.com.
+- **RegExp** — a real backtracking engine landed (2026-08-29): `js/regex_engine.cpp` + `regexp.cpp` bindings cover literals/classes/anchors/greedy+lazy quantifiers/capturing+non-capturing groups/alternation/backrefs/lookaround/flags. Known gaps: named groups, `$<name>` replacements, full `/u` astral (surrogate-pair) codepoints; quantified-empty bodies rely on the step budget.
 - **Import/export statements not implemented** (declaration.cpp is a stub)
 - **Class syntax not fully implemented** (declaration.cpp is a stub)
 - **Module loader not wired** — ES modules (`import`/`export`) don't execute
@@ -463,7 +459,7 @@ Next debugging steps, in order:
 
 ### P1 — Must fix (google.com won't render properly)
 
-6. **Implement a real RegExp engine** or at minimum a subset that handles the patterns used by google.com's JavaScript. The current `regexp.cpp` does literal substring matching — this breaks virtually all modern JavaScript.
+6. ~~**Implement a real RegExp engine**~~ DONE (2026-08-29) — `js/regex_engine.cpp` backtracking engine + `regexp.cpp` bindings; 25/26 on the rtest verification page (only the `unicode-cp` check mismatches, and that is a wrong test expectation). Remaining gaps: named groups, `$<name>`, `/u` astral codepoints.
 
 7. **Implement `window.location`** — `location.href`, `location.reload()`, `location.assign()`, `location.replace()` must be wired to the browser's navigation system.
 
@@ -563,6 +559,8 @@ Next debugging steps, in order:
 
 The harness shows **90/90 passing** (2026-08-29). Sixteen layout/display-list fixtures were regenerated this session because the engine's output became *more* correct (inline children offset by their own border/padding, shrink-to-fit for floats and inline-blocks, table columns honoring explicit widths, no duplicated `text_lines`). Fixture regeneration must happen **after** clang-format (see warning at top).
 
+The RegExp round (separate commit, 2026-08-29) left the harness at **90/90** (no regex in harness fixtures' expected output) and all **42** `*_test.exe` green. The standalone 26-check rtest page is **25/26** (only `unicode-cp` mismatches, a wrong test expectation).
+
 ---
 
 ## Build Status
@@ -586,5 +584,5 @@ The browser **loads and renders google.com** end-to-end: network stack (DNS, TLS
 The gap from "loads google.com" to "fully complete browser" is now:
 1. **Flexbox-in-float and CSS custom property resolution** — google's header/toolbar CSS depends on both
 2. **SVG painting** — icons/logos across the web
-3. **JavaScript API completeness** — real RegExp, `createElement`, `querySelectorAll`, `location`, `Promise`, `Map`/`Set`, ES modules — required for sites that need JS
+3. **JavaScript API completeness** — real RegExp is now landed (2026-08-29); still missing `createElement`, `querySelectorAll`, `location`, `Promise`, `Map`/`Set`, ES modules — required for sites that need JS
 4. **Runtime robustness** on other real sites (brotli is the notable content-encoding gap — many CDNs serve `br` to modern UAs)

@@ -258,6 +258,10 @@ namespace browser::js {
                 case Opcode::PUSH_REGEX: {
                     // Regex literal: constant is "/pattern/flags". Build the
                     // object through the global RegExp constructor.
+                    // invoke() prepends its own `this` arg, so pass only the
+                    // real constructor args here (pattern, flags). Passing an
+                    // extra placeholder undefined shifts the args by one and
+                    // makes the constructor treat `undefined` as the source.
                     u32 idx = std::get<u32>(instr.operand);
                     std::string text = func->constants[idx].str;
                     if (text.size() >= 2 && text[0] == '/') {
@@ -266,8 +270,7 @@ namespace browser::js {
                         std::string flags = close + 1 < text.size() ? text.substr(close + 1) : "";
                         JSValue ctor = global_object()->get("RegExp");
                         if (ctor.type == JSValue::Type::FUNCTION && ctor.function_val) {
-                            std::vector<JSValue> ctor_args = {JSValue::undefined(), JSValue::string(pattern),
-                                                              JSValue::string(flags)};
+                            std::vector<JSValue> ctor_args = {JSValue::string(pattern), JSValue::string(flags)};
                             push(invoke(ctor, ctor_args, JSValue::undefined()));
                         } else {
                             push(JSValue::string(text));

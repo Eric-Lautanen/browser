@@ -820,6 +820,8 @@ namespace {
                         if (sub.nslots >= 2)
                             caps[0] = s;
                         RegexMatch tmp;
+                        tmp.cap_start.assign(sub.nslots / 2, kNoCapture);
+                        tmp.cap_end.assign(sub.nslots / 2, kNoCapture);
                         bool ok = se.step(0, s, caps, tmp, 0);
                         steps += se.steps;
                         if (se.budget_hit)
@@ -844,6 +846,8 @@ namespace {
                 if (sub.nslots >= 2)
                     caps[0] = sp;
                 RegexMatch tmp;
+                tmp.cap_start.assign(sub.nslots / 2, kNoCapture);
+                tmp.cap_end.assign(sub.nslots / 2, kNoCapture);
                 bool ok = se.step(0, sp, caps, tmp, 0);
                 steps += se.steps;
                 if (se.budget_hit)
@@ -927,19 +931,31 @@ namespace {
                                 if (out.cap_start.empty()) {
                                     return false;
                                 }
-                                u32 q = end_pos;
-                                for (;;) {
-                                    std::vector<u32> cc = caps;
-                                    if (step(inst.y, q, cc, out, depth + 1))
-                                        return true;
-                                    if (budget_hit || q == sp)
-                                        break;
-                                    // step back one codepoint
-                                    u32 back = q - 1;
-                                    while (back > sp &&
-                                           (static_cast<u8>(input[back]) & 0xC0) == 0x80)
-                                        back--;
-                                    q = back;
+                                if (inst.lazy_loop) {
+                                    // Try 0 reps first, then 1, 2, ...
+                                    for (u32 q = sp;;) {
+                                        std::vector<u32> cc = caps;
+                                        if (step(inst.y, q, cc, out, depth + 1))
+                                            return true;
+                                        if (budget_hit || q >= end_pos)
+                                            break;
+                                        u32 fwd = q;
+                                        decode_at(input, fwd);
+                                        q = fwd;
+                                    }
+                                } else {
+                                    u32 q = end_pos;
+                                    for (;;) {
+                                        std::vector<u32> cc = caps;
+                                        if (step(inst.y, q, cc, out, depth + 1))
+                                            return true;
+                                        if (budget_hit || q == sp)
+                                            break;
+                                        // step back one codepoint
+                                        u32 back = q - 1;
+                                        while (back > sp && (static_cast<u8>(input[back]) & 0xC0) == 0x80) back--;
+                                        q = back;
+                                    }
                                 }
                                 return false;
                             }

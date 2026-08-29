@@ -449,6 +449,35 @@ namespace browser::js {
             case TokenType::LPAREN: {
                 advance();
 
+                // Function expression inside parens: "(function() { ... })".
+                // The token is IDENTIFIER with text "function" (keywords are
+                // not separate tokens here). parse_pattern_or_ident would
+                // consume it as an identifier, so handle it before that path.
+                if (current_.type == TokenType::IDENTIFIER && current_.text == "function") {
+                    advance();
+                    if (current_.type == TokenType::IDENTIFIER)
+                        advance();
+                    expect(TokenType::LPAREN);
+                    auto fn_expr = std::make_unique<ArrowFuncExpr>();
+                    fn_expr->line = line;
+                    fn_expr->column = col;
+                    while (current_.type != TokenType::RPAREN && current_.type != TokenType::EOF_TOKEN) {
+                        auto p = parse_pattern();
+                        if (p)
+                            fn_expr->params.push_back(std::move(p));
+                        if (!match(TokenType::COMMA))
+                            break;
+                    }
+                    expect(TokenType::RPAREN);
+                    parse_arrow_body(fn_expr.get());
+                    if (current_.type == TokenType::RPAREN) {
+                        advance();
+                        return std::make_unique<Expr>(std::move(*fn_expr));
+                    }
+                    error("expected ')' after function expression");
+                    return nullptr;
+                }
+
                 // Empty parens: ()
                 if (current_.type == TokenType::RPAREN) {
                     advance();
