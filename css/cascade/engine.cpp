@@ -691,32 +691,8 @@ code { font-family: monospace; }
                             }
                         }
 
-                        auto expand_border_side = [&](const std::string &side, const CSSValue &bval) {
-                            if (!style.has(side + "-width") && !style.has("border-width"))
-                                style.properties[side + "-width"] = bval;
-                        };
-                        if (prop == "border" && val.type == CSSValue::Type::STRING) {
-                            expand_border_side("border-top", val);
-                            expand_border_side("border-right", val);
-                            expand_border_side("border-bottom", val);
-                            expand_border_side("border-left", val);
-                        }
-
-                        if (prop == "border-width" && val.type == CSSValue::Type::STRING) {
-                            // Expand "border-width: 1px 2px" → border-top-width, border-right-width, etc.
-                            std::string tmp = val.string_value;
-                            val.string_value = tmp;
-                            expand_four_sides("borderwidth", val.string_value);
-                            // Rename borderwidth-top → border-top-width etc.
-                            for (auto &side : {"-top", "-right", "-bottom", "-left"}) {
-                                std::string old_key = "borderwidth" + std::string(side);
-                                std::string new_key = "border" + std::string(side) + "-width";
-                                auto it = style.properties.find(old_key);
-                                if (it != style.properties.end()) {
-                                    style.properties[new_key] = it->second;
-                                    style.properties.erase(it);
-                                }
-                            }
+                        if (prop == "border" || prop == "border-width") {
+                            expand_border(style, val, prop);
                         }
 
                         if (prop == "flex") {

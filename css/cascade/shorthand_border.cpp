@@ -16,14 +16,16 @@ void expand_border(ComputedStyle& style, const CSSValue& val, const std::string&
     }
     if (prop == "border-width" && val.type == CSSValue::Type::STRING) {
         std::string tmp = val.string_value;
-        // Use box helper to expand, then rename
-        // Note: expand_four_sides expects base without hyphen, we use "borderwidth" trick then rename
-        // For now just call box helper directly with correct base
-        expand_four_sides(style, "border-top-width", tmp); // placeholder - will be refined
-        // Actual logic from engine: expand "borderwidth" then rename
-        // To keep audit simple, we delegate to box helper for four sides
-        // Full rename logic will be moved in next iteration
-        (void)tmp;
+        expand_four_sides(style, "borderwidth", tmp);
+        for (auto &side : {"-top", "-right", "-bottom", "-left"}) {
+            std::string old_key = "borderwidth" + std::string(side);
+            std::string new_key = "border" + std::string(side) + "-width";
+            auto it = style.properties.find(old_key);
+            if (it != style.properties.end()) {
+                style.properties[new_key] = it->second;
+                style.properties.erase(it);
+            }
+        }
     }
     if (prop == "border-style" && val.type == CSSValue::Type::STRING) {
         // 4-value expansion for border-style
